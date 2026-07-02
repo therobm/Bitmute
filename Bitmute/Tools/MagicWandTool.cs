@@ -59,16 +59,20 @@ namespace Bitmute.Tools
 				return false;
 			}
 
+			eSelectionMode mode = SelectionModeFromState(state);
+			if (mode == eSelectionMode.Replace)
+			{
+				document.Selection().Clear();
+			}
+			document.Selection().BeginOperation(mode);
+
 			SKColor target = bitmap.GetPixel(seedX, seedY);
 			int tolerance = state.FillTolerance();
 			int documentWidth = document.Width();
 			int documentHeight = document.Height();
 			byte[] visited = new byte[width * height];
 			byte[] mask = new byte[documentWidth * documentHeight];
-			int minX = documentWidth;
-			int minY = documentHeight;
-			int maxX = -1;
-			int maxY = -1;
+			bool anySelected = false;
 
 			Stack<int> pending = new Stack<int>();
 			pending.Push((seedY * width) + seedX);
@@ -96,22 +100,7 @@ namespace Bitmute.Tools
 				if (canvasX >= 0 && canvasY >= 0 && canvasX < documentWidth && canvasY < documentHeight)
 				{
 					mask[(canvasY * documentWidth) + canvasX] = 255;
-					if (canvasX < minX)
-					{
-						minX = canvasX;
-					}
-					if (canvasX > maxX)
-					{
-						maxX = canvasX;
-					}
-					if (canvasY < minY)
-					{
-						minY = canvasY;
-					}
-					if (canvasY > maxY)
-					{
-						maxY = canvasY;
-					}
+					anySelected = true;
 				}
 				if (pixelX > 0)
 				{
@@ -131,13 +120,12 @@ namespace Bitmute.Tools
 				}
 			}
 
-			if (maxX < 0)
+			if (!anySelected)
 			{
-				document.Selection().Clear();
+				document.Selection().ApplyRect(SKRectI.Empty);
 				return false;
 			}
-			SKRectI bounds = new SKRectI(minX, minY, maxX + 1, maxY + 1);
-			document.Selection().SelectMask(mask, bounds);
+			document.Selection().ApplyMask(mask);
 			return false;
 		}
 

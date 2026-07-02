@@ -11,6 +11,7 @@ namespace Bitmute.Tools
 		private int m_fillTolerance;
 		private bool m_lineAntiAlias;
 		private bool m_shiftHeld;
+		private bool m_altHeld;
 
 		public ToolState()
 		{
@@ -21,6 +22,7 @@ namespace Bitmute.Tools
 			m_fillTolerance = 0;
 			m_lineAntiAlias = false;
 			m_shiftHeld = false;
+			m_altHeld = false;
 		}
 
 		public bool LineAntiAlias()
@@ -41,6 +43,16 @@ namespace Bitmute.Tools
 		public void SetShiftHeld(bool shiftHeld)
 		{
 			m_shiftHeld = shiftHeld;
+		}
+
+		public bool AltHeld()
+		{
+			return m_altHeld;
+		}
+
+		public void SetAltHeld(bool altHeld)
+		{
+			m_altHeld = altHeld;
 		}
 
 		public eTool Tool()

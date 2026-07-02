@@ -19,7 +19,12 @@ namespace Bitmute.Tools
 		{
 			m_startX = x;
 			m_startY = y;
-			document.Selection().Clear();
+			eSelectionMode mode = SelectionModeFromState(state);
+			if (mode == eSelectionMode.Replace)
+			{
+				document.Selection().Clear();
+			}
+			document.Selection().BeginOperation(mode);
 			return false;
 		}
 
@@ -45,11 +50,11 @@ namespace Bitmute.Tools
 			int spanY = (bottom + 1) - top;
 			if (spanX < MinimumSpan || spanY < MinimumSpan)
 			{
-				document.Selection().Clear();
+				document.Selection().ApplyRect(SKRectI.Empty);
 				return false;
 			}
 			SKRectI rect = new SKRectI(left, top, right + 1, bottom + 1);
-			document.Selection().SelectRect(rect);
+			document.Selection().ApplyRect(rect);
 			return false;
 		}
 	}

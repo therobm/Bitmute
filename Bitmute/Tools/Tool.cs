@@ -110,6 +110,19 @@ namespace Bitmute.Tools
 			document.MarkComposeDirtyRegion(rect);
 		}
 
+		protected eSelectionMode SelectionModeFromState(ToolState state)
+		{
+			if (state.ShiftHeld())
+			{
+				return eSelectionMode.Add;
+			}
+			if (state.AltHeld())
+			{
+				return eSelectionMode.Subtract;
+			}
+			return eSelectionMode.Replace;
+		}
+
 		public virtual bool IsDestructive()
 		{
 			return true;

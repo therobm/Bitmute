@@ -19,7 +19,12 @@ namespace Bitmute.Tools
 		{
 			m_startX = x;
 			m_startY = y;
-			document.Selection().Clear();
+			eSelectionMode mode = SelectionModeFromState(state);
+			if (mode == eSelectionMode.Replace)
+			{
+				document.Selection().Clear();
+			}
+			document.Selection().BeginOperation(mode);
 			return false;
 		}
 
@@ -47,7 +52,7 @@ namespace Bitmute.Tools
 			int spanY = bottom - top;
 			if (spanX < MinimumSpan || spanY < MinimumSpan)
 			{
-				document.Selection().Clear();
+				document.Selection().ApplyRect(SKRectI.Empty);
 				return false;
 			}
 
@@ -85,10 +90,6 @@ namespace Bitmute.Tools
 			double radiusY = (bottom - top) / 2.0;
 
 			byte[] mask = new byte[documentWidth * documentHeight];
-			int minX = documentWidth;
-			int minY = documentHeight;
-			int maxX = -1;
-			int maxY = -1;
 			for (int pixelY = clampedTop; pixelY < clampedBottom; pixelY++)
 			{
 				double normalizedY = ((pixelY + 0.5) - centerY) / radiusY;
@@ -102,32 +103,10 @@ namespace Bitmute.Tools
 						continue;
 					}
 					mask[rowStart + pixelX] = 255;
-					if (pixelX < minX)
-					{
-						minX = pixelX;
-					}
-					if (pixelX > maxX)
-					{
-						maxX = pixelX;
-					}
-					if (pixelY < minY)
-					{
-						minY = pixelY;
-					}
-					if (pixelY > maxY)
-					{
-						maxY = pixelY;
-					}
 				}
 			}
 
-			if (maxX < 0)
-			{
-				document.Selection().Clear();
-				return false;
-			}
-			SKRectI bounds = new SKRectI(minX, minY, maxX + 1, maxY + 1);
-			document.Selection().SelectMask(mask, bounds);
+			document.Selection().ApplyMask(mask);
 			return false;
 		}
 	}

@@ -121,7 +121,7 @@ namespace Bitmute.Tools
 			int count = m_verticesX.Count;
 			if (count < MinimumVertices)
 			{
-				document.Selection().Clear();
+				document.Selection().ApplyRect(SKRectI.Empty);
 				return;
 			}
 			int documentWidth = document.Width();
@@ -154,10 +154,6 @@ namespace Bitmute.Tools
 			}
 
 			double[] crossings = new double[count];
-			int selMinX = documentWidth;
-			int selMinY = documentHeight;
-			int selMaxX = -1;
-			int selMaxY = -1;
 			for (int pixelY = scanTop; pixelY <= scanBottom; pixelY++)
 			{
 				double scanLine = pixelY + 0.5;
@@ -199,33 +195,11 @@ namespace Bitmute.Tools
 					for (int pixelX = spanLeft; pixelX <= spanRight; pixelX++)
 					{
 						mask[rowStart + pixelX] = 255;
-						if (pixelX < selMinX)
-						{
-							selMinX = pixelX;
-						}
-						if (pixelX > selMaxX)
-						{
-							selMaxX = pixelX;
-						}
-						if (pixelY < selMinY)
-						{
-							selMinY = pixelY;
-						}
-						if (pixelY > selMaxY)
-						{
-							selMaxY = pixelY;
-						}
 					}
 				}
 			}
 
-			if (selMaxX < 0)
-			{
-				document.Selection().Clear();
-				return;
-			}
-			SKRectI bounds = new SKRectI(selMinX, selMinY, selMaxX + 1, selMaxY + 1);
-			document.Selection().SelectMask(mask, bounds);
+			document.Selection().ApplyMask(mask);
 		}
 
 		public override bool OnPressed(Document document, int x, int y, ToolState state)
@@ -237,7 +211,12 @@ namespace Bitmute.Tools
 				m_active = true;
 				m_verticesX.Clear();
 				m_verticesY.Clear();
-				document.Selection().Clear();
+				eSelectionMode mode = SelectionModeFromState(state);
+				if (mode == eSelectionMode.Replace)
+				{
+					document.Selection().Clear();
+				}
+				document.Selection().BeginOperation(mode);
 				m_verticesX.Add(x);
 				m_verticesY.Add(y);
 				return false;
