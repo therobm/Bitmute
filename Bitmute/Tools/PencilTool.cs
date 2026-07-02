@@ -11,7 +11,7 @@ namespace Bitmute.Tools
 			{
 				return false;
 			}
-			DrawDab(layer.Bitmap(), x, y, 0, state.Foreground(), document.Selection());
+			DrawDab(layer, x, y, 0, state.Foreground(), document.Selection());
 			m_lastX = x;
 			m_lastY = y;
 			m_hasLast = true;
@@ -27,11 +27,11 @@ namespace Bitmute.Tools
 			}
 			if (m_hasLast)
 			{
-				StrokeLine(layer.Bitmap(), m_lastX, m_lastY, x, y, 0, state.Foreground(), document.Selection());
+				StrokeLine(layer, m_lastX, m_lastY, x, y, 0, state.Foreground(), document.Selection());
 			}
 			else
 			{
-				DrawDab(layer.Bitmap(), x, y, 0, state.Foreground(), document.Selection());
+				DrawDab(layer, x, y, 0, state.Foreground(), document.Selection());
 			}
 			m_lastX = x;
 			m_lastY = y;

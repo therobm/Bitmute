@@ -17,12 +17,7 @@ namespace Bitmute.Tools
 			{
 				return false;
 			}
-			SKBitmap bitmap = layer.Bitmap();
-			if (x < 0 || y < 0 || x >= bitmap.Width || y >= bitmap.Height)
-			{
-				return false;
-			}
-			SKColor color = bitmap.GetPixel(x, y);
+			SKColor color = layer.GetPixelCanvas(x, y);
 			state.SetForeground(color);
 			return false;
 		}

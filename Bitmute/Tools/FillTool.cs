@@ -57,13 +57,17 @@ namespace Bitmute.Tools
 			SKBitmap bitmap = layer.Bitmap();
 			int width = bitmap.Width;
 			int height = bitmap.Height;
-			if (x < 0 || y < 0 || x >= width || y >= height)
+			int offsetX = layer.OffsetX();
+			int offsetY = layer.OffsetY();
+			int seedX = x - offsetX;
+			int seedY = y - offsetY;
+			if (seedX < 0 || seedY < 0 || seedX >= width || seedY >= height)
 			{
 				return false;
 			}
 
 			Selection selection = document.Selection();
-			SKColor target = bitmap.GetPixel(x, y);
+			SKColor target = bitmap.GetPixel(seedX, seedY);
 			SKColor fill = state.Foreground();
 			int tolerance = state.FillTolerance();
 			if (ColorMatch(target, fill, 0))
@@ -72,7 +76,7 @@ namespace Bitmute.Tools
 			}
 
 			Stack<int> pending = new Stack<int>();
-			pending.Push((y * width) + x);
+			pending.Push((seedY * width) + seedX);
 			for (;;)
 			{
 				if (pending.Count == 0)
@@ -82,7 +86,7 @@ namespace Bitmute.Tools
 				int index = pending.Pop();
 				int pixelX = index % width;
 				int pixelY = index / width;
-				if (selection.IsActive() && !selection.IsSelected(pixelX, pixelY))
+				if (selection.IsActive() && !selection.IsSelected(pixelX + offsetX, pixelY + offsetY))
 				{
 					continue;
 				}

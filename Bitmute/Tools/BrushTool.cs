@@ -12,7 +12,7 @@ namespace Bitmute.Tools
 				return false;
 			}
 			int radius = state.BrushSize() / 2;
-			DrawDab(layer.Bitmap(), x, y, radius, state.Foreground(), document.Selection());
+			DrawDab(layer, x, y, radius, state.Foreground(), document.Selection());
 			m_lastX = x;
 			m_lastY = y;
 			m_hasLast = true;
@@ -29,11 +29,11 @@ namespace Bitmute.Tools
 			int radius = state.BrushSize() / 2;
 			if (m_hasLast)
 			{
-				StrokeLine(layer.Bitmap(), m_lastX, m_lastY, x, y, radius, state.Foreground(), document.Selection());
+				StrokeLine(layer, m_lastX, m_lastY, x, y, radius, state.Foreground(), document.Selection());
 			}
 			else
 			{
-				DrawDab(layer.Bitmap(), x, y, radius, state.Foreground(), document.Selection());
+				DrawDab(layer, x, y, radius, state.Foreground(), document.Selection());
 			}
 			m_lastX = x;
 			m_lastY = y;

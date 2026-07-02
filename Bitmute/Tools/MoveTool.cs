@@ -5,10 +5,13 @@ namespace Bitmute.Tools
 {
 	public class MoveTool : Tool
 	{
+		private bool m_offsetMode;
 		private SKBitmap m_moving;
 		private SKBitmap m_static;
 		private int m_startX;
 		private int m_startY;
+		private int m_oldOffsetX;
+		private int m_oldOffsetY;
 
 		private SKBitmap ExtractSelected(SKBitmap source, Selection selection)
 		{
@@ -94,13 +97,15 @@ namespace Bitmute.Tools
 			Selection selection = document.Selection();
 			if (selection.IsActive())
 			{
+				m_offsetMode = false;
 				m_moving = ExtractSelected(layer.Bitmap(), selection);
 				m_static = CloneWithSelectionCleared(layer.Bitmap(), selection);
 			}
 			else
 			{
-				m_moving = layer.Bitmap().Copy();
-				m_static = null;
+				m_offsetMode = true;
+				m_oldOffsetX = layer.OffsetX();
+				m_oldOffsetY = layer.OffsetY();
 			}
 			return false;
 		}
@@ -112,6 +117,11 @@ namespace Bitmute.Tools
 			{
 				return false;
 			}
+			if (m_offsetMode)
+			{
+				layer.SetOffset(m_oldOffsetX + (x - m_startX), m_oldOffsetY + (y - m_startY));
+				return true;
+			}
 			if (m_moving == null)
 			{
 				return false;
@@ -122,6 +132,17 @@ namespace Bitmute.Tools
 
 		public override void OnReleased(Document document, int x, int y, ToolState state)
 		{
+			if (m_offsetMode)
+			{
+				Layer layer = document.ActiveLayer();
+				if (layer != null)
+				{
+					if (layer.OffsetX() != m_oldOffsetX || layer.OffsetY() != m_oldOffsetY)
+					{
+						document.PushCommand(new MoveLayerCommand(document.ActiveLayerIndex(), m_oldOffsetX, m_oldOffsetY, layer.OffsetX(), layer.OffsetY()));
+					}
+				}
+			}
 			ReleaseBuffers();
 			m_hasLast = false;
 		}

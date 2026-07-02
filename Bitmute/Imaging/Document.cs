@@ -12,8 +12,8 @@ namespace Bitmute.Imaging
 		private string m_title;
 		private List<Layer> m_layers;
 		private int m_activeLayerIndex;
-		private List<LayerEditCommand> m_undoStack;
-		private List<LayerEditCommand> m_redoStack;
+		private List<EditCommand> m_undoStack;
+		private List<EditCommand> m_redoStack;
 		private SKBitmap m_strokeSnapshot;
 		private int m_strokeLayerIndex;
 		private Selection m_selection;
@@ -35,8 +35,8 @@ namespace Bitmute.Imaging
 			background.FillWhite();
 			m_layers.Add(background);
 			m_activeLayerIndex = 0;
-			m_undoStack = new List<LayerEditCommand>();
-			m_redoStack = new List<LayerEditCommand>();
+			m_undoStack = new List<EditCommand>();
+			m_redoStack = new List<EditCommand>();
 			m_strokeSnapshot = null;
 			m_strokeLayerIndex = 0;
 			m_selection = new Selection(width, height);
@@ -96,6 +96,16 @@ namespace Bitmute.Imaging
 			m_strokeSnapshot = null;
 		}
 
+		public void PushCommand(EditCommand command)
+		{
+			m_undoStack.Add(command);
+			m_redoStack.Clear();
+			if (m_undoStack.Count > MaxUndoDepth)
+			{
+				m_undoStack.RemoveAt(0);
+			}
+		}
+
 		public bool Undo()
 		{
 			if (m_undoStack.Count == 0)
@@ -103,13 +113,9 @@ namespace Bitmute.Imaging
 				return false;
 			}
 			int last = m_undoStack.Count - 1;
-			LayerEditCommand command = m_undoStack[last];
+			EditCommand command = m_undoStack[last];
 			m_undoStack.RemoveAt(last);
-			int index = command.LayerIndex();
-			if (index >= 0 && index < m_layers.Count)
-			{
-				command.ApplyBefore(m_layers[index].Bitmap());
-			}
+			command.ApplyBefore(this);
 			m_redoStack.Add(command);
 			return true;
 		}
@@ -121,13 +127,9 @@ namespace Bitmute.Imaging
 				return false;
 			}
 			int last = m_redoStack.Count - 1;
-			LayerEditCommand command = m_redoStack[last];
+			EditCommand command = m_redoStack[last];
 			m_redoStack.RemoveAt(last);
-			int index = command.LayerIndex();
-			if (index >= 0 && index < m_layers.Count)
-			{
-				command.ApplyAfter(m_layers[index].Bitmap());
-			}
+			command.ApplyAfter(this);
 			m_undoStack.Add(command);
 			return true;
 		}
@@ -224,7 +226,7 @@ namespace Bitmute.Imaging
 				paint.Color = SKColors.White.WithAlpha(layer.Opacity());
 				paint.BlendMode = Layer.ToSkBlendMode(layer.BlendMode());
 				SKImage image = SKImage.FromBitmap(layer.Bitmap());
-				canvas.DrawImage(image, 0.0f, 0.0f, sampling, paint);
+				canvas.DrawImage(image, layer.OffsetX(), layer.OffsetY(), sampling, paint);
 				image.Dispose();
 			}
 			paint.Dispose();

@@ -796,6 +796,8 @@ namespace Bitmute.UI
 			AddAccelerator(element, Windows.System.VirtualKey.Number0, OnAcceleratorFit);
 			AddAccelerator(element, Windows.System.VirtualKey.Add, OnAcceleratorZoomIn);
 			AddAccelerator(element, Windows.System.VirtualKey.Subtract, OnAcceleratorZoomOut);
+			AddAccelerator(element, (Windows.System.VirtualKey)187, OnAcceleratorZoomIn);
+			AddAccelerator(element, (Windows.System.VirtualKey)189, OnAcceleratorZoomOut);
 			m_acceleratorsHooked = true;
 		}
 
@@ -1055,7 +1057,7 @@ namespace Bitmute.UI
 				return;
 			}
 			document.BeginStroke();
-			TextRasterizer.Draw(layer.Bitmap(), text, x, y, m_toolState.Foreground(), 32.0f);
+			TextRasterizer.Draw(layer.Bitmap(), text, x - layer.OffsetX(), y - layer.OffsetY(), m_toolState.Foreground(), 32.0f);
 			document.EndStroke();
 			canvas.MarkComposeDirty();
 			SetStatusMessage("Added text: " + text);

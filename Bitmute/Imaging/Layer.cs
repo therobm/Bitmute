@@ -18,6 +18,8 @@ namespace Bitmute.Imaging
 		private byte m_opacity;
 		private eBlendMode m_blendMode;
 		private SKBitmap m_bitmap;
+		private int m_offsetX;
+		private int m_offsetY;
 
 		public static SKBlendMode ToSkBlendMode(eBlendMode blendMode)
 		{
@@ -48,11 +50,51 @@ namespace Bitmute.Imaging
 			m_blendMode = eBlendMode.Normal;
 			m_bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
 			m_bitmap.Erase(SKColors.Transparent);
+			m_offsetX = 0;
+			m_offsetY = 0;
 		}
 
 		public SKBitmap Bitmap()
 		{
 			return m_bitmap;
+		}
+
+		public int OffsetX()
+		{
+			return m_offsetX;
+		}
+
+		public int OffsetY()
+		{
+			return m_offsetY;
+		}
+
+		public void SetOffset(int offsetX, int offsetY)
+		{
+			m_offsetX = offsetX;
+			m_offsetY = offsetY;
+		}
+
+		public void SetPixelCanvas(int canvasX, int canvasY, SKColor color)
+		{
+			int bitmapX = canvasX - m_offsetX;
+			int bitmapY = canvasY - m_offsetY;
+			if (bitmapX < 0 || bitmapY < 0 || bitmapX >= m_bitmap.Width || bitmapY >= m_bitmap.Height)
+			{
+				return;
+			}
+			m_bitmap.SetPixel(bitmapX, bitmapY, color);
+		}
+
+		public SKColor GetPixelCanvas(int canvasX, int canvasY)
+		{
+			int bitmapX = canvasX - m_offsetX;
+			int bitmapY = canvasY - m_offsetY;
+			if (bitmapX < 0 || bitmapY < 0 || bitmapX >= m_bitmap.Width || bitmapY >= m_bitmap.Height)
+			{
+				return SKColors.Transparent;
+			}
+			return m_bitmap.GetPixel(bitmapX, bitmapY);
 		}
 
 		public string Name()

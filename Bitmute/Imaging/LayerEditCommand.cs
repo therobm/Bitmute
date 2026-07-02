@@ -1,8 +1,9 @@
+using System.Collections.Generic;
 using SkiaSharp;
 
 namespace Bitmute.Imaging
 {
-	public class LayerEditCommand
+	public class LayerEditCommand : EditCommand
 	{
 		private int m_layerIndex;
 		private SKRectI m_rect;
@@ -17,19 +18,34 @@ namespace Bitmute.Imaging
 			m_after = after;
 		}
 
-		public int LayerIndex()
+		private SKBitmap LayerBitmap(Document document)
 		{
-			return m_layerIndex;
+			List<Layer> layers = document.Layers();
+			if (m_layerIndex < 0 || m_layerIndex >= layers.Count)
+			{
+				return null;
+			}
+			return layers[m_layerIndex].Bitmap();
 		}
 
-		public void ApplyBefore(SKBitmap layerBitmap)
+		public override void ApplyBefore(Document document)
 		{
-			PixelRegion.ApplyRegion(layerBitmap, m_before, m_rect.Left, m_rect.Top);
+			SKBitmap bitmap = LayerBitmap(document);
+			if (bitmap == null)
+			{
+				return;
+			}
+			PixelRegion.ApplyRegion(bitmap, m_before, m_rect.Left, m_rect.Top);
 		}
 
-		public void ApplyAfter(SKBitmap layerBitmap)
+		public override void ApplyAfter(Document document)
 		{
-			PixelRegion.ApplyRegion(layerBitmap, m_after, m_rect.Left, m_rect.Top);
+			SKBitmap bitmap = LayerBitmap(document);
+			if (bitmap == null)
+			{
+				return;
+			}
+			PixelRegion.ApplyRegion(bitmap, m_after, m_rect.Left, m_rect.Top);
 		}
 	}
 }

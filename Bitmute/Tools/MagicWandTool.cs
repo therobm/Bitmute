@@ -50,21 +50,28 @@ namespace Bitmute.Tools
 			SKBitmap bitmap = layer.Bitmap();
 			int width = bitmap.Width;
 			int height = bitmap.Height;
-			if (x < 0 || y < 0 || x >= width || y >= height)
+			int offsetX = layer.OffsetX();
+			int offsetY = layer.OffsetY();
+			int seedX = x - offsetX;
+			int seedY = y - offsetY;
+			if (seedX < 0 || seedY < 0 || seedX >= width || seedY >= height)
 			{
 				return false;
 			}
 
-			SKColor target = bitmap.GetPixel(x, y);
+			SKColor target = bitmap.GetPixel(seedX, seedY);
 			int tolerance = state.FillTolerance();
-			byte[] mask = new byte[width * height];
-			int minX = width;
-			int minY = height;
+			int documentWidth = document.Width();
+			int documentHeight = document.Height();
+			byte[] visited = new byte[width * height];
+			byte[] mask = new byte[documentWidth * documentHeight];
+			int minX = documentWidth;
+			int minY = documentHeight;
 			int maxX = -1;
 			int maxY = -1;
 
 			Stack<int> pending = new Stack<int>();
-			pending.Push((y * width) + x);
+			pending.Push((seedY * width) + seedX);
 			for (;;)
 			{
 				if (pending.Count == 0)
@@ -72,7 +79,7 @@ namespace Bitmute.Tools
 					break;
 				}
 				int index = pending.Pop();
-				if (mask[index] != 0)
+				if (visited[index] != 0)
 				{
 					continue;
 				}
@@ -83,22 +90,28 @@ namespace Bitmute.Tools
 				{
 					continue;
 				}
-				mask[index] = 255;
-				if (pixelX < minX)
+				visited[index] = 255;
+				int canvasX = pixelX + offsetX;
+				int canvasY = pixelY + offsetY;
+				if (canvasX >= 0 && canvasY >= 0 && canvasX < documentWidth && canvasY < documentHeight)
 				{
-					minX = pixelX;
-				}
-				if (pixelX > maxX)
-				{
-					maxX = pixelX;
-				}
-				if (pixelY < minY)
-				{
-					minY = pixelY;
-				}
-				if (pixelY > maxY)
-				{
-					maxY = pixelY;
+					mask[(canvasY * documentWidth) + canvasX] = 255;
+					if (canvasX < minX)
+					{
+						minX = canvasX;
+					}
+					if (canvasX > maxX)
+					{
+						maxX = canvasX;
+					}
+					if (canvasY < minY)
+					{
+						minY = canvasY;
+					}
+					if (canvasY > maxY)
+					{
+						maxY = canvasY;
+					}
 				}
 				if (pixelX > 0)
 				{
