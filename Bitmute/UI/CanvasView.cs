@@ -27,6 +27,7 @@ namespace Bitmute.UI
 		private bool m_panning;
 		private float m_panLastX;
 		private float m_panLastY;
+		private bool m_wheelHooked;
 
 		private static SKBitmap CheckerTile()
 		{
@@ -138,9 +139,73 @@ namespace Bitmute.UI
 			m_offsetY = 0.0f;
 			m_composeDirty = true;
 			m_viewInitialized = false;
+			m_wheelHooked = false;
 			PaintSurface += OnPaintSurface;
 			EnableTouchEvents = true;
 			Touch += OnTouch;
+		}
+
+		protected override void OnHandlerChanged()
+		{
+			base.OnHandlerChanged();
+			if (m_wheelHooked)
+			{
+				return;
+			}
+			if (Handler == null)
+			{
+				return;
+			}
+			Microsoft.UI.Xaml.UIElement element = Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			element.PointerWheelChanged += OnPointerWheel;
+			m_wheelHooked = true;
+		}
+
+		private void OnPointerWheel(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs eventArgs)
+		{
+			Microsoft.UI.Xaml.UIElement element = sender as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			Microsoft.UI.Input.PointerPoint point = eventArgs.GetCurrentPoint(element);
+			int delta = point.Properties.MouseWheelDelta;
+			Windows.System.VirtualKeyModifiers modifiers = eventArgs.KeyModifiers;
+			bool control = (modifiers & Windows.System.VirtualKeyModifiers.Control) == Windows.System.VirtualKeyModifiers.Control;
+			bool alt = (modifiers & Windows.System.VirtualKeyModifiers.Menu) == Windows.System.VirtualKeyModifiers.Menu;
+
+			if (alt)
+			{
+				float scale = 1.0f;
+				float actualWidth = element.ActualSize.X;
+				if (actualWidth > 0.0f)
+				{
+					scale = (float)CanvasSize.Width / actualWidth;
+				}
+				float anchorX = (float)point.Position.X * scale;
+				float anchorY = (float)point.Position.Y * scale;
+				float factor = 0.87f;
+				if (delta > 0)
+				{
+					factor = 1.15f;
+				}
+				ApplyZoomAt(m_zoom * factor, anchorX, anchorY);
+			}
+			else if (control)
+			{
+				m_offsetX = m_offsetX + (delta * 0.5f);
+				InvalidateSurface();
+			}
+			else
+			{
+				m_offsetY = m_offsetY + (delta * 0.5f);
+				InvalidateSurface();
+			}
+			eventArgs.Handled = true;
 		}
 
 		private void OnTouch(object sender, SKTouchEventArgs eventArgs)
@@ -250,7 +315,7 @@ namespace Bitmute.UI
 			main.UpdateZoomInfo(ZoomPercent(), m_document.Width(), m_document.Height());
 		}
 
-		private void ApplyZoomCentered(float newZoom)
+		private void ApplyZoomAt(float newZoom, float anchorX, float anchorY)
 		{
 			if (newZoom < 0.05f)
 			{
@@ -260,16 +325,19 @@ namespace Bitmute.UI
 			{
 				newZoom = 32.0f;
 			}
-			SKSize size = CanvasSize;
-			float centerX = (float)size.Width / 2.0f;
-			float centerY = (float)size.Height / 2.0f;
-			float documentCenterX = (centerX - m_offsetX) / m_zoom;
-			float documentCenterY = (centerY - m_offsetY) / m_zoom;
+			float documentAnchorX = (anchorX - m_offsetX) / m_zoom;
+			float documentAnchorY = (anchorY - m_offsetY) / m_zoom;
 			m_zoom = newZoom;
-			m_offsetX = centerX - (documentCenterX * m_zoom);
-			m_offsetY = centerY - (documentCenterY * m_zoom);
+			m_offsetX = anchorX - (documentAnchorX * m_zoom);
+			m_offsetY = anchorY - (documentAnchorY * m_zoom);
 			ReportZoomInfo();
 			InvalidateSurface();
+		}
+
+		private void ApplyZoomCentered(float newZoom)
+		{
+			SKSize size = CanvasSize;
+			ApplyZoomAt(newZoom, (float)size.Width / 2.0f, (float)size.Height / 2.0f);
 		}
 
 		public void ZoomIn()
