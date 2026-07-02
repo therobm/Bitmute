@@ -11,6 +11,8 @@ namespace Bitmute.Tools
 		private int m_brushHardness;
 		private int m_brushOpacity;
 		private int m_brushFlow;
+		private int m_brushSpacing;
+		private bool m_brushSquareTip;
 		private int m_fillTolerance;
 		private bool m_lineAntiAlias;
 		private bool m_shiftHeld;
@@ -25,6 +27,8 @@ namespace Bitmute.Tools
 			m_brushHardness = 100;
 			m_brushOpacity = 100;
 			m_brushFlow = 100;
+			m_brushSpacing = 25;
+			m_brushSquareTip = false;
 			m_fillTolerance = 0;
 			m_lineAntiAlias = false;
 			m_shiftHeld = false;
@@ -157,6 +161,34 @@ namespace Bitmute.Tools
 				flow = 100;
 			}
 			m_brushFlow = flow;
+		}
+
+		public int BrushSpacing()
+		{
+			return m_brushSpacing;
+		}
+
+		public void SetBrushSpacing(int spacing)
+		{
+			if (spacing < 1)
+			{
+				spacing = 1;
+			}
+			if (spacing > 100)
+			{
+				spacing = 100;
+			}
+			m_brushSpacing = spacing;
+		}
+
+		public bool BrushSquareTip()
+		{
+			return m_brushSquareTip;
+		}
+
+		public void SetBrushSquareTip(bool square)
+		{
+			m_brushSquareTip = square;
 		}
 
 		public int FillTolerance()

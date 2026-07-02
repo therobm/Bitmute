@@ -45,6 +45,7 @@ namespace Bitmute.UI
 		private Label m_brushFlowLabel;
 		private Slider m_brushFlowSlider;
 		private Label m_brushFlowValue;
+		private Button m_brushSettingsButton;
 		private Label m_lineAntiAliasLabel;
 		private CheckBox m_lineAntiAliasCheck;
 		private Label m_statusInfoLabel;
@@ -721,6 +722,16 @@ namespace Bitmute.UI
 			m_brushFlowValue.VerticalOptions = LayoutOptions.Center;
 			m_brushFlowValue.IsVisible = false;
 
+			m_brushSettingsButton = new Button();
+			m_brushSettingsButton.Text = "Brush Settings";
+			m_brushSettingsButton.FontSize = 12.0;
+			m_brushSettingsButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
+			m_brushSettingsButton.BackgroundColor = UiConstants.ChromeRaised;
+			m_brushSettingsButton.TextColor = UiConstants.OnSurface;
+			m_brushSettingsButton.VerticalOptions = LayoutOptions.Center;
+			m_brushSettingsButton.IsVisible = false;
+			m_brushSettingsButton.Clicked += OnBrushSettingsClicked;
+
 			m_lineAntiAliasLabel = new Label();
 			m_lineAntiAliasLabel.Text = "Anti-alias";
 			m_lineAntiAliasLabel.TextColor = UiConstants.TextDim;
@@ -748,6 +759,7 @@ namespace Bitmute.UI
 			options.Add(m_brushFlowLabel);
 			options.Add(m_brushFlowSlider);
 			options.Add(m_brushFlowValue);
+			options.Add(m_brushSettingsButton);
 			options.Add(m_lineAntiAliasLabel);
 			options.Add(m_lineAntiAliasCheck);
 			Grid.SetColumn(options, 1);
@@ -1423,6 +1435,7 @@ namespace Bitmute.UI
 				m_brushFlowLabel.IsVisible = isBrush;
 				m_brushFlowSlider.IsVisible = isBrush;
 				m_brushFlowValue.IsVisible = isBrush;
+				m_brushSettingsButton.IsVisible = isBrush;
 			}
 			if (m_lassoTool != null)
 			{
@@ -1470,6 +1483,34 @@ namespace Bitmute.UI
 			{
 				m_brushFlowValue.Text = flow + "%";
 			}
+		}
+
+		private void OnBrushSettingsClicked(object sender, System.EventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			BrushSettingsDialog dialog = new BrushSettingsDialog(m_toolState.BrushSquareTip(), m_toolState.BrushSpacing());
+			ShowModal(dialog, 300.0, 150.0);
+		}
+
+		public void ApplyBrushTip(bool square)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetBrushSquareTip(square);
+		}
+
+		public void ApplyBrushSpacing(int spacing)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetBrushSpacing(spacing);
 		}
 
 		private void OnLineAntiAliasChanged(object sender, CheckedChangedEventArgs eventArgs)

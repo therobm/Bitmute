@@ -19,8 +19,8 @@ namespace Bitmute.Tools
 				return false;
 			}
 			int radius = state.BrushSize() / 2;
-			m_engine.Begin(layer, document.StrokeSnapshot(), radius, state.BrushHardness() / 100.0, state.BrushOpacity() / 100.0, state.BrushFlow() / 100.0, state.Foreground());
-			m_engine.StampDab(layer, x, y, document.Selection());
+			m_engine.Begin(layer, document.StrokeSnapshot(), radius, state.BrushHardness() / 100.0, state.BrushOpacity() / 100.0, state.BrushFlow() / 100.0, state.BrushSquareTip(), state.BrushSpacing() / 100.0, state.Foreground());
+			m_engine.StampFirst(layer, x, y, document.Selection());
 			MarkStrokeDirty(document, x, y, x, y, radius);
 			m_lastX = x;
 			m_lastY = y;
@@ -42,12 +42,12 @@ namespace Bitmute.Tools
 			int radius = state.BrushSize() / 2;
 			if (m_hasLast)
 			{
-				m_engine.StrokeTo(layer, m_lastX, m_lastY, x, y, document.Selection());
+				m_engine.StrokeTo(layer, x, y, document.Selection());
 				MarkStrokeDirty(document, m_lastX, m_lastY, x, y, radius);
 			}
 			else
 			{
-				m_engine.StampDab(layer, x, y, document.Selection());
+				m_engine.StampFirst(layer, x, y, document.Selection());
 				MarkStrokeDirty(document, x, y, x, y, radius);
 			}
 			m_lastX = x;

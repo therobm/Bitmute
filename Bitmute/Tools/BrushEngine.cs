@@ -15,12 +15,18 @@ namespace Bitmute.Tools
 		private double m_hardness;
 		private double m_opacity;
 		private double m_flow;
+		private bool m_square;
+		private double m_spacingPx;
+		private double m_penX;
+		private double m_penY;
+		private bool m_hasPen;
+		private double m_distanceSinceStamp;
 		private byte m_red;
 		private byte m_green;
 		private byte m_blue;
 		private bool m_active;
 
-		public void Begin(Layer layer, SKBitmap original, int radius, double hardness, double opacity, double flow, SKColor color)
+		public void Begin(Layer layer, SKBitmap original, int radius, double hardness, double opacity, double flow, bool square, double spacingFraction, SKColor color)
 		{
 			End();
 			SKBitmap bitmap = layer.Bitmap();
@@ -41,6 +47,21 @@ namespace Bitmute.Tools
 			m_hardness = hardness;
 			m_opacity = opacity;
 			m_flow = flow;
+			m_square = square;
+			int diameter = radius * 2;
+			if (diameter < 1)
+			{
+				diameter = 1;
+			}
+			m_spacingPx = spacingFraction * diameter;
+			if (m_spacingPx < 1.0)
+			{
+				m_spacingPx = 1.0;
+			}
+			m_penX = 0.0;
+			m_penY = 0.0;
+			m_hasPen = false;
+			m_distanceSinceStamp = 0.0;
 			m_red = color.Red;
 			m_green = color.Green;
 			m_blue = color.Blue;
@@ -74,12 +95,30 @@ namespace Bitmute.Tools
 				}
 				return 0.0;
 			}
-			int distanceSquared = (offsetX * offsetX) + (offsetY * offsetY);
-			if (distanceSquared > m_radius * m_radius)
+			double distance;
+			if (m_square)
 			{
-				return 0.0;
+				int chebyshev = System.Math.Abs(offsetX);
+				int absOffsetY = System.Math.Abs(offsetY);
+				if (absOffsetY > chebyshev)
+				{
+					chebyshev = absOffsetY;
+				}
+				if (chebyshev > m_radius)
+				{
+					return 0.0;
+				}
+				distance = (double)chebyshev / m_radius;
 			}
-			double distance = System.Math.Sqrt(distanceSquared) / m_radius;
+			else
+			{
+				int distanceSquared = (offsetX * offsetX) + (offsetY * offsetY);
+				if (distanceSquared > m_radius * m_radius)
+				{
+					return 0.0;
+				}
+				distance = System.Math.Sqrt(distanceSquared) / m_radius;
+			}
 			if (distance <= m_hardness)
 			{
 				return 1.0;
@@ -175,28 +214,48 @@ namespace Bitmute.Tools
 			}
 		}
 
-		public void StrokeTo(Layer layer, int fromX, int fromY, int toX, int toY, Selection selection)
+		public void StampFirst(Layer layer, int x, int y, Selection selection)
 		{
-			int deltaX = toX - fromX;
-			int deltaY = toY - fromY;
-			int steps = System.Math.Abs(deltaX);
-			int absDeltaY = System.Math.Abs(deltaY);
-			if (absDeltaY > steps)
+			StampDab(layer, x, y, selection);
+			m_penX = x;
+			m_penY = y;
+			m_hasPen = true;
+			m_distanceSinceStamp = 0.0;
+		}
+
+		public void StrokeTo(Layer layer, int x, int y, Selection selection)
+		{
+			if (!m_hasPen)
 			{
-				steps = absDeltaY;
-			}
-			if (steps <= 0)
-			{
-				StampDab(layer, toX, toY, selection);
+				StampFirst(layer, x, y, selection);
 				return;
 			}
-			for (int step = 1; step <= steps; step++)
+			double deltaX = x - m_penX;
+			double deltaY = y - m_penY;
+			double segmentLength = System.Math.Sqrt((deltaX * deltaX) + (deltaY * deltaY));
+			if (segmentLength <= 0.0)
 			{
-				double fraction = (double)step / (double)steps;
-				int pointX = fromX + (int)System.Math.Round(deltaX * fraction);
-				int pointY = fromY + (int)System.Math.Round(deltaY * fraction);
-				StampDab(layer, pointX, pointY, selection);
+				return;
 			}
+			double directionX = deltaX / segmentLength;
+			double directionY = deltaY / segmentLength;
+			double traveled = 0.0;
+			for (;;)
+			{
+				double distanceToNext = m_spacingPx - m_distanceSinceStamp;
+				if (traveled + distanceToNext > segmentLength)
+				{
+					break;
+				}
+				traveled = traveled + distanceToNext;
+				double stampX = m_penX + (directionX * traveled);
+				double stampY = m_penY + (directionY * traveled);
+				StampDab(layer, (int)System.Math.Round(stampX), (int)System.Math.Round(stampY), selection);
+				m_distanceSinceStamp = 0.0;
+			}
+			m_distanceSinceStamp = m_distanceSinceStamp + (segmentLength - traveled);
+			m_penX = x;
+			m_penY = y;
 		}
 	}
 }
