@@ -38,6 +38,7 @@ namespace Bitmute.UI
 		private int m_cascadeCount;
 		private int m_topZIndex;
 		private ToolState m_toolState;
+		private MoveTool m_moveTool;
 		private PencilTool m_pencilTool;
 		private BrushTool m_brushTool;
 		private EraserTool m_eraserTool;
@@ -620,6 +621,7 @@ namespace Bitmute.UI
 			m_cascadeCount = 0;
 			m_topZIndex = 0;
 			m_toolState = new ToolState();
+			m_moveTool = new MoveTool();
 			m_pencilTool = new PencilTool();
 			m_brushTool = new BrushTool();
 			m_eraserTool = new EraserTool();
@@ -854,6 +856,10 @@ namespace Bitmute.UI
 		public Tool CurrentTool()
 		{
 			eTool tool = m_toolState.Tool();
+			if (tool == eTool.Move)
+			{
+				return m_moveTool;
+			}
 			if (tool == eTool.Pencil)
 			{
 				return m_pencilTool;
