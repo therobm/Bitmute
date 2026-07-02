@@ -42,6 +42,7 @@ namespace Bitmute.UI
 		private MoveTool m_moveTool;
 		private RectangleSelectTool m_rectangleSelectTool;
 		private MagicWandTool m_magicWandTool;
+		private TextTool m_textTool;
 		private PencilTool m_pencilTool;
 		private BrushTool m_brushTool;
 		private EraserTool m_eraserTool;
@@ -711,6 +712,7 @@ namespace Bitmute.UI
 			m_moveTool = new MoveTool();
 			m_rectangleSelectTool = new RectangleSelectTool();
 			m_magicWandTool = new MagicWandTool();
+			m_textTool = new TextTool();
 			m_pencilTool = new PencilTool();
 			m_brushTool = new BrushTool();
 			m_eraserTool = new EraserTool();
@@ -1035,6 +1037,32 @@ namespace Bitmute.UI
 			}
 		}
 
+		public async void PlaceText(Document document, int x, int y)
+		{
+			string text = await DisplayPromptAsync("Add Text", "Enter text:");
+			if (text == null)
+			{
+				return;
+			}
+			if (text.Length == 0)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			document.BeginStroke();
+			TextRasterizer.Draw(layer.Bitmap(), text, x, y, m_toolState.Foreground(), 32.0f);
+			document.EndStroke();
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.MarkComposeDirty();
+			}
+		}
+
 		public ToolState CurrentToolState()
 		{
 			return m_toolState;
@@ -1054,6 +1082,10 @@ namespace Bitmute.UI
 			if (tool == eTool.MagicWand)
 			{
 				return m_magicWandTool;
+			}
+			if (tool == eTool.Text)
+			{
+				return m_textTool;
 			}
 			if (tool == eTool.Pencil)
 			{

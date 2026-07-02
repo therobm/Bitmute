@@ -339,6 +339,16 @@ namespace Bitmute.UI
 				return;
 			}
 
+			if (tool is TextTool)
+			{
+				if (eventArgs.ActionType == SKTouchAction.Pressed)
+				{
+					main.PlaceText(m_document, pixelX, pixelY);
+				}
+				eventArgs.Handled = true;
+				return;
+			}
+
 			bool changed = false;
 			if (eventArgs.ActionType == SKTouchAction.Pressed)
 			{
