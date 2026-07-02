@@ -22,6 +22,11 @@ namespace Bitmute.Tools
 		private int m_cloneOffsetX;
 		private int m_cloneOffsetY;
 		private int m_blurRadius;
+		private double m_smudgeR;
+		private double m_smudgeG;
+		private double m_smudgeB;
+		private double m_smudgeA;
+		private bool m_smudgeStarted;
 		private eBlendMode m_mode;
 		private double m_spacingPx;
 		private double m_smoothing;
@@ -76,6 +81,11 @@ namespace Bitmute.Tools
 			{
 				m_blurRadius = 12;
 			}
+			m_smudgeR = 0.0;
+			m_smudgeG = 0.0;
+			m_smudgeB = 0.0;
+			m_smudgeA = 0.0;
+			m_smudgeStarted = false;
 			m_mode = mode;
 			int diameter = radius * 2;
 			if (diameter < 1)
@@ -392,6 +402,35 @@ namespace Bitmute.Tools
 						destinationPixel[1] = ClampByte(originalPixel[1] + ((targetGreen - originalPixel[1]) * finalAlpha));
 						destinationPixel[2] = ClampByte(originalPixel[2] + ((targetBlue - originalPixel[2]) * finalAlpha));
 						destinationPixel[3] = originalPixel[3];
+						continue;
+					}
+					if (m_op == eBrushOp.Smudge)
+					{
+						double curRed = destinationPixel[0];
+						double curGreen = destinationPixel[1];
+						double curBlue = destinationPixel[2];
+						double curAlpha = destinationPixel[3];
+						if (!m_smudgeStarted)
+						{
+							m_smudgeR = curRed;
+							m_smudgeG = curGreen;
+							m_smudgeB = curBlue;
+							m_smudgeA = curAlpha;
+							m_smudgeStarted = true;
+						}
+						double mix = tip * m_opacity;
+						if (mix > 1.0)
+						{
+							mix = 1.0;
+						}
+						destinationPixel[0] = ClampByte(curRed + ((m_smudgeR - curRed) * mix));
+						destinationPixel[1] = ClampByte(curGreen + ((m_smudgeG - curGreen) * mix));
+						destinationPixel[2] = ClampByte(curBlue + ((m_smudgeB - curBlue) * mix));
+						destinationPixel[3] = ClampByte(curAlpha + ((m_smudgeA - curAlpha) * mix));
+						m_smudgeR = m_smudgeR + ((curRed - m_smudgeR) * mix);
+						m_smudgeG = m_smudgeG + ((curGreen - m_smudgeG) * mix);
+						m_smudgeB = m_smudgeB + ((curBlue - m_smudgeB) * mix);
+						m_smudgeA = m_smudgeA + ((curAlpha - m_smudgeA) * mix);
 						continue;
 					}
 					if (m_op == eBrushOp.Clone)
