@@ -24,6 +24,8 @@ namespace Bitmute.UI
 		private ColorPanel m_colorPanel;
 		private LayersPanel m_layersPanel;
 		private Label m_optionsToolLabel;
+		private Label m_statusInfoLabel;
+		private Label m_statusCursorLabel;
 		private string[] m_menuTitles;
 		private Border[] m_menuButtons;
 		private List<Border> m_openItemButtons;
@@ -77,17 +79,33 @@ namespace Bitmute.UI
 
 		private bool IsItemEnabled(string title, string item)
 		{
-			if (title != "File")
+			if (title == "File")
 			{
+				if (item == "New")
+				{
+					return true;
+				}
+				if (item == "Exit")
+				{
+					return true;
+				}
 				return false;
 			}
-			if (item == "New")
+			if (title == "View")
 			{
-				return true;
-			}
-			if (item == "Exit")
-			{
-				return true;
+				if (item == "Zoom In")
+				{
+					return true;
+				}
+				if (item == "Zoom Out")
+				{
+					return true;
+				}
+				if (item == "Fit on Screen")
+				{
+					return true;
+				}
+				return false;
 			}
 			return false;
 		}
@@ -313,6 +331,49 @@ namespace Bitmute.UI
 				{
 					current.Quit();
 				}
+				return;
+			}
+			if (action == "Zoom In")
+			{
+				CanvasView zoomInCanvas = ActiveCanvas();
+				if (zoomInCanvas != null)
+				{
+					zoomInCanvas.ZoomIn();
+				}
+				return;
+			}
+			if (action == "Zoom Out")
+			{
+				CanvasView zoomOutCanvas = ActiveCanvas();
+				if (zoomOutCanvas != null)
+				{
+					zoomOutCanvas.ZoomOut();
+				}
+				return;
+			}
+			if (action == "Fit on Screen")
+			{
+				CanvasView fitCanvas = ActiveCanvas();
+				if (fitCanvas != null)
+				{
+					fitCanvas.FitToView();
+				}
+			}
+		}
+
+		public void UpdateCursor(int x, int y)
+		{
+			if (m_statusCursorLabel != null)
+			{
+				m_statusCursorLabel.Text = "x: " + x + "   y: " + y;
+			}
+		}
+
+		public void UpdateZoomInfo(int zoomPercent, int width, int height)
+		{
+			if (m_statusInfoLabel != null)
+			{
+				m_statusInfoLabel.Text = zoomPercent + "%      " + width + " × " + height + " px";
 			}
 		}
 
@@ -353,22 +414,22 @@ namespace Bitmute.UI
 			bar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			bar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
 
-			Label left = new Label();
-			left.Text = "100%      800 × 600 px";
-			left.TextColor = UiConstants.TextDim;
-			left.FontSize = 11.0;
-			left.VerticalOptions = LayoutOptions.Center;
-			Grid.SetColumn(left, 0);
-			bar.Add(left);
+			m_statusInfoLabel = new Label();
+			m_statusInfoLabel.Text = "100%      800 × 600 px";
+			m_statusInfoLabel.TextColor = UiConstants.TextDim;
+			m_statusInfoLabel.FontSize = 11.0;
+			m_statusInfoLabel.VerticalOptions = LayoutOptions.Center;
+			Grid.SetColumn(m_statusInfoLabel, 0);
+			bar.Add(m_statusInfoLabel);
 
-			Label right = new Label();
-			right.Text = "x: —   y: —";
-			right.TextColor = UiConstants.TextDim;
-			right.FontSize = 11.0;
-			right.HorizontalOptions = LayoutOptions.End;
-			right.VerticalOptions = LayoutOptions.Center;
-			Grid.SetColumn(right, 1);
-			bar.Add(right);
+			m_statusCursorLabel = new Label();
+			m_statusCursorLabel.Text = "x: —   y: —";
+			m_statusCursorLabel.TextColor = UiConstants.TextDim;
+			m_statusCursorLabel.FontSize = 11.0;
+			m_statusCursorLabel.HorizontalOptions = LayoutOptions.End;
+			m_statusCursorLabel.VerticalOptions = LayoutOptions.Center;
+			Grid.SetColumn(m_statusCursorLabel, 1);
+			bar.Add(m_statusCursorLabel);
 
 			return bar;
 		}

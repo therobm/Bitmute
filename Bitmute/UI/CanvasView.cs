@@ -24,6 +24,9 @@ namespace Bitmute.UI
 		private float m_offsetX;
 		private float m_offsetY;
 		private bool m_viewInitialized;
+		private bool m_panning;
+		private float m_panLastX;
+		private float m_panLastY;
 
 		private static SKBitmap CheckerTile()
 		{
@@ -98,6 +101,7 @@ namespace Bitmute.UI
 				m_offsetX = (info.Width - (docWidth * m_zoom)) / 2.0f;
 				m_offsetY = (info.Height - (docHeight * m_zoom)) / 2.0f;
 				m_viewInitialized = true;
+				ReportZoomInfo();
 			}
 
 			float rectWidth = docWidth * m_zoom;
@@ -141,20 +145,8 @@ namespace Bitmute.UI
 
 		private void OnTouch(object sender, SKTouchEventArgs eventArgs)
 		{
-			if (eventArgs.MouseButton == SKMouseButton.Right || eventArgs.MouseButton == SKMouseButton.Middle)
-			{
-				eventArgs.Handled = true;
-				return;
-			}
 			MainView main = MainView.Self;
 			if (main == null)
-			{
-				eventArgs.Handled = true;
-				return;
-			}
-			Tool tool = main.CurrentTool();
-			ToolState state = main.CurrentToolState();
-			if (tool == null || state == null)
 			{
 				eventArgs.Handled = true;
 				return;
@@ -164,6 +156,48 @@ namespace Bitmute.UI
 			float documentY = (eventArgs.Location.Y - m_offsetY) / m_zoom;
 			int pixelX = (int)Math.Floor(documentX);
 			int pixelY = (int)Math.Floor(documentY);
+			main.UpdateCursor(pixelX, pixelY);
+
+			if (eventArgs.MouseButton == SKMouseButton.Middle)
+			{
+				if (eventArgs.ActionType == SKTouchAction.Pressed)
+				{
+					m_panning = true;
+					m_panLastX = eventArgs.Location.X;
+					m_panLastY = eventArgs.Location.Y;
+				}
+				else if (eventArgs.ActionType == SKTouchAction.Released)
+				{
+					m_panning = false;
+				}
+				eventArgs.Handled = true;
+				return;
+			}
+
+			if (m_panning && eventArgs.ActionType == SKTouchAction.Moved)
+			{
+				m_offsetX = m_offsetX + (eventArgs.Location.X - m_panLastX);
+				m_offsetY = m_offsetY + (eventArgs.Location.Y - m_panLastY);
+				m_panLastX = eventArgs.Location.X;
+				m_panLastY = eventArgs.Location.Y;
+				InvalidateSurface();
+				eventArgs.Handled = true;
+				return;
+			}
+
+			if (eventArgs.MouseButton == SKMouseButton.Right)
+			{
+				eventArgs.Handled = true;
+				return;
+			}
+
+			Tool tool = main.CurrentTool();
+			ToolState state = main.CurrentToolState();
+			if (tool == null || state == null)
+			{
+				eventArgs.Handled = true;
+				return;
+			}
 
 			bool changed = false;
 			if (eventArgs.ActionType == SKTouchAction.Pressed)
@@ -191,6 +225,60 @@ namespace Bitmute.UI
 				main.OnCanvasInteracted();
 			}
 			eventArgs.Handled = true;
+		}
+
+		private int ZoomPercent()
+		{
+			return (int)System.Math.Round(m_zoom * 100.0f);
+		}
+
+		private void ReportZoomInfo()
+		{
+			MainView main = MainView.Self;
+			if (main == null)
+			{
+				return;
+			}
+			main.UpdateZoomInfo(ZoomPercent(), m_document.Width(), m_document.Height());
+		}
+
+		private void ApplyZoomCentered(float newZoom)
+		{
+			if (newZoom < 0.05f)
+			{
+				newZoom = 0.05f;
+			}
+			if (newZoom > 32.0f)
+			{
+				newZoom = 32.0f;
+			}
+			SKSize size = CanvasSize;
+			float centerX = (float)size.Width / 2.0f;
+			float centerY = (float)size.Height / 2.0f;
+			float documentCenterX = (centerX - m_offsetX) / m_zoom;
+			float documentCenterY = (centerY - m_offsetY) / m_zoom;
+			m_zoom = newZoom;
+			m_offsetX = centerX - (documentCenterX * m_zoom);
+			m_offsetY = centerY - (documentCenterY * m_zoom);
+			ReportZoomInfo();
+			InvalidateSurface();
+		}
+
+		public void ZoomIn()
+		{
+			ApplyZoomCentered(m_zoom * 1.25f);
+		}
+
+		public void ZoomOut()
+		{
+			ApplyZoomCentered(m_zoom * 0.8f);
+		}
+
+		public void FitToView()
+		{
+			m_viewInitialized = false;
+			ReportZoomInfo();
+			InvalidateSurface();
 		}
 
 		public Document CurrentDocument()
