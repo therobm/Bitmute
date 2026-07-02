@@ -553,6 +553,7 @@ namespace Bitmute.UI
 				m_panLastX = eventArgs.Location.X;
 				m_panLastY = eventArgs.Location.Y;
 				InvalidateSurface();
+				NotifyChrome();
 				eventArgs.Handled = true;
 				return;
 			}
@@ -662,6 +663,7 @@ namespace Bitmute.UI
 			if (m_ownerWindow != null)
 			{
 				m_ownerWindow.SetZoomPercent(ZoomPercent());
+				m_ownerWindow.RefreshChrome();
 			}
 		}
 
@@ -720,6 +722,58 @@ namespace Bitmute.UI
 		public float Zoom()
 		{
 			return m_zoom;
+		}
+
+		public float PanOffsetX()
+		{
+			return m_offsetX;
+		}
+
+		public float PanOffsetY()
+		{
+			return m_offsetY;
+		}
+
+		public float ContentWidth()
+		{
+			return m_document.Width() * m_zoom;
+		}
+
+		public float ContentHeight()
+		{
+			return m_document.Height() * m_zoom;
+		}
+
+		public float ViewportWidth()
+		{
+			return CanvasSize.Width;
+		}
+
+		public float ViewportHeight()
+		{
+			return CanvasSize.Height;
+		}
+
+		public void SetPanOffsetX(float offsetX)
+		{
+			m_offsetX = offsetX;
+			InvalidateSurface();
+			NotifyChrome();
+		}
+
+		public void SetPanOffsetY(float offsetY)
+		{
+			m_offsetY = offsetY;
+			InvalidateSurface();
+			NotifyChrome();
+		}
+
+		private void NotifyChrome()
+		{
+			if (m_ownerWindow != null)
+			{
+				m_ownerWindow.RefreshChrome();
+			}
 		}
 
 		public void MarkComposeDirty()

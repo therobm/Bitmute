@@ -1,0 +1,131 @@
+using System;
+using Bitmute.Imaging;
+using SkiaSharp;
+using SkiaSharp.Views.Maui;
+using SkiaSharp.Views.Maui.Controls;
+
+namespace Bitmute.UI
+{
+	public class Ruler : SKCanvasView
+	{
+		private const float TargetLabelSpacing = 64.0f;
+
+		private CanvasView m_canvas;
+		private bool m_horizontal;
+
+		public Ruler(CanvasView canvas, bool horizontal)
+		{
+			m_canvas = canvas;
+			m_horizontal = horizontal;
+			PaintSurface += OnPaintSurface;
+		}
+
+		private static int NiceStep(float zoom)
+		{
+			double target = TargetLabelSpacing / zoom;
+			if (target < 1.0)
+			{
+				target = 1.0;
+			}
+			double magnitude = Math.Pow(10.0, Math.Floor(Math.Log10(target)));
+			double residual = target / magnitude;
+			double nice = 10.0;
+			if (residual <= 1.0)
+			{
+				nice = 1.0;
+			}
+			else if (residual <= 2.0)
+			{
+				nice = 2.0;
+			}
+			else if (residual <= 5.0)
+			{
+				nice = 5.0;
+			}
+			int step = (int)(nice * magnitude);
+			if (step < 1)
+			{
+				step = 1;
+			}
+			return step;
+		}
+
+		private void OnPaintSurface(object sender, SKPaintSurfaceEventArgs eventArgs)
+		{
+			SKCanvas canvas = eventArgs.Surface.Canvas;
+			SKImageInfo info = eventArgs.Info;
+			canvas.Clear(SKColors.White);
+
+			float zoom = m_canvas.Zoom();
+			if (zoom <= 0.0f)
+			{
+				return;
+			}
+
+			SKPaint tickPaint = new SKPaint();
+			tickPaint.Color = SKColors.Black;
+			tickPaint.StrokeWidth = 1.0f;
+			tickPaint.IsAntialias = false;
+			SKFont font = new SKFont();
+			font.Size = 9.0f;
+			SKPaint textPaint = new SKPaint();
+			textPaint.Color = SKColors.Black;
+			textPaint.IsAntialias = true;
+
+			Document document = m_canvas.CurrentDocument();
+			int documentSize = document.Width();
+			float offset = m_canvas.PanOffsetX();
+			float length = info.Width;
+			float thickness = info.Height;
+			if (!m_horizontal)
+			{
+				documentSize = document.Height();
+				offset = m_canvas.PanOffsetY();
+				length = info.Height;
+				thickness = info.Width;
+			}
+
+			int step = NiceStep(zoom);
+			int minorStep = step / 4;
+			if (minorStep < 1)
+			{
+				minorStep = 1;
+			}
+
+			for (int position = 0; position <= documentSize; position = position + minorStep)
+			{
+				float screen = offset + (position * zoom);
+				if (screen < -1.0f || screen > length + 1.0f)
+				{
+					continue;
+				}
+				bool major = (position % step) == 0;
+				float tickLength = 4.0f;
+				if (major)
+				{
+					tickLength = thickness;
+				}
+				if (m_horizontal)
+				{
+					canvas.DrawLine(screen, thickness - tickLength, screen, thickness, tickPaint);
+					if (major)
+					{
+						canvas.DrawText(position.ToString(), screen + 2.0f, 9.0f, SKTextAlign.Left, font, textPaint);
+					}
+				}
+				else
+				{
+					canvas.DrawLine(thickness - tickLength, screen, thickness, screen, tickPaint);
+					if (major)
+					{
+						canvas.DrawText(position.ToString(), 1.0f, screen + 9.0f, SKTextAlign.Left, font, textPaint);
+					}
+				}
+			}
+
+			textPaint.Dispose();
+			font.Dispose();
+			tickPaint.Dispose();
+		}
+	}
+}

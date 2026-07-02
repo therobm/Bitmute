@@ -24,6 +24,7 @@ namespace Bitmute.UI
 		private DocumentWindow m_activeDocumentWindow;
 		private ToolPalette m_toolPalette;
 		private LayersPanel m_layersPanel;
+		private bool m_rulersEnabled = true;
 		private BoxView m_modalBackdrop;
 		private View m_modalContent;
 		private double m_modalX;
@@ -90,7 +91,7 @@ namespace Bitmute.UI
 			}
 			if (title == "View")
 			{
-				return new string[] { "Zoom In", "Zoom Out", "Fit on Screen" };
+				return new string[] { "Zoom In", "Zoom Out", "Fit on Screen", "Rulers" };
 			}
 			if (title == "Window")
 			{
@@ -448,6 +449,11 @@ namespace Bitmute.UI
 				DoFit();
 				return;
 			}
+			if (action == "Rulers")
+			{
+				ToggleRulers();
+				return;
+			}
 			if (action == "All")
 			{
 				DoSelectAll();
@@ -548,6 +554,24 @@ namespace Bitmute.UI
 			if (canvas != null)
 			{
 				canvas.FitToView();
+			}
+		}
+
+		public bool RulersEnabled()
+		{
+			return m_rulersEnabled;
+		}
+
+		private void ToggleRulers()
+		{
+			m_rulersEnabled = !m_rulersEnabled;
+			for (int index = 0; index < m_documents.Count; index++)
+			{
+				DocumentWindow window = m_documents[index] as DocumentWindow;
+				if (window != null)
+				{
+					window.SetRulersEnabled(m_rulersEnabled);
+				}
 			}
 		}
 
