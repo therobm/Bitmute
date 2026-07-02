@@ -21,6 +21,8 @@ namespace Bitmute.UI
 		private List<FloatingPanel> m_documents;
 		private DocumentWindow m_activeDocumentWindow;
 		private ToolPalette m_toolPalette;
+		private ColorPanel m_colorPanel;
+		private LayersPanel m_layersPanel;
 		private Label m_optionsToolLabel;
 		private string[] m_menuTitles;
 		private Border[] m_menuButtons;
@@ -373,8 +375,10 @@ namespace Bitmute.UI
 
 		private View BuildPaletteDock()
 		{
-			PaletteGroup topGroup = new PaletteGroup(new string[] { "Navigator", "Color", "History" });
-			PaletteGroup bottomGroup = new PaletteGroup(new string[] { "Layers", "Channels", "Paths" });
+			m_colorPanel = new ColorPanel();
+			m_layersPanel = new LayersPanel();
+			PaletteGroup topGroup = new PaletteGroup(new string[] { "Color", "Swatches" }, m_colorPanel);
+			PaletteGroup bottomGroup = new PaletteGroup(new string[] { "Layers", "Channels" }, m_layersPanel);
 
 			Grid dock = new Grid();
 			dock.BackgroundColor = UiConstants.Chrome;
@@ -531,6 +535,7 @@ namespace Bitmute.UI
 			if (window != null)
 			{
 				m_activeDocumentWindow = window;
+				RefreshPanels();
 			}
 		}
 
@@ -541,6 +546,36 @@ namespace Bitmute.UI
 				return null;
 			}
 			return m_activeDocumentWindow.Canvas();
+		}
+
+		public Document ActiveDocument()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return null;
+			}
+			return canvas.CurrentDocument();
+		}
+
+		public void RefreshPanels()
+		{
+			if (m_colorPanel != null)
+			{
+				m_colorPanel.Refresh();
+			}
+			if (m_layersPanel != null)
+			{
+				m_layersPanel.Refresh();
+			}
+		}
+
+		public void OnCanvasInteracted()
+		{
+			if (m_colorPanel != null)
+			{
+				m_colorPanel.Refresh();
+			}
 		}
 
 		public void ClosePanel(FloatingPanel panel)

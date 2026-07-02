@@ -82,6 +82,23 @@ namespace Bitmute.Imaging
 			return layer;
 		}
 
+		public void DeleteLayer(int index)
+		{
+			if (m_layers.Count <= 1)
+			{
+				return;
+			}
+			if (index < 0 || index >= m_layers.Count)
+			{
+				return;
+			}
+			m_layers.RemoveAt(index);
+			if (m_activeLayerIndex >= m_layers.Count)
+			{
+				m_activeLayerIndex = m_layers.Count - 1;
+			}
+		}
+
 		public void CompositeInto(SKBitmap target)
 		{
 			SKCanvas canvas = new SKCanvas(target);

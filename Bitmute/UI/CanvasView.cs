@@ -186,6 +186,10 @@ namespace Bitmute.UI
 			{
 				MarkComposeDirty();
 			}
+			if (tool is EyedropperTool)
+			{
+				main.OnCanvasInteracted();
+			}
 			eventArgs.Handled = true;
 		}
 

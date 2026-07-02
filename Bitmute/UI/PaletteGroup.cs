@@ -67,10 +67,18 @@ namespace Bitmute.UI
 					m_tabLabels[index].TextColor = UiConstants.TextDim;
 				}
 			}
-			m_placeholder.Text = m_tabNames[activeIndex];
+			if (m_placeholder != null)
+			{
+				m_placeholder.Text = m_tabNames[activeIndex];
+			}
 		}
 
 		public PaletteGroup(string[] tabNames)
+			: this(tabNames, null)
+		{
+		}
+
+		public PaletteGroup(string[] tabNames, View content)
 		{
 			m_tabNames = tabNames;
 			m_tabButtons = new Border[tabNames.Length];
@@ -88,15 +96,21 @@ namespace Bitmute.UI
 				tabStrip.Add(tab);
 			}
 
-			m_placeholder = new Label();
-			m_placeholder.FontSize = 12.0;
-			m_placeholder.TextColor = UiConstants.TextDim;
-			m_placeholder.HorizontalOptions = LayoutOptions.Center;
-			m_placeholder.VerticalOptions = LayoutOptions.Center;
-
 			Grid body = new Grid();
 			body.BackgroundColor = UiConstants.PanelSurface;
-			body.Add(m_placeholder);
+			if (content != null)
+			{
+				body.Add(content);
+			}
+			else
+			{
+				m_placeholder = new Label();
+				m_placeholder.FontSize = 12.0;
+				m_placeholder.TextColor = UiConstants.TextDim;
+				m_placeholder.HorizontalOptions = LayoutOptions.Center;
+				m_placeholder.VerticalOptions = LayoutOptions.Center;
+				body.Add(m_placeholder);
+			}
 
 			Grid layout = new Grid();
 			layout.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
