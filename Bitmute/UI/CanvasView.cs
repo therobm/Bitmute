@@ -14,6 +14,8 @@ namespace Bitmute.UI
 		private static readonly SKColor s_checkerDark = new SKColor(0xC8, 0xC8, 0xC8);
 		private static readonly SKColor s_border = new SKColor(0x10, 0x10, 0x10);
 		private const int CheckerSquare = 8;
+		private const float AntLength = 6.0f;
+		private const float AntStrokeWidth = 1.25f;
 
 		private static SKBitmap s_checkerTile;
 
@@ -161,30 +163,21 @@ namespace Bitmute.UI
 					float startY = m_offsetY + (y * m_zoom);
 					float endX = startX + m_zoom;
 					float endY = startY + m_zoom;
-					SKPathBuilder builder = whiteBuilder;
-					if (((x + y) & 1) == 0)
-					{
-						builder = blackBuilder;
-					}
 					if (!selection.IsSelected(x - 1, y))
 					{
-						builder.MoveTo(startX, startY);
-						builder.LineTo(startX, endY);
+						AddAntEdge(blackBuilder, whiteBuilder, true, startX, startY, endY);
 					}
 					if (!selection.IsSelected(x + 1, y))
 					{
-						builder.MoveTo(endX, startY);
-						builder.LineTo(endX, endY);
+						AddAntEdge(blackBuilder, whiteBuilder, true, endX, startY, endY);
 					}
 					if (!selection.IsSelected(x, y - 1))
 					{
-						builder.MoveTo(startX, startY);
-						builder.LineTo(endX, startY);
+						AddAntEdge(blackBuilder, whiteBuilder, false, startY, startX, endX);
 					}
 					if (!selection.IsSelected(x, y + 1))
 					{
-						builder.MoveTo(startX, endY);
-						builder.LineTo(endX, endY);
+						AddAntEdge(blackBuilder, whiteBuilder, false, endY, startX, endX);
 					}
 				}
 			}
@@ -193,13 +186,13 @@ namespace Bitmute.UI
 			SKPath whitePath = whiteBuilder.Snapshot();
 			SKPaint blackPaint = new SKPaint();
 			blackPaint.Style = SKPaintStyle.Stroke;
-			blackPaint.StrokeWidth = 1.5f;
+			blackPaint.StrokeWidth = AntStrokeWidth;
 			blackPaint.Color = SKColors.Black;
 			blackPaint.IsAntialias = false;
 			canvas.DrawPath(blackPath, blackPaint);
 			SKPaint whitePaint = new SKPaint();
 			whitePaint.Style = SKPaintStyle.Stroke;
-			whitePaint.StrokeWidth = 1.5f;
+			whitePaint.StrokeWidth = AntStrokeWidth;
 			whitePaint.Color = SKColors.White;
 			whitePaint.IsAntialias = false;
 			canvas.DrawPath(whitePath, whitePaint);
@@ -209,6 +202,40 @@ namespace Bitmute.UI
 			whitePath.Dispose();
 			blackBuilder.Dispose();
 			whiteBuilder.Dispose();
+		}
+
+		private void AddAntEdge(SKPathBuilder blackBuilder, SKPathBuilder whiteBuilder, bool vertical, float fixedCoord, float start, float end)
+		{
+			float position = start;
+			for (;;)
+			{
+				if (position >= end)
+				{
+					break;
+				}
+				int band = (int)System.Math.Floor(position / AntLength);
+				float segmentEnd = (band + 1) * AntLength;
+				if (segmentEnd > end)
+				{
+					segmentEnd = end;
+				}
+				SKPathBuilder target = whiteBuilder;
+				if ((band & 1) == 0)
+				{
+					target = blackBuilder;
+				}
+				if (vertical)
+				{
+					target.MoveTo(fixedCoord, position);
+					target.LineTo(fixedCoord, segmentEnd);
+				}
+				else
+				{
+					target.MoveTo(position, fixedCoord);
+					target.LineTo(segmentEnd, fixedCoord);
+				}
+				position = segmentEnd;
+			}
 		}
 
 		public CanvasView(Document document)
