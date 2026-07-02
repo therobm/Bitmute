@@ -6,6 +6,8 @@ namespace Bitmute.Tools
 {
 	public class BrushEngine
 	{
+		private const double ShoulderExponent = 1.7;
+
 		private byte[] m_coverage;
 		private int m_width;
 		private int m_height;
@@ -130,6 +132,7 @@ namespace Bitmute.Tools
 				return 0.0;
 			}
 			double t = (distance - inner) / (outer - inner);
+			t = System.Math.Pow(t, ShoulderExponent);
 			double smooth = t * t * (3.0 - 2.0 * t);
 			return 1.0 - smooth;
 		}
