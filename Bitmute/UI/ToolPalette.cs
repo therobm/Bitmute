@@ -1,4 +1,5 @@
 using System;
+using Bitmute.Tools;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Shapes;
@@ -6,20 +7,6 @@ using Microsoft.Maui.Graphics;
 
 namespace Bitmute.UI
 {
-	public enum eTool
-	{
-		Move,
-		Select,
-		MagicWand,
-		Pencil,
-		Brush,
-		Eraser,
-		Fill,
-		Eyedropper,
-		Text,
-		Zoom
-	}
-
 	public class ToolPalette : ContentView
 	{
 		private eTool[] m_tools;

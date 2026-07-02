@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Bitmute.Imaging;
+using Bitmute.Tools;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Shapes;
@@ -28,6 +29,12 @@ namespace Bitmute.UI
 		private int m_openMenuIndex;
 		private int m_untitledCount;
 		private int m_topZIndex;
+		private ToolState m_toolState;
+		private PencilTool m_pencilTool;
+		private BrushTool m_brushTool;
+		private EraserTool m_eraserTool;
+		private EyedropperTool m_eyedropperTool;
+		private FillTool m_fillTool;
 
 		private string[] GetMenuItems(string title)
 		{
@@ -439,6 +446,12 @@ namespace Bitmute.UI
 			m_openMenuIndex = -1;
 			m_untitledCount = 0;
 			m_topZIndex = 0;
+			m_toolState = new ToolState();
+			m_pencilTool = new PencilTool();
+			m_brushTool = new BrushTool();
+			m_eraserTool = new EraserTool();
+			m_eyedropperTool = new EyedropperTool();
+			m_fillTool = new FillTool();
 
 			View menuBar = BuildMenuBar();
 			View optionsBar = BuildOptionsBar();
@@ -541,10 +554,45 @@ namespace Bitmute.UI
 
 		public void OnToolSelected(eTool tool)
 		{
+			if (m_toolState != null)
+			{
+				m_toolState.SetTool(tool);
+			}
 			if (m_optionsToolLabel != null)
 			{
 				m_optionsToolLabel.Text = tool.ToString();
 			}
+		}
+
+		public ToolState CurrentToolState()
+		{
+			return m_toolState;
+		}
+
+		public Tool CurrentTool()
+		{
+			eTool tool = m_toolState.Tool();
+			if (tool == eTool.Pencil)
+			{
+				return m_pencilTool;
+			}
+			if (tool == eTool.Brush)
+			{
+				return m_brushTool;
+			}
+			if (tool == eTool.Eraser)
+			{
+				return m_eraserTool;
+			}
+			if (tool == eTool.Eyedropper)
+			{
+				return m_eyedropperTool;
+			}
+			if (tool == eTool.Fill)
+			{
+				return m_fillTool;
+			}
+			return null;
 		}
 
 		public double WorkspaceWidth()

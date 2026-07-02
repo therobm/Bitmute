@@ -1,4 +1,6 @@
+using System;
 using Bitmute.Imaging;
+using Bitmute.Tools;
 using SkiaSharp;
 using SkiaSharp.Views.Maui;
 using SkiaSharp.Views.Maui.Controls;
@@ -133,6 +135,58 @@ namespace Bitmute.UI
 			m_composeDirty = true;
 			m_viewInitialized = false;
 			PaintSurface += OnPaintSurface;
+			EnableTouchEvents = true;
+			Touch += OnTouch;
+		}
+
+		private void OnTouch(object sender, SKTouchEventArgs eventArgs)
+		{
+			if (eventArgs.MouseButton == SKMouseButton.Right || eventArgs.MouseButton == SKMouseButton.Middle)
+			{
+				eventArgs.Handled = true;
+				return;
+			}
+			MainView main = MainView.Self;
+			if (main == null)
+			{
+				eventArgs.Handled = true;
+				return;
+			}
+			Tool tool = main.CurrentTool();
+			ToolState state = main.CurrentToolState();
+			if (tool == null || state == null)
+			{
+				eventArgs.Handled = true;
+				return;
+			}
+
+			float documentX = (eventArgs.Location.X - m_offsetX) / m_zoom;
+			float documentY = (eventArgs.Location.Y - m_offsetY) / m_zoom;
+			int pixelX = (int)Math.Floor(documentX);
+			int pixelY = (int)Math.Floor(documentY);
+
+			bool changed = false;
+			if (eventArgs.ActionType == SKTouchAction.Pressed)
+			{
+				changed = tool.OnPressed(m_document, pixelX, pixelY, state);
+			}
+			else if (eventArgs.ActionType == SKTouchAction.Moved)
+			{
+				if (eventArgs.InContact)
+				{
+					changed = tool.OnDragged(m_document, pixelX, pixelY, state);
+				}
+			}
+			else if (eventArgs.ActionType == SKTouchAction.Released)
+			{
+				tool.OnReleased(m_document, pixelX, pixelY, state);
+			}
+
+			if (changed)
+			{
+				MarkComposeDirty();
+			}
+			eventArgs.Handled = true;
 		}
 
 		public Document CurrentDocument()
