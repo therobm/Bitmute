@@ -85,11 +85,11 @@ namespace Bitmute.Tools
 			m_active = false;
 		}
 
-		private double TipCoverage(int offsetX, int offsetY)
+		private double TipCoverage(double offsetX, double offsetY)
 		{
 			if (m_radius <= 0)
 			{
-				if (offsetX == 0 && offsetY == 0)
+				if (System.Math.Abs(offsetX) < 0.5 && System.Math.Abs(offsetY) < 0.5)
 				{
 					return 1.0;
 				}
@@ -99,17 +99,17 @@ namespace Bitmute.Tools
 			double distance;
 			if (m_square)
 			{
-				int chebyshev = System.Math.Abs(offsetX);
-				int absOffsetY = System.Math.Abs(offsetY);
-				if (absOffsetY > chebyshev)
+				double absX = System.Math.Abs(offsetX);
+				double absY = System.Math.Abs(offsetY);
+				distance = absX;
+				if (absY > absX)
 				{
-					chebyshev = absOffsetY;
+					distance = absY;
 				}
-				distance = chebyshev;
 			}
 			else
 			{
-				distance = System.Math.Sqrt((double)((offsetX * offsetX) + (offsetY * offsetY)));
+				distance = System.Math.Sqrt((offsetX * offsetX) + (offsetY * offsetY));
 			}
 			double inner = m_hardness * outer;
 			double antialias = 1.0;
@@ -134,7 +134,7 @@ namespace Bitmute.Tools
 			return 1.0 - smooth;
 		}
 
-		public unsafe void StampDab(Layer layer, int centerX, int centerY, Selection selection)
+		public unsafe void StampDab(Layer layer, double centerX, double centerY, Selection selection)
 		{
 			if (!m_active)
 			{
@@ -153,22 +153,25 @@ namespace Bitmute.Tools
 			byte* originalPixels = (byte*)m_original.GetPixels().ToPointer();
 			bool clip = selection != null && selection.IsActive();
 			int radius = m_radius;
-			for (int offsetY = -radius; offsetY <= radius; offsetY++)
+			int minCanvasX = (int)System.Math.Floor(centerX) - radius - 1;
+			int maxCanvasX = (int)System.Math.Ceiling(centerX) + radius + 1;
+			int minCanvasY = (int)System.Math.Floor(centerY) - radius - 1;
+			int maxCanvasY = (int)System.Math.Ceiling(centerY) + radius + 1;
+			for (int canvasY = minCanvasY; canvasY <= maxCanvasY; canvasY++)
 			{
-				int canvasY = centerY + offsetY;
 				int bitmapY = canvasY - layerOffsetY;
 				if (bitmapY < 0 || bitmapY >= m_height)
 				{
 					continue;
 				}
-				for (int offsetX = -radius; offsetX <= radius; offsetX++)
+				double offsetY = canvasY - centerY;
+				for (int canvasX = minCanvasX; canvasX <= maxCanvasX; canvasX++)
 				{
-					double tip = TipCoverage(offsetX, offsetY);
+					double tip = TipCoverage(canvasX - centerX, offsetY);
 					if (tip <= 0.0)
 					{
 						continue;
 					}
-					int canvasX = centerX + offsetX;
 					if (clip && !selection.IsSelected(canvasX, canvasY))
 					{
 						continue;
@@ -217,7 +220,7 @@ namespace Bitmute.Tools
 			}
 		}
 
-		public void StampFirst(Layer layer, int x, int y, Selection selection)
+		public void StampFirst(Layer layer, double x, double y, Selection selection)
 		{
 			StampDab(layer, x, y, selection);
 			m_penX = x;
@@ -226,7 +229,7 @@ namespace Bitmute.Tools
 			m_distanceSinceStamp = 0.0;
 		}
 
-		public void StrokeTo(Layer layer, int x, int y, Selection selection)
+		public void StrokeTo(Layer layer, double x, double y, Selection selection)
 		{
 			if (!m_hasPen)
 			{
@@ -253,7 +256,7 @@ namespace Bitmute.Tools
 				traveled = traveled + distanceToNext;
 				double stampX = m_penX + (directionX * traveled);
 				double stampY = m_penY + (directionY * traveled);
-				StampDab(layer, (int)System.Math.Round(stampX), (int)System.Math.Round(stampY), selection);
+				StampDab(layer, stampX, stampY, selection);
 				m_distanceSinceStamp = 0.0;
 			}
 			m_distanceSinceStamp = m_distanceSinceStamp + (segmentLength - traveled);
