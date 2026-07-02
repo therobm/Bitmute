@@ -75,6 +75,8 @@ namespace Bitmute.UI
 		private BrushTool m_brushTool;
 		private EraserTool m_eraserTool;
 		private DodgeBurnTool m_dodgeBurnTool;
+		private BlurTool m_blurTool;
+		private SharpenTool m_sharpenTool;
 		private EyedropperTool m_eyedropperTool;
 		private FillTool m_fillTool;
 		private LineTool m_lineTool;
@@ -946,6 +948,8 @@ namespace Bitmute.UI
 			m_brushTool = new BrushTool();
 			m_eraserTool = new EraserTool();
 			m_dodgeBurnTool = new DodgeBurnTool();
+			m_blurTool = new BlurTool();
+			m_sharpenTool = new SharpenTool();
 			m_eyedropperTool = new EyedropperTool();
 			m_fillTool = new FillTool();
 			m_lineTool = new LineTool();
@@ -1709,6 +1713,14 @@ namespace Bitmute.UI
 			if (tool == eTool.DodgeBurn)
 			{
 				return m_dodgeBurnTool;
+			}
+			if (tool == eTool.Blur)
+			{
+				return m_blurTool;
+			}
+			if (tool == eTool.Sharpen)
+			{
+				return m_sharpenTool;
 			}
 			return null;
 		}

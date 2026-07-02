@@ -21,6 +21,7 @@ namespace Bitmute.Tools
 		private eBrushOp m_op;
 		private int m_cloneOffsetX;
 		private int m_cloneOffsetY;
+		private int m_blurRadius;
 		private eBlendMode m_mode;
 		private double m_spacingPx;
 		private double m_smoothing;
@@ -66,6 +67,15 @@ namespace Bitmute.Tools
 			m_op = op;
 			m_cloneOffsetX = 0;
 			m_cloneOffsetY = 0;
+			m_blurRadius = radius / 3;
+			if (m_blurRadius < 1)
+			{
+				m_blurRadius = 1;
+			}
+			if (m_blurRadius > 12)
+			{
+				m_blurRadius = 12;
+			}
 			m_mode = mode;
 			int diameter = radius * 2;
 			if (diameter < 1)
@@ -228,6 +238,60 @@ namespace Bitmute.Tools
 			return (byte)((result * 255.0) + 0.5);
 		}
 
+		private static byte ClampByte(double value)
+		{
+			if (value < 0.0)
+			{
+				value = 0.0;
+			}
+			if (value > 255.0)
+			{
+				value = 255.0;
+			}
+			return (byte)(value + 0.5);
+		}
+
+		private unsafe void BoxAverage(byte* originalPixels, int originalRowBytes, int bitmapX, int bitmapY, out double avgRed, out double avgGreen, out double avgBlue)
+		{
+			int radius = m_blurRadius;
+			int sumRed = 0;
+			int sumGreen = 0;
+			int sumBlue = 0;
+			int count = 0;
+			for (int dy = -radius; dy <= radius; dy++)
+			{
+				int ny = bitmapY + dy;
+				if (ny < 0 || ny >= m_height)
+				{
+					continue;
+				}
+				byte* row = originalPixels + (ny * originalRowBytes);
+				for (int dx = -radius; dx <= radius; dx++)
+				{
+					int nx = bitmapX + dx;
+					if (nx < 0 || nx >= m_width)
+					{
+						continue;
+					}
+					byte* sample = row + (nx * 4);
+					sumRed = sumRed + sample[0];
+					sumGreen = sumGreen + sample[1];
+					sumBlue = sumBlue + sample[2];
+					count++;
+				}
+			}
+			if (count == 0)
+			{
+				avgRed = 0.0;
+				avgGreen = 0.0;
+				avgBlue = 0.0;
+				return;
+			}
+			avgRed = (double)sumRed / count;
+			avgGreen = (double)sumGreen / count;
+			avgBlue = (double)sumBlue / count;
+		}
+
 		public unsafe void StampDab(Layer layer, double centerX, double centerY, Selection selection)
 		{
 			if (!m_active)
@@ -306,6 +370,27 @@ namespace Bitmute.Tools
 						destinationPixel[0] = DodgeBurnChannel(originalPixel[0], finalAlpha);
 						destinationPixel[1] = DodgeBurnChannel(originalPixel[1], finalAlpha);
 						destinationPixel[2] = DodgeBurnChannel(originalPixel[2], finalAlpha);
+						destinationPixel[3] = originalPixel[3];
+						continue;
+					}
+					if (m_op == eBrushOp.Blur || m_op == eBrushOp.Sharpen)
+					{
+						double avgRed;
+						double avgGreen;
+						double avgBlue;
+						BoxAverage(originalPixels, originalRowBytes, bitmapX, bitmapY, out avgRed, out avgGreen, out avgBlue);
+						double targetRed = avgRed;
+						double targetGreen = avgGreen;
+						double targetBlue = avgBlue;
+						if (m_op == eBrushOp.Sharpen)
+						{
+							targetRed = originalPixel[0] + (originalPixel[0] - avgRed);
+							targetGreen = originalPixel[1] + (originalPixel[1] - avgGreen);
+							targetBlue = originalPixel[2] + (originalPixel[2] - avgBlue);
+						}
+						destinationPixel[0] = ClampByte(originalPixel[0] + ((targetRed - originalPixel[0]) * finalAlpha));
+						destinationPixel[1] = ClampByte(originalPixel[1] + ((targetGreen - originalPixel[1]) * finalAlpha));
+						destinationPixel[2] = ClampByte(originalPixel[2] + ((targetBlue - originalPixel[2]) * finalAlpha));
 						destinationPixel[3] = originalPixel[3];
 						continue;
 					}
