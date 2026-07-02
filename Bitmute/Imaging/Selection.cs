@@ -101,5 +101,68 @@ namespace Bitmute.Imaging
 			m_active = true;
 			m_bounds = bounds;
 		}
+
+		public byte[] MaskCopy()
+		{
+			byte[] copy = new byte[m_mask.Length];
+			for (int index = 0; index < m_mask.Length; index++)
+			{
+				copy[index] = m_mask[index];
+			}
+			return copy;
+		}
+
+		public void SetShifted(byte[] sourceMask, SKRectI sourceBounds, int deltaX, int deltaY)
+		{
+			for (int index = 0; index < m_mask.Length; index++)
+			{
+				m_mask[index] = 0;
+			}
+			int minX = m_width;
+			int minY = m_height;
+			int maxX = -1;
+			int maxY = -1;
+			for (int y = sourceBounds.Top; y < sourceBounds.Bottom; y++)
+			{
+				for (int x = sourceBounds.Left; x < sourceBounds.Right; x++)
+				{
+					if (sourceMask[(y * m_width) + x] == 0)
+					{
+						continue;
+					}
+					int newX = x + deltaX;
+					int newY = y + deltaY;
+					if (newX < 0 || newY < 0 || newX >= m_width || newY >= m_height)
+					{
+						continue;
+					}
+					m_mask[(newY * m_width) + newX] = 255;
+					if (newX < minX)
+					{
+						minX = newX;
+					}
+					if (newX > maxX)
+					{
+						maxX = newX;
+					}
+					if (newY < minY)
+					{
+						minY = newY;
+					}
+					if (newY > maxY)
+					{
+						maxY = newY;
+					}
+				}
+			}
+			if (maxX < 0)
+			{
+				m_active = false;
+				m_bounds = SKRectI.Empty;
+				return;
+			}
+			m_active = true;
+			m_bounds = new SKRectI(minX, minY, maxX + 1, maxY + 1);
+		}
 	}
 }

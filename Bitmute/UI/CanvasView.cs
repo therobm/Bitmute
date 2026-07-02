@@ -147,7 +147,8 @@ namespace Bitmute.UI
 				return;
 			}
 
-			SKPathBuilder pathBuilder = new SKPathBuilder();
+			SKPathBuilder blackBuilder = new SKPathBuilder();
+			SKPathBuilder whiteBuilder = new SKPathBuilder();
 			for (int y = bounds.Top; y < bounds.Bottom; y++)
 			{
 				for (int x = bounds.Left; x < bounds.Right; x++)
@@ -160,51 +161,54 @@ namespace Bitmute.UI
 					float startY = m_offsetY + (y * m_zoom);
 					float endX = startX + m_zoom;
 					float endY = startY + m_zoom;
+					SKPathBuilder builder = whiteBuilder;
+					if (((x + y) & 1) == 0)
+					{
+						builder = blackBuilder;
+					}
 					if (!selection.IsSelected(x - 1, y))
 					{
-						pathBuilder.MoveTo(startX, startY);
-						pathBuilder.LineTo(startX, endY);
+						builder.MoveTo(startX, startY);
+						builder.LineTo(startX, endY);
 					}
 					if (!selection.IsSelected(x + 1, y))
 					{
-						pathBuilder.MoveTo(endX, startY);
-						pathBuilder.LineTo(endX, endY);
+						builder.MoveTo(endX, startY);
+						builder.LineTo(endX, endY);
 					}
 					if (!selection.IsSelected(x, y - 1))
 					{
-						pathBuilder.MoveTo(startX, startY);
-						pathBuilder.LineTo(endX, startY);
+						builder.MoveTo(startX, startY);
+						builder.LineTo(endX, startY);
 					}
 					if (!selection.IsSelected(x, y + 1))
 					{
-						pathBuilder.MoveTo(startX, endY);
-						pathBuilder.LineTo(endX, endY);
+						builder.MoveTo(startX, endY);
+						builder.LineTo(endX, endY);
 					}
 				}
 			}
 
-			SKPath path = pathBuilder.Snapshot();
-			SKPaint darkPaint = new SKPaint();
-			darkPaint.Style = SKPaintStyle.Stroke;
-			darkPaint.StrokeWidth = 1.0f;
-			darkPaint.Color = SKColors.Black;
-			darkPaint.IsAntialias = false;
-			canvas.DrawPath(path, darkPaint);
-			darkPaint.Dispose();
-
-			SKPaint dashPaint = new SKPaint();
-			dashPaint.Style = SKPaintStyle.Stroke;
-			dashPaint.StrokeWidth = 1.0f;
-			dashPaint.Color = SKColors.White;
-			dashPaint.IsAntialias = false;
-			float[] intervals = new float[] { 4.0f, 4.0f };
-			SKPathEffect dashEffect = SKPathEffect.CreateDash(intervals, 0.0f);
-			dashPaint.PathEffect = dashEffect;
-			canvas.DrawPath(path, dashPaint);
-			dashEffect.Dispose();
-			dashPaint.Dispose();
-			path.Dispose();
-			pathBuilder.Dispose();
+			SKPath blackPath = blackBuilder.Snapshot();
+			SKPath whitePath = whiteBuilder.Snapshot();
+			SKPaint blackPaint = new SKPaint();
+			blackPaint.Style = SKPaintStyle.Stroke;
+			blackPaint.StrokeWidth = 1.5f;
+			blackPaint.Color = SKColors.Black;
+			blackPaint.IsAntialias = false;
+			canvas.DrawPath(blackPath, blackPaint);
+			SKPaint whitePaint = new SKPaint();
+			whitePaint.Style = SKPaintStyle.Stroke;
+			whitePaint.StrokeWidth = 1.5f;
+			whitePaint.Color = SKColors.White;
+			whitePaint.IsAntialias = false;
+			canvas.DrawPath(whitePath, whitePaint);
+			blackPaint.Dispose();
+			whitePaint.Dispose();
+			blackPath.Dispose();
+			whitePath.Dispose();
+			blackBuilder.Dispose();
+			whiteBuilder.Dispose();
 		}
 
 		public CanvasView(Document document)

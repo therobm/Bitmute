@@ -8,6 +8,8 @@ namespace Bitmute.Tools
 		private bool m_offsetMode;
 		private SKBitmap m_moving;
 		private SKBitmap m_static;
+		private byte[] m_selectionMask;
+		private SKRectI m_selectionBounds;
 		private int m_startX;
 		private int m_startY;
 		private int m_oldOffsetX;
@@ -82,6 +84,7 @@ namespace Bitmute.Tools
 				m_static.Dispose();
 				m_static = null;
 			}
+			m_selectionMask = null;
 		}
 
 		public override bool OnPressed(Document document, int x, int y, ToolState state)
@@ -100,6 +103,8 @@ namespace Bitmute.Tools
 				m_offsetMode = false;
 				m_moving = ExtractSelected(layer.Bitmap(), selection);
 				m_static = CloneWithSelectionCleared(layer.Bitmap(), selection);
+				m_selectionMask = selection.MaskCopy();
+				m_selectionBounds = selection.Bounds();
 			}
 			else
 			{
@@ -126,7 +131,13 @@ namespace Bitmute.Tools
 			{
 				return false;
 			}
-			Rebuild(layer, x - m_startX, y - m_startY);
+			int deltaX = x - m_startX;
+			int deltaY = y - m_startY;
+			Rebuild(layer, deltaX, deltaY);
+			if (m_selectionMask != null)
+			{
+				document.Selection().SetShifted(m_selectionMask, m_selectionBounds, deltaX, deltaY);
+			}
 			return true;
 		}
 
