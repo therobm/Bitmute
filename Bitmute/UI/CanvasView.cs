@@ -1,6 +1,7 @@
 using System;
 using Bitmute.Imaging;
 using Bitmute.Tools;
+using Microsoft.Maui.Dispatching;
 using SkiaSharp;
 using SkiaSharp.Views.Maui;
 using SkiaSharp.Views.Maui.Controls;
@@ -15,7 +16,7 @@ namespace Bitmute.UI
 		private static readonly SKColor s_border = new SKColor(0x10, 0x10, 0x10);
 		private const int CheckerSquare = 8;
 		private const float AntLength = 6.0f;
-		private const float AntStrokeWidth = 1.25f;
+		private const float AntStrokeWidth = 1.0f;
 
 		private static SKBitmap s_checkerTile;
 
@@ -31,6 +32,8 @@ namespace Bitmute.UI
 		private float m_panLastY;
 		private bool m_wheelHooked;
 		private DocumentWindow m_ownerWindow;
+		private IDispatcherTimer m_antTimer;
+		private float m_antPhase;
 
 		private static SKBitmap CheckerTile()
 		{
@@ -206,6 +209,7 @@ namespace Bitmute.UI
 
 		private void AddAntEdge(SKPathBuilder blackBuilder, SKPathBuilder whiteBuilder, bool vertical, float fixedCoord, float start, float end)
 		{
+			float snapped = (float)System.Math.Floor(fixedCoord) + 0.5f;
 			float position = start;
 			for (;;)
 			{
@@ -213,8 +217,9 @@ namespace Bitmute.UI
 				{
 					break;
 				}
-				int band = (int)System.Math.Floor(position / AntLength);
-				float segmentEnd = (band + 1) * AntLength;
+				float shifted = position + m_antPhase;
+				int band = (int)System.Math.Floor(shifted / AntLength);
+				float segmentEnd = ((band + 1) * AntLength) - m_antPhase;
 				if (segmentEnd > end)
 				{
 					segmentEnd = end;
@@ -226,13 +231,13 @@ namespace Bitmute.UI
 				}
 				if (vertical)
 				{
-					target.MoveTo(fixedCoord, position);
-					target.LineTo(fixedCoord, segmentEnd);
+					target.MoveTo(snapped, position);
+					target.LineTo(snapped, segmentEnd);
 				}
 				else
 				{
-					target.MoveTo(position, fixedCoord);
-					target.LineTo(segmentEnd, fixedCoord);
+					target.MoveTo(position, snapped);
+					target.LineTo(segmentEnd, snapped);
 				}
 				position = segmentEnd;
 			}
@@ -247,6 +252,7 @@ namespace Bitmute.UI
 			m_composeDirty = true;
 			m_viewInitialized = false;
 			m_wheelHooked = false;
+			m_antPhase = 0.0f;
 			PaintSurface += OnPaintSurface;
 			EnableTouchEvents = true;
 			Touch += OnTouch;
@@ -255,6 +261,13 @@ namespace Bitmute.UI
 		protected override void OnHandlerChanged()
 		{
 			base.OnHandlerChanged();
+			if (m_antTimer == null && Dispatcher != null)
+			{
+				m_antTimer = Dispatcher.CreateTimer();
+				m_antTimer.Interval = TimeSpan.FromMilliseconds(90.0);
+				m_antTimer.Tick += OnAntTick;
+				m_antTimer.Start();
+			}
 			if (m_wheelHooked)
 			{
 				return;
@@ -511,6 +524,24 @@ namespace Bitmute.UI
 
 		public void Redraw()
 		{
+			InvalidateSurface();
+		}
+
+		private void OnAntTick(object sender, EventArgs eventArgs)
+		{
+			if (m_document == null)
+			{
+				return;
+			}
+			if (!m_document.Selection().IsActive())
+			{
+				return;
+			}
+			m_antPhase = m_antPhase + 1.0f;
+			if (m_antPhase >= AntLength * 2.0f)
+			{
+				m_antPhase = m_antPhase - (AntLength * 2.0f);
+			}
 			InvalidateSurface();
 		}
 	}
