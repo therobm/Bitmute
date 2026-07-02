@@ -40,6 +40,8 @@ namespace Bitmute.UI
 		private int m_topZIndex;
 		private ToolState m_toolState;
 		private MoveTool m_moveTool;
+		private RectangleSelectTool m_rectangleSelectTool;
+		private MagicWandTool m_magicWandTool;
 		private PencilTool m_pencilTool;
 		private BrushTool m_brushTool;
 		private EraserTool m_eraserTool;
@@ -112,6 +114,18 @@ namespace Bitmute.UI
 					return true;
 				}
 				if (item == "Redo")
+				{
+					return true;
+				}
+				return false;
+			}
+			if (title == "Select")
+			{
+				if (item == "All")
+				{
+					return true;
+				}
+				if (item == "Deselect")
 				{
 					return true;
 				}
@@ -398,10 +412,43 @@ namespace Bitmute.UI
 				DoFit();
 				return;
 			}
+			if (action == "All")
+			{
+				DoSelectAll();
+				return;
+			}
+			if (action == "Deselect")
+			{
+				DoDeselect();
+				return;
+			}
 			if (action == "Invert Colors")
 			{
 				DoInvert();
 			}
+		}
+
+		private void DoSelectAll()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			document.Selection().SelectRect(new SkiaSharp.SKRectI(0, 0, document.Width(), document.Height()));
+			canvas.Redraw();
+		}
+
+		private void DoDeselect()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			canvas.CurrentDocument().Selection().Clear();
+			canvas.Redraw();
 		}
 
 		private void DoUndo()
@@ -662,6 +709,8 @@ namespace Bitmute.UI
 			m_topZIndex = 0;
 			m_toolState = new ToolState();
 			m_moveTool = new MoveTool();
+			m_rectangleSelectTool = new RectangleSelectTool();
+			m_magicWandTool = new MagicWandTool();
 			m_pencilTool = new PencilTool();
 			m_brushTool = new BrushTool();
 			m_eraserTool = new EraserTool();
@@ -740,6 +789,8 @@ namespace Bitmute.UI
 			AddAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorSave);
 			AddAccelerator(element, Windows.System.VirtualKey.Z, OnAcceleratorUndo);
 			AddAccelerator(element, Windows.System.VirtualKey.Y, OnAcceleratorRedo);
+			AddAccelerator(element, Windows.System.VirtualKey.A, OnAcceleratorSelectAll);
+			AddAccelerator(element, Windows.System.VirtualKey.D, OnAcceleratorDeselect);
 			AddAccelerator(element, Windows.System.VirtualKey.Number0, OnAcceleratorFit);
 			AddAccelerator(element, Windows.System.VirtualKey.Add, OnAcceleratorZoomIn);
 			AddAccelerator(element, Windows.System.VirtualKey.Subtract, OnAcceleratorZoomOut);
@@ -782,6 +833,18 @@ namespace Bitmute.UI
 		private void OnAcceleratorRedo(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
 			DoRedo();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorSelectAll(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			DoSelectAll();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorDeselect(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			DoDeselect();
 			args.Handled = true;
 		}
 
@@ -983,6 +1046,14 @@ namespace Bitmute.UI
 			if (tool == eTool.Move)
 			{
 				return m_moveTool;
+			}
+			if (tool == eTool.Select)
+			{
+				return m_rectangleSelectTool;
+			}
+			if (tool == eTool.MagicWand)
+			{
+				return m_magicWandTool;
 			}
 			if (tool == eTool.Pencil)
 			{

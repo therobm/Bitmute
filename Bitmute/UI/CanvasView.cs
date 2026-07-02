@@ -129,6 +129,81 @@ namespace Bitmute.UI
 			borderPaint.IsAntialias = false;
 			canvas.DrawRect(destination, borderPaint);
 			borderPaint.Dispose();
+
+			DrawSelection(canvas);
+		}
+
+		private void DrawSelection(SKCanvas canvas)
+		{
+			Selection selection = m_document.Selection();
+			if (!selection.IsActive())
+			{
+				return;
+			}
+			SKRectI bounds = selection.Bounds();
+			if (bounds.Width <= 0 || bounds.Height <= 0)
+			{
+				return;
+			}
+
+			SKPathBuilder pathBuilder = new SKPathBuilder();
+			for (int y = bounds.Top; y < bounds.Bottom; y++)
+			{
+				for (int x = bounds.Left; x < bounds.Right; x++)
+				{
+					if (!selection.IsSelected(x, y))
+					{
+						continue;
+					}
+					float startX = m_offsetX + (x * m_zoom);
+					float startY = m_offsetY + (y * m_zoom);
+					float endX = startX + m_zoom;
+					float endY = startY + m_zoom;
+					if (!selection.IsSelected(x - 1, y))
+					{
+						pathBuilder.MoveTo(startX, startY);
+						pathBuilder.LineTo(startX, endY);
+					}
+					if (!selection.IsSelected(x + 1, y))
+					{
+						pathBuilder.MoveTo(endX, startY);
+						pathBuilder.LineTo(endX, endY);
+					}
+					if (!selection.IsSelected(x, y - 1))
+					{
+						pathBuilder.MoveTo(startX, startY);
+						pathBuilder.LineTo(endX, startY);
+					}
+					if (!selection.IsSelected(x, y + 1))
+					{
+						pathBuilder.MoveTo(startX, endY);
+						pathBuilder.LineTo(endX, endY);
+					}
+				}
+			}
+
+			SKPath path = pathBuilder.Snapshot();
+			SKPaint darkPaint = new SKPaint();
+			darkPaint.Style = SKPaintStyle.Stroke;
+			darkPaint.StrokeWidth = 1.0f;
+			darkPaint.Color = SKColors.Black;
+			darkPaint.IsAntialias = false;
+			canvas.DrawPath(path, darkPaint);
+			darkPaint.Dispose();
+
+			SKPaint dashPaint = new SKPaint();
+			dashPaint.Style = SKPaintStyle.Stroke;
+			dashPaint.StrokeWidth = 1.0f;
+			dashPaint.Color = SKColors.White;
+			dashPaint.IsAntialias = false;
+			float[] intervals = new float[] { 4.0f, 4.0f };
+			SKPathEffect dashEffect = SKPathEffect.CreateDash(intervals, 0.0f);
+			dashPaint.PathEffect = dashEffect;
+			canvas.DrawPath(path, dashPaint);
+			dashEffect.Dispose();
+			dashPaint.Dispose();
+			path.Dispose();
+			pathBuilder.Dispose();
 		}
 
 		public CanvasView(Document document)
@@ -297,6 +372,15 @@ namespace Bitmute.UI
 			{
 				main.OnCanvasInteracted();
 			}
+			bool isSelectionTool = tool is RectangleSelectTool || tool is MagicWandTool;
+			if (isSelectionTool)
+			{
+				bool acted = eventArgs.ActionType == SKTouchAction.Pressed || eventArgs.ActionType == SKTouchAction.Released || (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact);
+				if (acted)
+				{
+					InvalidateSurface();
+				}
+			}
 			eventArgs.Handled = true;
 		}
 
@@ -370,6 +454,11 @@ namespace Bitmute.UI
 		public void MarkComposeDirty()
 		{
 			m_composeDirty = true;
+			InvalidateSurface();
+		}
+
+		public void Redraw()
+		{
 			InvalidateSurface();
 		}
 	}

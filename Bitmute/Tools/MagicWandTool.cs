@@ -4,7 +4,7 @@ using SkiaSharp;
 
 namespace Bitmute.Tools
 {
-	public class FillTool : Tool
+	public class MagicWandTool : Tool
 	{
 		private static bool ColorMatch(SKColor left, SKColor right, int tolerance)
 		{
@@ -28,23 +28,16 @@ namespace Bitmute.Tools
 			{
 				deltaAlpha = -deltaAlpha;
 			}
-			if (deltaRed > tolerance)
-			{
-				return false;
-			}
-			if (deltaGreen > tolerance)
-			{
-				return false;
-			}
-			if (deltaBlue > tolerance)
-			{
-				return false;
-			}
-			if (deltaAlpha > tolerance)
+			if (deltaRed > tolerance || deltaGreen > tolerance || deltaBlue > tolerance || deltaAlpha > tolerance)
 			{
 				return false;
 			}
 			return true;
+		}
+
+		public override bool IsDestructive()
+		{
+			return false;
 		}
 
 		public override bool OnPressed(Document document, int x, int y, ToolState state)
@@ -62,14 +55,13 @@ namespace Bitmute.Tools
 				return false;
 			}
 
-			Selection selection = document.Selection();
 			SKColor target = bitmap.GetPixel(x, y);
-			SKColor fill = state.Foreground();
 			int tolerance = state.FillTolerance();
-			if (ColorMatch(target, fill, 0))
-			{
-				return false;
-			}
+			byte[] mask = new byte[width * height];
+			int minX = width;
+			int minY = height;
+			int maxX = -1;
+			int maxY = -1;
 
 			Stack<int> pending = new Stack<int>();
 			pending.Push((y * width) + x);
@@ -80,22 +72,34 @@ namespace Bitmute.Tools
 					break;
 				}
 				int index = pending.Pop();
-				int pixelX = index % width;
-				int pixelY = index / width;
-				if (selection.IsActive() && !selection.IsSelected(pixelX, pixelY))
+				if (mask[index] != 0)
 				{
 					continue;
 				}
+				int pixelX = index % width;
+				int pixelY = index / width;
 				SKColor current = bitmap.GetPixel(pixelX, pixelY);
 				if (!ColorMatch(current, target, tolerance))
 				{
 					continue;
 				}
-				if (ColorMatch(current, fill, 0))
+				mask[index] = 255;
+				if (pixelX < minX)
 				{
-					continue;
+					minX = pixelX;
 				}
-				bitmap.SetPixel(pixelX, pixelY, fill);
+				if (pixelX > maxX)
+				{
+					maxX = pixelX;
+				}
+				if (pixelY < minY)
+				{
+					minY = pixelY;
+				}
+				if (pixelY > maxY)
+				{
+					maxY = pixelY;
+				}
 				if (pixelX > 0)
 				{
 					pending.Push(index - 1);
@@ -113,7 +117,15 @@ namespace Bitmute.Tools
 					pending.Push(index + width);
 				}
 			}
-			return true;
+
+			if (maxX < 0)
+			{
+				document.Selection().Clear();
+				return false;
+			}
+			SKRectI bounds = new SKRectI(minX, minY, maxX + 1, maxY + 1);
+			document.Selection().SelectMask(mask, bounds);
+			return false;
 		}
 
 		public override bool OnDragged(Document document, int x, int y, ToolState state)

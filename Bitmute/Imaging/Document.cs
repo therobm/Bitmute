@@ -16,6 +16,7 @@ namespace Bitmute.Imaging
 		private List<LayerEditCommand> m_redoStack;
 		private SKBitmap m_strokeSnapshot;
 		private int m_strokeLayerIndex;
+		private Selection m_selection;
 
 		public static Document OpenImage(string title, SKBitmap source)
 		{
@@ -38,6 +39,12 @@ namespace Bitmute.Imaging
 			m_redoStack = new List<LayerEditCommand>();
 			m_strokeSnapshot = null;
 			m_strokeLayerIndex = 0;
+			m_selection = new Selection(width, height);
+		}
+
+		public Selection Selection()
+		{
+			return m_selection;
 		}
 
 		public void BeginStroke()
