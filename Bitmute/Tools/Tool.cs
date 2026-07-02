@@ -62,6 +62,11 @@ namespace Bitmute.Tools
 			}
 		}
 
+		public virtual bool IsDestructive()
+		{
+			return true;
+		}
+
 		public abstract bool OnPressed(Document document, int x, int y, ToolState state);
 
 		public abstract bool OnDragged(Document document, int x, int y, ToolState state);

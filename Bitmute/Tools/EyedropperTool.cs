@@ -5,6 +5,11 @@ namespace Bitmute.Tools
 {
 	public class EyedropperTool : Tool
 	{
+		public override bool IsDestructive()
+		{
+			return false;
+		}
+
 		private bool Sample(Document document, int x, int y, ToolState state)
 		{
 			Layer layer = document.ActiveLayer();

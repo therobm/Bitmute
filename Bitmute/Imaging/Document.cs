@@ -5,11 +5,17 @@ namespace Bitmute.Imaging
 {
 	public class Document
 	{
+		private const int MaxUndoDepth = 100;
+
 		private int m_width;
 		private int m_height;
 		private string m_title;
 		private List<Layer> m_layers;
 		private int m_activeLayerIndex;
+		private List<LayerEditCommand> m_undoStack;
+		private List<LayerEditCommand> m_redoStack;
+		private SKBitmap m_strokeSnapshot;
+		private int m_strokeLayerIndex;
 
 		public static Document OpenImage(string title, SKBitmap source)
 		{
@@ -28,6 +34,95 @@ namespace Bitmute.Imaging
 			background.FillWhite();
 			m_layers.Add(background);
 			m_activeLayerIndex = 0;
+			m_undoStack = new List<LayerEditCommand>();
+			m_redoStack = new List<LayerEditCommand>();
+			m_strokeSnapshot = null;
+			m_strokeLayerIndex = 0;
+		}
+
+		public void BeginStroke()
+		{
+			if (m_strokeSnapshot != null)
+			{
+				m_strokeSnapshot.Dispose();
+				m_strokeSnapshot = null;
+			}
+			Layer active = ActiveLayer();
+			if (active == null)
+			{
+				return;
+			}
+			m_strokeLayerIndex = m_activeLayerIndex;
+			m_strokeSnapshot = active.Bitmap().Copy();
+		}
+
+		public void EndStroke()
+		{
+			if (m_strokeSnapshot == null)
+			{
+				return;
+			}
+			if (m_strokeLayerIndex < 0 || m_strokeLayerIndex >= m_layers.Count)
+			{
+				m_strokeSnapshot.Dispose();
+				m_strokeSnapshot = null;
+				return;
+			}
+			SKBitmap current = m_layers[m_strokeLayerIndex].Bitmap();
+			SKRectI rect = PixelRegion.ComputeDirtyRect(m_strokeSnapshot, current);
+			if (rect.Width <= 0 || rect.Height <= 0)
+			{
+				m_strokeSnapshot.Dispose();
+				m_strokeSnapshot = null;
+				return;
+			}
+			SKBitmap before = PixelRegion.ExtractRegion(m_strokeSnapshot, rect);
+			SKBitmap after = PixelRegion.ExtractRegion(current, rect);
+			LayerEditCommand command = new LayerEditCommand(m_strokeLayerIndex, rect, before, after);
+			m_undoStack.Add(command);
+			m_redoStack.Clear();
+			if (m_undoStack.Count > MaxUndoDepth)
+			{
+				m_undoStack.RemoveAt(0);
+			}
+			m_strokeSnapshot.Dispose();
+			m_strokeSnapshot = null;
+		}
+
+		public bool Undo()
+		{
+			if (m_undoStack.Count == 0)
+			{
+				return false;
+			}
+			int last = m_undoStack.Count - 1;
+			LayerEditCommand command = m_undoStack[last];
+			m_undoStack.RemoveAt(last);
+			int index = command.LayerIndex();
+			if (index >= 0 && index < m_layers.Count)
+			{
+				command.ApplyBefore(m_layers[index].Bitmap());
+			}
+			m_redoStack.Add(command);
+			return true;
+		}
+
+		public bool Redo()
+		{
+			if (m_redoStack.Count == 0)
+			{
+				return false;
+			}
+			int last = m_redoStack.Count - 1;
+			LayerEditCommand command = m_redoStack[last];
+			m_redoStack.RemoveAt(last);
+			int index = command.LayerIndex();
+			if (index >= 0 && index < m_layers.Count)
+			{
+				command.ApplyAfter(m_layers[index].Bitmap());
+			}
+			m_undoStack.Add(command);
+			return true;
 		}
 
 		public int Width()

@@ -101,6 +101,18 @@ namespace Bitmute.UI
 				}
 				return false;
 			}
+			if (title == "Edit")
+			{
+				if (item == "Undo")
+				{
+					return true;
+				}
+				if (item == "Redo")
+				{
+					return true;
+				}
+				return false;
+			}
 			if (title == "View")
 			{
 				if (item == "Zoom In")
@@ -332,6 +344,32 @@ namespace Bitmute.UI
 			if (action == "New")
 			{
 				NewDocument();
+				return;
+			}
+			if (action == "Undo")
+			{
+				CanvasView undoCanvas = ActiveCanvas();
+				if (undoCanvas != null)
+				{
+					if (undoCanvas.CurrentDocument().Undo())
+					{
+						undoCanvas.MarkComposeDirty();
+						RefreshPanels();
+					}
+				}
+				return;
+			}
+			if (action == "Redo")
+			{
+				CanvasView redoCanvas = ActiveCanvas();
+				if (redoCanvas != null)
+				{
+					if (redoCanvas.CurrentDocument().Redo())
+					{
+						redoCanvas.MarkComposeDirty();
+						RefreshPanels();
+					}
+				}
 				return;
 			}
 			if (action == "Open…")

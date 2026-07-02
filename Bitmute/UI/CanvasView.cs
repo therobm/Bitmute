@@ -202,6 +202,10 @@ namespace Bitmute.UI
 			bool changed = false;
 			if (eventArgs.ActionType == SKTouchAction.Pressed)
 			{
+				if (tool.IsDestructive())
+				{
+					m_document.BeginStroke();
+				}
 				changed = tool.OnPressed(m_document, pixelX, pixelY, state);
 			}
 			else if (eventArgs.ActionType == SKTouchAction.Moved)
@@ -214,6 +218,10 @@ namespace Bitmute.UI
 			else if (eventArgs.ActionType == SKTouchAction.Released)
 			{
 				tool.OnReleased(m_document, pixelX, pixelY, state);
+				if (tool.IsDestructive())
+				{
+					m_document.EndStroke();
+				}
 			}
 
 			if (changed)
