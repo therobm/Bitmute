@@ -6,8 +6,13 @@ namespace Bitmute.Imaging
 	{
 		public static void Draw(SKBitmap bitmap, string text, int x, int y, SKColor color, float size)
 		{
+			SKTypeface typeface = SKFontManager.Default.MatchFamily("Segoe UI");
+			if (typeface == null)
+			{
+				typeface = SKTypeface.Default;
+			}
 			SKCanvas canvas = new SKCanvas(bitmap);
-			SKFont font = new SKFont(SKTypeface.Default, size);
+			SKFont font = new SKFont(typeface, size);
 			SKPaint paint = new SKPaint();
 			paint.Color = color;
 			paint.IsAntialias = true;

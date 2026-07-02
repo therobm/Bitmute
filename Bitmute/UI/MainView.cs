@@ -1037,7 +1037,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		public async void PlaceText(Document document, int x, int y)
+		public async void PlaceText(CanvasView canvas, int x, int y)
 		{
 			string text = await DisplayPromptAsync("Add Text", "Enter text:");
 			if (text == null)
@@ -1048,6 +1048,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			Document document = canvas.CurrentDocument();
 			Layer layer = document.ActiveLayer();
 			if (layer == null)
 			{
@@ -1056,11 +1057,8 @@ namespace Bitmute.UI
 			document.BeginStroke();
 			TextRasterizer.Draw(layer.Bitmap(), text, x, y, m_toolState.Foreground(), 32.0f);
 			document.EndStroke();
-			CanvasView canvas = ActiveCanvas();
-			if (canvas != null)
-			{
-				canvas.MarkComposeDirty();
-			}
+			canvas.MarkComposeDirty();
+			SetStatusMessage("Added text: " + text);
 		}
 
 		public ToolState CurrentToolState()
