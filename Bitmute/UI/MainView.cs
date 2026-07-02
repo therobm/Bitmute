@@ -77,6 +77,7 @@ namespace Bitmute.UI
 		private DodgeBurnTool m_dodgeBurnTool;
 		private BlurTool m_blurTool;
 		private SharpenTool m_sharpenTool;
+		private CloneTool m_cloneTool;
 		private EyedropperTool m_eyedropperTool;
 		private FillTool m_fillTool;
 		private LineTool m_lineTool;
@@ -950,6 +951,7 @@ namespace Bitmute.UI
 			m_dodgeBurnTool = new DodgeBurnTool();
 			m_blurTool = new BlurTool();
 			m_sharpenTool = new SharpenTool();
+			m_cloneTool = new CloneTool();
 			m_eyedropperTool = new EyedropperTool();
 			m_fillTool = new FillTool();
 			m_lineTool = new LineTool();
@@ -1721,6 +1723,10 @@ namespace Bitmute.UI
 			if (tool == eTool.Sharpen)
 			{
 				return m_sharpenTool;
+			}
+			if (tool == eTool.Clone)
+			{
+				return m_cloneTool;
 			}
 			return null;
 		}

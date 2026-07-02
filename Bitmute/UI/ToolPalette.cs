@@ -204,9 +204,9 @@ namespace Bitmute.UI
 
 		public ToolPalette()
 		{
-			m_tools = new eTool[] { eTool.Move, eTool.Select, eTool.EllipseSelect, eTool.Lasso, eTool.MagicWand, eTool.Pencil, eTool.Brush, eTool.Eraser, eTool.Fill, eTool.Eyedropper, eTool.Text, eTool.Line, eTool.Blur, eTool.Sharpen, eTool.DodgeBurn, eTool.Zoom };
-			m_glyphs = new string[] { "✛︎", "⬚", "◯", "⬠", "✦︎", "✎︎", "▨", "▭", "▣", "◉", "T", "╱", "○", "◭", "◐", "◎" };
-			m_names = new string[] { "Move", "Rectangle Select", "Ellipse Select", "Poly Lasso", "Magic Wand", "Pencil", "Brush", "Eraser", "Fill", "Eyedropper", "Text", "Line", "Blur", "Sharpen", "Dodge / Burn (Alt = Burn)", "Zoom" };
+			m_tools = new eTool[] { eTool.Move, eTool.Select, eTool.EllipseSelect, eTool.Lasso, eTool.MagicWand, eTool.Pencil, eTool.Brush, eTool.Eraser, eTool.Clone, eTool.Fill, eTool.Eyedropper, eTool.Text, eTool.Line, eTool.Blur, eTool.Sharpen, eTool.DodgeBurn, eTool.Zoom };
+			m_glyphs = new string[] { "✛︎", "⬚", "◯", "⬠", "✦︎", "✎︎", "▨", "▭", "⎘", "▣", "◉", "T", "╱", "○", "◭", "◐", "◎" };
+			m_names = new string[] { "Move", "Rectangle Select", "Ellipse Select", "Poly Lasso", "Magic Wand", "Pencil", "Brush", "Eraser", "Clone (Alt-click sets source)", "Fill", "Eyedropper", "Text", "Line", "Blur", "Sharpen", "Dodge / Burn (Alt = Burn)", "Zoom" };
 			m_buttons = new Border[m_tools.Length];
 
 			Grid grid = new Grid();

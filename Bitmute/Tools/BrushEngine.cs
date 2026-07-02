@@ -394,6 +394,37 @@ namespace Bitmute.Tools
 						destinationPixel[3] = originalPixel[3];
 						continue;
 					}
+					if (m_op == eBrushOp.Clone)
+					{
+						int cloneX = bitmapX - m_cloneOffsetX;
+						int cloneY = bitmapY - m_cloneOffsetY;
+						if (cloneX < 0 || cloneY < 0 || cloneX >= m_width || cloneY >= m_height)
+						{
+							continue;
+						}
+						byte* clonePixel = originalPixels + (cloneY * originalRowBytes) + (cloneX * 4);
+						double cloneCoverage = finalAlpha * (clonePixel[3] / 255.0);
+						if (cloneCoverage <= 0.0)
+						{
+							continue;
+						}
+						double cloneInverse = 1.0 - cloneCoverage;
+						double cloneOutAlpha = cloneCoverage + (originalAlpha * cloneInverse);
+						if (cloneOutAlpha <= 0.0)
+						{
+							destinationPixel[0] = 0;
+							destinationPixel[1] = 0;
+							destinationPixel[2] = 0;
+							destinationPixel[3] = 0;
+							continue;
+						}
+						double cloneWeighted = originalAlpha * cloneInverse;
+						destinationPixel[0] = ClampByte(((clonePixel[0] * cloneCoverage) + (originalPixel[0] * cloneWeighted)) / cloneOutAlpha);
+						destinationPixel[1] = ClampByte(((clonePixel[1] * cloneCoverage) + (originalPixel[1] * cloneWeighted)) / cloneOutAlpha);
+						destinationPixel[2] = ClampByte(((clonePixel[2] * cloneCoverage) + (originalPixel[2] * cloneWeighted)) / cloneOutAlpha);
+						destinationPixel[3] = (byte)((cloneOutAlpha * 255.0) + 0.5);
+						continue;
+					}
 					double sourceRed = m_red;
 					double sourceGreen = m_green;
 					double sourceBlue = m_blue;
