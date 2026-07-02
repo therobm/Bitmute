@@ -5,6 +5,8 @@ namespace Bitmute.Tools
 {
 	public class RectangleSelectTool : Tool
 	{
+		private const int MinimumSpan = 3;
+
 		private int m_startX;
 		private int m_startY;
 
@@ -38,6 +40,13 @@ namespace Bitmute.Tools
 				int swap = top;
 				top = bottom;
 				bottom = swap;
+			}
+			int spanX = (right + 1) - left;
+			int spanY = (bottom + 1) - top;
+			if (spanX < MinimumSpan || spanY < MinimumSpan)
+			{
+				document.Selection().Clear();
+				return false;
 			}
 			SKRectI rect = new SKRectI(left, top, right + 1, bottom + 1);
 			document.Selection().SelectRect(rect);

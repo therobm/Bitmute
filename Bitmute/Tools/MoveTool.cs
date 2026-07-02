@@ -15,8 +15,11 @@ namespace Bitmute.Tools
 		private int m_oldOffsetX;
 		private int m_oldOffsetY;
 
-		private SKBitmap ExtractSelected(SKBitmap source, Selection selection)
+		private SKBitmap ExtractSelected(Layer layer, Selection selection)
 		{
+			SKBitmap source = layer.Bitmap();
+			int offsetX = layer.OffsetX();
+			int offsetY = layer.OffsetY();
 			int width = source.Width;
 			int height = source.Height;
 			SKBitmap moving = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
@@ -26,27 +29,45 @@ namespace Bitmute.Tools
 			{
 				for (int x = bounds.Left; x < bounds.Right; x++)
 				{
-					if (selection.IsSelected(x, y))
+					if (!selection.IsSelected(x, y))
 					{
-						moving.SetPixel(x, y, source.GetPixel(x, y));
+						continue;
 					}
+					int bitmapX = x - offsetX;
+					int bitmapY = y - offsetY;
+					if (bitmapX < 0 || bitmapY < 0 || bitmapX >= width || bitmapY >= height)
+					{
+						continue;
+					}
+					moving.SetPixel(bitmapX, bitmapY, source.GetPixel(bitmapX, bitmapY));
 				}
 			}
 			return moving;
 		}
 
-		private SKBitmap CloneWithSelectionCleared(SKBitmap source, Selection selection)
+		private SKBitmap CloneWithSelectionCleared(Layer layer, Selection selection)
 		{
-			SKBitmap remainder = source.Copy();
+			SKBitmap remainder = layer.Bitmap().Copy();
+			int offsetX = layer.OffsetX();
+			int offsetY = layer.OffsetY();
+			int width = remainder.Width;
+			int height = remainder.Height;
 			SKRectI bounds = selection.Bounds();
 			for (int y = bounds.Top; y < bounds.Bottom; y++)
 			{
 				for (int x = bounds.Left; x < bounds.Right; x++)
 				{
-					if (selection.IsSelected(x, y))
+					if (!selection.IsSelected(x, y))
 					{
-						remainder.SetPixel(x, y, SKColors.Transparent);
+						continue;
 					}
+					int bitmapX = x - offsetX;
+					int bitmapY = y - offsetY;
+					if (bitmapX < 0 || bitmapY < 0 || bitmapX >= width || bitmapY >= height)
+					{
+						continue;
+					}
+					remainder.SetPixel(bitmapX, bitmapY, SKColors.Transparent);
 				}
 			}
 			return remainder;
@@ -101,8 +122,8 @@ namespace Bitmute.Tools
 			if (selection.IsActive())
 			{
 				m_offsetMode = false;
-				m_moving = ExtractSelected(layer.Bitmap(), selection);
-				m_static = CloneWithSelectionCleared(layer.Bitmap(), selection);
+				m_moving = ExtractSelected(layer, selection);
+				m_static = CloneWithSelectionCleared(layer, selection);
 				m_selectionMask = selection.MaskCopy();
 				m_selectionBounds = selection.Bounds();
 			}
