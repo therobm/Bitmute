@@ -99,7 +99,40 @@ namespace Bitmute.UI
 			tap.Tapped += OnMenuButtonTapped;
 			button.GestureRecognizers.Add(tap);
 
+			PointerGestureRecognizer pointer = new PointerGestureRecognizer();
+			pointer.PointerEntered += OnMenuButtonPointerEntered;
+			button.GestureRecognizers.Add(pointer);
+
 			return button;
+		}
+
+		private int FindMenuButtonIndex(object sender)
+		{
+			for (int index = 0; index < m_menuButtons.Length; index++)
+			{
+				if (ReferenceEquals(m_menuButtons[index], sender))
+				{
+					return index;
+				}
+			}
+			return -1;
+		}
+
+		private void OnMenuButtonPointerEntered(object sender, PointerEventArgs eventArgs)
+		{
+			if (m_openMenuIndex < 0)
+			{
+				return;
+			}
+			int index = FindMenuButtonIndex(sender);
+			if (index < 0)
+			{
+				return;
+			}
+			if (index != m_openMenuIndex)
+			{
+				OpenMenu(index);
+			}
 		}
 
 		private View BuildMenuBar()
@@ -125,19 +158,17 @@ namespace Bitmute.UI
 
 		private void OnMenuButtonTapped(object sender, TappedEventArgs eventArgs)
 		{
-			for (int index = 0; index < m_menuButtons.Length; index++)
+			int index = FindMenuButtonIndex(sender);
+			if (index < 0)
 			{
-				if (ReferenceEquals(m_menuButtons[index], sender))
-				{
-					if (m_openMenuIndex == index)
-					{
-						CloseMenu();
-						return;
-					}
-					OpenMenu(index);
-					return;
-				}
+				return;
 			}
+			if (m_openMenuIndex == index)
+			{
+				CloseMenu();
+				return;
+			}
+			OpenMenu(index);
 		}
 
 		private void OpenMenu(int index)
@@ -170,8 +201,8 @@ namespace Bitmute.UI
 			TapGestureRecognizer catcherTap = new TapGestureRecognizer();
 			catcherTap.Tapped += OnCatcherTapped;
 			catcher.GestureRecognizers.Add(catcherTap);
-			AbsoluteLayout.SetLayoutFlags(catcher, AbsoluteLayoutFlags.All);
-			AbsoluteLayout.SetLayoutBounds(catcher, new Rect(0.0, 0.0, 1.0, 1.0));
+			AbsoluteLayout.SetLayoutFlags(catcher, AbsoluteLayoutFlags.WidthProportional | AbsoluteLayoutFlags.HeightProportional);
+			AbsoluteLayout.SetLayoutBounds(catcher, new Rect(0.0, UiConstants.MenuBarHeight, 1.0, 1.0));
 			m_overlay.Add(catcher);
 
 			double dropdownX = m_menuButtons[index].Bounds.X;
