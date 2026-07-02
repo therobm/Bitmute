@@ -150,6 +150,11 @@ namespace Bitmute.Imaging
 			return m_selection;
 		}
 
+		public SKBitmap StrokeSnapshot()
+		{
+			return m_strokeSnapshot;
+		}
+
 		public void BeginStroke()
 		{
 			if (m_strokeSnapshot != null)

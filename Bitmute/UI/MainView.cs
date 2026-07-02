@@ -36,6 +36,15 @@ namespace Bitmute.UI
 		private Label m_optionsToolLabel;
 		private Slider m_brushSizeSlider;
 		private Label m_brushSizeValue;
+		private Label m_brushHardnessLabel;
+		private Slider m_brushHardnessSlider;
+		private Label m_brushHardnessValue;
+		private Label m_brushOpacityLabel;
+		private Slider m_brushOpacitySlider;
+		private Label m_brushOpacityValue;
+		private Label m_brushFlowLabel;
+		private Slider m_brushFlowSlider;
+		private Label m_brushFlowValue;
 		private Label m_lineAntiAliasLabel;
 		private CheckBox m_lineAntiAliasCheck;
 		private Label m_statusInfoLabel;
@@ -646,6 +655,72 @@ namespace Bitmute.UI
 			m_brushSizeValue.WidthRequest = 44.0;
 			m_brushSizeValue.VerticalOptions = LayoutOptions.Center;
 
+			m_brushHardnessLabel = new Label();
+			m_brushHardnessLabel.Text = "Hardness";
+			m_brushHardnessLabel.TextColor = UiConstants.TextDim;
+			m_brushHardnessLabel.FontSize = 12.0;
+			m_brushHardnessLabel.VerticalOptions = LayoutOptions.Center;
+			m_brushHardnessLabel.IsVisible = false;
+
+			m_brushHardnessSlider = new Slider();
+			m_brushHardnessSlider.Minimum = 0.0;
+			m_brushHardnessSlider.Maximum = 100.0;
+			m_brushHardnessSlider.WidthRequest = 90.0;
+			m_brushHardnessSlider.VerticalOptions = LayoutOptions.Center;
+			m_brushHardnessSlider.IsVisible = false;
+			m_brushHardnessSlider.ValueChanged += OnBrushHardnessChanged;
+
+			m_brushHardnessValue = new Label();
+			m_brushHardnessValue.TextColor = UiConstants.OnSurface;
+			m_brushHardnessValue.FontSize = 12.0;
+			m_brushHardnessValue.WidthRequest = 40.0;
+			m_brushHardnessValue.VerticalOptions = LayoutOptions.Center;
+			m_brushHardnessValue.IsVisible = false;
+
+			m_brushOpacityLabel = new Label();
+			m_brushOpacityLabel.Text = "Opacity";
+			m_brushOpacityLabel.TextColor = UiConstants.TextDim;
+			m_brushOpacityLabel.FontSize = 12.0;
+			m_brushOpacityLabel.VerticalOptions = LayoutOptions.Center;
+			m_brushOpacityLabel.IsVisible = false;
+
+			m_brushOpacitySlider = new Slider();
+			m_brushOpacitySlider.Minimum = 1.0;
+			m_brushOpacitySlider.Maximum = 100.0;
+			m_brushOpacitySlider.WidthRequest = 90.0;
+			m_brushOpacitySlider.VerticalOptions = LayoutOptions.Center;
+			m_brushOpacitySlider.IsVisible = false;
+			m_brushOpacitySlider.ValueChanged += OnBrushOpacityChanged;
+
+			m_brushOpacityValue = new Label();
+			m_brushOpacityValue.TextColor = UiConstants.OnSurface;
+			m_brushOpacityValue.FontSize = 12.0;
+			m_brushOpacityValue.WidthRequest = 40.0;
+			m_brushOpacityValue.VerticalOptions = LayoutOptions.Center;
+			m_brushOpacityValue.IsVisible = false;
+
+			m_brushFlowLabel = new Label();
+			m_brushFlowLabel.Text = "Flow";
+			m_brushFlowLabel.TextColor = UiConstants.TextDim;
+			m_brushFlowLabel.FontSize = 12.0;
+			m_brushFlowLabel.VerticalOptions = LayoutOptions.Center;
+			m_brushFlowLabel.IsVisible = false;
+
+			m_brushFlowSlider = new Slider();
+			m_brushFlowSlider.Minimum = 1.0;
+			m_brushFlowSlider.Maximum = 100.0;
+			m_brushFlowSlider.WidthRequest = 90.0;
+			m_brushFlowSlider.VerticalOptions = LayoutOptions.Center;
+			m_brushFlowSlider.IsVisible = false;
+			m_brushFlowSlider.ValueChanged += OnBrushFlowChanged;
+
+			m_brushFlowValue = new Label();
+			m_brushFlowValue.TextColor = UiConstants.OnSurface;
+			m_brushFlowValue.FontSize = 12.0;
+			m_brushFlowValue.WidthRequest = 40.0;
+			m_brushFlowValue.VerticalOptions = LayoutOptions.Center;
+			m_brushFlowValue.IsVisible = false;
+
 			m_lineAntiAliasLabel = new Label();
 			m_lineAntiAliasLabel.Text = "Anti-alias";
 			m_lineAntiAliasLabel.TextColor = UiConstants.TextDim;
@@ -664,12 +739,27 @@ namespace Bitmute.UI
 			options.Add(sizeLabel);
 			options.Add(m_brushSizeSlider);
 			options.Add(m_brushSizeValue);
+			options.Add(m_brushHardnessLabel);
+			options.Add(m_brushHardnessSlider);
+			options.Add(m_brushHardnessValue);
+			options.Add(m_brushOpacityLabel);
+			options.Add(m_brushOpacitySlider);
+			options.Add(m_brushOpacityValue);
+			options.Add(m_brushFlowLabel);
+			options.Add(m_brushFlowSlider);
+			options.Add(m_brushFlowValue);
 			options.Add(m_lineAntiAliasLabel);
 			options.Add(m_lineAntiAliasCheck);
 			Grid.SetColumn(options, 1);
 			bar.Add(options);
 
 			m_brushSizeSlider.Value = m_toolState.BrushSize();
+			m_brushHardnessSlider.Value = m_toolState.BrushHardness();
+			m_brushHardnessValue.Text = m_toolState.BrushHardness() + "%";
+			m_brushOpacitySlider.Value = m_toolState.BrushOpacity();
+			m_brushOpacityValue.Text = m_toolState.BrushOpacity() + "%";
+			m_brushFlowSlider.Value = m_toolState.BrushFlow();
+			m_brushFlowValue.Text = m_toolState.BrushFlow() + "%";
 			m_lineAntiAliasCheck.IsChecked = m_toolState.LineAntiAlias();
 
 			return bar;
@@ -1321,9 +1411,64 @@ namespace Bitmute.UI
 			{
 				m_lineAntiAliasCheck.IsVisible = isLine;
 			}
+			bool isBrush = tool == eTool.Brush;
+			if (m_brushHardnessLabel != null)
+			{
+				m_brushHardnessLabel.IsVisible = isBrush;
+				m_brushHardnessSlider.IsVisible = isBrush;
+				m_brushHardnessValue.IsVisible = isBrush;
+				m_brushOpacityLabel.IsVisible = isBrush;
+				m_brushOpacitySlider.IsVisible = isBrush;
+				m_brushOpacityValue.IsVisible = isBrush;
+				m_brushFlowLabel.IsVisible = isBrush;
+				m_brushFlowSlider.IsVisible = isBrush;
+				m_brushFlowValue.IsVisible = isBrush;
+			}
 			if (m_lassoTool != null)
 			{
 				m_lassoTool.Reset();
+			}
+		}
+
+		private void OnBrushHardnessChanged(object sender, ValueChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			int hardness = (int)m_brushHardnessSlider.Value;
+			m_toolState.SetBrushHardness(hardness);
+			if (m_brushHardnessValue != null)
+			{
+				m_brushHardnessValue.Text = hardness + "%";
+			}
+		}
+
+		private void OnBrushOpacityChanged(object sender, ValueChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			int opacity = (int)m_brushOpacitySlider.Value;
+			m_toolState.SetBrushOpacity(opacity);
+			if (m_brushOpacityValue != null)
+			{
+				m_brushOpacityValue.Text = opacity + "%";
+			}
+		}
+
+		private void OnBrushFlowChanged(object sender, ValueChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			int flow = (int)m_brushFlowSlider.Value;
+			m_toolState.SetBrushFlow(flow);
+			if (m_brushFlowValue != null)
+			{
+				m_brushFlowValue.Text = flow + "%";
 			}
 		}
 

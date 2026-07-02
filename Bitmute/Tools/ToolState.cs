@@ -8,6 +8,9 @@ namespace Bitmute.Tools
 		private SKColor m_foreground;
 		private SKColor m_background;
 		private int m_brushSize;
+		private int m_brushHardness;
+		private int m_brushOpacity;
+		private int m_brushFlow;
 		private int m_fillTolerance;
 		private bool m_lineAntiAlias;
 		private bool m_shiftHeld;
@@ -19,6 +22,9 @@ namespace Bitmute.Tools
 			m_foreground = new SKColor(0, 0, 0, 255);
 			m_background = new SKColor(255, 255, 255, 255);
 			m_brushSize = 6;
+			m_brushHardness = 100;
+			m_brushOpacity = 100;
+			m_brushFlow = 100;
 			m_fillTolerance = 0;
 			m_lineAntiAlias = false;
 			m_shiftHeld = false;
@@ -97,6 +103,60 @@ namespace Bitmute.Tools
 				size = 1;
 			}
 			m_brushSize = size;
+		}
+
+		public int BrushHardness()
+		{
+			return m_brushHardness;
+		}
+
+		public void SetBrushHardness(int hardness)
+		{
+			if (hardness < 0)
+			{
+				hardness = 0;
+			}
+			if (hardness > 100)
+			{
+				hardness = 100;
+			}
+			m_brushHardness = hardness;
+		}
+
+		public int BrushOpacity()
+		{
+			return m_brushOpacity;
+		}
+
+		public void SetBrushOpacity(int opacity)
+		{
+			if (opacity < 1)
+			{
+				opacity = 1;
+			}
+			if (opacity > 100)
+			{
+				opacity = 100;
+			}
+			m_brushOpacity = opacity;
+		}
+
+		public int BrushFlow()
+		{
+			return m_brushFlow;
+		}
+
+		public void SetBrushFlow(int flow)
+		{
+			if (flow < 1)
+			{
+				flow = 1;
+			}
+			if (flow > 100)
+			{
+				flow = 100;
+			}
+			m_brushFlow = flow;
 		}
 
 		public int FillTolerance()
