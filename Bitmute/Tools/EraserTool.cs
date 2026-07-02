@@ -16,6 +16,7 @@ namespace Bitmute.Tools
 			}
 			int radius = state.BrushSize() / 2;
 			DrawDab(layer, x, y, radius, s_clear, document.Selection());
+			MarkStrokeDirty(document, x, y, x, y, radius);
 			m_lastX = x;
 			m_lastY = y;
 			m_hasLast = true;
@@ -33,10 +34,12 @@ namespace Bitmute.Tools
 			if (m_hasLast)
 			{
 				StrokeLine(layer, m_lastX, m_lastY, x, y, radius, s_clear, document.Selection());
+				MarkStrokeDirty(document, m_lastX, m_lastY, x, y, radius);
 			}
 			else
 			{
 				DrawDab(layer, x, y, radius, s_clear, document.Selection());
+				MarkStrokeDirty(document, x, y, x, y, radius);
 			}
 			m_lastX = x;
 			m_lastY = y;

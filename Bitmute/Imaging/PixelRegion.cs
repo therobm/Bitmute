@@ -15,8 +15,37 @@ namespace Bitmute.Imaging
 
 		public static SKRectI ComputeDirtyRect(SKBitmap before, SKBitmap after)
 		{
+			return ComputeDirtyRect(before, after, new SKRectI(0, 0, before.Width, before.Height));
+		}
+
+		public static SKRectI ComputeDirtyRect(SKBitmap before, SKBitmap after, SKRectI searchRect)
+		{
 			int width = before.Width;
 			int height = before.Height;
+			int scanLeft = searchRect.Left;
+			int scanTop = searchRect.Top;
+			int scanRight = searchRect.Right;
+			int scanBottom = searchRect.Bottom;
+			if (scanLeft < 0)
+			{
+				scanLeft = 0;
+			}
+			if (scanTop < 0)
+			{
+				scanTop = 0;
+			}
+			if (scanRight > width)
+			{
+				scanRight = width;
+			}
+			if (scanBottom > height)
+			{
+				scanBottom = height;
+			}
+			if (scanRight <= scanLeft || scanBottom <= scanTop)
+			{
+				return SKRectI.Empty;
+			}
 			byte[] beforeBytes = ReadBytes(before);
 			byte[] afterBytes = ReadBytes(after);
 			int rowBytes = width * 4;
@@ -26,10 +55,10 @@ namespace Bitmute.Imaging
 			int maxX = -1;
 			int maxY = -1;
 
-			for (int y = 0; y < height; y++)
+			for (int y = scanTop; y < scanBottom; y++)
 			{
 				int rowStart = y * rowBytes;
-				for (int x = 0; x < width; x++)
+				for (int x = scanLeft; x < scanRight; x++)
 				{
 					int index = rowStart + (x * 4);
 					bool differs = beforeBytes[index] != afterBytes[index] || beforeBytes[index + 1] != afterBytes[index + 1] || beforeBytes[index + 2] != afterBytes[index + 2] || beforeBytes[index + 3] != afterBytes[index + 3];

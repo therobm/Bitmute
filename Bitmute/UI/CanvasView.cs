@@ -22,7 +22,6 @@ namespace Bitmute.UI
 
 		private Document m_document;
 		private SKBitmap m_composite;
-		private bool m_composeDirty;
 		private float m_zoom;
 		private float m_offsetX;
 		private float m_offsetY;
@@ -55,19 +54,49 @@ namespace Bitmute.UI
 			return s_checkerTile;
 		}
 
-		private void EnsureComposite()
+		private bool EnsureComposite()
 		{
 			int width = m_document.Width();
 			int height = m_document.Height();
 			if (m_composite != null && m_composite.Width == width && m_composite.Height == height)
 			{
-				return;
+				return false;
 			}
 			if (m_composite != null)
 			{
 				m_composite.Dispose();
 			}
 			m_composite = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+			return true;
+		}
+
+		private SKRectI ClampRegionToCanvas(SKRectI rect)
+		{
+			int left = rect.Left;
+			int top = rect.Top;
+			int right = rect.Right;
+			int bottom = rect.Bottom;
+			if (left < 0)
+			{
+				left = 0;
+			}
+			if (top < 0)
+			{
+				top = 0;
+			}
+			if (right > m_document.Width())
+			{
+				right = m_document.Width();
+			}
+			if (bottom > m_document.Height())
+			{
+				bottom = m_document.Height();
+			}
+			if (right <= left || bottom <= top)
+			{
+				return SKRectI.Empty;
+			}
+			return new SKRectI(left, top, right, bottom);
 		}
 
 		private void OnPaintSurface(object sender, SKPaintSurfaceEventArgs eventArgs)
@@ -81,11 +110,20 @@ namespace Bitmute.UI
 				return;
 			}
 
-			if (m_composeDirty || m_composite == null)
+			bool recreated = EnsureComposite();
+			if (recreated || m_document.ComposeDirtyAll())
 			{
-				EnsureComposite();
 				m_document.CompositeInto(m_composite);
-				m_composeDirty = false;
+				m_document.ClearComposeDirty();
+			}
+			else if (m_document.ComposeDirtyAny())
+			{
+				SKRectI region = ClampRegionToCanvas(m_document.ComposeDirtyRect());
+				if (region.Width > 0 && region.Height > 0)
+				{
+					m_document.CompositeRegion(m_composite, region);
+				}
+				m_document.ClearComposeDirty();
 			}
 
 			float docWidth = m_document.Width();
@@ -249,7 +287,6 @@ namespace Bitmute.UI
 			m_zoom = 1.0f;
 			m_offsetX = 0.0f;
 			m_offsetY = 0.0f;
-			m_composeDirty = true;
 			m_viewInitialized = false;
 			m_wheelHooked = false;
 			m_antPhase = 0.0f;
@@ -426,7 +463,14 @@ namespace Bitmute.UI
 
 			if (changed)
 			{
-				MarkComposeDirty();
+				if (m_document.ComposeDirtyAny())
+				{
+					InvalidateSurface();
+				}
+				else
+				{
+					MarkComposeDirty();
+				}
 			}
 			if (tool is EyedropperTool)
 			{
@@ -518,7 +562,7 @@ namespace Bitmute.UI
 
 		public void MarkComposeDirty()
 		{
-			m_composeDirty = true;
+			m_document.MarkComposeDirtyAll();
 			InvalidateSurface();
 		}
 

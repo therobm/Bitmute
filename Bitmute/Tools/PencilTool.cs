@@ -12,6 +12,7 @@ namespace Bitmute.Tools
 				return false;
 			}
 			DrawDab(layer, x, y, 0, state.Foreground(), document.Selection());
+			MarkStrokeDirty(document, x, y, x, y, 0);
 			m_lastX = x;
 			m_lastY = y;
 			m_hasLast = true;
@@ -28,10 +29,12 @@ namespace Bitmute.Tools
 			if (m_hasLast)
 			{
 				StrokeLine(layer, m_lastX, m_lastY, x, y, 0, state.Foreground(), document.Selection());
+				MarkStrokeDirty(document, m_lastX, m_lastY, x, y, 0);
 			}
 			else
 			{
 				DrawDab(layer, x, y, 0, state.Foreground(), document.Selection());
+				MarkStrokeDirty(document, x, y, x, y, 0);
 			}
 			m_lastX = x;
 			m_lastY = y;

@@ -17,6 +17,11 @@ namespace Bitmute.Imaging
 		private SKBitmap m_strokeSnapshot;
 		private int m_strokeLayerIndex;
 		private Selection m_selection;
+		private SKRectI m_composeDirtyRect;
+		private bool m_composeDirtyAny;
+		private bool m_composeDirtyAll;
+		private SKRectI m_strokeDirtyRect;
+		private bool m_strokeDirtyValid;
 
 		public static Document OpenImage(string title, SKBitmap source)
 		{
@@ -40,6 +45,90 @@ namespace Bitmute.Imaging
 			m_strokeSnapshot = null;
 			m_strokeLayerIndex = 0;
 			m_selection = new Selection(width, height);
+			m_composeDirtyRect = SKRectI.Empty;
+			m_composeDirtyAny = false;
+			m_composeDirtyAll = false;
+			m_strokeDirtyRect = SKRectI.Empty;
+			m_strokeDirtyValid = false;
+		}
+
+		private static SKRectI UnionRects(SKRectI first, SKRectI second)
+		{
+			int left = first.Left;
+			if (second.Left < left)
+			{
+				left = second.Left;
+			}
+			int top = first.Top;
+			if (second.Top < top)
+			{
+				top = second.Top;
+			}
+			int right = first.Right;
+			if (second.Right > right)
+			{
+				right = second.Right;
+			}
+			int bottom = first.Bottom;
+			if (second.Bottom > bottom)
+			{
+				bottom = second.Bottom;
+			}
+			return new SKRectI(left, top, right, bottom);
+		}
+
+		public void MarkComposeDirtyAll()
+		{
+			m_composeDirtyAny = true;
+			m_composeDirtyAll = true;
+		}
+
+		public void MarkComposeDirtyRegion(SKRectI canvasRect)
+		{
+			if (canvasRect.Width <= 0 || canvasRect.Height <= 0)
+			{
+				return;
+			}
+			if (!m_composeDirtyAny || m_composeDirtyRect.Width <= 0)
+			{
+				m_composeDirtyRect = canvasRect;
+			}
+			else
+			{
+				m_composeDirtyRect = UnionRects(m_composeDirtyRect, canvasRect);
+			}
+			m_composeDirtyAny = true;
+			if (!m_strokeDirtyValid)
+			{
+				m_strokeDirtyRect = canvasRect;
+				m_strokeDirtyValid = true;
+			}
+			else
+			{
+				m_strokeDirtyRect = UnionRects(m_strokeDirtyRect, canvasRect);
+			}
+		}
+
+		public bool ComposeDirtyAny()
+		{
+			return m_composeDirtyAny;
+		}
+
+		public bool ComposeDirtyAll()
+		{
+			return m_composeDirtyAll;
+		}
+
+		public SKRectI ComposeDirtyRect()
+		{
+			return m_composeDirtyRect;
+		}
+
+		public void ClearComposeDirty()
+		{
+			m_composeDirtyRect = SKRectI.Empty;
+			m_composeDirtyAny = false;
+			m_composeDirtyAll = false;
 		}
 
 		public Selection Selection()
@@ -61,6 +150,8 @@ namespace Bitmute.Imaging
 			}
 			m_strokeLayerIndex = m_activeLayerIndex;
 			m_strokeSnapshot = active.Bitmap().Copy();
+			m_strokeDirtyRect = SKRectI.Empty;
+			m_strokeDirtyValid = false;
 		}
 
 		public void EndStroke()
@@ -82,7 +173,39 @@ namespace Bitmute.Imaging
 				m_strokeSnapshot = null;
 				return;
 			}
-			SKRectI rect = PixelRegion.ComputeDirtyRect(m_strokeSnapshot, current);
+			SKRectI searchRect = new SKRectI(0, 0, current.Width, current.Height);
+			if (m_strokeDirtyValid)
+			{
+				Layer strokeLayer = m_layers[m_strokeLayerIndex];
+				int bitmapLeft = m_strokeDirtyRect.Left - strokeLayer.OffsetX();
+				int bitmapTop = m_strokeDirtyRect.Top - strokeLayer.OffsetY();
+				int bitmapRight = m_strokeDirtyRect.Right - strokeLayer.OffsetX();
+				int bitmapBottom = m_strokeDirtyRect.Bottom - strokeLayer.OffsetY();
+				if (bitmapLeft < 0)
+				{
+					bitmapLeft = 0;
+				}
+				if (bitmapTop < 0)
+				{
+					bitmapTop = 0;
+				}
+				if (bitmapRight > current.Width)
+				{
+					bitmapRight = current.Width;
+				}
+				if (bitmapBottom > current.Height)
+				{
+					bitmapBottom = current.Height;
+				}
+				if (bitmapRight <= bitmapLeft || bitmapBottom <= bitmapTop)
+				{
+					m_strokeSnapshot.Dispose();
+					m_strokeSnapshot = null;
+					return;
+				}
+				searchRect = new SKRectI(bitmapLeft, bitmapTop, bitmapRight, bitmapBottom);
+			}
+			SKRectI rect = PixelRegion.ComputeDirtyRect(m_strokeSnapshot, current, searchRect);
 			if (rect.Width <= 0 || rect.Height <= 0)
 			{
 				m_strokeSnapshot.Dispose();
@@ -216,10 +339,8 @@ namespace Bitmute.Imaging
 			}
 		}
 
-		public void CompositeInto(SKBitmap target)
+		private void DrawLayers(SKCanvas canvas)
 		{
-			SKCanvas canvas = new SKCanvas(target);
-			canvas.Clear(SKColors.Transparent);
 			SKPaint paint = new SKPaint();
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
 			for (int index = 0; index < m_layers.Count; index++)
@@ -236,6 +357,29 @@ namespace Bitmute.Imaging
 				image.Dispose();
 			}
 			paint.Dispose();
+		}
+
+		public void CompositeInto(SKBitmap target)
+		{
+			SKCanvas canvas = new SKCanvas(target);
+			canvas.Clear(SKColors.Transparent);
+			DrawLayers(canvas);
+			canvas.Dispose();
+		}
+
+		public void CompositeRegion(SKBitmap target, SKRectI region)
+		{
+			SKCanvas canvas = new SKCanvas(target);
+			SKRect clipRect = new SKRect(region.Left, region.Top, region.Right, region.Bottom);
+			canvas.Save();
+			canvas.ClipRect(clipRect);
+			SKPaint clearPaint = new SKPaint();
+			clearPaint.Color = SKColors.Transparent;
+			clearPaint.BlendMode = SKBlendMode.Src;
+			canvas.DrawRect(clipRect, clearPaint);
+			clearPaint.Dispose();
+			DrawLayers(canvas);
+			canvas.Restore();
 			canvas.Dispose();
 		}
 	}

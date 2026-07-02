@@ -9,31 +9,52 @@ namespace Bitmute.Tools
 		protected int m_lastY;
 		protected bool m_hasLast;
 
-		protected void SetPixelClamped(Layer layer, int x, int y, SKColor color, Selection selection)
+		protected unsafe void DrawDab(Layer layer, int centerX, int centerY, int radius, SKColor color, Selection selection)
 		{
-			if (selection != null && selection.IsActive() && !selection.IsSelected(x, y))
-			{
-				return;
-			}
-			layer.SetPixelCanvas(x, y, color);
-		}
-
-		protected void DrawDab(Layer layer, int centerX, int centerY, int radius, SKColor color, Selection selection)
-		{
-			if (radius <= 0)
-			{
-				SetPixelClamped(layer, centerX, centerY, color, selection);
-				return;
-			}
+			SKBitmap bitmap = layer.Bitmap();
+			int width = bitmap.Width;
+			int height = bitmap.Height;
+			int rowBytes = bitmap.RowBytes;
+			int layerOffsetX = layer.OffsetX();
+			int layerOffsetY = layer.OffsetY();
+			byte* pixels = (byte*)bitmap.GetPixels().ToPointer();
+			byte red = color.Red;
+			byte green = color.Green;
+			byte blue = color.Blue;
+			byte alpha = color.Alpha;
+			bool clip = selection != null && selection.IsActive();
 			int radiusSquared = radius * radius;
 			for (int offsetY = -radius; offsetY <= radius; offsetY++)
 			{
+				int canvasY = centerY + offsetY;
+				int bitmapY = canvasY - layerOffsetY;
+				if (bitmapY < 0 || bitmapY >= height)
+				{
+					continue;
+				}
+				int offsetYSquared = offsetY * offsetY;
+				byte* rowStart = pixels + (bitmapY * rowBytes);
 				for (int offsetX = -radius; offsetX <= radius; offsetX++)
 				{
-					if ((offsetX * offsetX) + (offsetY * offsetY) <= radiusSquared)
+					if ((offsetX * offsetX) + offsetYSquared > radiusSquared)
 					{
-						SetPixelClamped(layer, centerX + offsetX, centerY + offsetY, color, selection);
+						continue;
 					}
+					int canvasX = centerX + offsetX;
+					if (clip && !selection.IsSelected(canvasX, canvasY))
+					{
+						continue;
+					}
+					int bitmapX = canvasX - layerOffsetX;
+					if (bitmapX < 0 || bitmapX >= width)
+					{
+						continue;
+					}
+					byte* pixel = rowStart + (bitmapX * 4);
+					pixel[0] = red;
+					pixel[1] = green;
+					pixel[2] = blue;
+					pixel[3] = alpha;
 				}
 			}
 		}
@@ -60,6 +81,33 @@ namespace Bitmute.Tools
 				int pointY = startY + (int)System.Math.Round(deltaY * fraction);
 				DrawDab(layer, pointX, pointY, radius, color, selection);
 			}
+		}
+
+		protected void MarkStrokeDirty(Document document, int startX, int startY, int endX, int endY, int radius)
+		{
+			int left = startX;
+			if (endX < left)
+			{
+				left = endX;
+			}
+			int right = startX;
+			if (endX > right)
+			{
+				right = endX;
+			}
+			int top = startY;
+			if (endY < top)
+			{
+				top = endY;
+			}
+			int bottom = startY;
+			if (endY > bottom)
+			{
+				bottom = endY;
+			}
+			int pad = radius + 1;
+			SKRectI rect = new SKRectI(left - pad, top - pad, right + pad + 1, bottom + pad + 1);
+			document.MarkComposeDirtyRegion(rect);
 		}
 
 		public virtual bool IsDestructive()
