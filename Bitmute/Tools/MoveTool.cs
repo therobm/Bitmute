@@ -171,7 +171,10 @@ namespace Bitmute.Tools
 				{
 					if (layer.OffsetX() != m_oldOffsetX || layer.OffsetY() != m_oldOffsetY)
 					{
-						document.PushCommand(new MoveLayerCommand(document.ActiveLayerIndex(), m_oldOffsetX, m_oldOffsetY, layer.OffsetX(), layer.OffsetY()));
+						SKBitmap oldBitmap = layer.Bitmap();
+						layer.ExpandToCover(document.Width(), document.Height());
+						SKBitmap newBitmap = layer.Bitmap();
+						document.PushCommand(new MoveLayerCommand(document.ActiveLayerIndex(), oldBitmap, m_oldOffsetX, m_oldOffsetY, newBitmap, layer.OffsetX(), layer.OffsetY()));
 					}
 				}
 			}

@@ -59,6 +59,11 @@ namespace Bitmute.Imaging
 			return m_bitmap;
 		}
 
+		public void SetBitmap(SKBitmap bitmap)
+		{
+			m_bitmap = bitmap;
+		}
+
 		public int OffsetX()
 		{
 			return m_offsetX;
@@ -73,6 +78,68 @@ namespace Bitmute.Imaging
 		{
 			m_offsetX = offsetX;
 			m_offsetY = offsetY;
+		}
+
+		public void ExpandToCover(int canvasWidth, int canvasHeight)
+		{
+			SKRectI contentLocal = PixelRegion.ComputeContentBounds(m_bitmap);
+			int coverLeft;
+			int coverTop;
+			int coverRight;
+			int coverBottom;
+			if (contentLocal.Width <= 0 || contentLocal.Height <= 0)
+			{
+				coverLeft = 0;
+				coverTop = 0;
+				coverRight = canvasWidth;
+				coverBottom = canvasHeight;
+			}
+			else
+			{
+				int contentLeft = m_offsetX + contentLocal.Left;
+				int contentTop = m_offsetY + contentLocal.Top;
+				int contentRight = m_offsetX + contentLocal.Right;
+				int contentBottom = m_offsetY + contentLocal.Bottom;
+				coverLeft = contentLeft;
+				if (coverLeft > 0)
+				{
+					coverLeft = 0;
+				}
+				coverTop = contentTop;
+				if (coverTop > 0)
+				{
+					coverTop = 0;
+				}
+				coverRight = contentRight;
+				if (coverRight < canvasWidth)
+				{
+					coverRight = canvasWidth;
+				}
+				coverBottom = contentBottom;
+				if (coverBottom < canvasHeight)
+				{
+					coverBottom = canvasHeight;
+				}
+			}
+			int newWidth = coverRight - coverLeft;
+			int newHeight = coverBottom - coverTop;
+			if (newWidth == m_bitmap.Width && newHeight == m_bitmap.Height && coverLeft == m_offsetX && coverTop == m_offsetY)
+			{
+				return;
+			}
+			SKBitmap grown = new SKBitmap(newWidth, newHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			grown.Erase(SKColors.Transparent);
+			SKCanvas canvas = new SKCanvas(grown);
+			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
+			SKImage image = SKImage.FromBitmap(m_bitmap);
+			SKPaint paint = new SKPaint();
+			canvas.DrawImage(image, m_offsetX - coverLeft, m_offsetY - coverTop, sampling, paint);
+			paint.Dispose();
+			image.Dispose();
+			canvas.Dispose();
+			m_bitmap = grown;
+			m_offsetX = coverLeft;
+			m_offsetY = coverTop;
 		}
 
 		public void SetPixelCanvas(int canvasX, int canvasY, SKColor color)

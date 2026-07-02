@@ -76,6 +76,12 @@ namespace Bitmute.Imaging
 				return;
 			}
 			SKBitmap current = m_layers[m_strokeLayerIndex].Bitmap();
+			if (current.Width != m_strokeSnapshot.Width || current.Height != m_strokeSnapshot.Height)
+			{
+				m_strokeSnapshot.Dispose();
+				m_strokeSnapshot = null;
+				return;
+			}
 			SKRectI rect = PixelRegion.ComputeDirtyRect(m_strokeSnapshot, current);
 			if (rect.Width <= 0 || rect.Height <= 0)
 			{
