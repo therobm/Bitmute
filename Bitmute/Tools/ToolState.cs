@@ -9,6 +9,8 @@ namespace Bitmute.Tools
 		private SKColor m_background;
 		private int m_brushSize;
 		private int m_fillTolerance;
+		private bool m_lineAntiAlias;
+		private bool m_shiftHeld;
 
 		public ToolState()
 		{
@@ -17,6 +19,28 @@ namespace Bitmute.Tools
 			m_background = new SKColor(255, 255, 255, 255);
 			m_brushSize = 6;
 			m_fillTolerance = 0;
+			m_lineAntiAlias = false;
+			m_shiftHeld = false;
+		}
+
+		public bool LineAntiAlias()
+		{
+			return m_lineAntiAlias;
+		}
+
+		public void SetLineAntiAlias(bool antiAlias)
+		{
+			m_lineAntiAlias = antiAlias;
+		}
+
+		public bool ShiftHeld()
+		{
+			return m_shiftHeld;
+		}
+
+		public void SetShiftHeld(bool shiftHeld)
+		{
+			m_shiftHeld = shiftHeld;
 		}
 
 		public eTool Tool()

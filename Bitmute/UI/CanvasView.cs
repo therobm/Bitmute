@@ -175,6 +175,44 @@ namespace Bitmute.UI
 			borderPaint.Dispose();
 
 			DrawSelection(canvas);
+			DrawToolOverlay(canvas);
+		}
+
+		private void DrawToolOverlay(SKCanvas canvas)
+		{
+			MainView main = MainView.Self;
+			if (main == null)
+			{
+				return;
+			}
+			Tool tool = main.CurrentTool();
+			if (!(tool is LineTool))
+			{
+				return;
+			}
+			LineTool line = (LineTool)tool;
+			if (!line.HasPreview())
+			{
+				return;
+			}
+			float startX = m_offsetX + (line.PreviewStartX() * m_zoom);
+			float startY = m_offsetY + (line.PreviewStartY() * m_zoom);
+			float endX = m_offsetX + (line.PreviewEndX() * m_zoom);
+			float endY = m_offsetY + (line.PreviewEndY() * m_zoom);
+			SKPaint underlay = new SKPaint();
+			underlay.Style = SKPaintStyle.Stroke;
+			underlay.StrokeWidth = 3.0f;
+			underlay.Color = SKColors.Black;
+			underlay.IsAntialias = true;
+			canvas.DrawLine(startX, startY, endX, endY, underlay);
+			underlay.Dispose();
+			SKPaint overlay = new SKPaint();
+			overlay.Style = SKPaintStyle.Stroke;
+			overlay.StrokeWidth = 1.0f;
+			overlay.Color = SKColors.White;
+			overlay.IsAntialias = true;
+			canvas.DrawLine(startX, startY, endX, endY, overlay);
+			overlay.Dispose();
 		}
 
 		private void DrawSelection(SKCanvas canvas)
@@ -436,6 +474,10 @@ namespace Bitmute.UI
 				return;
 			}
 
+			Windows.UI.Core.CoreVirtualKeyStates shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift);
+			bool shiftHeld = (shiftState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
+			state.SetShiftHeld(shiftHeld);
+
 			bool changed = false;
 			if (eventArgs.ActionType == SKTouchAction.Pressed)
 			{
@@ -461,7 +503,8 @@ namespace Bitmute.UI
 				}
 			}
 
-			if (changed)
+			bool needsRepaint = changed || m_document.ComposeDirtyAny();
+			if (needsRepaint)
 			{
 				if (m_document.ComposeDirtyAny())
 				{
@@ -484,6 +527,10 @@ namespace Bitmute.UI
 				{
 					InvalidateSurface();
 				}
+			}
+			if (tool is LineTool)
+			{
+				InvalidateSurface();
 			}
 			eventArgs.Handled = true;
 		}

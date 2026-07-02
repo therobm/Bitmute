@@ -27,6 +27,8 @@ namespace Bitmute.UI
 		private Label m_optionsToolLabel;
 		private Slider m_brushSizeSlider;
 		private Label m_brushSizeValue;
+		private Label m_lineAntiAliasLabel;
+		private CheckBox m_lineAntiAliasCheck;
 		private Label m_statusInfoLabel;
 		private Label m_statusCursorLabel;
 		private string[] m_menuTitles;
@@ -48,6 +50,7 @@ namespace Bitmute.UI
 		private EraserTool m_eraserTool;
 		private EyedropperTool m_eyedropperTool;
 		private FillTool m_fillTool;
+		private LineTool m_lineTool;
 
 		private string[] GetMenuItems(string title)
 		{
@@ -587,16 +590,31 @@ namespace Bitmute.UI
 			m_brushSizeValue.WidthRequest = 44.0;
 			m_brushSizeValue.VerticalOptions = LayoutOptions.Center;
 
+			m_lineAntiAliasLabel = new Label();
+			m_lineAntiAliasLabel.Text = "Anti-alias";
+			m_lineAntiAliasLabel.TextColor = UiConstants.TextDim;
+			m_lineAntiAliasLabel.FontSize = 12.0;
+			m_lineAntiAliasLabel.VerticalOptions = LayoutOptions.Center;
+			m_lineAntiAliasLabel.IsVisible = false;
+
+			m_lineAntiAliasCheck = new CheckBox();
+			m_lineAntiAliasCheck.VerticalOptions = LayoutOptions.Center;
+			m_lineAntiAliasCheck.IsVisible = false;
+			m_lineAntiAliasCheck.CheckedChanged += OnLineAntiAliasChanged;
+
 			HorizontalStackLayout options = new HorizontalStackLayout();
 			options.Spacing = 8.0;
 			options.VerticalOptions = LayoutOptions.Center;
 			options.Add(sizeLabel);
 			options.Add(m_brushSizeSlider);
 			options.Add(m_brushSizeValue);
+			options.Add(m_lineAntiAliasLabel);
+			options.Add(m_lineAntiAliasCheck);
 			Grid.SetColumn(options, 1);
 			bar.Add(options);
 
 			m_brushSizeSlider.Value = m_toolState.BrushSize();
+			m_lineAntiAliasCheck.IsChecked = m_toolState.LineAntiAlias();
 
 			return bar;
 		}
@@ -718,6 +736,7 @@ namespace Bitmute.UI
 			m_eraserTool = new EraserTool();
 			m_eyedropperTool = new EyedropperTool();
 			m_fillTool = new FillTool();
+			m_lineTool = new LineTool();
 
 			View menuBar = BuildMenuBar();
 			View optionsBar = BuildOptionsBar();
@@ -1036,6 +1055,24 @@ namespace Bitmute.UI
 			{
 				m_optionsToolLabel.Text = tool.ToString();
 			}
+			bool isLine = tool == eTool.Line;
+			if (m_lineAntiAliasLabel != null)
+			{
+				m_lineAntiAliasLabel.IsVisible = isLine;
+			}
+			if (m_lineAntiAliasCheck != null)
+			{
+				m_lineAntiAliasCheck.IsVisible = isLine;
+			}
+		}
+
+		private void OnLineAntiAliasChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetLineAntiAlias(m_lineAntiAliasCheck.IsChecked);
 		}
 
 		private void OnBrushSizeChanged(object sender, ValueChangedEventArgs eventArgs)
@@ -1119,6 +1156,10 @@ namespace Bitmute.UI
 			if (tool == eTool.Fill)
 			{
 				return m_fillTool;
+			}
+			if (tool == eTool.Line)
+			{
+				return m_lineTool;
 			}
 			return null;
 		}

@@ -11,6 +11,7 @@ namespace Bitmute.Tools
 		Fill,
 		Eyedropper,
 		Text,
+		Line,
 		Zoom
 	}
 }
