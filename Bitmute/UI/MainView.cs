@@ -1423,19 +1423,19 @@ namespace Bitmute.UI
 			{
 				m_lineAntiAliasCheck.IsVisible = isLine;
 			}
-			bool isBrush = tool == eTool.Brush;
+			bool isBrushFamily = tool == eTool.Brush || tool == eTool.Eraser;
 			if (m_brushHardnessLabel != null)
 			{
-				m_brushHardnessLabel.IsVisible = isBrush;
-				m_brushHardnessSlider.IsVisible = isBrush;
-				m_brushHardnessValue.IsVisible = isBrush;
-				m_brushOpacityLabel.IsVisible = isBrush;
-				m_brushOpacitySlider.IsVisible = isBrush;
-				m_brushOpacityValue.IsVisible = isBrush;
-				m_brushFlowLabel.IsVisible = isBrush;
-				m_brushFlowSlider.IsVisible = isBrush;
-				m_brushFlowValue.IsVisible = isBrush;
-				m_brushSettingsButton.IsVisible = isBrush;
+				m_brushHardnessLabel.IsVisible = isBrushFamily;
+				m_brushHardnessSlider.IsVisible = isBrushFamily;
+				m_brushHardnessValue.IsVisible = isBrushFamily;
+				m_brushOpacityLabel.IsVisible = isBrushFamily;
+				m_brushOpacitySlider.IsVisible = isBrushFamily;
+				m_brushOpacityValue.IsVisible = isBrushFamily;
+				m_brushFlowLabel.IsVisible = isBrushFamily;
+				m_brushFlowSlider.IsVisible = isBrushFamily;
+				m_brushFlowValue.IsVisible = isBrushFamily;
+				m_brushSettingsButton.IsVisible = isBrushFamily;
 			}
 			if (m_lassoTool != null)
 			{

@@ -18,6 +18,7 @@ namespace Bitmute.Tools
 		private double m_opacity;
 		private double m_flow;
 		private bool m_square;
+		private bool m_erase;
 		private double m_spacingPx;
 		private double m_penX;
 		private double m_penY;
@@ -28,7 +29,7 @@ namespace Bitmute.Tools
 		private byte m_blue;
 		private bool m_active;
 
-		public void Begin(Layer layer, SKBitmap original, int radius, double hardness, double opacity, double flow, bool square, double spacingFraction, SKColor color)
+		public void Begin(Layer layer, SKBitmap original, int radius, double hardness, double opacity, double flow, bool square, double spacingFraction, bool erase, SKColor color)
 		{
 			End();
 			SKBitmap bitmap = layer.Bitmap();
@@ -50,6 +51,7 @@ namespace Bitmute.Tools
 			m_opacity = opacity;
 			m_flow = flow;
 			m_square = square;
+			m_erase = erase;
 			int diameter = radius * 2;
 			if (diameter < 1)
 			{
@@ -199,10 +201,19 @@ namespace Bitmute.Tools
 						finalAlpha = m_opacity;
 					}
 					byte* originalPixel = originalPixels + (bitmapY * originalRowBytes) + (bitmapX * 4);
+					byte* destinationPixel = pixels + (bitmapY * rowBytes) + (bitmapX * 4);
 					double originalAlpha = originalPixel[3] / 255.0;
+					if (m_erase)
+					{
+						double erasedAlpha = originalAlpha * (1.0 - finalAlpha);
+						destinationPixel[0] = originalPixel[0];
+						destinationPixel[1] = originalPixel[1];
+						destinationPixel[2] = originalPixel[2];
+						destinationPixel[3] = (byte)((erasedAlpha * 255.0) + 0.5);
+						continue;
+					}
 					double inverse = 1.0 - finalAlpha;
 					double outAlpha = finalAlpha + (originalAlpha * inverse);
-					byte* destinationPixel = pixels + (bitmapY * rowBytes) + (bitmapX * 4);
 					if (outAlpha <= 0.0)
 					{
 						destinationPixel[0] = 0;

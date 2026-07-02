@@ -5,16 +5,25 @@ namespace Bitmute.Tools
 {
 	public class EraserTool : Tool
 	{
-		private static readonly SKColor s_clear = new SKColor(0, 0, 0, 0);
+		private BrushEngine m_engine;
 
-		private static SKColor EraseColor(Layer layer, ToolState state)
+		public EraserTool()
 		{
-			if (layer.IsBackground())
+			m_engine = new BrushEngine();
+		}
+
+		private void BeginStroke(Document document, Layer layer, ToolState state)
+		{
+			int radius = state.BrushSize() / 2;
+			bool background = layer.IsBackground();
+			bool erase = !background;
+			SKColor color = new SKColor(0, 0, 0, 0);
+			if (background)
 			{
-				SKColor background = state.Background();
-				return new SKColor(background.Red, background.Green, background.Blue, 255);
+				SKColor fill = state.Background();
+				color = new SKColor(fill.Red, fill.Green, fill.Blue, 255);
 			}
-			return s_clear;
+			m_engine.Begin(layer, document.StrokeSnapshot(), radius, state.BrushHardness() / 100.0, state.BrushOpacity() / 100.0, state.BrushFlow() / 100.0, state.BrushSquareTip(), state.BrushSpacing() / 100.0, erase, color);
 		}
 
 		public override bool OnPressed(Document document, int x, int y, ToolState state)
@@ -24,8 +33,9 @@ namespace Bitmute.Tools
 			{
 				return false;
 			}
+			BeginStroke(document, layer, state);
+			m_engine.StampFirst(layer, x, y, document.Selection());
 			int radius = state.BrushSize() / 2;
-			DrawDab(layer, x, y, radius, EraseColor(layer, state), document.Selection());
 			MarkStrokeDirty(document, x, y, x, y, radius);
 			m_lastX = x;
 			m_lastY = y;
@@ -40,22 +50,31 @@ namespace Bitmute.Tools
 			{
 				return false;
 			}
+			if (!m_engine.IsActive())
+			{
+				return false;
+			}
 			int radius = state.BrushSize() / 2;
-			SKColor color = EraseColor(layer, state);
 			if (m_hasLast)
 			{
-				StrokeLine(layer, m_lastX, m_lastY, x, y, radius, color, document.Selection());
+				m_engine.StrokeTo(layer, x, y, document.Selection());
 				MarkStrokeDirty(document, m_lastX, m_lastY, x, y, radius);
 			}
 			else
 			{
-				DrawDab(layer, x, y, radius, color, document.Selection());
+				m_engine.StampFirst(layer, x, y, document.Selection());
 				MarkStrokeDirty(document, x, y, x, y, radius);
 			}
 			m_lastX = x;
 			m_lastY = y;
 			m_hasLast = true;
 			return true;
+		}
+
+		public override void OnReleased(Document document, int x, int y, ToolState state)
+		{
+			m_engine.End();
+			base.OnReleased(document, x, y, state);
 		}
 	}
 }
