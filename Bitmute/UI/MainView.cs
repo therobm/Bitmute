@@ -974,6 +974,19 @@ namespace Bitmute.UI
 			return m_activeDocumentWindow.Canvas();
 		}
 
+		public void ActivateDocumentWindow(DocumentWindow window)
+		{
+			if (window == null)
+			{
+				return;
+			}
+			if (m_activeDocumentWindow == window)
+			{
+				return;
+			}
+			BringToFront(window);
+		}
+
 		public Document ActiveDocument()
 		{
 			CanvasView canvas = ActiveCanvas();

@@ -23,6 +23,7 @@ namespace Bitmute.UI
 			SetTitle(document.Title());
 
 			m_canvas = new CanvasView(document);
+			m_canvas.SetOwnerWindow(this);
 			m_canvas.BackgroundColor = UiConstants.CanvasInset;
 
 			BoxView corner = new BoxView();

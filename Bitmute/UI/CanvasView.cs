@@ -28,6 +28,7 @@ namespace Bitmute.UI
 		private float m_panLastX;
 		private float m_panLastY;
 		private bool m_wheelHooked;
+		private DocumentWindow m_ownerWindow;
 
 		private static SKBitmap CheckerTile()
 		{
@@ -298,6 +299,11 @@ namespace Bitmute.UI
 			int pixelY = (int)Math.Floor(documentY);
 			main.UpdateCursor(pixelX, pixelY);
 
+			if (eventArgs.ActionType == SKTouchAction.Pressed)
+			{
+				main.ActivateDocumentWindow(m_ownerWindow);
+			}
+
 			if (eventArgs.MouseButton == SKMouseButton.Middle)
 			{
 				if (eventArgs.ActionType == SKTouchAction.Pressed)
@@ -454,6 +460,11 @@ namespace Bitmute.UI
 		public Document CurrentDocument()
 		{
 			return m_document;
+		}
+
+		public void SetOwnerWindow(DocumentWindow window)
+		{
+			m_ownerWindow = window;
 		}
 
 		public float Zoom()
