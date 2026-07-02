@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Bitmute.Imaging;
 using Bitmute.Tools;
 using Microsoft.Maui.Dispatching;
@@ -10,6 +11,20 @@ namespace Bitmute.UI
 {
 	public class CanvasView : SKCanvasView
 	{
+		private struct AntEdge
+		{
+			public bool m_vertical;
+			public int m_fixedCoord;
+			public int m_startCoord;
+
+			public AntEdge(bool vertical, int fixedCoord, int startCoord)
+			{
+				m_vertical = vertical;
+				m_fixedCoord = fixedCoord;
+				m_startCoord = startCoord;
+			}
+		}
+
 		private static readonly SKColor s_workspace = new SKColor(0x2B, 0x2B, 0x2B);
 		private static readonly SKColor s_checkerLight = new SKColor(0xFF, 0xFF, 0xFF);
 		private static readonly SKColor s_checkerDark = new SKColor(0xC8, 0xC8, 0xC8);
@@ -33,6 +48,8 @@ namespace Bitmute.UI
 		private DocumentWindow m_ownerWindow;
 		private IDispatcherTimer m_antTimer;
 		private float m_antPhase;
+		private List<AntEdge> m_antEdges;
+		private int m_antEdgesGeneration;
 
 		private static SKBitmap CheckerTile()
 		{
@@ -191,6 +208,65 @@ namespace Bitmute.UI
 				DrawLinePreview(canvas, (LineTool)tool);
 				return;
 			}
+			if (tool is LassoTool)
+			{
+				DrawLassoPreview(canvas, (LassoTool)tool);
+				return;
+			}
+		}
+
+		private void DrawLassoPreview(SKCanvas canvas, LassoTool lasso)
+		{
+			if (!lasso.HasPreview())
+			{
+				return;
+			}
+			int count = lasso.VertexCount();
+			if (count >= 2)
+			{
+				SKPathBuilder builder = new SKPathBuilder();
+				builder.MoveTo(m_offsetX + (lasso.VertexX(0) * m_zoom), m_offsetY + (lasso.VertexY(0) * m_zoom));
+				for (int index = 1; index < count; index++)
+				{
+					builder.LineTo(m_offsetX + (lasso.VertexX(index) * m_zoom), m_offsetY + (lasso.VertexY(index) * m_zoom));
+				}
+				SKPath path = builder.Snapshot();
+				SKPaint underlay = new SKPaint();
+				underlay.Style = SKPaintStyle.Stroke;
+				underlay.StrokeWidth = 3.0f;
+				underlay.Color = SKColors.Black;
+				underlay.IsAntialias = true;
+				canvas.DrawPath(path, underlay);
+				underlay.Dispose();
+				SKPaint overlay = new SKPaint();
+				overlay.Style = SKPaintStyle.Stroke;
+				overlay.StrokeWidth = 1.0f;
+				overlay.Color = SKColors.White;
+				overlay.IsAntialias = true;
+				canvas.DrawPath(path, overlay);
+				overlay.Dispose();
+				path.Dispose();
+				builder.Dispose();
+			}
+			SKPaint markerFill = new SKPaint();
+			markerFill.Style = SKPaintStyle.Fill;
+			markerFill.Color = SKColors.White;
+			markerFill.IsAntialias = false;
+			SKPaint markerBorder = new SKPaint();
+			markerBorder.Style = SKPaintStyle.Stroke;
+			markerBorder.StrokeWidth = 1.0f;
+			markerBorder.Color = SKColors.Black;
+			markerBorder.IsAntialias = false;
+			for (int index = 0; index < count; index++)
+			{
+				float centerX = m_offsetX + (lasso.VertexX(index) * m_zoom);
+				float centerY = m_offsetY + (lasso.VertexY(index) * m_zoom);
+				SKRect marker = new SKRect(centerX - 2.5f, centerY - 2.5f, centerX + 2.5f, centerY + 2.5f);
+				canvas.DrawRect(marker, markerFill);
+				canvas.DrawRect(marker, markerBorder);
+			}
+			markerFill.Dispose();
+			markerBorder.Dispose();
 		}
 
 		private void DrawLinePreview(SKCanvas canvas, LineTool line)
@@ -232,36 +308,30 @@ namespace Bitmute.UI
 				return;
 			}
 
+			if (selection.Generation() != m_antEdgesGeneration)
+			{
+				RebuildAntEdges(selection, bounds);
+				m_antEdgesGeneration = selection.Generation();
+			}
+
 			SKPathBuilder blackBuilder = new SKPathBuilder();
 			SKPathBuilder whiteBuilder = new SKPathBuilder();
-			for (int y = bounds.Top; y < bounds.Bottom; y++)
+			for (int index = 0; index < m_antEdges.Count; index++)
 			{
-				for (int x = bounds.Left; x < bounds.Right; x++)
+				AntEdge edge = m_antEdges[index];
+				if (edge.m_vertical)
 				{
-					if (!selection.IsSelected(x, y))
-					{
-						continue;
-					}
-					float startX = m_offsetX + (x * m_zoom);
-					float startY = m_offsetY + (y * m_zoom);
-					float endX = startX + m_zoom;
-					float endY = startY + m_zoom;
-					if (!selection.IsSelected(x - 1, y))
-					{
-						AddAntEdge(blackBuilder, whiteBuilder, true, startX, startY, endY);
-					}
-					if (!selection.IsSelected(x + 1, y))
-					{
-						AddAntEdge(blackBuilder, whiteBuilder, true, endX, startY, endY);
-					}
-					if (!selection.IsSelected(x, y - 1))
-					{
-						AddAntEdge(blackBuilder, whiteBuilder, false, startY, startX, endX);
-					}
-					if (!selection.IsSelected(x, y + 1))
-					{
-						AddAntEdge(blackBuilder, whiteBuilder, false, endY, startX, endX);
-					}
+					float fixedScreen = m_offsetX + (edge.m_fixedCoord * m_zoom);
+					float startScreen = m_offsetY + (edge.m_startCoord * m_zoom);
+					float endScreen = m_offsetY + ((edge.m_startCoord + 1) * m_zoom);
+					AddAntEdge(blackBuilder, whiteBuilder, true, fixedScreen, startScreen, endScreen);
+				}
+				else
+				{
+					float fixedScreen = m_offsetY + (edge.m_fixedCoord * m_zoom);
+					float startScreen = m_offsetX + (edge.m_startCoord * m_zoom);
+					float endScreen = m_offsetX + ((edge.m_startCoord + 1) * m_zoom);
+					AddAntEdge(blackBuilder, whiteBuilder, false, fixedScreen, startScreen, endScreen);
 				}
 			}
 
@@ -285,6 +355,37 @@ namespace Bitmute.UI
 			whitePath.Dispose();
 			blackBuilder.Dispose();
 			whiteBuilder.Dispose();
+		}
+
+		private void RebuildAntEdges(Selection selection, SKRectI bounds)
+		{
+			m_antEdges.Clear();
+			for (int y = bounds.Top; y < bounds.Bottom; y++)
+			{
+				for (int x = bounds.Left; x < bounds.Right; x++)
+				{
+					if (!selection.IsSelected(x, y))
+					{
+						continue;
+					}
+					if (!selection.IsSelected(x - 1, y))
+					{
+						m_antEdges.Add(new AntEdge(true, x, y));
+					}
+					if (!selection.IsSelected(x + 1, y))
+					{
+						m_antEdges.Add(new AntEdge(true, x + 1, y));
+					}
+					if (!selection.IsSelected(x, y - 1))
+					{
+						m_antEdges.Add(new AntEdge(false, y, x));
+					}
+					if (!selection.IsSelected(x, y + 1))
+					{
+						m_antEdges.Add(new AntEdge(false, y + 1, x));
+					}
+				}
+			}
 		}
 
 		private void AddAntEdge(SKPathBuilder blackBuilder, SKPathBuilder whiteBuilder, bool vertical, float fixedCoord, float start, float end)
@@ -332,6 +433,8 @@ namespace Bitmute.UI
 			m_viewInitialized = false;
 			m_wheelHooked = false;
 			m_antPhase = 0.0f;
+			m_antEdges = new List<AntEdge>();
+			m_antEdgesGeneration = -1;
 			PaintSurface += OnPaintSurface;
 			EnableTouchEvents = true;
 			Touch += OnTouch;
@@ -552,6 +655,10 @@ namespace Bitmute.UI
 				return;
 			}
 			main.UpdateZoomInfo(ZoomPercent(), m_document.Width(), m_document.Height());
+			if (m_ownerWindow != null)
+			{
+				m_ownerWindow.SetZoomPercent(ZoomPercent());
+			}
 		}
 
 		private void ApplyZoomAt(float newZoom, float anchorX, float anchorY)

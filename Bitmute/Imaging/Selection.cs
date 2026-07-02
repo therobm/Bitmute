@@ -9,6 +9,7 @@ namespace Bitmute.Imaging
 		private byte[] m_mask;
 		private bool m_active;
 		private SKRectI m_bounds;
+		private int m_generation;
 
 		public Selection(int width, int height)
 		{
@@ -17,6 +18,12 @@ namespace Bitmute.Imaging
 			m_mask = new byte[width * height];
 			m_active = false;
 			m_bounds = SKRectI.Empty;
+			m_generation = 0;
+		}
+
+		public int Generation()
+		{
+			return m_generation;
 		}
 
 		public bool IsActive()
@@ -46,6 +53,7 @@ namespace Bitmute.Imaging
 			}
 			m_active = false;
 			m_bounds = SKRectI.Empty;
+			m_generation = m_generation + 1;
 		}
 
 		public void SelectRect(SKRectI rect)
@@ -90,6 +98,7 @@ namespace Bitmute.Imaging
 			}
 			m_active = true;
 			m_bounds = new SKRectI(left, top, right, bottom);
+			m_generation = m_generation + 1;
 		}
 
 		public void SelectMask(byte[] mask, SKRectI bounds)
@@ -100,6 +109,7 @@ namespace Bitmute.Imaging
 			}
 			m_active = true;
 			m_bounds = bounds;
+			m_generation = m_generation + 1;
 		}
 
 		public byte[] MaskCopy()
@@ -159,10 +169,12 @@ namespace Bitmute.Imaging
 			{
 				m_active = false;
 				m_bounds = SKRectI.Empty;
+				m_generation = m_generation + 1;
 				return;
 			}
 			m_active = true;
 			m_bounds = new SKRectI(minX, minY, maxX + 1, maxY + 1);
+			m_generation = m_generation + 1;
 		}
 	}
 }

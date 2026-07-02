@@ -9,6 +9,7 @@ namespace Bitmute.UI
 	{
 		private Document m_document;
 		private CanvasView m_canvas;
+		private string m_baseTitle;
 
 		private BoxView BuildRuler()
 		{
@@ -20,7 +21,8 @@ namespace Bitmute.UI
 		public DocumentWindow(Document document)
 		{
 			m_document = document;
-			SetTitle(document.Title());
+			m_baseTitle = document.Title();
+			SetTitle(m_baseTitle);
 
 			m_canvas = new CanvasView(document);
 			m_canvas.SetOwnerWindow(this);
@@ -55,6 +57,11 @@ namespace Bitmute.UI
 			layout.Add(m_canvas);
 
 			SetPanelContent(layout);
+		}
+
+		public void SetZoomPercent(int percent)
+		{
+			SetTitle(m_baseTitle + "  —  " + percent + "%");
 		}
 
 		public CanvasView Canvas()

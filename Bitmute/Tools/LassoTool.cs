@@ -9,16 +9,23 @@ namespace Bitmute.Tools
 	{
 		private const int CloseThreshold = 6;
 		private const int MinimumVertices = 3;
+		private const double DoubleClickMilliseconds = 350.0;
+		private const int DoubleClickDistance = 6;
 
 		private List<int> m_verticesX;
 		private List<int> m_verticesY;
 		private bool m_active;
+		private DateTime m_lastClickTime;
+		private int m_lastClickX;
+		private int m_lastClickY;
+		private bool m_hasLastClick;
 
 		public LassoTool()
 		{
 			m_verticesX = new List<int>();
 			m_verticesY = new List<int>();
 			m_active = false;
+			m_hasLastClick = false;
 		}
 
 		public override bool IsDestructive()
@@ -31,6 +38,59 @@ namespace Bitmute.Tools
 			m_verticesX.Clear();
 			m_verticesY.Clear();
 			m_active = false;
+			m_hasLastClick = false;
+		}
+
+		public bool HasPreview()
+		{
+			return m_active && m_verticesX.Count > 0;
+		}
+
+		public int VertexCount()
+		{
+			return m_verticesX.Count;
+		}
+
+		public int VertexX(int index)
+		{
+			return m_verticesX[index];
+		}
+
+		public int VertexY(int index)
+		{
+			return m_verticesY[index];
+		}
+
+		private bool IsDoubleClick(int x, int y)
+		{
+			if (!m_hasLastClick)
+			{
+				return false;
+			}
+			double elapsed = (DateTime.Now - m_lastClickTime).TotalMilliseconds;
+			if (elapsed > DoubleClickMilliseconds)
+			{
+				return false;
+			}
+			int deltaX = x - m_lastClickX;
+			int deltaY = y - m_lastClickY;
+			return ((deltaX * deltaX) + (deltaY * deltaY)) <= (DoubleClickDistance * DoubleClickDistance);
+		}
+
+		private void RecordClick(int x, int y)
+		{
+			m_lastClickTime = DateTime.Now;
+			m_lastClickX = x;
+			m_lastClickY = y;
+			m_hasLastClick = true;
+		}
+
+		private void Finalize(Document document)
+		{
+			CommitSelection(document);
+			m_active = false;
+			m_verticesX.Clear();
+			m_verticesY.Clear();
 		}
 
 		private static void SortAscending(double[] values, int count)
@@ -170,6 +230,8 @@ namespace Bitmute.Tools
 
 		public override bool OnPressed(Document document, int x, int y, ToolState state)
 		{
+			bool doubleClick = IsDoubleClick(x, y);
+			RecordClick(x, y);
 			if (!m_active)
 			{
 				m_active = true;
@@ -182,24 +244,22 @@ namespace Bitmute.Tools
 			}
 			if (m_verticesX.Count >= MinimumVertices)
 			{
+				if (doubleClick)
+				{
+					Finalize(document);
+					return false;
+				}
 				int deltaX = x - m_verticesX[0];
 				int deltaY = y - m_verticesY[0];
 				int distanceSquared = (deltaX * deltaX) + (deltaY * deltaY);
 				if (distanceSquared <= CloseThreshold * CloseThreshold)
 				{
-					CommitSelection(document);
-					m_active = false;
-					m_verticesX.Clear();
-					m_verticesY.Clear();
+					Finalize(document);
 					return false;
 				}
 			}
 			m_verticesX.Add(x);
 			m_verticesY.Add(y);
-			if (m_verticesX.Count >= MinimumVertices)
-			{
-				CommitSelection(document);
-			}
 			return false;
 		}
 
