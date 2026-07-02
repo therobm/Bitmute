@@ -89,6 +89,49 @@ namespace Bitmute.UI
 			}
 		}
 
+		private void OnTitlePan(object sender, PanUpdatedEventArgs eventArgs)
+		{
+			MainView main = MainView.Self;
+			if (main != null)
+			{
+				main.DragModal(eventArgs.StatusType, eventArgs.TotalX, eventArgs.TotalY);
+			}
+		}
+
+		private View BuildTitleBar(string text)
+		{
+			Label titleLabel = new Label();
+			titleLabel.Text = text;
+			titleLabel.FontSize = 13.0;
+			titleLabel.TextColor = UiConstants.OnSurface;
+			titleLabel.VerticalOptions = LayoutOptions.Center;
+
+			Button closeButton = new Button();
+			closeButton.Text = "✕";
+			closeButton.FontSize = 12.0;
+			closeButton.WidthRequest = UiConstants.CloseButtonSize;
+			closeButton.HeightRequest = UiConstants.CloseButtonSize;
+			closeButton.Padding = new Thickness(0.0);
+			closeButton.BackgroundColor = Colors.Transparent;
+			closeButton.TextColor = UiConstants.TextDim;
+			closeButton.Clicked += OnCancelClicked;
+
+			Grid titleBar = new Grid();
+			titleBar.BackgroundColor = UiConstants.TitleBar;
+			titleBar.Padding = new Thickness(8.0, 2.0, 2.0, 2.0);
+			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			Grid.SetColumn(titleLabel, 0);
+			Grid.SetColumn(closeButton, 1);
+			titleBar.Add(titleLabel);
+			titleBar.Add(closeButton);
+
+			PanGestureRecognizer pan = new PanGestureRecognizer();
+			pan.PanUpdated += OnTitlePan;
+			titleBar.GestureRecognizers.Add(pan);
+			return titleBar;
+		}
+
 		public NewDocumentDialog()
 		{
 			m_nameEntry = new Entry();
@@ -128,20 +171,19 @@ namespace Bitmute.UI
 			buttons.Add(cancelButton);
 			buttons.Add(createButton);
 
-			Label title = new Label();
-			title.Text = "New Document";
-			title.FontSize = 13.0;
-			title.TextColor = UiConstants.OnSurface;
+			VerticalStackLayout innerLayout = new VerticalStackLayout();
+			innerLayout.Spacing = 8.0;
+			innerLayout.Padding = new Thickness(12.0);
+			innerLayout.Add(BuildFieldRow("Name", m_nameEntry));
+			innerLayout.Add(BuildFieldRow("Width", m_widthEntry));
+			innerLayout.Add(BuildFieldRow("Height", m_heightEntry));
+			innerLayout.Add(BuildFieldRow("Background", m_backgroundPicker));
+			innerLayout.Add(buttons);
 
 			VerticalStackLayout layout = new VerticalStackLayout();
-			layout.Spacing = 8.0;
-			layout.Padding = new Thickness(12.0);
-			layout.Add(title);
-			layout.Add(BuildFieldRow("Name", m_nameEntry));
-			layout.Add(BuildFieldRow("Width", m_widthEntry));
-			layout.Add(BuildFieldRow("Height", m_heightEntry));
-			layout.Add(BuildFieldRow("Background", m_backgroundPicker));
-			layout.Add(buttons);
+			layout.Spacing = 0.0;
+			layout.Add(BuildTitleBar("New Document"));
+			layout.Add(innerLayout);
 
 			Border frame = new Border();
 			frame.BackgroundColor = UiConstants.PanelSurface;

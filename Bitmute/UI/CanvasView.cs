@@ -25,7 +25,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private static readonly SKColor s_workspace = new SKColor(0x2B, 0x2B, 0x2B);
+		private static readonly SKColor s_workspace = new SKColor(0xCC, 0xCC, 0xCC);
 		private static readonly SKColor s_checkerLight = new SKColor(0xFF, 0xFF, 0xFF);
 		private static readonly SKColor s_checkerDark = new SKColor(0xC8, 0xC8, 0xC8);
 		private static readonly SKColor s_border = new SKColor(0x10, 0x10, 0x10);

@@ -26,6 +26,12 @@ namespace Bitmute.UI
 		private LayersPanel m_layersPanel;
 		private BoxView m_modalBackdrop;
 		private View m_modalContent;
+		private double m_modalX;
+		private double m_modalY;
+		private double m_modalWidth;
+		private double m_modalHeight;
+		private double m_modalDragOriginX;
+		private double m_modalDragOriginY;
 		private Label m_optionsToolLabel;
 		private Slider m_brushSizeSlider;
 		private Label m_brushSizeValue;
@@ -335,11 +341,33 @@ namespace Bitmute.UI
 				TapGestureRecognizer tap = new TapGestureRecognizer();
 				tap.Tapped += OnMenuItemTapped;
 				row.GestureRecognizers.Add(tap);
+				PointerGestureRecognizer pointer = new PointerGestureRecognizer();
+				pointer.PointerEntered += OnMenuItemPointerEntered;
+				pointer.PointerExited += OnMenuItemPointerExited;
+				row.GestureRecognizers.Add(pointer);
 				m_openItemButtons.Add(row);
 				m_openItemActions.Add(item);
 			}
 
 			return row;
+		}
+
+		private void OnMenuItemPointerEntered(object sender, PointerEventArgs eventArgs)
+		{
+			Border row = sender as Border;
+			if (row != null)
+			{
+				row.BackgroundColor = UiConstants.Accent;
+			}
+		}
+
+		private void OnMenuItemPointerExited(object sender, PointerEventArgs eventArgs)
+		{
+			Border row = sender as Border;
+			if (row != null)
+			{
+				row.BackgroundColor = UiConstants.PanelSurface;
+			}
 		}
 
 		private void OnMenuItemTapped(object sender, TappedEventArgs eventArgs)
@@ -817,6 +845,7 @@ namespace Bitmute.UI
 			AddAccelerator(element, (Windows.System.VirtualKey)187, OnAcceleratorZoomIn);
 			AddAccelerator(element, (Windows.System.VirtualKey)189, OnAcceleratorZoomOut);
 			AddBareAccelerator(element, Windows.System.VirtualKey.X, OnAcceleratorSwapColors);
+			element.KeyboardAcceleratorPlacementMode = Microsoft.UI.Xaml.Input.KeyboardAcceleratorPlacementMode.Hidden;
 			m_acceleratorsHooked = true;
 		}
 
@@ -1063,7 +1092,7 @@ namespace Bitmute.UI
 		{
 			CloseModal();
 			m_modalBackdrop = new BoxView();
-			m_modalBackdrop.Color = new Color(0.0f, 0.0f, 0.0f, 0.4f);
+			m_modalBackdrop.Color = new Color(0.0f, 0.0f, 0.0f, 0.12f);
 			AbsoluteLayout.SetLayoutBounds(m_modalBackdrop, new Rect(0.0, 0.0, 1.0, 1.0));
 			AbsoluteLayout.SetLayoutFlags(m_modalBackdrop, AbsoluteLayoutFlags.All);
 			TapGestureRecognizer backdropTap = new TapGestureRecognizer();
@@ -1074,20 +1103,63 @@ namespace Bitmute.UI
 			m_workspace.Add(m_modalBackdrop);
 
 			m_modalContent = content;
-			double left = (m_workspace.Width - width) / 2.0;
-			double top = (m_workspace.Height - height) / 2.0;
-			if (left < 0.0)
+			m_modalWidth = width;
+			m_modalHeight = height;
+			m_modalX = (m_workspace.Width - width) / 2.0;
+			m_modalY = (m_workspace.Height - height) / 2.0;
+			if (m_modalX < 0.0)
 			{
-				left = 0.0;
+				m_modalX = 0.0;
 			}
-			if (top < 0.0)
+			if (m_modalY < 0.0)
 			{
-				top = 0.0;
+				m_modalY = 0.0;
 			}
-			AbsoluteLayout.SetLayoutBounds(content, new Rect(left, top, width, height));
+			AbsoluteLayout.SetLayoutBounds(content, new Rect(m_modalX, m_modalY, width, height));
 			AbsoluteLayout.SetLayoutFlags(content, AbsoluteLayoutFlags.None);
 			content.ZIndex = m_topZIndex + 1001;
 			m_workspace.Add(content);
+		}
+
+		public void DragModal(Microsoft.Maui.GestureStatus status, double totalX, double totalY)
+		{
+			if (m_modalContent == null)
+			{
+				return;
+			}
+			if (status == Microsoft.Maui.GestureStatus.Started)
+			{
+				m_modalDragOriginX = m_modalX;
+				m_modalDragOriginY = m_modalY;
+				return;
+			}
+			if (status != Microsoft.Maui.GestureStatus.Running)
+			{
+				return;
+			}
+			double targetX = m_modalDragOriginX + totalX;
+			double targetY = m_modalDragOriginY + totalY;
+			double maxX = m_workspace.Width - m_modalWidth;
+			double maxY = m_workspace.Height - m_modalHeight;
+			if (targetX < 0.0)
+			{
+				targetX = 0.0;
+			}
+			if (targetY < 0.0)
+			{
+				targetY = 0.0;
+			}
+			if (maxX >= 0.0 && targetX > maxX)
+			{
+				targetX = maxX;
+			}
+			if (maxY >= 0.0 && targetY > maxY)
+			{
+				targetY = maxY;
+			}
+			m_modalX = targetX;
+			m_modalY = targetY;
+			AbsoluteLayout.SetLayoutBounds(m_modalContent, new Rect(m_modalX, m_modalY, m_modalWidth, m_modalHeight));
 		}
 
 		public void CloseModal()

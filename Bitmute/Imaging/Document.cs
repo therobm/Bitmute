@@ -340,44 +340,51 @@ namespace Bitmute.Imaging
 			return layer;
 		}
 
-		public void MoveLayerUp(int index)
+		public void MoveLayer(int fromIndex, int toIndex)
 		{
-			if (index < 0 || index >= m_layers.Count - 1)
+			if (fromIndex < 0 || fromIndex >= m_layers.Count)
 			{
 				return;
 			}
-			Layer layer = m_layers[index];
-			m_layers.RemoveAt(index);
-			m_layers.Insert(index + 1, layer);
-			if (m_activeLayerIndex == index)
+			int target = toIndex;
+			if (target < 0)
 			{
-				m_activeLayerIndex = index + 1;
+				target = 0;
 			}
-			else if (m_activeLayerIndex == index + 1)
+			if (target > m_layers.Count - 1)
 			{
-				m_activeLayerIndex = index;
+				target = m_layers.Count - 1;
+			}
+			if (target == fromIndex)
+			{
+				return;
+			}
+			Layer layer = m_layers[fromIndex];
+			m_layers.RemoveAt(fromIndex);
+			m_layers.Insert(target, layer);
+			if (m_activeLayerIndex == fromIndex)
+			{
+				m_activeLayerIndex = target;
+			}
+			else if (fromIndex < m_activeLayerIndex && m_activeLayerIndex <= target)
+			{
+				m_activeLayerIndex = m_activeLayerIndex - 1;
+			}
+			else if (target <= m_activeLayerIndex && m_activeLayerIndex < fromIndex)
+			{
+				m_activeLayerIndex = m_activeLayerIndex + 1;
 			}
 			m_dirty = true;
 		}
 
+		public void MoveLayerUp(int index)
+		{
+			MoveLayer(index, index + 1);
+		}
+
 		public void MoveLayerDown(int index)
 		{
-			if (index <= 0 || index >= m_layers.Count)
-			{
-				return;
-			}
-			Layer layer = m_layers[index];
-			m_layers.RemoveAt(index);
-			m_layers.Insert(index - 1, layer);
-			if (m_activeLayerIndex == index)
-			{
-				m_activeLayerIndex = index - 1;
-			}
-			else if (m_activeLayerIndex == index - 1)
-			{
-				m_activeLayerIndex = index;
-			}
-			m_dirty = true;
+			MoveLayer(index, index - 1);
 		}
 
 		public void DeleteLayer(int index)

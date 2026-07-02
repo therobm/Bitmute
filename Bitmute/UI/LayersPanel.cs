@@ -13,6 +13,10 @@ namespace Bitmute.UI
 		private const int ThumbnailWidth = 44;
 		private const int ThumbnailHeight = 32;
 		private const int ThumbnailCheckerCell = 6;
+		private const double RowHeightEstimate = 38.0;
+
+		private int m_dragRowLayer = -1;
+		private double m_dragTotalY;
 
 		private VerticalStackLayout m_listHost;
 		private Slider m_opacity;
@@ -180,6 +184,9 @@ namespace Bitmute.UI
 			TapGestureRecognizer tap = new TapGestureRecognizer();
 			tap.Tapped += OnRowTapped;
 			row.GestureRecognizers.Add(tap);
+			PanGestureRecognizer pan = new PanGestureRecognizer();
+			pan.PanUpdated += OnRowPan;
+			row.GestureRecognizers.Add(pan);
 			m_rowBorders.Add(row);
 			m_rowLayers.Add(layerIndex);
 
@@ -238,26 +245,57 @@ namespace Bitmute.UI
 			return button;
 		}
 
-		private void OnMoveUpClicked(object sender, System.EventArgs eventArgs)
+		private int LayerIndexForRow(object sender)
 		{
-			Document document = Doc();
-			if (document == null)
+			for (int index = 0; index < m_rowBorders.Count; index++)
 			{
-				return;
+				if (ReferenceEquals(m_rowBorders[index], sender))
+				{
+					return m_rowLayers[index];
+				}
 			}
-			document.MoveLayerUp(document.ActiveLayerIndex());
-			RecompositeActive();
-			Refresh();
+			return -1;
 		}
 
-		private void OnMoveDownClicked(object sender, System.EventArgs eventArgs)
+		private void OnRowPan(object sender, PanUpdatedEventArgs eventArgs)
 		{
+			View row = sender as View;
+			if (eventArgs.StatusType == GestureStatus.Started)
+			{
+				m_dragRowLayer = LayerIndexForRow(sender);
+				m_dragTotalY = 0.0;
+				return;
+			}
+			if (eventArgs.StatusType == GestureStatus.Running)
+			{
+				m_dragTotalY = eventArgs.TotalY;
+				if (row != null)
+				{
+					row.TranslationY = eventArgs.TotalY;
+				}
+				return;
+			}
+			if (row != null)
+			{
+				row.TranslationY = 0.0;
+			}
+			int fromIndex = m_dragRowLayer;
+			m_dragRowLayer = -1;
+			if (fromIndex < 0)
+			{
+				return;
+			}
+			int positions = (int)System.Math.Round(m_dragTotalY / RowHeightEstimate);
+			if (positions == 0)
+			{
+				return;
+			}
 			Document document = Doc();
 			if (document == null)
 			{
 				return;
 			}
-			document.MoveLayerDown(document.ActiveLayerIndex());
+			document.MoveLayer(fromIndex, fromIndex - positions);
 			RecompositeActive();
 			Refresh();
 		}
@@ -318,8 +356,6 @@ namespace Bitmute.UI
 			m_thumbnailImages = new List<Image>();
 			m_thumbnailLayers = new List<int>();
 
-			Button moveUpButton = BuildActionButton("▲", 30.0, OnMoveUpClicked);
-			Button moveDownButton = BuildActionButton("▼", 30.0, OnMoveDownClicked);
 			Button addButton = BuildActionButton("+", 30.0, OnAddClicked);
 			Button deleteButton = BuildActionButton("Del", 40.0, OnDeleteClicked);
 
@@ -361,8 +397,6 @@ namespace Bitmute.UI
 
 			HorizontalStackLayout bottomBar = new HorizontalStackLayout();
 			bottomBar.Spacing = 4.0;
-			bottomBar.Add(moveUpButton);
-			bottomBar.Add(moveDownButton);
 			bottomBar.Add(addButton);
 			bottomBar.Add(deleteButton);
 

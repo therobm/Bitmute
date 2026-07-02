@@ -21,6 +21,26 @@ namespace Bitmute.UI
 		private ContentView m_contentHost;
 		private bool m_minimized;
 		private double m_restoreHeight;
+		private bool m_maximized;
+		private double m_preMaxX;
+		private double m_preMaxY;
+		private double m_preMaxWidth;
+		private double m_preMaxHeight;
+
+		private Button BuildTitleBarButton(string text, EventHandler handler)
+		{
+			Button button = new Button();
+			button.Text = text;
+			button.FontSize = 12.0;
+			button.WidthRequest = UiConstants.CloseButtonSize;
+			button.HeightRequest = UiConstants.CloseButtonSize;
+			button.Padding = new Thickness(0.0);
+			button.BackgroundColor = Colors.Transparent;
+			button.TextColor = UiConstants.TextDim;
+			button.VerticalOptions = LayoutOptions.Center;
+			button.Clicked += handler;
+			return button;
+		}
 
 		private Grid BuildTitleBar()
 		{
@@ -28,6 +48,7 @@ namespace Bitmute.UI
 			titleBar.HeightRequest = UiConstants.TitleBarHeight;
 			titleBar.BackgroundColor = UiConstants.TitleBar;
 			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			titleBar.Padding = new Thickness(10.0, 0.0, 4.0, 0.0);
@@ -40,30 +61,16 @@ namespace Bitmute.UI
 			Grid.SetColumn(m_titleLabel, 0);
 			titleBar.Add(m_titleLabel);
 
-			Button minimizeButton = new Button();
-			minimizeButton.Text = "—";
-			minimizeButton.FontSize = 12.0;
-			minimizeButton.WidthRequest = UiConstants.CloseButtonSize;
-			minimizeButton.HeightRequest = UiConstants.CloseButtonSize;
-			minimizeButton.Padding = new Thickness(0.0);
-			minimizeButton.BackgroundColor = Colors.Transparent;
-			minimizeButton.TextColor = UiConstants.TextDim;
-			minimizeButton.VerticalOptions = LayoutOptions.Center;
-			minimizeButton.Clicked += OnMinimizeClicked;
+			Button minimizeButton = BuildTitleBarButton("─", OnMinimizeClicked);
 			Grid.SetColumn(minimizeButton, 1);
 			titleBar.Add(minimizeButton);
 
-			Button closeButton = new Button();
-			closeButton.Text = "X";
-			closeButton.FontSize = 12.0;
-			closeButton.WidthRequest = UiConstants.CloseButtonSize;
-			closeButton.HeightRequest = UiConstants.CloseButtonSize;
-			closeButton.Padding = new Thickness(0.0);
-			closeButton.BackgroundColor = Colors.Transparent;
-			closeButton.TextColor = UiConstants.TextDim;
-			closeButton.VerticalOptions = LayoutOptions.Center;
-			closeButton.Clicked += OnCloseClicked;
-			Grid.SetColumn(closeButton, 2);
+			Button maximizeButton = BuildTitleBarButton("□", OnMaximizeClicked);
+			Grid.SetColumn(maximizeButton, 2);
+			titleBar.Add(maximizeButton);
+
+			Button closeButton = BuildTitleBarButton("✕", OnCloseClicked);
+			Grid.SetColumn(closeButton, 3);
 			titleBar.Add(closeButton);
 
 			PanGestureRecognizer dragGesture = new PanGestureRecognizer();
@@ -151,6 +158,29 @@ namespace Bitmute.UI
 			{
 				main.ClosePanel(this);
 			}
+		}
+
+		private void OnMaximizeClicked(object sender, EventArgs eventArgs)
+		{
+			if (m_maximized)
+			{
+				m_maximized = false;
+				SetBounds(m_preMaxX, m_preMaxY, m_preMaxWidth, m_preMaxHeight);
+				return;
+			}
+			double workspaceWidth = WorkspaceWidth();
+			double workspaceHeight = WorkspaceHeight();
+			if (workspaceWidth <= 0.0 || workspaceHeight <= 0.0)
+			{
+				return;
+			}
+			Raise();
+			m_maximized = true;
+			m_preMaxX = m_x;
+			m_preMaxY = m_y;
+			m_preMaxWidth = m_width;
+			m_preMaxHeight = m_height;
+			SetBounds(0.0, 0.0, workspaceWidth, workspaceHeight);
 		}
 
 		private void OnMinimizeClicked(object sender, EventArgs eventArgs)
