@@ -14,6 +14,11 @@ namespace Bitmute.Tools
 		Eyedropper,
 		Text,
 		Line,
+		Clone,
+		Blur,
+		Sharpen,
+		Smudge,
+		DodgeBurn,
 		Zoom
 	}
 }

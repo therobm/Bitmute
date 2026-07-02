@@ -18,7 +18,9 @@ namespace Bitmute.Tools
 		private double m_opacity;
 		private double m_flow;
 		private bool m_square;
-		private bool m_erase;
+		private eBrushOp m_op;
+		private int m_cloneOffsetX;
+		private int m_cloneOffsetY;
 		private eBlendMode m_mode;
 		private double m_spacingPx;
 		private double m_smoothing;
@@ -33,7 +35,13 @@ namespace Bitmute.Tools
 		private byte m_blue;
 		private bool m_active;
 
-		public void Begin(Layer layer, SKBitmap original, int radius, double hardness, double opacity, double flow, bool square, double spacingFraction, double smoothing, bool erase, eBlendMode mode, SKColor color)
+		public void SetCloneOffset(int offsetX, int offsetY)
+		{
+			m_cloneOffsetX = offsetX;
+			m_cloneOffsetY = offsetY;
+		}
+
+		public void Begin(Layer layer, SKBitmap original, int radius, double hardness, double opacity, double flow, bool square, double spacingFraction, double smoothing, eBrushOp op, eBlendMode mode, SKColor color)
 		{
 			End();
 			SKBitmap bitmap = layer.Bitmap();
@@ -55,7 +63,9 @@ namespace Bitmute.Tools
 			m_opacity = opacity;
 			m_flow = flow;
 			m_square = square;
-			m_erase = erase;
+			m_op = op;
+			m_cloneOffsetX = 0;
+			m_cloneOffsetY = 0;
 			m_mode = mode;
 			int diameter = radius * 2;
 			if (diameter < 1)
@@ -194,6 +204,30 @@ namespace Bitmute.Tools
 			return effective * 255.0;
 		}
 
+		private byte DodgeBurnChannel(byte channel, double amount)
+		{
+			double c = channel / 255.0;
+			double exposure = amount * 0.5;
+			double result;
+			if (m_op == eBrushOp.Burn)
+			{
+				result = c * (1.0 - exposure);
+			}
+			else
+			{
+				result = c + ((1.0 - c) * exposure);
+			}
+			if (result < 0.0)
+			{
+				result = 0.0;
+			}
+			if (result > 1.0)
+			{
+				result = 1.0;
+			}
+			return (byte)((result * 255.0) + 0.5);
+		}
+
 		public unsafe void StampDab(Layer layer, double centerX, double centerY, Selection selection)
 		{
 			if (!m_active)
@@ -258,13 +292,21 @@ namespace Bitmute.Tools
 					byte* originalPixel = originalPixels + (bitmapY * originalRowBytes) + (bitmapX * 4);
 					byte* destinationPixel = pixels + (bitmapY * rowBytes) + (bitmapX * 4);
 					double originalAlpha = originalPixel[3] / 255.0;
-					if (m_erase)
+					if (m_op == eBrushOp.Erase)
 					{
 						double erasedAlpha = originalAlpha * (1.0 - finalAlpha);
 						destinationPixel[0] = originalPixel[0];
 						destinationPixel[1] = originalPixel[1];
 						destinationPixel[2] = originalPixel[2];
 						destinationPixel[3] = (byte)((erasedAlpha * 255.0) + 0.5);
+						continue;
+					}
+					if (m_op == eBrushOp.Dodge || m_op == eBrushOp.Burn)
+					{
+						destinationPixel[0] = DodgeBurnChannel(originalPixel[0], finalAlpha);
+						destinationPixel[1] = DodgeBurnChannel(originalPixel[1], finalAlpha);
+						destinationPixel[2] = DodgeBurnChannel(originalPixel[2], finalAlpha);
+						destinationPixel[3] = originalPixel[3];
 						continue;
 					}
 					double sourceRed = m_red;

@@ -74,6 +74,7 @@ namespace Bitmute.UI
 		private PencilTool m_pencilTool;
 		private BrushTool m_brushTool;
 		private EraserTool m_eraserTool;
+		private DodgeBurnTool m_dodgeBurnTool;
 		private EyedropperTool m_eyedropperTool;
 		private FillTool m_fillTool;
 		private LineTool m_lineTool;
@@ -944,6 +945,7 @@ namespace Bitmute.UI
 			m_pencilTool = new PencilTool();
 			m_brushTool = new BrushTool();
 			m_eraserTool = new EraserTool();
+			m_dodgeBurnTool = new DodgeBurnTool();
 			m_eyedropperTool = new EyedropperTool();
 			m_fillTool = new FillTool();
 			m_lineTool = new LineTool();
@@ -1478,7 +1480,7 @@ namespace Bitmute.UI
 			{
 				m_lineAntiAliasCheck.IsVisible = isLine;
 			}
-			bool isBrushFamily = tool == eTool.Brush || tool == eTool.Eraser;
+			bool isBrushFamily = tool == eTool.Brush || tool == eTool.Eraser || tool == eTool.Clone || tool == eTool.Blur || tool == eTool.Sharpen || tool == eTool.Smudge || tool == eTool.DodgeBurn;
 			if (m_brushHardnessLabel != null)
 			{
 				m_brushHardnessLabel.IsVisible = isBrushFamily;
@@ -1703,6 +1705,10 @@ namespace Bitmute.UI
 			if (tool == eTool.Line)
 			{
 				return m_lineTool;
+			}
+			if (tool == eTool.DodgeBurn)
+			{
+				return m_dodgeBurnTool;
 			}
 			return null;
 		}
