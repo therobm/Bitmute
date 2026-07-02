@@ -23,7 +23,7 @@ namespace Bitmute.Tools
 				SKColor fill = state.Background();
 				color = new SKColor(fill.Red, fill.Green, fill.Blue, 255);
 			}
-			m_engine.Begin(layer, document.StrokeSnapshot(), radius, state.BrushHardness() / 100.0, state.BrushOpacity() / 100.0, state.BrushFlow() / 100.0, state.BrushSquareTip(), state.BrushSpacing() / 100.0, erase, eBlendMode.Normal, color);
+			m_engine.Begin(layer, document.StrokeSnapshot(), radius, state.BrushHardness() / 100.0, state.BrushOpacity() / 100.0, state.BrushFlow() / 100.0, state.BrushSquareTip(), state.BrushSpacing() / 100.0, state.BrushSmoothing() / 100.0, erase, eBlendMode.Normal, color);
 		}
 
 		public override bool OnPressed(Document document, int x, int y, ToolState state)

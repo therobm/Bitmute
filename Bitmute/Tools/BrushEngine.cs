@@ -21,8 +21,11 @@ namespace Bitmute.Tools
 		private bool m_erase;
 		private eBlendMode m_mode;
 		private double m_spacingPx;
+		private double m_smoothing;
 		private double m_penX;
 		private double m_penY;
+		private double m_inputX;
+		private double m_inputY;
 		private bool m_hasPen;
 		private double m_distanceSinceStamp;
 		private byte m_red;
@@ -30,7 +33,7 @@ namespace Bitmute.Tools
 		private byte m_blue;
 		private bool m_active;
 
-		public void Begin(Layer layer, SKBitmap original, int radius, double hardness, double opacity, double flow, bool square, double spacingFraction, bool erase, eBlendMode mode, SKColor color)
+		public void Begin(Layer layer, SKBitmap original, int radius, double hardness, double opacity, double flow, bool square, double spacingFraction, double smoothing, bool erase, eBlendMode mode, SKColor color)
 		{
 			End();
 			SKBitmap bitmap = layer.Bitmap();
@@ -64,8 +67,19 @@ namespace Bitmute.Tools
 			{
 				m_spacingPx = 1.0;
 			}
+			m_smoothing = smoothing;
+			if (m_smoothing < 0.0)
+			{
+				m_smoothing = 0.0;
+			}
+			if (m_smoothing > 0.95)
+			{
+				m_smoothing = 0.95;
+			}
 			m_penX = 0.0;
 			m_penY = 0.0;
+			m_inputX = 0.0;
+			m_inputY = 0.0;
 			m_hasPen = false;
 			m_distanceSinceStamp = 0.0;
 			m_red = color.Red;
@@ -289,17 +303,24 @@ namespace Bitmute.Tools
 			StampDab(layer, x, y, selection);
 			m_penX = x;
 			m_penY = y;
+			m_inputX = x;
+			m_inputY = y;
 			m_hasPen = true;
 			m_distanceSinceStamp = 0.0;
 		}
 
-		public void StrokeTo(Layer layer, double x, double y, Selection selection)
+		public void StrokeTo(Layer layer, double rawX, double rawY, Selection selection)
 		{
 			if (!m_hasPen)
 			{
-				StampFirst(layer, x, y, selection);
+				StampFirst(layer, rawX, rawY, selection);
 				return;
 			}
+			double alpha = 1.0 - m_smoothing;
+			m_inputX = m_inputX + ((rawX - m_inputX) * alpha);
+			m_inputY = m_inputY + ((rawY - m_inputY) * alpha);
+			double x = m_inputX;
+			double y = m_inputY;
 			double deltaX = x - m_penX;
 			double deltaY = y - m_penY;
 			double segmentLength = System.Math.Sqrt((deltaX * deltaX) + (deltaY * deltaY));
