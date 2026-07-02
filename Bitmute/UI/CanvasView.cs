@@ -438,6 +438,12 @@ namespace Bitmute.UI
 			PaintSurface += OnPaintSurface;
 			EnableTouchEvents = true;
 			Touch += OnTouch;
+			SizeChanged += OnSizeChanged;
+		}
+
+		private void OnSizeChanged(object sender, System.EventArgs eventArgs)
+		{
+			NotifyChrome();
 		}
 
 		protected override void OnHandlerChanged()
@@ -499,13 +505,11 @@ namespace Bitmute.UI
 			}
 			else if (control)
 			{
-				m_offsetX = m_offsetX + (delta * 0.5f);
-				InvalidateSurface();
+				SetPanOffsetX(m_offsetX + (delta * 0.5f));
 			}
 			else
 			{
-				m_offsetY = m_offsetY + (delta * 0.5f);
-				InvalidateSurface();
+				SetPanOffsetY(m_offsetY + (delta * 0.5f));
 			}
 			eventArgs.Handled = true;
 		}

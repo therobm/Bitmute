@@ -1,5 +1,4 @@
 using System;
-using Bitmute.Imaging;
 using SkiaSharp;
 using SkiaSharp.Views.Maui;
 using SkiaSharp.Views.Maui.Controls;
@@ -8,7 +7,7 @@ namespace Bitmute.UI
 {
 	public class Ruler : SKCanvasView
 	{
-		private const float TargetLabelSpacing = 64.0f;
+		private const float TargetLabelSpacing = 50.0f;
 
 		private CanvasView m_canvas;
 		private bool m_horizontal;
@@ -72,27 +71,27 @@ namespace Bitmute.UI
 			textPaint.Color = SKColors.Black;
 			textPaint.IsAntialias = true;
 
-			Document document = m_canvas.CurrentDocument();
-			int documentSize = document.Width();
 			float offset = m_canvas.PanOffsetX();
 			float length = info.Width;
 			float thickness = info.Height;
 			if (!m_horizontal)
 			{
-				documentSize = document.Height();
 				offset = m_canvas.PanOffsetY();
 				length = info.Height;
 				thickness = info.Width;
 			}
 
 			int step = NiceStep(zoom);
-			int minorStep = step / 4;
+			int minorStep = step / 10;
 			if (minorStep < 1)
 			{
 				minorStep = 1;
 			}
 
-			for (int position = 0; position <= documentSize; position = position + minorStep)
+			int firstPosition = (int)(Math.Floor((-offset / zoom) / minorStep) * minorStep);
+			int lastPosition = (int)Math.Ceiling((length - offset) / zoom);
+
+			for (int position = firstPosition; position <= lastPosition; position = position + minorStep)
 			{
 				float screen = offset + (position * zoom);
 				if (screen < -1.0f || screen > length + 1.0f)
