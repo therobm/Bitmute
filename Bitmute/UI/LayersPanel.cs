@@ -3,11 +3,17 @@ using Bitmute.Imaging;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
+using SkiaSharp;
+using SkiaSharp.Views.Maui.Controls;
 
 namespace Bitmute.UI
 {
 	public class LayersPanel : ContentView
 	{
+		private const int ThumbnailWidth = 44;
+		private const int ThumbnailHeight = 32;
+		private const int ThumbnailCheckerCell = 6;
+
 		private VerticalStackLayout m_listHost;
 		private Slider m_opacity;
 		private Label m_opacityValue;
@@ -16,6 +22,73 @@ namespace Bitmute.UI
 		private List<int> m_eyeLayers;
 		private List<Border> m_rowBorders;
 		private List<int> m_rowLayers;
+		private List<Image> m_thumbnailImages;
+		private List<int> m_thumbnailLayers;
+
+		private ImageSource BuildThumbnail(Layer layer)
+		{
+			SKBitmap thumbnail = new SKBitmap(ThumbnailWidth, ThumbnailHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
+			SKCanvas canvas = new SKCanvas(thumbnail);
+			canvas.Clear(new SKColor(0xFF, 0xFF, 0xFF));
+			SKPaint darkPaint = new SKPaint();
+			darkPaint.Color = new SKColor(0xC8, 0xC8, 0xC8);
+			for (int cellY = 0; cellY < ThumbnailHeight; cellY = cellY + ThumbnailCheckerCell)
+			{
+				for (int cellX = 0; cellX < ThumbnailWidth; cellX = cellX + ThumbnailCheckerCell)
+				{
+					int parity = (cellX / ThumbnailCheckerCell) + (cellY / ThumbnailCheckerCell);
+					if ((parity & 1) == 1)
+					{
+						canvas.DrawRect(new SKRect(cellX, cellY, cellX + ThumbnailCheckerCell, cellY + ThumbnailCheckerCell), darkPaint);
+					}
+				}
+			}
+			darkPaint.Dispose();
+
+			SKBitmap source = layer.Bitmap();
+			float sourceAspect = (float)source.Width / (float)source.Height;
+			float thumbnailAspect = (float)ThumbnailWidth / (float)ThumbnailHeight;
+			float destinationWidth = ThumbnailWidth;
+			float destinationHeight = ThumbnailHeight;
+			if (sourceAspect > thumbnailAspect)
+			{
+				destinationHeight = ThumbnailWidth / sourceAspect;
+			}
+			else
+			{
+				destinationWidth = ThumbnailHeight * sourceAspect;
+			}
+			float destinationLeft = (ThumbnailWidth - destinationWidth) / 2.0f;
+			float destinationTop = (ThumbnailHeight - destinationHeight) / 2.0f;
+			SKRect destination = new SKRect(destinationLeft, destinationTop, destinationLeft + destinationWidth, destinationTop + destinationHeight);
+			SKImage image = SKImage.FromBitmap(source);
+			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None);
+			SKPaint imagePaint = new SKPaint();
+			canvas.DrawImage(image, destination, sampling, imagePaint);
+			imagePaint.Dispose();
+			image.Dispose();
+			canvas.Dispose();
+			return new SKBitmapImageSource { Bitmap = thumbnail };
+		}
+
+		public void RefreshThumbnails()
+		{
+			Document document = Doc();
+			if (document == null)
+			{
+				return;
+			}
+			List<Layer> layers = document.Layers();
+			for (int index = 0; index < m_thumbnailImages.Count; index++)
+			{
+				int layerIndex = m_thumbnailLayers[index];
+				if (layerIndex < 0 || layerIndex >= layers.Count)
+				{
+					continue;
+				}
+				m_thumbnailImages[index].Source = BuildThumbnail(layers[layerIndex]);
+			}
+		}
 
 		private Document Doc()
 		{
@@ -65,6 +138,14 @@ namespace Bitmute.UI
 			m_eyeButtons.Add(eye);
 			m_eyeLayers.Add(layerIndex);
 
+			Image thumbnail = new Image();
+			thumbnail.WidthRequest = ThumbnailWidth;
+			thumbnail.HeightRequest = ThumbnailHeight;
+			thumbnail.VerticalOptions = LayoutOptions.Center;
+			thumbnail.Source = BuildThumbnail(layer);
+			m_thumbnailImages.Add(thumbnail);
+			m_thumbnailLayers.Add(layerIndex);
+
 			Label name = new Label();
 			name.Text = layer.Name();
 			name.FontSize = 12.0;
@@ -72,11 +153,15 @@ namespace Bitmute.UI
 			name.VerticalOptions = LayoutOptions.Center;
 
 			Grid rowGrid = new Grid();
+			rowGrid.ColumnSpacing = 4.0;
+			rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
 			Grid.SetColumn(eye, 0);
-			Grid.SetColumn(name, 1);
+			Grid.SetColumn(thumbnail, 1);
+			Grid.SetColumn(name, 2);
 			rowGrid.Add(eye);
+			rowGrid.Add(thumbnail);
 			rowGrid.Add(name);
 
 			Border row = new Border();
@@ -192,6 +277,8 @@ namespace Bitmute.UI
 			m_eyeLayers = new List<int>();
 			m_rowBorders = new List<Border>();
 			m_rowLayers = new List<int>();
+			m_thumbnailImages = new List<Image>();
+			m_thumbnailLayers = new List<int>();
 
 			Button addButton = new Button();
 			addButton.Text = "+";
@@ -272,6 +359,8 @@ namespace Bitmute.UI
 			m_eyeLayers.Clear();
 			m_rowBorders.Clear();
 			m_rowLayers.Clear();
+			m_thumbnailImages.Clear();
+			m_thumbnailLayers.Clear();
 
 			Document document = Doc();
 			if (document == null)

@@ -19,6 +19,8 @@ namespace Bitmute.UI
 		private double m_resizeOriginHeight;
 		private Label m_titleLabel;
 		private ContentView m_contentHost;
+		private bool m_minimized;
+		private double m_restoreHeight;
 
 		private Grid BuildTitleBar()
 		{
@@ -26,6 +28,7 @@ namespace Bitmute.UI
 			titleBar.HeightRequest = UiConstants.TitleBarHeight;
 			titleBar.BackgroundColor = UiConstants.TitleBar;
 			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			titleBar.Padding = new Thickness(10.0, 0.0, 4.0, 0.0);
 
@@ -37,6 +40,19 @@ namespace Bitmute.UI
 			Grid.SetColumn(m_titleLabel, 0);
 			titleBar.Add(m_titleLabel);
 
+			Button minimizeButton = new Button();
+			minimizeButton.Text = "—";
+			minimizeButton.FontSize = 12.0;
+			minimizeButton.WidthRequest = UiConstants.CloseButtonSize;
+			minimizeButton.HeightRequest = UiConstants.CloseButtonSize;
+			minimizeButton.Padding = new Thickness(0.0);
+			minimizeButton.BackgroundColor = Colors.Transparent;
+			minimizeButton.TextColor = UiConstants.TextDim;
+			minimizeButton.VerticalOptions = LayoutOptions.Center;
+			minimizeButton.Clicked += OnMinimizeClicked;
+			Grid.SetColumn(minimizeButton, 1);
+			titleBar.Add(minimizeButton);
+
 			Button closeButton = new Button();
 			closeButton.Text = "✕";
 			closeButton.FontSize = 12.0;
@@ -47,7 +63,7 @@ namespace Bitmute.UI
 			closeButton.TextColor = UiConstants.TextDim;
 			closeButton.VerticalOptions = LayoutOptions.Center;
 			closeButton.Clicked += OnCloseClicked;
-			Grid.SetColumn(closeButton, 1);
+			Grid.SetColumn(closeButton, 2);
 			titleBar.Add(closeButton);
 
 			PanGestureRecognizer dragGesture = new PanGestureRecognizer();
@@ -135,6 +151,21 @@ namespace Bitmute.UI
 			{
 				main.ClosePanel(this);
 			}
+		}
+
+		private void OnMinimizeClicked(object sender, EventArgs eventArgs)
+		{
+			if (m_minimized)
+			{
+				m_minimized = false;
+				m_contentHost.IsVisible = true;
+				ResizeTo(m_width, m_restoreHeight);
+				return;
+			}
+			m_minimized = true;
+			m_restoreHeight = m_height;
+			m_contentHost.IsVisible = false;
+			ResizeTo(m_width, UiConstants.TitleBarHeight + UiConstants.MinimizedPadding);
 		}
 
 		private void Raise()

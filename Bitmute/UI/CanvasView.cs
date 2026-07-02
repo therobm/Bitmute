@@ -607,6 +607,7 @@ namespace Bitmute.UI
 				if (tool.IsDestructive())
 				{
 					m_document.EndStroke();
+					main.RefreshLayerThumbnails();
 				}
 			}
 

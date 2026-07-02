@@ -23,6 +23,7 @@ namespace Bitmute.Imaging
 		private bool m_composeDirtyAll;
 		private SKRectI m_strokeDirtyRect;
 		private bool m_strokeDirtyValid;
+		private bool m_dirty;
 
 		public static Document OpenImage(string title, SKBitmap source)
 		{
@@ -51,6 +52,17 @@ namespace Bitmute.Imaging
 			m_composeDirtyAll = false;
 			m_strokeDirtyRect = SKRectI.Empty;
 			m_strokeDirtyValid = false;
+			m_dirty = false;
+		}
+
+		public bool IsDirty()
+		{
+			return m_dirty;
+		}
+
+		public void MarkClean()
+		{
+			m_dirty = false;
 		}
 
 		private static SKRectI UnionRects(SKRectI first, SKRectI second)
@@ -222,6 +234,7 @@ namespace Bitmute.Imaging
 			{
 				m_undoStack.RemoveAt(0);
 			}
+			m_dirty = true;
 			m_strokeSnapshot.Dispose();
 			m_strokeSnapshot = null;
 		}
@@ -234,6 +247,7 @@ namespace Bitmute.Imaging
 			{
 				m_undoStack.RemoveAt(0);
 			}
+			m_dirty = true;
 		}
 
 		public bool Undo()
@@ -247,6 +261,7 @@ namespace Bitmute.Imaging
 			m_undoStack.RemoveAt(last);
 			command.ApplyBefore(this);
 			m_redoStack.Add(command);
+			m_dirty = true;
 			return true;
 		}
 
@@ -261,6 +276,7 @@ namespace Bitmute.Imaging
 			m_redoStack.RemoveAt(last);
 			command.ApplyAfter(this);
 			m_undoStack.Add(command);
+			m_dirty = true;
 			return true;
 		}
 

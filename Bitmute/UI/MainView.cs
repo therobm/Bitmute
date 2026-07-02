@@ -939,24 +939,32 @@ namespace Bitmute.UI
 
 		private async void SaveImageFlow()
 		{
+			Document model = ActiveDocument();
+			if (model == null)
+			{
+				return;
+			}
+			await SaveDocumentAsync(model);
+		}
+
+		private async System.Threading.Tasks.Task<bool> SaveDocumentAsync(Document model)
+		{
 			try
 			{
-				Document model = ActiveDocument();
-				if (model == null)
-				{
-					return;
-				}
 				string path = await FileDialogs.PickSaveAsync(model.Title());
 				if (path == null)
 				{
-					return;
+					return false;
 				}
 				ImageFile.Encode(model, path);
+				model.MarkClean();
 				SetStatusMessage("Saved " + System.IO.Path.GetFileName(path));
+				return true;
 			}
 			catch (System.Exception error)
 			{
 				SetStatusMessage("Save failed: " + error.Message);
+				return false;
 			}
 		}
 
@@ -1040,12 +1048,52 @@ namespace Bitmute.UI
 			}
 		}
 
-		public void ClosePanel(FloatingPanel panel)
+		public void RefreshLayerThumbnails()
 		{
-			if (m_documents.Contains(panel))
+			if (m_layersPanel != null)
 			{
-				m_documents.Remove(panel);
-				m_workspace.Remove(panel);
+				m_layersPanel.RefreshThumbnails();
+			}
+		}
+
+		public async void ClosePanel(FloatingPanel panel)
+		{
+			DocumentWindow window = panel as DocumentWindow;
+			if (window != null)
+			{
+				Document model = window.DocumentModel();
+				if (model != null && model.IsDirty())
+				{
+					string choice = await DisplayActionSheetAsync("Save changes to " + model.Title() + "?", "Cancel", null, "Save", "Don't Save");
+					if (choice == "Save")
+					{
+						bool saved = await SaveDocumentAsync(model);
+						if (!saved)
+						{
+							return;
+						}
+					}
+					else if (choice != "Don't Save")
+					{
+						return;
+					}
+				}
+			}
+			RemovePanel(panel);
+		}
+
+		private void RemovePanel(FloatingPanel panel)
+		{
+			if (!m_documents.Contains(panel))
+			{
+				return;
+			}
+			m_documents.Remove(panel);
+			m_workspace.Remove(panel);
+			DocumentWindow window = panel as DocumentWindow;
+			if (window != null && m_activeDocumentWindow == window)
+			{
+				m_activeDocumentWindow = null;
 			}
 		}
 
