@@ -11,6 +11,13 @@ namespace Bitmute.Imaging
 		private List<Layer> m_layers;
 		private int m_activeLayerIndex;
 
+		public static Document OpenImage(string title, SKBitmap source)
+		{
+			Document document = new Document(title, source.Width, source.Height);
+			document.ActiveLayer().SetPixelsFrom(source);
+			return document;
+		}
+
 		public Document(string title, int width, int height)
 		{
 			m_title = title;

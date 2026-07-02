@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Bitmute.Imaging;
+using Bitmute.Storage;
 using Bitmute.Tools;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
@@ -32,6 +33,7 @@ namespace Bitmute.UI
 		private List<string> m_openItemActions;
 		private int m_openMenuIndex;
 		private int m_untitledCount;
+		private int m_cascadeCount;
 		private int m_topZIndex;
 		private ToolState m_toolState;
 		private PencilTool m_pencilTool;
@@ -82,6 +84,14 @@ namespace Bitmute.UI
 			if (title == "File")
 			{
 				if (item == "New")
+				{
+					return true;
+				}
+				if (item == "Open…")
+				{
+					return true;
+				}
+				if (item == "Save…")
 				{
 					return true;
 				}
@@ -324,6 +334,16 @@ namespace Bitmute.UI
 				NewDocument();
 				return;
 			}
+			if (action == "Open…")
+			{
+				OpenImageFlow();
+				return;
+			}
+			if (action == "Save…")
+			{
+				SaveImageFlow();
+				return;
+			}
 			if (action == "Exit")
 			{
 				Application current = Application.Current;
@@ -510,6 +530,7 @@ namespace Bitmute.UI
 			m_openItemActions = new List<string>();
 			m_openMenuIndex = -1;
 			m_untitledCount = 0;
+			m_cascadeCount = 0;
 			m_topZIndex = 0;
 			m_toolState = new ToolState();
 			m_pencilTool = new PencilTool();
@@ -574,10 +595,74 @@ namespace Bitmute.UI
 			m_untitledCount++;
 			Document model = new Document("Untitled-" + m_untitledCount, (int)UiConstants.DefaultDocumentWidth, (int)UiConstants.DefaultDocumentHeight);
 			DocumentWindow window = new DocumentWindow(model);
-			double offset = (m_untitledCount - 1) * UiConstants.CascadeOffset;
+			PlaceAndAdd(window);
+		}
+
+		private void PlaceAndAdd(DocumentWindow window)
+		{
+			double offset = m_cascadeCount * UiConstants.CascadeOffset;
+			m_cascadeCount++;
 			double x = 30.0 + offset;
 			double y = 24.0 + offset;
 			AddDocument(window, x, y, UiConstants.DefaultDocumentWindowWidth, UiConstants.DefaultDocumentWindowHeight);
+		}
+
+		private async void OpenImageFlow()
+		{
+			try
+			{
+				string path = await FileDialogs.PickOpenAsync();
+				if (path == null)
+				{
+					return;
+				}
+				SkiaSharp.SKBitmap bitmap = ImageFile.DecodeFile(path);
+				if (bitmap == null)
+				{
+					SetStatusMessage("Failed to open image");
+					return;
+				}
+				string title = System.IO.Path.GetFileName(path);
+				Document model = Document.OpenImage(title, bitmap);
+				bitmap.Dispose();
+				DocumentWindow window = new DocumentWindow(model);
+				PlaceAndAdd(window);
+			}
+			catch (System.Exception error)
+			{
+				SetStatusMessage("Open failed: " + error.Message);
+			}
+		}
+
+		private async void SaveImageFlow()
+		{
+			try
+			{
+				Document model = ActiveDocument();
+				if (model == null)
+				{
+					return;
+				}
+				string path = await FileDialogs.PickSaveAsync(model.Title());
+				if (path == null)
+				{
+					return;
+				}
+				ImageFile.Encode(model, path);
+				SetStatusMessage("Saved " + System.IO.Path.GetFileName(path));
+			}
+			catch (System.Exception error)
+			{
+				SetStatusMessage("Save failed: " + error.Message);
+			}
+		}
+
+		private void SetStatusMessage(string message)
+		{
+			if (m_statusCursorLabel != null)
+			{
+				m_statusCursorLabel.Text = message;
+			}
 		}
 
 		public void AddDocument(FloatingPanel panel, double x, double y, double width, double height)

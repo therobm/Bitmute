@@ -99,5 +99,18 @@ namespace Bitmute.Imaging
 		{
 			m_bitmap.Erase(SKColors.White);
 		}
+
+		public void SetPixelsFrom(SKBitmap source)
+		{
+			m_bitmap.Erase(SKColors.Transparent);
+			SKCanvas canvas = new SKCanvas(m_bitmap);
+			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
+			SKImage image = SKImage.FromBitmap(source);
+			SKPaint paint = new SKPaint();
+			canvas.DrawImage(image, 0.0f, 0.0f, sampling, paint);
+			paint.Dispose();
+			image.Dispose();
+			canvas.Dispose();
+		}
 	}
 }
