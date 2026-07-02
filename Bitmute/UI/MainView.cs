@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Bitmute.Imaging;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Shapes;
@@ -17,6 +18,7 @@ namespace Bitmute.UI
 		private AbsoluteLayout m_workspace;
 		private AbsoluteLayout m_overlay;
 		private List<FloatingPanel> m_documents;
+		private DocumentWindow m_activeDocumentWindow;
 		private ToolPalette m_toolPalette;
 		private Label m_optionsToolLabel;
 		private string[] m_menuTitles;
@@ -492,11 +494,12 @@ namespace Bitmute.UI
 		public void NewDocument()
 		{
 			m_untitledCount++;
-			DocumentWindow document = new DocumentWindow("Untitled-" + m_untitledCount);
+			Document model = new Document("Untitled-" + m_untitledCount, (int)UiConstants.DefaultDocumentWidth, (int)UiConstants.DefaultDocumentHeight);
+			DocumentWindow window = new DocumentWindow(model);
 			double offset = (m_untitledCount - 1) * UiConstants.CascadeOffset;
 			double x = 30.0 + offset;
 			double y = 24.0 + offset;
-			AddDocument(document, x, y, UiConstants.DefaultDocumentWindowWidth, UiConstants.DefaultDocumentWindowHeight);
+			AddDocument(window, x, y, UiConstants.DefaultDocumentWindowWidth, UiConstants.DefaultDocumentWindowHeight);
 		}
 
 		public void AddDocument(FloatingPanel panel, double x, double y, double width, double height)
@@ -511,6 +514,20 @@ namespace Bitmute.UI
 		{
 			m_topZIndex++;
 			panel.ZIndex = m_topZIndex;
+			DocumentWindow window = panel as DocumentWindow;
+			if (window != null)
+			{
+				m_activeDocumentWindow = window;
+			}
+		}
+
+		public CanvasView ActiveCanvas()
+		{
+			if (m_activeDocumentWindow == null)
+			{
+				return null;
+			}
+			return m_activeDocumentWindow.Canvas();
 		}
 
 		public void ClosePanel(FloatingPanel panel)

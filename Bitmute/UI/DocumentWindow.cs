@@ -1,3 +1,4 @@
+using Bitmute.Imaging;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
@@ -6,6 +7,9 @@ namespace Bitmute.UI
 {
 	public class DocumentWindow : FloatingPanel
 	{
+		private Document m_document;
+		private CanvasView m_canvas;
+
 		private BoxView BuildRuler()
 		{
 			BoxView ruler = new BoxView();
@@ -13,26 +17,13 @@ namespace Bitmute.UI
 			return ruler;
 		}
 
-		public DocumentWindow(string title)
+		public DocumentWindow(Document document)
 		{
-			SetTitle(title);
+			m_document = document;
+			SetTitle(document.Title());
 
-			BoxView canvas = new BoxView();
-			canvas.Color = UiConstants.CanvasPaper;
-			canvas.WidthRequest = UiConstants.DefaultDocumentWidth;
-			canvas.HeightRequest = UiConstants.DefaultDocumentHeight;
-			canvas.HorizontalOptions = LayoutOptions.Center;
-			canvas.VerticalOptions = LayoutOptions.Center;
-
-			Grid canvasHost = new Grid();
-			canvasHost.BackgroundColor = UiConstants.CanvasInset;
-			canvasHost.Padding = new Thickness(20.0);
-			canvasHost.Add(canvas);
-
-			ScrollView scroll = new ScrollView();
-			scroll.Orientation = ScrollOrientation.Both;
-			scroll.BackgroundColor = UiConstants.CanvasInset;
-			scroll.Content = canvasHost;
+			m_canvas = new CanvasView(document);
+			m_canvas.BackgroundColor = UiConstants.CanvasInset;
 
 			BoxView corner = new BoxView();
 			corner.Color = UiConstants.Ruler;
@@ -58,11 +49,21 @@ namespace Bitmute.UI
 			Grid.SetColumn(leftRuler, 0);
 			layout.Add(leftRuler);
 
-			Grid.SetRow(scroll, 1);
-			Grid.SetColumn(scroll, 1);
-			layout.Add(scroll);
+			Grid.SetRow(m_canvas, 1);
+			Grid.SetColumn(m_canvas, 1);
+			layout.Add(m_canvas);
 
 			SetPanelContent(layout);
+		}
+
+		public CanvasView Canvas()
+		{
+			return m_canvas;
+		}
+
+		public Document DocumentModel()
+		{
+			return m_document;
 		}
 	}
 }
