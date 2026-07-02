@@ -34,9 +34,7 @@ namespace Bitmute.Tools
 				return false;
 			}
 			BeginStroke(document, layer, state);
-			m_engine.StampFirst(layer, x, y, document.Selection());
-			int radius = state.BrushSize() / 2;
-			MarkStrokeDirty(document, x, y, x, y, radius);
+			m_engine.StampFirst(document, layer, x, y, document.Selection());
 			m_lastX = x;
 			m_lastY = y;
 			m_hasLast = true;
@@ -54,16 +52,13 @@ namespace Bitmute.Tools
 			{
 				return false;
 			}
-			int radius = state.BrushSize() / 2;
 			if (m_hasLast)
 			{
-				m_engine.StrokeTo(layer, x, y, document.Selection());
-				MarkStrokeDirty(document, m_lastX, m_lastY, x, y, radius);
+				m_engine.StrokeTo(document, layer, x, y, document.Selection());
 			}
 			else
 			{
-				m_engine.StampFirst(layer, x, y, document.Selection());
-				MarkStrokeDirty(document, x, y, x, y, radius);
+				m_engine.StampFirst(document, layer, x, y, document.Selection());
 			}
 			m_lastX = x;
 			m_lastY = y;

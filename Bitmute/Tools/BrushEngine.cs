@@ -298,7 +298,37 @@ namespace Bitmute.Tools
 			}
 		}
 
-		public void StampFirst(Layer layer, double x, double y, Selection selection)
+		private void MarkDirty(Document document, double x0, double y0, double x1, double y1)
+		{
+			int pad = m_radius + 1;
+			double lowX = x0;
+			if (x1 < lowX)
+			{
+				lowX = x1;
+			}
+			double highX = x0;
+			if (x1 > highX)
+			{
+				highX = x1;
+			}
+			double lowY = y0;
+			if (y1 < lowY)
+			{
+				lowY = y1;
+			}
+			double highY = y0;
+			if (y1 > highY)
+			{
+				highY = y1;
+			}
+			int left = (int)System.Math.Floor(lowX) - pad;
+			int top = (int)System.Math.Floor(lowY) - pad;
+			int right = (int)System.Math.Ceiling(highX) + pad;
+			int bottom = (int)System.Math.Ceiling(highY) + pad;
+			document.MarkComposeDirtyRegion(new SKRectI(left, top, right, bottom));
+		}
+
+		public void StampFirst(Document document, Layer layer, double x, double y, Selection selection)
 		{
 			StampDab(layer, x, y, selection);
 			m_penX = x;
@@ -307,15 +337,18 @@ namespace Bitmute.Tools
 			m_inputY = y;
 			m_hasPen = true;
 			m_distanceSinceStamp = 0.0;
+			MarkDirty(document, x, y, x, y);
 		}
 
-		public void StrokeTo(Layer layer, double rawX, double rawY, Selection selection)
+		public void StrokeTo(Document document, Layer layer, double rawX, double rawY, Selection selection)
 		{
 			if (!m_hasPen)
 			{
-				StampFirst(layer, rawX, rawY, selection);
+				StampFirst(document, layer, rawX, rawY, selection);
 				return;
 			}
+			double startPenX = m_penX;
+			double startPenY = m_penY;
 			double alpha = 1.0 - m_smoothing;
 			m_inputX = m_inputX + ((rawX - m_inputX) * alpha);
 			m_inputY = m_inputY + ((rawY - m_inputY) * alpha);
@@ -347,6 +380,7 @@ namespace Bitmute.Tools
 			m_distanceSinceStamp = m_distanceSinceStamp + (segmentLength - traveled);
 			m_penX = x;
 			m_penY = y;
+			MarkDirty(document, startPenX, startPenY, m_penX, m_penY);
 		}
 	}
 }
