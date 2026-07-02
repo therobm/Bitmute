@@ -95,6 +95,7 @@ namespace Bitmute.Tools
 				}
 				return 0.0;
 			}
+			double outer = m_radius;
 			double distance;
 			if (m_square)
 			{
@@ -104,31 +105,33 @@ namespace Bitmute.Tools
 				{
 					chebyshev = absOffsetY;
 				}
-				if (chebyshev > m_radius)
-				{
-					return 0.0;
-				}
-				distance = (double)chebyshev / m_radius;
+				distance = chebyshev;
 			}
 			else
 			{
-				int distanceSquared = (offsetX * offsetX) + (offsetY * offsetY);
-				if (distanceSquared > m_radius * m_radius)
-				{
-					return 0.0;
-				}
-				distance = System.Math.Sqrt(distanceSquared) / m_radius;
+				distance = System.Math.Sqrt((double)((offsetX * offsetX) + (offsetY * offsetY)));
 			}
-			if (distance <= m_hardness)
+			double inner = m_hardness * outer;
+			double antialias = 1.0;
+			if (outer - inner < antialias)
+			{
+				inner = outer - antialias;
+			}
+			if (inner < 0.0)
+			{
+				inner = 0.0;
+			}
+			if (distance <= inner)
 			{
 				return 1.0;
 			}
-			double falloff = 1.0 - m_hardness;
-			if (falloff <= 0.0001)
+			if (distance >= outer)
 			{
-				return 1.0;
+				return 0.0;
 			}
-			return (1.0 - distance) / falloff;
+			double t = (distance - inner) / (outer - inner);
+			double smooth = t * t * (3.0 - 2.0 * t);
+			return 1.0 - smooth;
 		}
 
 		public unsafe void StampDab(Layer layer, int centerX, int centerY, Selection selection)
