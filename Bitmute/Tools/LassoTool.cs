@@ -26,24 +26,11 @@ namespace Bitmute.Tools
 			return false;
 		}
 
-		public bool HasPreview()
+		public void Reset()
 		{
-			return m_active && m_verticesX.Count > 0;
-		}
-
-		public int VertexCount()
-		{
-			return m_verticesX.Count;
-		}
-
-		public int VertexX(int index)
-		{
-			return m_verticesX[index];
-		}
-
-		public int VertexY(int index)
-		{
-			return m_verticesY[index];
+			m_verticesX.Clear();
+			m_verticesY.Clear();
+			m_active = false;
 		}
 
 		private static void SortAscending(double[] values, int count)
@@ -209,6 +196,10 @@ namespace Bitmute.Tools
 			}
 			m_verticesX.Add(x);
 			m_verticesY.Add(y);
+			if (m_verticesX.Count >= MinimumVertices)
+			{
+				CommitSelection(document);
+			}
 			return false;
 		}
 

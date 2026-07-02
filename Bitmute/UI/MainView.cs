@@ -1068,6 +1068,10 @@ namespace Bitmute.UI
 			{
 				m_lineAntiAliasCheck.IsVisible = isLine;
 			}
+			if (m_lassoTool != null)
+			{
+				m_lassoTool.Reset();
+			}
 		}
 
 		private void OnLineAntiAliasChanged(object sender, CheckedChangedEventArgs eventArgs)

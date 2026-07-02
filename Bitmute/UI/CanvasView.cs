@@ -191,11 +191,6 @@ namespace Bitmute.UI
 				DrawLinePreview(canvas, (LineTool)tool);
 				return;
 			}
-			if (tool is LassoTool)
-			{
-				DrawLassoPreview(canvas, (LassoTool)tool);
-				return;
-			}
 		}
 
 		private void DrawLinePreview(SKCanvas canvas, LineTool line)
@@ -222,42 +217,6 @@ namespace Bitmute.UI
 			overlay.IsAntialias = true;
 			canvas.DrawLine(startX, startY, endX, endY, overlay);
 			overlay.Dispose();
-		}
-
-		private void DrawLassoPreview(SKCanvas canvas, LassoTool lasso)
-		{
-			if (!lasso.HasPreview())
-			{
-				return;
-			}
-			int count = lasso.VertexCount();
-			SKPathBuilder builder = new SKPathBuilder();
-			builder.MoveTo(m_offsetX + (lasso.VertexX(0) * m_zoom), m_offsetY + (lasso.VertexY(0) * m_zoom));
-			for (int index = 1; index < count; index++)
-			{
-				builder.LineTo(m_offsetX + (lasso.VertexX(index) * m_zoom), m_offsetY + (lasso.VertexY(index) * m_zoom));
-			}
-			if (count >= 3)
-			{
-				builder.Close();
-			}
-			SKPath path = builder.Snapshot();
-			SKPaint underlay = new SKPaint();
-			underlay.Style = SKPaintStyle.Stroke;
-			underlay.StrokeWidth = 3.0f;
-			underlay.Color = SKColors.Black;
-			underlay.IsAntialias = true;
-			canvas.DrawPath(path, underlay);
-			underlay.Dispose();
-			SKPaint overlay = new SKPaint();
-			overlay.Style = SKPaintStyle.Stroke;
-			overlay.StrokeWidth = 1.0f;
-			overlay.Color = SKColors.White;
-			overlay.IsAntialias = true;
-			canvas.DrawPath(path, overlay);
-			overlay.Dispose();
-			path.Dispose();
-			builder.Dispose();
 		}
 
 		private void DrawSelection(SKCanvas canvas)
