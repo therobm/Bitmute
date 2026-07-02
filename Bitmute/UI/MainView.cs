@@ -7,6 +7,7 @@ using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Layouts;
+using SkiaSharp;
 
 namespace Bitmute.UI
 {
@@ -22,8 +23,8 @@ namespace Bitmute.UI
 		private List<FloatingPanel> m_documents;
 		private DocumentWindow m_activeDocumentWindow;
 		private ToolPalette m_toolPalette;
-		private ColorPanel m_colorPanel;
 		private LayersPanel m_layersPanel;
+		private ColorPicker m_colorPicker;
 		private Label m_optionsToolLabel;
 		private Slider m_brushSizeSlider;
 		private Label m_brushSizeValue;
@@ -652,22 +653,17 @@ namespace Bitmute.UI
 
 		private View BuildPaletteDock()
 		{
-			m_colorPanel = new ColorPanel();
 			m_layersPanel = new LayersPanel();
-			PaletteGroup topGroup = new PaletteGroup(new string[] { "Color", "Swatches" }, m_colorPanel);
-			PaletteGroup bottomGroup = new PaletteGroup(new string[] { "Layers", "Channels" }, m_layersPanel);
+			PaletteGroup layersGroup = new PaletteGroup(new string[] { "Layers", "Channels" }, m_layersPanel);
 
 			Grid dock = new Grid();
 			dock.BackgroundColor = UiConstants.Chrome;
 			dock.Padding = new Thickness(4.0);
 			dock.RowSpacing = 4.0;
-			dock.RowDefinitions.Add(new RowDefinition(new GridLength(230.0)));
 			dock.RowDefinitions.Add(new RowDefinition(GridLength.Star));
 
-			Grid.SetRow(topGroup, 0);
-			dock.Add(topGroup);
-			Grid.SetRow(bottomGroup, 1);
-			dock.Add(bottomGroup);
+			Grid.SetRow(layersGroup, 0);
+			dock.Add(layersGroup);
 
 			return dock;
 		}
@@ -1030,9 +1026,9 @@ namespace Bitmute.UI
 
 		public void RefreshPanels()
 		{
-			if (m_colorPanel != null)
+			if (m_toolPalette != null)
 			{
-				m_colorPanel.Refresh();
+				m_toolPalette.RefreshColors();
 			}
 			if (m_layersPanel != null)
 			{
@@ -1042,10 +1038,67 @@ namespace Bitmute.UI
 
 		public void OnCanvasInteracted()
 		{
-			if (m_colorPanel != null)
+			if (m_toolPalette != null)
 			{
-				m_colorPanel.Refresh();
+				m_toolPalette.RefreshColors();
 			}
+		}
+
+		public void OpenColorPicker(bool foreground)
+		{
+			if (m_colorPicker != null)
+			{
+				CloseColorPicker();
+			}
+			SKColor initial = m_toolState.Background();
+			if (foreground)
+			{
+				initial = m_toolState.Foreground();
+			}
+			m_colorPicker = new ColorPicker(initial, foreground);
+			double pickerWidth = 380.0;
+			double pickerHeight = 300.0;
+			double left = (m_workspace.Width - pickerWidth) / 2.0;
+			double top = (m_workspace.Height - pickerHeight) / 2.0;
+			if (left < 0.0)
+			{
+				left = 0.0;
+			}
+			if (top < 0.0)
+			{
+				top = 0.0;
+			}
+			AbsoluteLayout.SetLayoutBounds(m_colorPicker, new Rect(left, top, pickerWidth, pickerHeight));
+			AbsoluteLayout.SetLayoutFlags(m_colorPicker, AbsoluteLayoutFlags.None);
+			m_topZIndex = m_topZIndex + 1;
+			m_colorPicker.ZIndex = m_topZIndex + 1000;
+			m_workspace.Add(m_colorPicker);
+		}
+
+		public void ApplyPickedColor(SKColor color, bool foreground)
+		{
+			if (foreground)
+			{
+				m_toolState.SetForeground(color);
+			}
+			else
+			{
+				m_toolState.SetBackground(color);
+			}
+			if (m_toolPalette != null)
+			{
+				m_toolPalette.RefreshColors();
+			}
+		}
+
+		public void CloseColorPicker()
+		{
+			if (m_colorPicker == null)
+			{
+				return;
+			}
+			m_workspace.Remove(m_colorPicker);
+			m_colorPicker = null;
 		}
 
 		public void RefreshLayerThumbnails()
