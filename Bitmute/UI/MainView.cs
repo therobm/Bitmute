@@ -25,6 +25,8 @@ namespace Bitmute.UI
 		private ColorPanel m_colorPanel;
 		private LayersPanel m_layersPanel;
 		private Label m_optionsToolLabel;
+		private Slider m_brushSizeSlider;
+		private Label m_brushSizeValue;
 		private Label m_statusInfoLabel;
 		private Label m_statusCursorLabel;
 		private string[] m_menuTitles;
@@ -66,7 +68,7 @@ namespace Bitmute.UI
 			}
 			if (title == "Filter")
 			{
-				return new string[] { "Blur", "Sharpen", "Invert" };
+				return new string[] { "Blur", "Sharpen", "Invert Colors" };
 			}
 			if (title == "View")
 			{
@@ -108,6 +110,14 @@ namespace Bitmute.UI
 					return true;
 				}
 				if (item == "Redo")
+				{
+					return true;
+				}
+				return false;
+			}
+			if (title == "Filter")
+			{
+				if (item == "Invert Colors")
 				{
 					return true;
 				}
@@ -416,6 +426,23 @@ namespace Bitmute.UI
 				{
 					fitCanvas.FitToView();
 				}
+				return;
+			}
+			if (action == "Invert Colors")
+			{
+				CanvasView invertCanvas = ActiveCanvas();
+				if (invertCanvas != null)
+				{
+					Document invertDocument = invertCanvas.CurrentDocument();
+					Layer activeLayer = invertDocument.ActiveLayer();
+					if (activeLayer != null)
+					{
+						invertDocument.BeginStroke();
+						Adjustments.InvertColors(activeLayer.Bitmap());
+						invertDocument.EndStroke();
+						invertCanvas.MarkComposeDirty();
+					}
+				}
 			}
 		}
 
@@ -452,13 +479,35 @@ namespace Bitmute.UI
 			Grid.SetColumn(m_optionsToolLabel, 0);
 			bar.Add(m_optionsToolLabel);
 
-			Label details = new Label();
-			details.Text = "Size 12 px      Opacity 100%      Hardness 100%";
-			details.TextColor = UiConstants.TextDim;
-			details.FontSize = 12.0;
-			details.VerticalOptions = LayoutOptions.Center;
-			Grid.SetColumn(details, 1);
-			bar.Add(details);
+			Label sizeLabel = new Label();
+			sizeLabel.Text = "Size";
+			sizeLabel.TextColor = UiConstants.TextDim;
+			sizeLabel.FontSize = 12.0;
+			sizeLabel.VerticalOptions = LayoutOptions.Center;
+
+			m_brushSizeSlider = new Slider();
+			m_brushSizeSlider.Minimum = 1.0;
+			m_brushSizeSlider.Maximum = 100.0;
+			m_brushSizeSlider.WidthRequest = 180.0;
+			m_brushSizeSlider.VerticalOptions = LayoutOptions.Center;
+			m_brushSizeSlider.ValueChanged += OnBrushSizeChanged;
+
+			m_brushSizeValue = new Label();
+			m_brushSizeValue.TextColor = UiConstants.OnSurface;
+			m_brushSizeValue.FontSize = 12.0;
+			m_brushSizeValue.WidthRequest = 44.0;
+			m_brushSizeValue.VerticalOptions = LayoutOptions.Center;
+
+			HorizontalStackLayout options = new HorizontalStackLayout();
+			options.Spacing = 8.0;
+			options.VerticalOptions = LayoutOptions.Center;
+			options.Add(sizeLabel);
+			options.Add(m_brushSizeSlider);
+			options.Add(m_brushSizeValue);
+			Grid.SetColumn(options, 1);
+			bar.Add(options);
+
+			m_brushSizeSlider.Value = m_toolState.BrushSize();
 
 			return bar;
 		}
@@ -780,6 +829,20 @@ namespace Bitmute.UI
 			if (m_optionsToolLabel != null)
 			{
 				m_optionsToolLabel.Text = tool.ToString();
+			}
+		}
+
+		private void OnBrushSizeChanged(object sender, ValueChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			int size = (int)m_brushSizeSlider.Value;
+			m_toolState.SetBrushSize(size);
+			if (m_brushSizeValue != null)
+			{
+				m_brushSizeValue.Text = size + " px";
 			}
 		}
 
