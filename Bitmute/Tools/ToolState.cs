@@ -1,3 +1,4 @@
+using Bitmute.Imaging;
 using SkiaSharp;
 
 namespace Bitmute.Tools
@@ -13,6 +14,7 @@ namespace Bitmute.Tools
 		private int m_brushFlow;
 		private int m_brushSpacing;
 		private bool m_brushSquareTip;
+		private eBlendMode m_brushMode;
 		private int m_fillTolerance;
 		private bool m_lineAntiAlias;
 		private bool m_shiftHeld;
@@ -29,6 +31,7 @@ namespace Bitmute.Tools
 			m_brushFlow = 100;
 			m_brushSpacing = 25;
 			m_brushSquareTip = false;
+			m_brushMode = eBlendMode.Normal;
 			m_fillTolerance = 0;
 			m_lineAntiAlias = false;
 			m_shiftHeld = false;
@@ -189,6 +192,16 @@ namespace Bitmute.Tools
 		public void SetBrushSquareTip(bool square)
 		{
 			m_brushSquareTip = square;
+		}
+
+		public eBlendMode BrushMode()
+		{
+			return m_brushMode;
+		}
+
+		public void SetBrushMode(eBlendMode mode)
+		{
+			m_brushMode = mode;
 		}
 
 		public int FillTolerance()

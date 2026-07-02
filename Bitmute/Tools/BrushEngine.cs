@@ -19,6 +19,7 @@ namespace Bitmute.Tools
 		private double m_flow;
 		private bool m_square;
 		private bool m_erase;
+		private eBlendMode m_mode;
 		private double m_spacingPx;
 		private double m_penX;
 		private double m_penY;
@@ -29,7 +30,7 @@ namespace Bitmute.Tools
 		private byte m_blue;
 		private bool m_active;
 
-		public void Begin(Layer layer, SKBitmap original, int radius, double hardness, double opacity, double flow, bool square, double spacingFraction, bool erase, SKColor color)
+		public void Begin(Layer layer, SKBitmap original, int radius, double hardness, double opacity, double flow, bool square, double spacingFraction, bool erase, eBlendMode mode, SKColor color)
 		{
 			End();
 			SKBitmap bitmap = layer.Bitmap();
@@ -52,6 +53,7 @@ namespace Bitmute.Tools
 			m_flow = flow;
 			m_square = square;
 			m_erase = erase;
+			m_mode = mode;
 			int diameter = radius * 2;
 			if (diameter < 1)
 			{
@@ -139,6 +141,45 @@ namespace Bitmute.Tools
 			return 1.0 - smooth;
 		}
 
+		private double BlendChannel(double cb, double cs)
+		{
+			if (m_mode == eBlendMode.Multiply)
+			{
+				return cb * cs;
+			}
+			if (m_mode == eBlendMode.Screen)
+			{
+				return 1.0 - ((1.0 - cb) * (1.0 - cs));
+			}
+			if (m_mode == eBlendMode.Overlay)
+			{
+				if (cb <= 0.5)
+				{
+					return 2.0 * cb * cs;
+				}
+				return 1.0 - (2.0 * (1.0 - cb) * (1.0 - cs));
+			}
+			if (m_mode == eBlendMode.Add)
+			{
+				double sum = cb + cs;
+				if (sum > 1.0)
+				{
+					sum = 1.0;
+				}
+				return sum;
+			}
+			return cs;
+		}
+
+		private double EffectiveSource(byte originalChannel, byte sourceChannel, double originalAlpha)
+		{
+			double cb = originalChannel / 255.0;
+			double cs = sourceChannel / 255.0;
+			double blended = BlendChannel(cb, cs);
+			double effective = ((1.0 - originalAlpha) * cs) + (originalAlpha * blended);
+			return effective * 255.0;
+		}
+
 		public unsafe void StampDab(Layer layer, double centerX, double centerY, Selection selection)
 		{
 			if (!m_active)
@@ -212,6 +253,15 @@ namespace Bitmute.Tools
 						destinationPixel[3] = (byte)((erasedAlpha * 255.0) + 0.5);
 						continue;
 					}
+					double sourceRed = m_red;
+					double sourceGreen = m_green;
+					double sourceBlue = m_blue;
+					if (m_mode != eBlendMode.Normal)
+					{
+						sourceRed = EffectiveSource(originalPixel[0], m_red, originalAlpha);
+						sourceGreen = EffectiveSource(originalPixel[1], m_green, originalAlpha);
+						sourceBlue = EffectiveSource(originalPixel[2], m_blue, originalAlpha);
+					}
 					double inverse = 1.0 - finalAlpha;
 					double outAlpha = finalAlpha + (originalAlpha * inverse);
 					if (outAlpha <= 0.0)
@@ -223,9 +273,9 @@ namespace Bitmute.Tools
 						continue;
 					}
 					double weightedOriginal = originalAlpha * inverse;
-					double outRed = ((m_red * finalAlpha) + (originalPixel[0] * weightedOriginal)) / outAlpha;
-					double outGreen = ((m_green * finalAlpha) + (originalPixel[1] * weightedOriginal)) / outAlpha;
-					double outBlue = ((m_blue * finalAlpha) + (originalPixel[2] * weightedOriginal)) / outAlpha;
+					double outRed = ((sourceRed * finalAlpha) + (originalPixel[0] * weightedOriginal)) / outAlpha;
+					double outGreen = ((sourceGreen * finalAlpha) + (originalPixel[1] * weightedOriginal)) / outAlpha;
+					double outBlue = ((sourceBlue * finalAlpha) + (originalPixel[2] * weightedOriginal)) / outAlpha;
 					destinationPixel[0] = (byte)(outRed + 0.5);
 					destinationPixel[1] = (byte)(outGreen + 0.5);
 					destinationPixel[2] = (byte)(outBlue + 0.5);

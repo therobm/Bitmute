@@ -46,6 +46,8 @@ namespace Bitmute.UI
 		private Slider m_brushFlowSlider;
 		private Label m_brushFlowValue;
 		private Button m_brushSettingsButton;
+		private Label m_brushModeLabel;
+		private Picker m_brushModePicker;
 		private Label m_lineAntiAliasLabel;
 		private CheckBox m_lineAntiAliasCheck;
 		private Label m_statusInfoLabel;
@@ -722,6 +724,27 @@ namespace Bitmute.UI
 			m_brushFlowValue.VerticalOptions = LayoutOptions.Center;
 			m_brushFlowValue.IsVisible = false;
 
+			m_brushModeLabel = new Label();
+			m_brushModeLabel.Text = "Mode";
+			m_brushModeLabel.TextColor = UiConstants.TextDim;
+			m_brushModeLabel.FontSize = 12.0;
+			m_brushModeLabel.VerticalOptions = LayoutOptions.Center;
+			m_brushModeLabel.IsVisible = false;
+
+			m_brushModePicker = new Picker();
+			m_brushModePicker.FontSize = 12.0;
+			m_brushModePicker.TextColor = UiConstants.OnSurface;
+			m_brushModePicker.WidthRequest = 110.0;
+			m_brushModePicker.VerticalOptions = LayoutOptions.Center;
+			m_brushModePicker.IsVisible = false;
+			m_brushModePicker.Items.Add("Normal");
+			m_brushModePicker.Items.Add("Multiply");
+			m_brushModePicker.Items.Add("Screen");
+			m_brushModePicker.Items.Add("Overlay");
+			m_brushModePicker.Items.Add("Add");
+			m_brushModePicker.SelectedIndex = 0;
+			m_brushModePicker.SelectedIndexChanged += OnBrushModeChanged;
+
 			m_brushSettingsButton = new Button();
 			m_brushSettingsButton.Text = "Brush Settings";
 			m_brushSettingsButton.FontSize = 12.0;
@@ -759,6 +782,8 @@ namespace Bitmute.UI
 			options.Add(m_brushFlowLabel);
 			options.Add(m_brushFlowSlider);
 			options.Add(m_brushFlowValue);
+			options.Add(m_brushModeLabel);
+			options.Add(m_brushModePicker);
 			options.Add(m_brushSettingsButton);
 			options.Add(m_lineAntiAliasLabel);
 			options.Add(m_lineAntiAliasCheck);
@@ -1435,6 +1460,8 @@ namespace Bitmute.UI
 				m_brushFlowLabel.IsVisible = isBrushFamily;
 				m_brushFlowSlider.IsVisible = isBrushFamily;
 				m_brushFlowValue.IsVisible = isBrushFamily;
+				m_brushModeLabel.IsVisible = isBrushFamily;
+				m_brushModePicker.IsVisible = isBrushFamily;
 				m_brushSettingsButton.IsVisible = isBrushFamily;
 			}
 			if (m_lassoTool != null)
@@ -1483,6 +1510,20 @@ namespace Bitmute.UI
 			{
 				m_brushFlowValue.Text = flow + "%";
 			}
+		}
+
+		private void OnBrushModeChanged(object sender, System.EventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			int index = m_brushModePicker.SelectedIndex;
+			if (index < 0)
+			{
+				index = 0;
+			}
+			m_toolState.SetBrushMode((Bitmute.Imaging.eBlendMode)index);
 		}
 
 		private void OnBrushSettingsClicked(object sender, System.EventArgs eventArgs)

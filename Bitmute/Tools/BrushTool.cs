@@ -19,7 +19,7 @@ namespace Bitmute.Tools
 				return false;
 			}
 			int radius = state.BrushSize() / 2;
-			m_engine.Begin(layer, document.StrokeSnapshot(), radius, state.BrushHardness() / 100.0, state.BrushOpacity() / 100.0, state.BrushFlow() / 100.0, state.BrushSquareTip(), state.BrushSpacing() / 100.0, false, state.Foreground());
+			m_engine.Begin(layer, document.StrokeSnapshot(), radius, state.BrushHardness() / 100.0, state.BrushOpacity() / 100.0, state.BrushFlow() / 100.0, state.BrushSquareTip(), state.BrushSpacing() / 100.0, false, state.BrushMode(), state.Foreground());
 			m_engine.StampFirst(layer, x, y, document.Selection());
 			MarkStrokeDirty(document, x, y, x, y, radius);
 			m_lastX = x;
