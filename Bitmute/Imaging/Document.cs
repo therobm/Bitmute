@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using SkiaSharp;
 
@@ -359,15 +360,144 @@ namespace Bitmute.Imaging
 			paint.Dispose();
 		}
 
+		private bool AllVisibleLayersNormal()
+		{
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				if (!layer.IsVisible())
+				{
+					continue;
+				}
+				if (layer.BlendMode() != eBlendMode.Normal)
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+
 		public void CompositeInto(SKBitmap target)
 		{
-			SKCanvas canvas = new SKCanvas(target);
-			canvas.Clear(SKColors.Transparent);
-			DrawLayers(canvas);
-			canvas.Dispose();
+			CompositeRegion(target, new SKRectI(0, 0, m_width, m_height));
 		}
 
 		public void CompositeRegion(SKBitmap target, SKRectI region)
+		{
+			if (AllVisibleLayersNormal())
+			{
+				CompositeRegionRaw(target, region);
+				return;
+			}
+			CompositeRegionSkia(target, region);
+		}
+
+		private unsafe void CompositeRegionRaw(SKBitmap target, SKRectI region)
+		{
+			int canvasWidth = target.Width;
+			int canvasHeight = target.Height;
+			int left = region.Left;
+			int top = region.Top;
+			int right = region.Right;
+			int bottom = region.Bottom;
+			if (left < 0)
+			{
+				left = 0;
+			}
+			if (top < 0)
+			{
+				top = 0;
+			}
+			if (right > canvasWidth)
+			{
+				right = canvasWidth;
+			}
+			if (bottom > canvasHeight)
+			{
+				bottom = canvasHeight;
+			}
+			if (right <= left || bottom <= top)
+			{
+				return;
+			}
+
+			int layerCount = m_layers.Count;
+			IntPtr* sourceBases = stackalloc IntPtr[layerCount];
+			int* sourceRowBytes = stackalloc int[layerCount];
+			int* sourceWidths = stackalloc int[layerCount];
+			int* sourceHeights = stackalloc int[layerCount];
+			int* sourceOffsetsX = stackalloc int[layerCount];
+			int* sourceOffsetsY = stackalloc int[layerCount];
+			int* sourceOpacities = stackalloc int[layerCount];
+			int visibleCount = 0;
+			for (int index = 0; index < layerCount; index++)
+			{
+				Layer layer = m_layers[index];
+				if (!layer.IsVisible())
+				{
+					continue;
+				}
+				SKBitmap bitmap = layer.Bitmap();
+				sourceBases[visibleCount] = bitmap.GetPixels();
+				sourceRowBytes[visibleCount] = bitmap.RowBytes;
+				sourceWidths[visibleCount] = bitmap.Width;
+				sourceHeights[visibleCount] = bitmap.Height;
+				sourceOffsetsX[visibleCount] = layer.OffsetX();
+				sourceOffsetsY[visibleCount] = layer.OffsetY();
+				sourceOpacities[visibleCount] = layer.Opacity();
+				visibleCount++;
+			}
+
+			int targetRowBytes = target.RowBytes;
+			byte* targetBase = (byte*)target.GetPixels().ToPointer();
+
+			for (int canvasY = top; canvasY < bottom; canvasY++)
+			{
+				byte* targetRow = targetBase + (canvasY * targetRowBytes);
+				for (int canvasX = left; canvasX < right; canvasX++)
+				{
+					int accumulatedRed = 0;
+					int accumulatedGreen = 0;
+					int accumulatedBlue = 0;
+					int accumulatedAlpha = 0;
+					for (int layerIndex = 0; layerIndex < visibleCount; layerIndex++)
+					{
+						int bitmapX = canvasX - sourceOffsetsX[layerIndex];
+						int bitmapY = canvasY - sourceOffsetsY[layerIndex];
+						if (bitmapX < 0 || bitmapY < 0 || bitmapX >= sourceWidths[layerIndex] || bitmapY >= sourceHeights[layerIndex])
+						{
+							continue;
+						}
+						byte* sourcePixel = (byte*)sourceBases[layerIndex].ToPointer() + (bitmapY * sourceRowBytes[layerIndex]) + (bitmapX * 4);
+						int sourceAlpha = sourcePixel[3];
+						if (sourceAlpha == 0)
+						{
+							continue;
+						}
+						int effectiveAlpha = ((sourceAlpha * sourceOpacities[layerIndex]) + 127) / 255;
+						if (effectiveAlpha == 0)
+						{
+							continue;
+						}
+						int premultipliedRed = ((sourcePixel[0] * effectiveAlpha) + 127) / 255;
+						int premultipliedGreen = ((sourcePixel[1] * effectiveAlpha) + 127) / 255;
+						int premultipliedBlue = ((sourcePixel[2] * effectiveAlpha) + 127) / 255;
+						int inverseAlpha = 255 - effectiveAlpha;
+						accumulatedRed = premultipliedRed + (((accumulatedRed * inverseAlpha) + 127) / 255);
+						accumulatedGreen = premultipliedGreen + (((accumulatedGreen * inverseAlpha) + 127) / 255);
+						accumulatedBlue = premultipliedBlue + (((accumulatedBlue * inverseAlpha) + 127) / 255);
+						accumulatedAlpha = effectiveAlpha + (((accumulatedAlpha * inverseAlpha) + 127) / 255);
+					}
+					byte* targetPixel = targetRow + (canvasX * 4);
+					targetPixel[0] = (byte)accumulatedRed;
+					targetPixel[1] = (byte)accumulatedGreen;
+					targetPixel[2] = (byte)accumulatedBlue;
+					targetPixel[3] = (byte)accumulatedAlpha;
+				}
+			}
+		}
+
+		private void CompositeRegionSkia(SKBitmap target, SKRectI region)
 		{
 			SKCanvas canvas = new SKCanvas(target);
 			SKRect clipRect = new SKRect(region.Left, region.Top, region.Right, region.Bottom);
