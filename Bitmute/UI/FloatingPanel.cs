@@ -54,7 +54,7 @@ namespace Bitmute.UI
 			titleBar.Add(minimizeButton);
 
 			Button closeButton = new Button();
-			closeButton.Text = "✕";
+			closeButton.Text = "X";
 			closeButton.FontSize = 12.0;
 			closeButton.WidthRequest = UiConstants.CloseButtonSize;
 			closeButton.HeightRequest = UiConstants.CloseButtonSize;

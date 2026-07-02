@@ -20,6 +20,7 @@ namespace Bitmute.Imaging
 		private SKBitmap m_bitmap;
 		private int m_offsetX;
 		private int m_offsetY;
+		private bool m_isBackground;
 
 		public static SKBlendMode ToSkBlendMode(eBlendMode blendMode)
 		{
@@ -52,6 +53,17 @@ namespace Bitmute.Imaging
 			m_bitmap.Erase(SKColors.Transparent);
 			m_offsetX = 0;
 			m_offsetY = 0;
+			m_isBackground = false;
+		}
+
+		public bool IsBackground()
+		{
+			return m_isBackground;
+		}
+
+		public void SetIsBackground(bool isBackground)
+		{
+			m_isBackground = isBackground;
 		}
 
 		public SKBitmap Bitmap()

@@ -40,6 +40,7 @@ namespace Bitmute.Imaging
 			m_layers = new List<Layer>();
 			Layer background = new Layer("Background", width, height);
 			background.FillWhite();
+			background.SetIsBackground(true);
 			m_layers.Add(background);
 			m_activeLayerIndex = 0;
 			m_undoStack = new List<EditCommand>();
@@ -337,6 +338,46 @@ namespace Bitmute.Imaging
 			m_layers.Add(layer);
 			m_activeLayerIndex = m_layers.Count - 1;
 			return layer;
+		}
+
+		public void MoveLayerUp(int index)
+		{
+			if (index < 0 || index >= m_layers.Count - 1)
+			{
+				return;
+			}
+			Layer layer = m_layers[index];
+			m_layers.RemoveAt(index);
+			m_layers.Insert(index + 1, layer);
+			if (m_activeLayerIndex == index)
+			{
+				m_activeLayerIndex = index + 1;
+			}
+			else if (m_activeLayerIndex == index + 1)
+			{
+				m_activeLayerIndex = index;
+			}
+			m_dirty = true;
+		}
+
+		public void MoveLayerDown(int index)
+		{
+			if (index <= 0 || index >= m_layers.Count)
+			{
+				return;
+			}
+			Layer layer = m_layers[index];
+			m_layers.RemoveAt(index);
+			m_layers.Insert(index - 1, layer);
+			if (m_activeLayerIndex == index)
+			{
+				m_activeLayerIndex = index - 1;
+			}
+			else if (m_activeLayerIndex == index - 1)
+			{
+				m_activeLayerIndex = index;
+			}
+			m_dirty = true;
 		}
 
 		public void DeleteLayer(int index)

@@ -74,6 +74,19 @@ namespace Bitmute.UI
 			RefreshColors();
 		}
 
+		private Button BuildCornerButton(string glyph, string tip, EventHandler handler)
+		{
+			Button button = new Button();
+			button.Text = glyph;
+			button.FontSize = 10.0;
+			button.Padding = new Thickness(0.0);
+			button.BackgroundColor = UiConstants.ChromeRaised;
+			button.TextColor = UiConstants.OnSurface;
+			button.Clicked += handler;
+			ToolTipProperties.SetText(button, tip);
+			return button;
+		}
+
 		private View BuildColorSwatches()
 		{
 			m_backgroundSwatch = new BoxView();
@@ -86,48 +99,34 @@ namespace Bitmute.UI
 			foregroundTap.Tapped += OnForegroundTapped;
 			m_foregroundSwatch.GestureRecognizers.Add(foregroundTap);
 
+			Button swapButton = BuildCornerButton("⇄", "Swap colors (X)", OnSwapTapped);
+			Button resetButton = BuildCornerButton("D", "Default black/white", OnResetTapped);
+
 			AbsoluteLayout swatchStack = new AbsoluteLayout();
-			swatchStack.WidthRequest = 48.0;
-			swatchStack.HeightRequest = 48.0;
-			AbsoluteLayout.SetLayoutBounds(m_backgroundSwatch, new Rect(16.0, 16.0, 30.0, 30.0));
+			swatchStack.WidthRequest = 54.0;
+			swatchStack.HeightRequest = 54.0;
+			AbsoluteLayout.SetLayoutBounds(m_backgroundSwatch, new Rect(18.0, 18.0, 30.0, 30.0));
 			AbsoluteLayout.SetLayoutFlags(m_backgroundSwatch, AbsoluteLayoutFlags.None);
 			AbsoluteLayout.SetLayoutBounds(m_foregroundSwatch, new Rect(0.0, 0.0, 30.0, 30.0));
 			AbsoluteLayout.SetLayoutFlags(m_foregroundSwatch, AbsoluteLayoutFlags.None);
+			AbsoluteLayout.SetLayoutBounds(swapButton, new Rect(38.0, 0.0, 16.0, 16.0));
+			AbsoluteLayout.SetLayoutFlags(swapButton, AbsoluteLayoutFlags.None);
+			AbsoluteLayout.SetLayoutBounds(resetButton, new Rect(0.0, 38.0, 16.0, 16.0));
+			AbsoluteLayout.SetLayoutFlags(resetButton, AbsoluteLayoutFlags.None);
 			swatchStack.Add(m_backgroundSwatch);
 			swatchStack.Add(m_foregroundSwatch);
-
-			Button swapButton = new Button();
-			swapButton.Text = "⇄";
-			swapButton.FontSize = 12.0;
-			swapButton.WidthRequest = 26.0;
-			swapButton.HeightRequest = 22.0;
-			swapButton.Padding = new Thickness(0.0);
-			swapButton.BackgroundColor = UiConstants.ChromeRaised;
-			swapButton.TextColor = UiConstants.OnSurface;
-			swapButton.Clicked += OnSwapTapped;
-
-			Button resetButton = new Button();
-			resetButton.Text = "D";
-			resetButton.FontSize = 11.0;
-			resetButton.WidthRequest = 26.0;
-			resetButton.HeightRequest = 22.0;
-			resetButton.Padding = new Thickness(0.0);
-			resetButton.BackgroundColor = UiConstants.ChromeRaised;
-			resetButton.TextColor = UiConstants.OnSurface;
-			resetButton.Clicked += OnResetTapped;
-
-			VerticalStackLayout swapReset = new VerticalStackLayout();
-			swapReset.Spacing = 4.0;
-			swapReset.VerticalOptions = LayoutOptions.Center;
-			swapReset.Add(swapButton);
-			swapReset.Add(resetButton);
+			swatchStack.Add(swapButton);
+			swatchStack.Add(resetButton);
 
 			HorizontalStackLayout row = new HorizontalStackLayout();
-			row.Spacing = 6.0;
 			row.Padding = new Thickness(6.0, 8.0, 6.0, 6.0);
 			row.Add(swatchStack);
-			row.Add(swapReset);
 			return row;
+		}
+
+		public void SwapColors()
+		{
+			OnSwapTapped(this, EventArgs.Empty);
 		}
 
 		public void RefreshColors()

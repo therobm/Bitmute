@@ -24,7 +24,8 @@ namespace Bitmute.UI
 		private DocumentWindow m_activeDocumentWindow;
 		private ToolPalette m_toolPalette;
 		private LayersPanel m_layersPanel;
-		private ColorPicker m_colorPicker;
+		private BoxView m_modalBackdrop;
+		private View m_modalContent;
 		private Label m_optionsToolLabel;
 		private Slider m_brushSizeSlider;
 		private Label m_brushSizeValue;
@@ -376,7 +377,7 @@ namespace Bitmute.UI
 		{
 			if (action == "New")
 			{
-				NewDocument();
+				ShowNewDocumentDialog();
 				return;
 			}
 			if (action == "Undo")
@@ -785,8 +786,6 @@ namespace Bitmute.UI
 			outer.Add(m_overlay);
 
 			Content = outer;
-
-			NewDocument();
 		}
 
 		protected override void OnHandlerChanged()
@@ -817,6 +816,7 @@ namespace Bitmute.UI
 			AddAccelerator(element, Windows.System.VirtualKey.Subtract, OnAcceleratorZoomOut);
 			AddAccelerator(element, (Windows.System.VirtualKey)187, OnAcceleratorZoomIn);
 			AddAccelerator(element, (Windows.System.VirtualKey)189, OnAcceleratorZoomOut);
+			AddBareAccelerator(element, Windows.System.VirtualKey.X, OnAcceleratorSwapColors);
 			m_acceleratorsHooked = true;
 		}
 
@@ -829,9 +829,27 @@ namespace Bitmute.UI
 			element.KeyboardAccelerators.Add(accelerator);
 		}
 
+		private void AddBareAccelerator(Microsoft.UI.Xaml.UIElement element, Windows.System.VirtualKey key, Windows.Foundation.TypedEventHandler<Microsoft.UI.Xaml.Input.KeyboardAccelerator, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs> handler)
+		{
+			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
+			accelerator.Key = key;
+			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.None;
+			accelerator.Invoked += handler;
+			element.KeyboardAccelerators.Add(accelerator);
+		}
+
+		private void OnAcceleratorSwapColors(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			if (m_toolPalette != null)
+			{
+				m_toolPalette.SwapColors();
+			}
+			args.Handled = true;
+		}
+
 		private void OnAcceleratorNew(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
-			NewDocument();
+			ShowNewDocumentDialog();
 			args.Handled = true;
 		}
 
@@ -887,14 +905,6 @@ namespace Bitmute.UI
 		{
 			DoZoomOut();
 			args.Handled = true;
-		}
-
-		public void NewDocument()
-		{
-			m_untitledCount++;
-			Document model = new Document("Untitled-" + m_untitledCount, (int)UiConstants.DefaultDocumentWidth, (int)UiConstants.DefaultDocumentHeight);
-			DocumentWindow window = new DocumentWindow(model);
-			PlaceAndAdd(window);
 		}
 
 		private void PlaceAndAdd(DocumentWindow window)
@@ -1044,22 +1054,28 @@ namespace Bitmute.UI
 			}
 		}
 
-		public void OpenColorPicker(bool foreground)
+		private void OnModalBackdropTapped(object sender, TappedEventArgs eventArgs)
 		{
-			if (m_colorPicker != null)
-			{
-				CloseColorPicker();
-			}
-			SKColor initial = m_toolState.Background();
-			if (foreground)
-			{
-				initial = m_toolState.Foreground();
-			}
-			m_colorPicker = new ColorPicker(initial, foreground);
-			double pickerWidth = 380.0;
-			double pickerHeight = 300.0;
-			double left = (m_workspace.Width - pickerWidth) / 2.0;
-			double top = (m_workspace.Height - pickerHeight) / 2.0;
+			CloseModal();
+		}
+
+		private void ShowModal(View content, double width, double height)
+		{
+			CloseModal();
+			m_modalBackdrop = new BoxView();
+			m_modalBackdrop.Color = new Color(0.0f, 0.0f, 0.0f, 0.4f);
+			AbsoluteLayout.SetLayoutBounds(m_modalBackdrop, new Rect(0.0, 0.0, 1.0, 1.0));
+			AbsoluteLayout.SetLayoutFlags(m_modalBackdrop, AbsoluteLayoutFlags.All);
+			TapGestureRecognizer backdropTap = new TapGestureRecognizer();
+			backdropTap.Tapped += OnModalBackdropTapped;
+			m_modalBackdrop.GestureRecognizers.Add(backdropTap);
+			m_topZIndex = m_topZIndex + 1;
+			m_modalBackdrop.ZIndex = m_topZIndex + 1000;
+			m_workspace.Add(m_modalBackdrop);
+
+			m_modalContent = content;
+			double left = (m_workspace.Width - width) / 2.0;
+			double top = (m_workspace.Height - height) / 2.0;
 			if (left < 0.0)
 			{
 				left = 0.0;
@@ -1068,11 +1084,35 @@ namespace Bitmute.UI
 			{
 				top = 0.0;
 			}
-			AbsoluteLayout.SetLayoutBounds(m_colorPicker, new Rect(left, top, pickerWidth, pickerHeight));
-			AbsoluteLayout.SetLayoutFlags(m_colorPicker, AbsoluteLayoutFlags.None);
-			m_topZIndex = m_topZIndex + 1;
-			m_colorPicker.ZIndex = m_topZIndex + 1000;
-			m_workspace.Add(m_colorPicker);
+			AbsoluteLayout.SetLayoutBounds(content, new Rect(left, top, width, height));
+			AbsoluteLayout.SetLayoutFlags(content, AbsoluteLayoutFlags.None);
+			content.ZIndex = m_topZIndex + 1001;
+			m_workspace.Add(content);
+		}
+
+		public void CloseModal()
+		{
+			if (m_modalBackdrop != null)
+			{
+				m_workspace.Remove(m_modalBackdrop);
+				m_modalBackdrop = null;
+			}
+			if (m_modalContent != null)
+			{
+				m_workspace.Remove(m_modalContent);
+				m_modalContent = null;
+			}
+		}
+
+		public void OpenColorPicker(bool foreground)
+		{
+			SKColor initial = m_toolState.Background();
+			if (foreground)
+			{
+				initial = m_toolState.Foreground();
+			}
+			ColorPicker picker = new ColorPicker(initial, foreground);
+			ShowModal(picker, 380.0, 360.0);
 		}
 
 		public void ApplyPickedColor(SKColor color, bool foreground)
@@ -1091,14 +1131,30 @@ namespace Bitmute.UI
 			}
 		}
 
-		public void CloseColorPicker()
+		public void ShowNewDocumentDialog()
 		{
-			if (m_colorPicker == null)
+			NewDocumentDialog dialog = new NewDocumentDialog();
+			ShowModal(dialog, 320.0, 280.0);
+		}
+
+		public void CreateNewDocument(int width, int height, string name, bool transparent)
+		{
+			m_untitledCount = m_untitledCount + 1;
+			string title = name;
+			if (title == null || title.Length == 0)
 			{
-				return;
+				title = "Untitled-" + m_untitledCount;
 			}
-			m_workspace.Remove(m_colorPicker);
-			m_colorPicker = null;
+			Document model = new Document(title, width, height);
+			if (transparent)
+			{
+				Layer background = model.ActiveLayer();
+				background.Bitmap().Erase(SKColors.Transparent);
+				background.SetIsBackground(false);
+				background.SetName("Layer 1");
+			}
+			DocumentWindow window = new DocumentWindow(model);
+			PlaceAndAdd(window);
 		}
 
 		public void RefreshLayerThumbnails()

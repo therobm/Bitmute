@@ -268,7 +268,7 @@ namespace Bitmute.UI
 			if (main != null)
 			{
 				main.ApplyPickedColor(CurrentColor(), m_foreground);
-				main.CloseColorPicker();
+				main.CloseModal();
 			}
 		}
 
@@ -277,7 +277,7 @@ namespace Bitmute.UI
 			MainView main = MainView.Self;
 			if (main != null)
 			{
-				main.CloseColorPicker();
+				main.CloseModal();
 			}
 		}
 

@@ -224,6 +224,44 @@ namespace Bitmute.UI
 			}
 		}
 
+		private Button BuildActionButton(string text, double width, System.EventHandler handler)
+		{
+			Button button = new Button();
+			button.Text = text;
+			button.FontSize = 11.0;
+			button.WidthRequest = width;
+			button.HeightRequest = 20.0;
+			button.Padding = new Thickness(0.0);
+			button.BackgroundColor = UiConstants.ChromeRaised;
+			button.TextColor = UiConstants.OnSurface;
+			button.Clicked += handler;
+			return button;
+		}
+
+		private void OnMoveUpClicked(object sender, System.EventArgs eventArgs)
+		{
+			Document document = Doc();
+			if (document == null)
+			{
+				return;
+			}
+			document.MoveLayerUp(document.ActiveLayerIndex());
+			RecompositeActive();
+			Refresh();
+		}
+
+		private void OnMoveDownClicked(object sender, System.EventArgs eventArgs)
+		{
+			Document document = Doc();
+			if (document == null)
+			{
+				return;
+			}
+			document.MoveLayerDown(document.ActiveLayerIndex());
+			RecompositeActive();
+			Refresh();
+		}
+
 		private void OnAddClicked(object sender, System.EventArgs eventArgs)
 		{
 			Document document = Doc();
@@ -280,25 +318,10 @@ namespace Bitmute.UI
 			m_thumbnailImages = new List<Image>();
 			m_thumbnailLayers = new List<int>();
 
-			Button addButton = new Button();
-			addButton.Text = "+";
-			addButton.FontSize = 13.0;
-			addButton.WidthRequest = 32.0;
-			addButton.HeightRequest = 26.0;
-			addButton.Padding = new Thickness(0.0);
-			addButton.BackgroundColor = UiConstants.ChromeRaised;
-			addButton.TextColor = UiConstants.OnSurface;
-			addButton.Clicked += OnAddClicked;
-
-			Button deleteButton = new Button();
-			deleteButton.Text = "Del";
-			deleteButton.FontSize = 11.0;
-			deleteButton.WidthRequest = 40.0;
-			deleteButton.HeightRequest = 26.0;
-			deleteButton.Padding = new Thickness(0.0);
-			deleteButton.BackgroundColor = UiConstants.ChromeRaised;
-			deleteButton.TextColor = UiConstants.OnSurface;
-			deleteButton.Clicked += OnDeleteClicked;
+			Button moveUpButton = BuildActionButton("▲", 30.0, OnMoveUpClicked);
+			Button moveDownButton = BuildActionButton("▼", 30.0, OnMoveDownClicked);
+			Button addButton = BuildActionButton("+", 30.0, OnAddClicked);
+			Button deleteButton = BuildActionButton("Del", 40.0, OnDeleteClicked);
 
 			Label opacityLabel = new Label();
 			opacityLabel.Text = "Opacity";
@@ -318,11 +341,6 @@ namespace Bitmute.UI
 			m_opacityValue.HorizontalTextAlignment = TextAlignment.End;
 			m_opacityValue.VerticalOptions = LayoutOptions.Center;
 
-			HorizontalStackLayout header = new HorizontalStackLayout();
-			header.Spacing = 6.0;
-			header.Add(addButton);
-			header.Add(deleteButton);
-
 			Grid opacityRow = new Grid();
 			opacityRow.ColumnSpacing = 6.0;
 			opacityRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
@@ -341,12 +359,25 @@ namespace Bitmute.UI
 			ScrollView listScroll = new ScrollView();
 			listScroll.Content = m_listHost;
 
-			VerticalStackLayout layout = new VerticalStackLayout();
-			layout.Spacing = 6.0;
+			HorizontalStackLayout bottomBar = new HorizontalStackLayout();
+			bottomBar.Spacing = 4.0;
+			bottomBar.Add(moveUpButton);
+			bottomBar.Add(moveDownButton);
+			bottomBar.Add(addButton);
+			bottomBar.Add(deleteButton);
+
+			Grid layout = new Grid();
 			layout.Padding = new Thickness(8.0);
-			layout.Add(header);
+			layout.RowSpacing = 6.0;
+			layout.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+			layout.RowDefinitions.Add(new RowDefinition(GridLength.Star));
+			layout.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+			Grid.SetRow(opacityRow, 0);
+			Grid.SetRow(listScroll, 1);
+			Grid.SetRow(bottomBar, 2);
 			layout.Add(opacityRow);
 			layout.Add(listScroll);
+			layout.Add(bottomBar);
 
 			Content = layout;
 			Refresh();

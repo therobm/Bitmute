@@ -28,7 +28,7 @@ namespace Bitmute.UI
 		public const double DefaultDocumentWindowWidth = 560.0;
 		public const double DefaultDocumentWindowHeight = 440.0;
 
-		public static readonly Color WorkspaceBackdrop = Color.FromArgb("#2B2B2B");
+		public static readonly Color WorkspaceBackdrop = Color.FromArgb("#B3B3B3");
 		public static readonly Color Chrome = Color.FromArgb("#383838");
 		public static readonly Color ChromeRaised = Color.FromArgb("#444444");
 		public static readonly Color Divider = Color.FromArgb("#232323");
