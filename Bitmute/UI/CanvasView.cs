@@ -519,7 +519,7 @@ namespace Bitmute.UI
 			{
 				main.OnCanvasInteracted();
 			}
-			bool isSelectionTool = tool is RectangleSelectTool || tool is MagicWandTool;
+			bool isSelectionTool = tool is RectangleSelectTool || tool is EllipseSelectTool || tool is MagicWandTool;
 			if (isSelectionTool)
 			{
 				bool acted = eventArgs.ActionType == SKTouchAction.Pressed || eventArgs.ActionType == SKTouchAction.Released || (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact);

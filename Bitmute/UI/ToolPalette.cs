@@ -79,9 +79,9 @@ namespace Bitmute.UI
 
 		public ToolPalette()
 		{
-			m_tools = new eTool[] { eTool.Move, eTool.Select, eTool.MagicWand, eTool.Pencil, eTool.Brush, eTool.Eraser, eTool.Fill, eTool.Eyedropper, eTool.Text, eTool.Line, eTool.Zoom };
-			m_glyphs = new string[] { "✛︎", "⬚", "✦︎", "✎︎", "▨", "▭", "▣", "◉", "T", "╱", "◎" };
-			m_names = new string[] { "Move", "Rectangle Select", "Magic Wand", "Pencil", "Brush", "Eraser", "Fill", "Eyedropper", "Text", "Line", "Zoom" };
+			m_tools = new eTool[] { eTool.Move, eTool.Select, eTool.EllipseSelect, eTool.MagicWand, eTool.Pencil, eTool.Brush, eTool.Eraser, eTool.Fill, eTool.Eyedropper, eTool.Text, eTool.Line, eTool.Zoom };
+			m_glyphs = new string[] { "✛︎", "⬚", "◯", "✦︎", "✎︎", "▨", "▭", "▣", "◉", "T", "╱", "◎" };
+			m_names = new string[] { "Move", "Rectangle Select", "Ellipse Select", "Magic Wand", "Pencil", "Brush", "Eraser", "Fill", "Eyedropper", "Text", "Line", "Zoom" };
 			m_buttons = new Border[m_tools.Length];
 
 			Grid grid = new Grid();

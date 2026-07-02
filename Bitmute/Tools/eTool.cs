@@ -4,6 +4,7 @@ namespace Bitmute.Tools
 	{
 		Move,
 		Select,
+		EllipseSelect,
 		MagicWand,
 		Pencil,
 		Brush,

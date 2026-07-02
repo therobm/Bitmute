@@ -43,6 +43,7 @@ namespace Bitmute.UI
 		private ToolState m_toolState;
 		private MoveTool m_moveTool;
 		private RectangleSelectTool m_rectangleSelectTool;
+		private EllipseSelectTool m_ellipseSelectTool;
 		private MagicWandTool m_magicWandTool;
 		private TextTool m_textTool;
 		private PencilTool m_pencilTool;
@@ -729,6 +730,7 @@ namespace Bitmute.UI
 			m_toolState = new ToolState();
 			m_moveTool = new MoveTool();
 			m_rectangleSelectTool = new RectangleSelectTool();
+			m_ellipseSelectTool = new EllipseSelectTool();
 			m_magicWandTool = new MagicWandTool();
 			m_textTool = new TextTool();
 			m_pencilTool = new PencilTool();
@@ -1128,6 +1130,10 @@ namespace Bitmute.UI
 			if (tool == eTool.Select)
 			{
 				return m_rectangleSelectTool;
+			}
+			if (tool == eTool.EllipseSelect)
+			{
+				return m_ellipseSelectTool;
 			}
 			if (tool == eTool.MagicWand)
 			{
