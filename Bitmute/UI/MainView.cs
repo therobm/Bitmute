@@ -34,6 +34,7 @@ namespace Bitmute.UI
 		private List<Border> m_openItemButtons;
 		private List<string> m_openItemActions;
 		private int m_openMenuIndex;
+		private bool m_acceleratorsHooked;
 		private int m_untitledCount;
 		private int m_cascadeCount;
 		private int m_topZIndex;
@@ -359,28 +360,12 @@ namespace Bitmute.UI
 			}
 			if (action == "Undo")
 			{
-				CanvasView undoCanvas = ActiveCanvas();
-				if (undoCanvas != null)
-				{
-					if (undoCanvas.CurrentDocument().Undo())
-					{
-						undoCanvas.MarkComposeDirty();
-						RefreshPanels();
-					}
-				}
+				DoUndo();
 				return;
 			}
 			if (action == "Redo")
 			{
-				CanvasView redoCanvas = ActiveCanvas();
-				if (redoCanvas != null)
-				{
-					if (redoCanvas.CurrentDocument().Redo())
-					{
-						redoCanvas.MarkComposeDirty();
-						RefreshPanels();
-					}
-				}
+				DoRedo();
 				return;
 			}
 			if (action == "Open…")
@@ -395,56 +380,111 @@ namespace Bitmute.UI
 			}
 			if (action == "Exit")
 			{
-				Application current = Application.Current;
-				if (current != null)
-				{
-					current.Quit();
-				}
+				DoExit();
 				return;
 			}
 			if (action == "Zoom In")
 			{
-				CanvasView zoomInCanvas = ActiveCanvas();
-				if (zoomInCanvas != null)
-				{
-					zoomInCanvas.ZoomIn();
-				}
+				DoZoomIn();
 				return;
 			}
 			if (action == "Zoom Out")
 			{
-				CanvasView zoomOutCanvas = ActiveCanvas();
-				if (zoomOutCanvas != null)
-				{
-					zoomOutCanvas.ZoomOut();
-				}
+				DoZoomOut();
 				return;
 			}
 			if (action == "Fit on Screen")
 			{
-				CanvasView fitCanvas = ActiveCanvas();
-				if (fitCanvas != null)
-				{
-					fitCanvas.FitToView();
-				}
+				DoFit();
 				return;
 			}
 			if (action == "Invert Colors")
 			{
-				CanvasView invertCanvas = ActiveCanvas();
-				if (invertCanvas != null)
-				{
-					Document invertDocument = invertCanvas.CurrentDocument();
-					Layer activeLayer = invertDocument.ActiveLayer();
-					if (activeLayer != null)
-					{
-						invertDocument.BeginStroke();
-						Adjustments.InvertColors(activeLayer.Bitmap());
-						invertDocument.EndStroke();
-						invertCanvas.MarkComposeDirty();
-					}
-				}
+				DoInvert();
 			}
+		}
+
+		private void DoUndo()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			if (canvas.CurrentDocument().Undo())
+			{
+				canvas.MarkComposeDirty();
+				RefreshPanels();
+			}
+		}
+
+		private void DoRedo()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			if (canvas.CurrentDocument().Redo())
+			{
+				canvas.MarkComposeDirty();
+				RefreshPanels();
+			}
+		}
+
+		private void DoExit()
+		{
+			Application current = Application.Current;
+			if (current != null)
+			{
+				current.Quit();
+			}
+		}
+
+		private void DoZoomIn()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.ZoomIn();
+			}
+		}
+
+		private void DoZoomOut()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.ZoomOut();
+			}
+		}
+
+		private void DoFit()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.FitToView();
+			}
+		}
+
+		private void DoInvert()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			Layer activeLayer = document.ActiveLayer();
+			if (activeLayer == null)
+			{
+				return;
+			}
+			document.BeginStroke();
+			Adjustments.InvertColors(activeLayer.Bitmap());
+			document.EndStroke();
+			canvas.MarkComposeDirty();
 		}
 
 		public void UpdateCursor(int x, int y)
@@ -677,6 +717,90 @@ namespace Bitmute.UI
 			Content = outer;
 
 			NewDocument();
+		}
+
+		protected override void OnHandlerChanged()
+		{
+			base.OnHandlerChanged();
+			if (m_acceleratorsHooked)
+			{
+				return;
+			}
+			if (Handler == null)
+			{
+				return;
+			}
+			Microsoft.UI.Xaml.UIElement element = Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			AddAccelerator(element, Windows.System.VirtualKey.N, OnAcceleratorNew);
+			AddAccelerator(element, Windows.System.VirtualKey.O, OnAcceleratorOpen);
+			AddAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorSave);
+			AddAccelerator(element, Windows.System.VirtualKey.Z, OnAcceleratorUndo);
+			AddAccelerator(element, Windows.System.VirtualKey.Y, OnAcceleratorRedo);
+			AddAccelerator(element, Windows.System.VirtualKey.Number0, OnAcceleratorFit);
+			AddAccelerator(element, Windows.System.VirtualKey.Add, OnAcceleratorZoomIn);
+			AddAccelerator(element, Windows.System.VirtualKey.Subtract, OnAcceleratorZoomOut);
+			m_acceleratorsHooked = true;
+		}
+
+		private void AddAccelerator(Microsoft.UI.Xaml.UIElement element, Windows.System.VirtualKey key, Windows.Foundation.TypedEventHandler<Microsoft.UI.Xaml.Input.KeyboardAccelerator, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs> handler)
+		{
+			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
+			accelerator.Key = key;
+			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.Control;
+			accelerator.Invoked += handler;
+			element.KeyboardAccelerators.Add(accelerator);
+		}
+
+		private void OnAcceleratorNew(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			NewDocument();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorOpen(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			OpenImageFlow();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorSave(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			SaveImageFlow();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorUndo(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			DoUndo();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorRedo(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			DoRedo();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorFit(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			DoFit();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorZoomIn(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			DoZoomIn();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorZoomOut(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			DoZoomOut();
+			args.Handled = true;
 		}
 
 		public void NewDocument()
