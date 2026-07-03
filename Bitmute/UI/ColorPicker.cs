@@ -53,7 +53,7 @@ namespace Bitmute.UI
 			Entry entry = new Entry();
 			entry.FontSize = 12.0;
 			entry.WidthRequest = 48.0;
-			entry.TextColor = UiConstants.OnSurface;
+			entry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			entry.Keyboard = Keyboard.Numeric;
 			entry.Completed += OnChannelCompleted;
 			return entry;
@@ -63,7 +63,7 @@ namespace Bitmute.UI
 		{
 			Label caption = new Label();
 			caption.Text = label;
-			caption.TextColor = UiConstants.TextDim;
+			caption.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			caption.FontSize = 12.0;
 			caption.WidthRequest = 16.0;
 			caption.VerticalOptions = LayoutOptions.Center;
@@ -295,7 +295,7 @@ namespace Bitmute.UI
 			Label titleLabel = new Label();
 			titleLabel.Text = text;
 			titleLabel.FontSize = 13.0;
-			titleLabel.TextColor = UiConstants.OnSurface;
+			titleLabel.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			titleLabel.VerticalOptions = LayoutOptions.Center;
 
 			Button closeButton = new Button();
@@ -305,11 +305,11 @@ namespace Bitmute.UI
 			closeButton.HeightRequest = UiConstants.CloseButtonSize;
 			closeButton.Padding = new Thickness(0.0);
 			closeButton.BackgroundColor = Colors.Transparent;
-			closeButton.TextColor = UiConstants.TextDim;
+			closeButton.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			closeButton.Clicked += OnCancelClicked;
 
 			Grid titleBar = new Grid();
-			titleBar.BackgroundColor = UiConstants.TitleBar;
+			titleBar.ThemeBg(UiConstants.TitleBarLight, UiConstants.TitleBarDark);
 			titleBar.Padding = new Thickness(8.0, 2.0, 2.0, 2.0);
 			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
 			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
@@ -347,7 +347,7 @@ namespace Bitmute.UI
 			m_hexEntry = new Entry();
 			m_hexEntry.FontSize = 12.0;
 			m_hexEntry.WidthRequest = 80.0;
-			m_hexEntry.TextColor = UiConstants.OnSurface;
+			m_hexEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			m_hexEntry.Completed += OnHexCompleted;
 
 			VerticalStackLayout fields = new VerticalStackLayout();
@@ -367,16 +367,16 @@ namespace Bitmute.UI
 			okButton.Text = "OK";
 			okButton.FontSize = 12.0;
 			okButton.WidthRequest = 80.0;
-			okButton.BackgroundColor = UiConstants.Accent;
-			okButton.TextColor = UiConstants.OnSurface;
+			okButton.ThemeBg(UiConstants.AccentLight, UiConstants.AccentDark);
+			okButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			okButton.Clicked += OnOkClicked;
 
 			Button cancelButton = new Button();
 			cancelButton.Text = "Cancel";
 			cancelButton.FontSize = 12.0;
 			cancelButton.WidthRequest = 80.0;
-			cancelButton.BackgroundColor = UiConstants.ChromeRaised;
-			cancelButton.TextColor = UiConstants.OnSurface;
+			cancelButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			cancelButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			cancelButton.Clicked += OnCancelClicked;
 
 			HorizontalStackLayout buttons = new HorizontalStackLayout();
@@ -397,8 +397,8 @@ namespace Bitmute.UI
 			layout.Add(innerLayout);
 
 			Border frame = new Border();
-			frame.BackgroundColor = UiConstants.PanelSurface;
-			frame.Stroke = UiConstants.Divider;
+			frame.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
+			frame.ThemeStroke(UiConstants.DividerLight, UiConstants.DividerDark);
 			frame.StrokeThickness = 1.0;
 			frame.Content = layout;
 

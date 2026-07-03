@@ -35,7 +35,7 @@ namespace Bitmute.UI
 			Label titleLabel = new Label();
 			titleLabel.Text = text;
 			titleLabel.FontSize = 13.0;
-			titleLabel.TextColor = UiConstants.OnSurface;
+			titleLabel.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			titleLabel.VerticalOptions = LayoutOptions.Center;
 
 			Button closeButton = new Button();
@@ -45,11 +45,11 @@ namespace Bitmute.UI
 			closeButton.HeightRequest = UiConstants.CloseButtonSize;
 			closeButton.Padding = new Thickness(0.0);
 			closeButton.BackgroundColor = Colors.Transparent;
-			closeButton.TextColor = UiConstants.TextDim;
+			closeButton.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			closeButton.Clicked += OnCloseClicked;
 
 			Grid titleBar = new Grid();
-			titleBar.BackgroundColor = UiConstants.TitleBar;
+			titleBar.ThemeBg(UiConstants.TitleBarLight, UiConstants.TitleBarDark);
 			titleBar.Padding = new Thickness(8.0, 2.0, 2.0, 2.0);
 			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
 			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
@@ -70,8 +70,8 @@ namespace Bitmute.UI
 			button.Text = text;
 			button.FontSize = 12.0;
 			button.WidthRequest = 90.0;
-			button.BackgroundColor = UiConstants.Accent;
-			button.TextColor = UiConstants.OnSurface;
+			button.ThemeBg(UiConstants.AccentLight, UiConstants.AccentDark);
+			button.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			button.Clicked += handler;
 			return button;
 		}
@@ -82,8 +82,8 @@ namespace Bitmute.UI
 			button.Text = text;
 			button.FontSize = 12.0;
 			button.WidthRequest = 90.0;
-			button.BackgroundColor = UiConstants.ChromeRaised;
-			button.TextColor = UiConstants.OnSurface;
+			button.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			button.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			button.Clicked += handler;
 			return button;
 		}
@@ -115,8 +115,8 @@ namespace Bitmute.UI
 			layout.Add(innerLayout);
 
 			Border frame = new Border();
-			frame.BackgroundColor = UiConstants.PanelSurface;
-			frame.Stroke = UiConstants.Divider;
+			frame.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
+			frame.ThemeStroke(UiConstants.DividerLight, UiConstants.DividerDark);
 			frame.StrokeThickness = 1.0;
 			frame.Content = layout;
 

@@ -36,7 +36,7 @@ namespace Bitmute.UI
 			button.HeightRequest = UiConstants.CloseButtonSize;
 			button.Padding = new Thickness(0.0);
 			button.BackgroundColor = Colors.Transparent;
-			button.TextColor = UiConstants.TextDim;
+			button.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			button.VerticalOptions = LayoutOptions.Center;
 			button.Clicked += handler;
 			return button;
@@ -46,7 +46,7 @@ namespace Bitmute.UI
 		{
 			Grid titleBar = new Grid();
 			titleBar.HeightRequest = UiConstants.TitleBarHeight;
-			titleBar.BackgroundColor = UiConstants.TitleBar;
+			titleBar.ThemeBg(UiConstants.TitleBarLight, UiConstants.TitleBarDark);
 			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
 			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
@@ -54,7 +54,7 @@ namespace Bitmute.UI
 			titleBar.Padding = new Thickness(10.0, 0.0, 4.0, 0.0);
 
 			m_titleLabel = new Label();
-			m_titleLabel.TextColor = UiConstants.OnSurface;
+			m_titleLabel.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			m_titleLabel.FontSize = 13.0;
 			m_titleLabel.VerticalOptions = LayoutOptions.Center;
 			m_titleLabel.LineBreakMode = LineBreakMode.TailTruncation;
@@ -89,7 +89,7 @@ namespace Bitmute.UI
 			Border grip = new Border();
 			grip.WidthRequest = UiConstants.ResizeGripSize;
 			grip.HeightRequest = UiConstants.ResizeGripSize;
-			grip.BackgroundColor = UiConstants.ResizeGrip;
+			grip.ThemeBg(UiConstants.ResizeGripLight, UiConstants.ResizeGripDark);
 			grip.HorizontalOptions = LayoutOptions.End;
 			grip.VerticalOptions = LayoutOptions.End;
 			grip.StrokeThickness = 0.0;
@@ -264,8 +264,8 @@ namespace Bitmute.UI
 			Grid root = new Grid();
 
 			Border frame = new Border();
-			frame.BackgroundColor = UiConstants.PanelSurface;
-			frame.Stroke = UiConstants.Divider;
+			frame.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
+			frame.ThemeStroke(UiConstants.DividerLight, UiConstants.DividerDark);
 			frame.StrokeThickness = UiConstants.PanelBorderThickness;
 			frame.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(UiConstants.PanelCornerRadius) };
 

@@ -40,14 +40,14 @@ namespace Bitmute.UI
 		{
 			Label tipLabel = new Label();
 			tipLabel.Text = "Tip";
-			tipLabel.TextColor = UiConstants.TextDim;
+			tipLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			tipLabel.FontSize = 12.0;
 			tipLabel.WidthRequest = 60.0;
 			tipLabel.VerticalOptions = LayoutOptions.Center;
 
 			m_tipPicker = new Picker();
 			m_tipPicker.FontSize = 12.0;
-			m_tipPicker.TextColor = UiConstants.OnSurface;
+			m_tipPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			m_tipPicker.Items.Add("Round");
 			m_tipPicker.Items.Add("Square");
 			m_tipPicker.SelectedIndex = 0;
@@ -68,7 +68,7 @@ namespace Bitmute.UI
 
 			Label spacingLabel = new Label();
 			spacingLabel.Text = "Spacing";
-			spacingLabel.TextColor = UiConstants.TextDim;
+			spacingLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			spacingLabel.FontSize = 12.0;
 			spacingLabel.WidthRequest = 60.0;
 			spacingLabel.VerticalOptions = LayoutOptions.Center;
@@ -83,7 +83,7 @@ namespace Bitmute.UI
 
 			m_spacingValue = new Label();
 			m_spacingValue.Text = spacing + "%";
-			m_spacingValue.TextColor = UiConstants.OnSurface;
+			m_spacingValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			m_spacingValue.FontSize = 12.0;
 			m_spacingValue.WidthRequest = 44.0;
 			m_spacingValue.VerticalOptions = LayoutOptions.Center;

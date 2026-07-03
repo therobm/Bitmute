@@ -27,7 +27,7 @@ namespace Bitmute.UI
 
 			m_canvas = new CanvasView(document);
 			m_canvas.SetOwnerWindow(this);
-			m_canvas.BackgroundColor = UiConstants.CanvasInset;
+			m_canvas.ThemeBg(UiConstants.CanvasInsetLight, UiConstants.CanvasInsetDark);
 
 			m_topRuler = new Ruler(m_canvas, true);
 			m_leftRuler = new Ruler(m_canvas, false);
@@ -35,7 +35,7 @@ namespace Bitmute.UI
 			m_verticalScrollbar = new CanvasScrollbar(m_canvas, false);
 
 			m_rulerCorner = new BoxView();
-			m_rulerCorner.Color = UiConstants.CanvasPaper;
+			m_rulerCorner.ThemeColor(UiConstants.CanvasPaperLight, UiConstants.CanvasPaperDark);
 
 			Grid layout = new Grid();
 			m_rulerColumn = new ColumnDefinition(new GridLength(UiConstants.RulerThickness));

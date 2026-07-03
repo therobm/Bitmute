@@ -13,13 +13,20 @@ namespace Bitmute.UI
 
 		public static event EventHandler Changed;
 
-		public static void InitializeFromSystem()
+		private static bool SystemIsDark()
 		{
 			Application application = Application.Current;
-			if (application != null)
+			if (application == null)
 			{
-				s_dark = application.RequestedTheme != AppTheme.Light;
+				return true;
 			}
+			return application.RequestedTheme != AppTheme.Light;
+		}
+
+		public static void InitializeFromSystem()
+		{
+			s_followSystem = true;
+			s_dark = SystemIsDark();
 		}
 
 		public static bool IsDark()
@@ -32,15 +39,8 @@ namespace Bitmute.UI
 			return s_followSystem;
 		}
 
-		private static void Apply(bool dark, bool follow)
+		private static void Fire()
 		{
-			bool changed = dark != s_dark || follow != s_followSystem;
-			s_dark = dark;
-			s_followSystem = follow;
-			if (!changed)
-			{
-				return;
-			}
 			EventHandler handler = Changed;
 			if (handler != null)
 			{
@@ -50,23 +50,50 @@ namespace Bitmute.UI
 
 		public static void UseSystem()
 		{
-			bool dark = true;
+			s_followSystem = true;
 			Application application = Application.Current;
 			if (application != null)
 			{
-				dark = application.RequestedTheme != AppTheme.Light;
+				application.UserAppTheme = AppTheme.Unspecified;
 			}
-			Apply(dark, true);
+			s_dark = SystemIsDark();
+			Fire();
 		}
 
 		public static void UseDark()
 		{
-			Apply(true, false);
+			s_followSystem = false;
+			Application application = Application.Current;
+			if (application != null)
+			{
+				application.UserAppTheme = AppTheme.Dark;
+			}
+			s_dark = true;
+			Fire();
 		}
 
 		public static void UseLight()
 		{
-			Apply(false, false);
+			s_followSystem = false;
+			Application application = Application.Current;
+			if (application != null)
+			{
+				application.UserAppTheme = AppTheme.Light;
+			}
+			s_dark = false;
+			Fire();
+		}
+
+		public static void Toggle()
+		{
+			if (s_dark)
+			{
+				UseLight();
+			}
+			else
+			{
+				UseDark();
+			}
 		}
 
 		public static void OnSystemThemeChanged()
@@ -75,18 +102,26 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			Application application = Application.Current;
-			if (application == null)
-			{
-				return;
-			}
-			bool dark = application.RequestedTheme != AppTheme.Light;
-			Apply(dark, true);
+			s_dark = SystemIsDark();
+			Fire();
 		}
 
 		public static SKColor IconTint()
 		{
-			return new SKColor(200,200,200);
+			if (s_dark)
+			{
+				return new SKColor(0xD2, 0xD2, 0xD2);
+			}
+			return new SKColor(0x2A, 0x2A, 0x2A);
+		}
+
+		public static SKColor IconTintSelected()
+		{
+			if (s_dark)
+			{
+				return new SKColor(0xF0, 0xF0, 0xF0);
+			}
+			return new SKColor(0x18, 0x2A, 0x44);
 		}
 	}
 }

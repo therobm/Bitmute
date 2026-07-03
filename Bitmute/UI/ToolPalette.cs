@@ -82,8 +82,8 @@ namespace Bitmute.UI
 			button.Text = glyph;
 			button.FontSize = 10.0;
 			button.Padding = new Thickness(0.0);
-			button.BackgroundColor = UiConstants.ChromeRaised;
-			button.TextColor = UiConstants.OnSurface;
+			button.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			button.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			button.Clicked += handler;
 			ToolTipProperties.SetText(button, tip);
 			return button;
@@ -155,7 +155,7 @@ namespace Bitmute.UI
 			Border button = new Border();
 			button.WidthRequest = UiConstants.ToolButtonSize;
 			button.HeightRequest = UiConstants.ToolButtonSize;
-			button.BackgroundColor = UiConstants.ToolButtonChip;
+			button.ThemeBg(UiConstants.ToolButtonChipLight, UiConstants.ToolButtonChipDark);
 			button.StrokeThickness = 0.0;
 			button.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(3.0) };
 			button.Content = icon;
@@ -187,12 +187,12 @@ namespace Bitmute.UI
 			{
 				if (m_tools[index] == tool)
 				{
-					m_buttons[index].BackgroundColor = UiConstants.ToolSelected;
+					m_buttons[index].ThemeBg(UiConstants.ToolSelectedLight, UiConstants.ToolSelectedDark);
 					m_iconViews[index].SetSelected(true);
 				}
 				else
 				{
-					m_buttons[index].BackgroundColor = UiConstants.ToolButtonChip;
+					m_buttons[index].ThemeBg(UiConstants.ToolButtonChipLight, UiConstants.ToolButtonChipDark);
 					m_iconViews[index].SetSelected(false);
 				}
 			}
@@ -217,7 +217,7 @@ namespace Bitmute.UI
 			grid.Padding = new Thickness(5.0);
 			grid.RowSpacing = 4.0;
 			grid.ColumnSpacing = 4.0;
-			grid.BackgroundColor = UiConstants.Chrome;
+			grid.ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
 			grid.VerticalOptions = LayoutOptions.Start;
 			grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
@@ -238,11 +238,11 @@ namespace Bitmute.UI
 			}
 
 			VerticalStackLayout container = new VerticalStackLayout();
-			container.BackgroundColor = UiConstants.Chrome;
+			container.ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
 			container.Add(grid);
 			container.Add(BuildColorSwatches());
 
-			BackgroundColor = UiConstants.Chrome;
+			this.ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
 			Content = container;
 			SelectTool(eTool.Brush);
 			RefreshColors();

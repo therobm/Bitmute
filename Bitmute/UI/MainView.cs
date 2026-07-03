@@ -111,7 +111,7 @@ namespace Bitmute.UI
 			}
 			if (title == "View")
 			{
-				return new string[] { "Zoom In", "Zoom Out", "Fit on Screen", "Rulers" };
+				return new string[] { "Zoom In", "Zoom Out", "Fit on Screen", "Rulers", "Toggle Light/Dark", "Use System Theme" };
 			}
 			if (title == "Window")
 			{
@@ -192,6 +192,14 @@ namespace Bitmute.UI
 				{
 					return true;
 				}
+				if (item == "Toggle Light/Dark")
+				{
+					return true;
+				}
+				if (item == "Use System Theme")
+				{
+					return true;
+				}
 				return false;
 			}
 			return false;
@@ -202,12 +210,12 @@ namespace Bitmute.UI
 			Label label = new Label();
 			label.Text = m_menuTitles[index];
 			label.FontSize = 12.0;
-			label.TextColor = UiConstants.OnSurface;
+			label.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			label.VerticalOptions = LayoutOptions.Center;
 
 			Border button = new Border();
 			button.Padding = new Thickness(10.0, 0.0, 10.0, 0.0);
-			button.BackgroundColor = UiConstants.Chrome;
+			button.ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
 			button.StrokeThickness = 0.0;
 			button.Content = label;
 
@@ -258,7 +266,7 @@ namespace Bitmute.UI
 
 			HorizontalStackLayout strip = new HorizontalStackLayout();
 			strip.HeightRequest = UiConstants.MenuBarHeight;
-			strip.BackgroundColor = UiConstants.Chrome;
+			strip.ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
 			strip.Spacing = 0.0;
 			strip.Padding = new Thickness(0.0);
 
@@ -291,7 +299,7 @@ namespace Bitmute.UI
 		{
 			CloseMenu();
 			m_openMenuIndex = index;
-			m_menuButtons[index].BackgroundColor = UiConstants.ChromeRaised;
+			m_menuButtons[index].ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
 
 			string title = m_menuTitles[index];
 			string[] items = GetMenuItems(title);
@@ -306,8 +314,8 @@ namespace Bitmute.UI
 			}
 
 			Border dropdown = new Border();
-			dropdown.BackgroundColor = UiConstants.PanelSurface;
-			dropdown.Stroke = UiConstants.Divider;
+			dropdown.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
+			dropdown.ThemeStroke(UiConstants.DividerLight, UiConstants.DividerDark);
 			dropdown.StrokeThickness = 1.0;
 			dropdown.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(3.0) };
 			dropdown.Content = list;
@@ -347,17 +355,17 @@ namespace Bitmute.UI
 			label.VerticalOptions = LayoutOptions.Center;
 			if (enabled)
 			{
-				label.TextColor = UiConstants.OnSurface;
+				label.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			}
 			else
 			{
-				label.TextColor = UiConstants.TextDim;
+				label.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			}
 
 			Border row = new Border();
 			row.HeightRequest = MenuItemHeight;
 			row.Padding = new Thickness(12.0, 0.0, 12.0, 0.0);
-			row.BackgroundColor = UiConstants.PanelSurface;
+			row.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
 			row.StrokeThickness = 0.0;
 			row.Content = label;
 
@@ -382,7 +390,7 @@ namespace Bitmute.UI
 			Border row = sender as Border;
 			if (row != null)
 			{
-				row.BackgroundColor = UiConstants.Accent;
+				row.ThemeBg(UiConstants.AccentLight, UiConstants.AccentDark);
 			}
 		}
 
@@ -391,7 +399,7 @@ namespace Bitmute.UI
 			Border row = sender as Border;
 			if (row != null)
 			{
-				row.BackgroundColor = UiConstants.PanelSurface;
+				row.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
 			}
 		}
 
@@ -421,7 +429,7 @@ namespace Bitmute.UI
 			m_openItemActions.Clear();
 			if (m_openMenuIndex >= 0)
 			{
-				m_menuButtons[m_openMenuIndex].BackgroundColor = UiConstants.Chrome;
+				m_menuButtons[m_openMenuIndex].ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
 			}
 			m_openMenuIndex = -1;
 		}
@@ -476,6 +484,16 @@ namespace Bitmute.UI
 			if (action == "Rulers")
 			{
 				ToggleRulers();
+				return;
+			}
+			if (action == "Toggle Light/Dark")
+			{
+				Theme.Toggle();
+				return;
+			}
+			if (action == "Use System Theme")
+			{
+				Theme.UseSystem();
 				return;
 			}
 			if (action == "All")
@@ -956,14 +974,14 @@ namespace Bitmute.UI
 		{
 			Grid bar = new Grid();
 			bar.HeightRequest = UiConstants.OptionsBarHeight;
-			bar.BackgroundColor = UiConstants.Chrome;
+			bar.ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
 			bar.Padding = new Thickness(10.0, 0.0, 10.0, 0.0);
 			bar.ColumnSpacing = 16.0;
 			bar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			bar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
 
 			m_optionsToolLabel = new Label();
-			m_optionsToolLabel.TextColor = UiConstants.OnSurface;
+			m_optionsToolLabel.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			m_optionsToolLabel.FontSize = 12.0;
 			m_optionsToolLabel.VerticalOptions = LayoutOptions.Center;
 			Grid.SetColumn(m_optionsToolLabel, 0);
@@ -971,7 +989,7 @@ namespace Bitmute.UI
 
 			Label sizeLabel = new Label();
 			sizeLabel.Text = "Size";
-			sizeLabel.TextColor = UiConstants.TextDim;
+			sizeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			sizeLabel.FontSize = 12.0;
 			sizeLabel.VerticalOptions = LayoutOptions.Center;
 
@@ -983,14 +1001,14 @@ namespace Bitmute.UI
 			m_brushSizeSlider.ValueChanged += OnBrushSizeChanged;
 
 			m_brushSizeValue = new Label();
-			m_brushSizeValue.TextColor = UiConstants.OnSurface;
+			m_brushSizeValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			m_brushSizeValue.FontSize = 12.0;
 			m_brushSizeValue.WidthRequest = 44.0;
 			m_brushSizeValue.VerticalOptions = LayoutOptions.Center;
 
 			m_brushHardnessLabel = new Label();
 			m_brushHardnessLabel.Text = "Hardness";
-			m_brushHardnessLabel.TextColor = UiConstants.TextDim;
+			m_brushHardnessLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			m_brushHardnessLabel.FontSize = 12.0;
 			m_brushHardnessLabel.VerticalOptions = LayoutOptions.Center;
 			m_brushHardnessLabel.IsVisible = false;
@@ -1004,7 +1022,7 @@ namespace Bitmute.UI
 			m_brushHardnessSlider.ValueChanged += OnBrushHardnessChanged;
 
 			m_brushHardnessValue = new Label();
-			m_brushHardnessValue.TextColor = UiConstants.OnSurface;
+			m_brushHardnessValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			m_brushHardnessValue.FontSize = 12.0;
 			m_brushHardnessValue.WidthRequest = 40.0;
 			m_brushHardnessValue.VerticalOptions = LayoutOptions.Center;
@@ -1012,7 +1030,7 @@ namespace Bitmute.UI
 
 			m_brushOpacityLabel = new Label();
 			m_brushOpacityLabel.Text = "Opacity";
-			m_brushOpacityLabel.TextColor = UiConstants.TextDim;
+			m_brushOpacityLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			m_brushOpacityLabel.FontSize = 12.0;
 			m_brushOpacityLabel.VerticalOptions = LayoutOptions.Center;
 			m_brushOpacityLabel.IsVisible = false;
@@ -1026,7 +1044,7 @@ namespace Bitmute.UI
 			m_brushOpacitySlider.ValueChanged += OnBrushOpacityChanged;
 
 			m_brushOpacityValue = new Label();
-			m_brushOpacityValue.TextColor = UiConstants.OnSurface;
+			m_brushOpacityValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			m_brushOpacityValue.FontSize = 12.0;
 			m_brushOpacityValue.WidthRequest = 40.0;
 			m_brushOpacityValue.VerticalOptions = LayoutOptions.Center;
@@ -1034,7 +1052,7 @@ namespace Bitmute.UI
 
 			m_brushFlowLabel = new Label();
 			m_brushFlowLabel.Text = "Flow";
-			m_brushFlowLabel.TextColor = UiConstants.TextDim;
+			m_brushFlowLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			m_brushFlowLabel.FontSize = 12.0;
 			m_brushFlowLabel.VerticalOptions = LayoutOptions.Center;
 			m_brushFlowLabel.IsVisible = false;
@@ -1048,7 +1066,7 @@ namespace Bitmute.UI
 			m_brushFlowSlider.ValueChanged += OnBrushFlowChanged;
 
 			m_brushFlowValue = new Label();
-			m_brushFlowValue.TextColor = UiConstants.OnSurface;
+			m_brushFlowValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			m_brushFlowValue.FontSize = 12.0;
 			m_brushFlowValue.WidthRequest = 40.0;
 			m_brushFlowValue.VerticalOptions = LayoutOptions.Center;
@@ -1056,7 +1074,7 @@ namespace Bitmute.UI
 
 			m_brushSmoothingLabel = new Label();
 			m_brushSmoothingLabel.Text = "Smoothing";
-			m_brushSmoothingLabel.TextColor = UiConstants.TextDim;
+			m_brushSmoothingLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			m_brushSmoothingLabel.FontSize = 12.0;
 			m_brushSmoothingLabel.VerticalOptions = LayoutOptions.Center;
 			m_brushSmoothingLabel.IsVisible = false;
@@ -1070,7 +1088,7 @@ namespace Bitmute.UI
 			m_brushSmoothingSlider.ValueChanged += OnBrushSmoothingChanged;
 
 			m_brushSmoothingValue = new Label();
-			m_brushSmoothingValue.TextColor = UiConstants.OnSurface;
+			m_brushSmoothingValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			m_brushSmoothingValue.FontSize = 12.0;
 			m_brushSmoothingValue.WidthRequest = 40.0;
 			m_brushSmoothingValue.VerticalOptions = LayoutOptions.Center;
@@ -1078,14 +1096,14 @@ namespace Bitmute.UI
 
 			m_brushModeLabel = new Label();
 			m_brushModeLabel.Text = "Mode";
-			m_brushModeLabel.TextColor = UiConstants.TextDim;
+			m_brushModeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			m_brushModeLabel.FontSize = 12.0;
 			m_brushModeLabel.VerticalOptions = LayoutOptions.Center;
 			m_brushModeLabel.IsVisible = false;
 
 			m_brushModePicker = new Picker();
 			m_brushModePicker.FontSize = 12.0;
-			m_brushModePicker.TextColor = UiConstants.OnSurface;
+			m_brushModePicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			m_brushModePicker.WidthRequest = 110.0;
 			m_brushModePicker.VerticalOptions = LayoutOptions.Center;
 			m_brushModePicker.IsVisible = false;
@@ -1101,15 +1119,15 @@ namespace Bitmute.UI
 			m_brushSettingsButton.Text = "Brush Settings";
 			m_brushSettingsButton.FontSize = 12.0;
 			m_brushSettingsButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
-			m_brushSettingsButton.BackgroundColor = UiConstants.ChromeRaised;
-			m_brushSettingsButton.TextColor = UiConstants.OnSurface;
+			m_brushSettingsButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			m_brushSettingsButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			m_brushSettingsButton.VerticalOptions = LayoutOptions.Center;
 			m_brushSettingsButton.IsVisible = false;
 			m_brushSettingsButton.Clicked += OnBrushSettingsClicked;
 
 			m_lineAntiAliasLabel = new Label();
 			m_lineAntiAliasLabel.Text = "Anti-alias";
-			m_lineAntiAliasLabel.TextColor = UiConstants.TextDim;
+			m_lineAntiAliasLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			m_lineAntiAliasLabel.FontSize = 12.0;
 			m_lineAntiAliasLabel.VerticalOptions = LayoutOptions.Center;
 			m_lineAntiAliasLabel.IsVisible = false;
@@ -1163,14 +1181,14 @@ namespace Bitmute.UI
 		{
 			Grid bar = new Grid();
 			bar.HeightRequest = UiConstants.StatusBarHeight;
-			bar.BackgroundColor = UiConstants.Chrome;
+			bar.ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
 			bar.Padding = new Thickness(10.0, 0.0, 10.0, 0.0);
 			bar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			bar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
 
 			m_statusInfoLabel = new Label();
 			m_statusInfoLabel.Text = "100%      800 × 600 px";
-			m_statusInfoLabel.TextColor = UiConstants.TextDim;
+			m_statusInfoLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			m_statusInfoLabel.FontSize = 11.0;
 			m_statusInfoLabel.VerticalOptions = LayoutOptions.Center;
 			Grid.SetColumn(m_statusInfoLabel, 0);
@@ -1178,7 +1196,7 @@ namespace Bitmute.UI
 
 			m_statusCursorLabel = new Label();
 			m_statusCursorLabel.Text = "x: —   y: —";
-			m_statusCursorLabel.TextColor = UiConstants.TextDim;
+			m_statusCursorLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			m_statusCursorLabel.FontSize = 11.0;
 			m_statusCursorLabel.HorizontalOptions = LayoutOptions.End;
 			m_statusCursorLabel.VerticalOptions = LayoutOptions.Center;
@@ -1194,7 +1212,7 @@ namespace Bitmute.UI
 			PaletteGroup layersGroup = new PaletteGroup(new string[] { "Layers", "Channels" }, m_layersPanel);
 
 			Grid dock = new Grid();
-			dock.BackgroundColor = UiConstants.Chrome;
+			dock.ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
 			dock.Padding = new Thickness(4.0);
 			dock.RowSpacing = 4.0;
 			dock.RowDefinitions.Add(new RowDefinition(GridLength.Star));
@@ -1208,7 +1226,7 @@ namespace Bitmute.UI
 		private BoxView BuildDivider()
 		{
 			BoxView divider = new BoxView();
-			divider.Color = UiConstants.Divider;
+			divider.ThemeColor(UiConstants.DividerLight, UiConstants.DividerDark);
 			return divider;
 		}
 
@@ -1217,7 +1235,7 @@ namespace Bitmute.UI
 			m_toolPalette = new ToolPalette();
 
 			m_workspace = new AbsoluteLayout();
-			m_workspace.BackgroundColor = UiConstants.WorkspaceBackdrop;
+			m_workspace.ThemeBg(UiConstants.WorkspaceBackdropLight, UiConstants.WorkspaceBackdropDark);
 
 			View dock = BuildPaletteDock();
 
@@ -1258,7 +1276,7 @@ namespace Bitmute.UI
 			{
 				application.RequestedThemeChanged += OnSystemThemeChanged;
 			}
-			BackgroundColor = UiConstants.WorkspaceBackdrop;
+			this.ThemeBg(UiConstants.WorkspaceBackdropLight, UiConstants.WorkspaceBackdropDark);
 
 			m_documents = new List<FloatingPanel>();
 			m_openItemButtons = new List<Border>();

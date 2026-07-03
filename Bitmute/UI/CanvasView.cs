@@ -439,10 +439,17 @@ namespace Bitmute.UI
 			EnableTouchEvents = true;
 			Touch += OnTouch;
 			SizeChanged += OnSizeChanged;
+			Theme.Changed += OnThemeChanged;
 		}
 
 		private void OnSizeChanged(object sender, System.EventArgs eventArgs)
 		{
+			NotifyChrome();
+		}
+
+		private void OnThemeChanged(object sender, System.EventArgs eventArgs)
+		{
+			InvalidateSurface();
 			NotifyChrome();
 		}
 

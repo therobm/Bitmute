@@ -21,7 +21,7 @@ namespace Bitmute.UI
 			Entry entry = new Entry();
 			entry.FontSize = 12.0;
 			entry.WidthRequest = 90.0;
-			entry.TextColor = UiConstants.OnSurface;
+			entry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			entry.Keyboard = Keyboard.Numeric;
 			entry.Text = initial.ToString();
 			return entry;
@@ -31,7 +31,7 @@ namespace Bitmute.UI
 		{
 			Label caption = new Label();
 			caption.Text = label;
-			caption.TextColor = UiConstants.TextDim;
+			caption.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			caption.FontSize = 12.0;
 			caption.WidthRequest = 70.0;
 			caption.VerticalOptions = LayoutOptions.Center;
@@ -89,7 +89,7 @@ namespace Bitmute.UI
 		{
 			m_nameEntry = new Entry();
 			m_nameEntry.FontSize = 12.0;
-			m_nameEntry.TextColor = UiConstants.OnSurface;
+			m_nameEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			m_nameEntry.Text = "Untitled";
 
 			m_widthEntry = BuildNumericEntry(DefaultWidth);
@@ -97,7 +97,7 @@ namespace Bitmute.UI
 
 			m_backgroundPicker = new Picker();
 			m_backgroundPicker.FontSize = 12.0;
-			m_backgroundPicker.TextColor = UiConstants.OnSurface;
+			m_backgroundPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			m_backgroundPicker.Items.Add("White");
 			m_backgroundPicker.Items.Add("Transparent");
 			m_backgroundPicker.SelectedIndex = 0;

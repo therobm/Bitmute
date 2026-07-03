@@ -138,7 +138,7 @@ namespace Bitmute.UI
 			eye.HeightRequest = 24.0;
 			eye.Padding = new Thickness(0.0);
 			eye.BackgroundColor = Colors.Transparent;
-			eye.TextColor = UiConstants.OnSurface;
+			eye.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			eye.Clicked += OnEyeClicked;
 			m_eyeButtons.Add(eye);
 			m_eyeLayers.Add(layerIndex);
@@ -154,7 +154,7 @@ namespace Bitmute.UI
 			Label name = new Label();
 			name.Text = layer.Name();
 			name.FontSize = 12.0;
-			name.TextColor = UiConstants.OnSurface;
+			name.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			name.VerticalOptions = LayoutOptions.Center;
 
 			Grid rowGrid = new Grid();
@@ -174,11 +174,11 @@ namespace Bitmute.UI
 			row.StrokeThickness = 0.0;
 			if (layerIndex == document.ActiveLayerIndex())
 			{
-				row.BackgroundColor = UiConstants.ToolSelected;
+				row.ThemeBg(UiConstants.ToolSelectedLight, UiConstants.ToolSelectedDark);
 			}
 			else
 			{
-				row.BackgroundColor = UiConstants.PanelSurface;
+				row.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
 			}
 			row.Content = rowGrid;
 
@@ -240,8 +240,8 @@ namespace Bitmute.UI
 			button.WidthRequest = width;
 			button.HeightRequest = 20.0;
 			button.Padding = new Thickness(0.0);
-			button.BackgroundColor = UiConstants.ChromeRaised;
-			button.TextColor = UiConstants.OnSurface;
+			button.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			button.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			button.Clicked += handler;
 			return button;
 		}
@@ -414,7 +414,7 @@ namespace Bitmute.UI
 			Label opacityLabel = new Label();
 			opacityLabel.Text = "Opacity";
 			opacityLabel.FontSize = 11.0;
-			opacityLabel.TextColor = UiConstants.TextDim;
+			opacityLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			opacityLabel.VerticalOptions = LayoutOptions.Center;
 
 			m_opacity = new Slider();
@@ -424,7 +424,7 @@ namespace Bitmute.UI
 
 			m_opacityValue = new Label();
 			m_opacityValue.FontSize = 11.0;
-			m_opacityValue.TextColor = UiConstants.OnSurface;
+			m_opacityValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			m_opacityValue.WidthRequest = 30.0;
 			m_opacityValue.HorizontalTextAlignment = TextAlignment.End;
 			m_opacityValue.VerticalOptions = LayoutOptions.Center;
@@ -444,12 +444,12 @@ namespace Bitmute.UI
 			Label blendLabel = new Label();
 			blendLabel.Text = "Blend";
 			blendLabel.FontSize = 11.0;
-			blendLabel.TextColor = UiConstants.TextDim;
+			blendLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			blendLabel.VerticalOptions = LayoutOptions.Center;
 
 			m_blendPicker = new Picker();
 			m_blendPicker.FontSize = 11.0;
-			m_blendPicker.TextColor = UiConstants.OnSurface;
+			m_blendPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			m_blendPicker.Items.Add("Normal");
 			m_blendPicker.Items.Add("Multiply");
 			m_blendPicker.Items.Add("Screen");

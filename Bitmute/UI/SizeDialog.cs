@@ -79,7 +79,7 @@ namespace Bitmute.UI
 			Entry entry = new Entry();
 			entry.FontSize = 12.0;
 			entry.WidthRequest = 90.0;
-			entry.TextColor = UiConstants.OnSurface;
+			entry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			entry.Keyboard = Keyboard.Numeric;
 			entry.Text = initial.ToString();
 			return entry;
@@ -89,7 +89,7 @@ namespace Bitmute.UI
 		{
 			Label caption = new Label();
 			caption.Text = label;
-			caption.TextColor = UiConstants.TextDim;
+			caption.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			caption.FontSize = 12.0;
 			caption.WidthRequest = 90.0;
 			caption.VerticalOptions = LayoutOptions.Center;
@@ -120,7 +120,7 @@ namespace Bitmute.UI
 			{
 				m_horizontalAnchor = new Picker();
 				m_horizontalAnchor.FontSize = 12.0;
-				m_horizontalAnchor.TextColor = UiConstants.OnSurface;
+				m_horizontalAnchor.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 				m_horizontalAnchor.Items.Add("Left");
 				m_horizontalAnchor.Items.Add("Center");
 				m_horizontalAnchor.Items.Add("Right");
@@ -128,7 +128,7 @@ namespace Bitmute.UI
 
 				m_verticalAnchor = new Picker();
 				m_verticalAnchor.FontSize = 12.0;
-				m_verticalAnchor.TextColor = UiConstants.OnSurface;
+				m_verticalAnchor.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 				m_verticalAnchor.Items.Add("Top");
 				m_verticalAnchor.Items.Add("Middle");
 				m_verticalAnchor.Items.Add("Bottom");
@@ -141,7 +141,7 @@ namespace Bitmute.UI
 			{
 				m_interpolation = new Picker();
 				m_interpolation.FontSize = 12.0;
-				m_interpolation.TextColor = UiConstants.OnSurface;
+				m_interpolation.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 				m_interpolation.Items.Add("Nearest");
 				m_interpolation.Items.Add("Bilinear");
 				m_interpolation.Items.Add("Bicubic");

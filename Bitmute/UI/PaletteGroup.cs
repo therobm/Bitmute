@@ -19,7 +19,7 @@ namespace Bitmute.UI
 			Label label = new Label();
 			label.Text = m_tabNames[index];
 			label.FontSize = 12.0;
-			label.TextColor = UiConstants.TextDim;
+			label.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			label.VerticalOptions = LayoutOptions.Center;
 			label.HorizontalOptions = LayoutOptions.Center;
 			m_tabLabels[index] = label;
@@ -27,7 +27,7 @@ namespace Bitmute.UI
 			Border tab = new Border();
 			tab.HeightRequest = UiConstants.PaletteTabHeight;
 			tab.Padding = new Thickness(10.0, 0.0, 10.0, 0.0);
-			tab.BackgroundColor = UiConstants.Chrome;
+			tab.ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
 			tab.StrokeThickness = 0.0;
 			tab.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(3.0, 3.0, 0.0, 0.0) };
 			tab.Content = label;
@@ -58,13 +58,13 @@ namespace Bitmute.UI
 			{
 				if (index == activeIndex)
 				{
-					m_tabButtons[index].BackgroundColor = UiConstants.PanelSurface;
-					m_tabLabels[index].TextColor = UiConstants.OnSurface;
+					m_tabButtons[index].ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
+					m_tabLabels[index].ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 				}
 				else
 				{
-					m_tabButtons[index].BackgroundColor = UiConstants.Chrome;
-					m_tabLabels[index].TextColor = UiConstants.TextDim;
+					m_tabButtons[index].ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
+					m_tabLabels[index].ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 				}
 			}
 			if (m_placeholder != null)
@@ -87,7 +87,7 @@ namespace Bitmute.UI
 
 			HorizontalStackLayout tabStrip = new HorizontalStackLayout();
 			tabStrip.Spacing = 2.0;
-			tabStrip.BackgroundColor = UiConstants.Chrome;
+			tabStrip.ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
 			tabStrip.Padding = new Thickness(2.0, 2.0, 2.0, 0.0);
 			for (int index = 0; index < tabNames.Length; index++)
 			{
@@ -97,7 +97,7 @@ namespace Bitmute.UI
 			}
 
 			Grid body = new Grid();
-			body.BackgroundColor = UiConstants.PanelSurface;
+			body.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
 			if (content != null)
 			{
 				body.Add(content);
@@ -106,7 +106,7 @@ namespace Bitmute.UI
 			{
 				m_placeholder = new Label();
 				m_placeholder.FontSize = 12.0;
-				m_placeholder.TextColor = UiConstants.TextDim;
+				m_placeholder.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 				m_placeholder.HorizontalOptions = LayoutOptions.Center;
 				m_placeholder.VerticalOptions = LayoutOptions.Center;
 				body.Add(m_placeholder);
@@ -120,7 +120,7 @@ namespace Bitmute.UI
 			layout.Add(tabStrip);
 			layout.Add(body);
 
-			BackgroundColor = UiConstants.Chrome;
+			this.ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
 			Content = layout;
 			SelectTab(0);
 		}

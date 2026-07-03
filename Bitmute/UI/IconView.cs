@@ -79,7 +79,7 @@ namespace Bitmute.UI
 			SKColor tint = Theme.IconTint();
 			if (m_selected)
 			{
-				tint = new SKColor(0xF0, 0xF0, 0xF0);
+				tint = Theme.IconTintSelected();
 			}
 			SKPaint paint = new SKPaint();
 			paint.IsAntialias = true;
