@@ -29,8 +29,16 @@ namespace Bitmute.UI
 		private LayersPanel m_layersPanel;
 		private NavigatorPanel m_navigatorPanel;
 		private InfoPanel m_infoPanel;
-		private HistoryPanel m_historyPanel;
 		private SwatchesPanel m_swatchesPanel;
+		private PaletteGroup m_navigatorGroup;
+		private PaletteGroup m_swatchesGroup;
+		private PaletteGroup m_layersGroup;
+		private PaletteGroup m_infoGroup;
+		private Grid m_paletteDock;
+		private bool m_navigatorPanelVisible = true;
+		private bool m_swatchesPanelVisible = true;
+		private bool m_layersPanelVisible = true;
+		private bool m_infoPanelVisible = true;
 		private bool m_rulersEnabled = true;
 		private BoxView m_modalBackdrop;
 		private View m_modalContent;
@@ -157,6 +165,15 @@ namespace Bitmute.UI
 		private ZoomTool m_zoomTool;
 		private RulerTool m_rulerTool;
 
+		private static string PanelMenuLabel(string name, bool visible)
+		{
+			if (visible)
+			{
+				return "✓ " + name;
+			}
+			return name;
+		}
+
 		private string[] GetMenuItems(string title)
 		{
 			if (title == "File")
@@ -189,7 +206,7 @@ namespace Bitmute.UI
 			}
 			if (title == "Window")
 			{
-				return new string[] { "Cascade", "Tile", "Tools", "Layers", "Color" };
+				return new string[] { "Cascade", "Tile", PanelMenuLabel("Navigator", m_navigatorPanelVisible), PanelMenuLabel("Swatches", m_swatchesPanelVisible), PanelMenuLabel("Layers", m_layersPanelVisible), PanelMenuLabel("Info", m_infoPanelVisible) };
 			}
 			return new string[] { "About Bitmute" };
 		}
@@ -262,15 +279,7 @@ namespace Bitmute.UI
 			}
 			if (title == "Window")
 			{
-				if (item == "Cascade")
-				{
-					return true;
-				}
-				if (item == "Tile")
-				{
-					return true;
-				}
-				return false;
+				return true;
 			}
 			if (title == "View")
 			{
@@ -714,6 +723,16 @@ namespace Bitmute.UI
 			if (action == "Tile")
 			{
 				DoTileWindows();
+				return;
+			}
+			string panelAction = action;
+			if (panelAction.StartsWith("✓ "))
+			{
+				panelAction = panelAction.Substring(2);
+			}
+			if (panelAction == "Navigator" || panelAction == "Swatches" || panelAction == "Layers" || panelAction == "Info")
+			{
+				ToggleDockPanel(panelAction);
 				return;
 			}
 			if (action == "Rasterize Text")
@@ -1706,19 +1725,16 @@ namespace Bitmute.UI
 		private View BuildPaletteDock()
 		{
 			m_navigatorPanel = new NavigatorPanel();
-			PaletteGroup navigatorGroup = new PaletteGroup(new string[] { "Navigator" }, m_navigatorPanel);
+			m_navigatorGroup = new PaletteGroup(new string[] { "Navigator" }, m_navigatorPanel);
 
 			m_swatchesPanel = new SwatchesPanel();
-			PaletteGroup swatchesGroup = new PaletteGroup(new string[] { "Swatches" }, m_swatchesPanel);
+			m_swatchesGroup = new PaletteGroup(new string[] { "Swatches" }, m_swatchesPanel);
 
 			m_layersPanel = new LayersPanel();
-			PaletteGroup layersGroup = new PaletteGroup(new string[] { "Layers", "Channels" }, m_layersPanel);
-
-			m_historyPanel = new HistoryPanel();
-			PaletteGroup historyGroup = new PaletteGroup(new string[] { "History" }, m_historyPanel);
+			m_layersGroup = new PaletteGroup(new string[] { "Layers", "Channels" }, m_layersPanel);
 
 			m_infoPanel = new InfoPanel();
-			PaletteGroup infoGroup = new PaletteGroup(new string[] { "Info" }, m_infoPanel);
+			m_infoGroup = new PaletteGroup(new string[] { "Info" }, m_infoPanel);
 
 			Grid dock = new Grid();
 			dock.ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
@@ -1727,21 +1743,90 @@ namespace Bitmute.UI
 			dock.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
 			dock.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
 			dock.RowDefinitions.Add(new RowDefinition(GridLength.Star));
-			dock.RowDefinitions.Add(new RowDefinition(new GridLength(150.0)));
 			dock.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+			dock.RowDefinitions.Add(new RowDefinition(new GridLength(0.0)));
 
-			Grid.SetRow(navigatorGroup, 0);
-			Grid.SetRow(swatchesGroup, 1);
-			Grid.SetRow(layersGroup, 2);
-			Grid.SetRow(historyGroup, 3);
-			Grid.SetRow(infoGroup, 4);
-			dock.Add(navigatorGroup);
-			dock.Add(swatchesGroup);
-			dock.Add(layersGroup);
-			dock.Add(historyGroup);
-			dock.Add(infoGroup);
+			Grid.SetRow(m_navigatorGroup, 0);
+			Grid.SetRow(m_swatchesGroup, 1);
+			Grid.SetRow(m_layersGroup, 2);
+			Grid.SetRow(m_infoGroup, 3);
+			dock.Add(m_navigatorGroup);
+			dock.Add(m_swatchesGroup);
+			dock.Add(m_layersGroup);
+			dock.Add(m_infoGroup);
 
+			m_paletteDock = dock;
+			RefreshDockLayout();
 			return dock;
+		}
+
+		private void RefreshDockLayout()
+		{
+			if (m_paletteDock == null)
+			{
+				return;
+			}
+			m_navigatorGroup.IsVisible = m_navigatorPanelVisible;
+			m_swatchesGroup.IsVisible = m_swatchesPanelVisible;
+			m_layersGroup.IsVisible = m_layersPanelVisible;
+			m_infoGroup.IsVisible = m_infoPanelVisible;
+			bool layersStretch = m_layersPanelVisible && !m_layersGroup.IsCollapsed();
+			GridLength layersLength = GridLength.Auto;
+			GridLength fillerLength = GridLength.Star;
+			if (layersStretch)
+			{
+				layersLength = GridLength.Star;
+				fillerLength = new GridLength(0.0);
+			}
+			m_paletteDock.RowDefinitions[2].Height = layersLength;
+			m_paletteDock.RowDefinitions[4].Height = fillerLength;
+		}
+
+		public void OnPaletteGroupLayoutChanged()
+		{
+			RefreshDockLayout();
+		}
+
+		public void ClosePalettePanel(string key)
+		{
+			if (key == "Navigator")
+			{
+				m_navigatorPanelVisible = false;
+			}
+			if (key == "Swatches")
+			{
+				m_swatchesPanelVisible = false;
+			}
+			if (key == "Layers")
+			{
+				m_layersPanelVisible = false;
+			}
+			if (key == "Info")
+			{
+				m_infoPanelVisible = false;
+			}
+			RefreshDockLayout();
+		}
+
+		private void ToggleDockPanel(string key)
+		{
+			if (key == "Navigator")
+			{
+				m_navigatorPanelVisible = !m_navigatorPanelVisible;
+			}
+			if (key == "Swatches")
+			{
+				m_swatchesPanelVisible = !m_swatchesPanelVisible;
+			}
+			if (key == "Layers")
+			{
+				m_layersPanelVisible = !m_layersPanelVisible;
+			}
+			if (key == "Info")
+			{
+				m_infoPanelVisible = !m_infoPanelVisible;
+			}
+			RefreshDockLayout();
 		}
 
 		private BoxView BuildDivider()
@@ -2497,10 +2582,6 @@ namespace Bitmute.UI
 			{
 				m_layersPanel.Refresh();
 			}
-			if (m_historyPanel != null)
-			{
-				m_historyPanel.Refresh();
-			}
 			if (m_navigatorPanel != null)
 			{
 				m_navigatorPanel.RefreshView();
@@ -2693,10 +2774,6 @@ namespace Bitmute.UI
 			if (m_layersPanel != null)
 			{
 				m_layersPanel.RefreshThumbnails();
-			}
-			if (m_historyPanel != null)
-			{
-				m_historyPanel.Refresh();
 			}
 			if (m_navigatorPanel != null)
 			{
