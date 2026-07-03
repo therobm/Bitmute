@@ -2005,24 +2005,12 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			SKRectI bounds = selection.Bounds();
 			document.BeginStroke();
-			for (int canvasY = bounds.Top; canvasY < bounds.Bottom; canvasY++)
-			{
-				for (int canvasX = bounds.Left; canvasX < bounds.Right; canvasX++)
-				{
-					if (!selection.IsSelected(canvasX, canvasY))
-					{
-						continue;
-					}
-					layer.SetPixelCanvas(canvasX, canvasY, fill);
-				}
-			}
+			document.FillSelection(fill);
 			document.EndStroke();
 			CanvasView canvas = ActiveCanvas();
 			if (canvas != null)
 			{
-				canvas.MarkComposeDirty();
 				canvas.InvalidateSurface();
 			}
 			RefreshLayerThumbnails();

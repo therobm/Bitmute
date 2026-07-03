@@ -302,6 +302,11 @@ namespace Bitmute.Imaging
 			m_generation = m_generation + 1;
 		}
 
+		public byte[] Mask()
+		{
+			return m_mask;
+		}
+
 		public byte[] MaskCopy()
 		{
 			byte[] copy = new byte[m_mask.Length];

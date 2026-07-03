@@ -160,6 +160,72 @@ namespace Bitmute.Imaging
 			m_selection = new Selection(m_width, m_height);
 		}
 
+		public unsafe void FillSelection(SKColor fill)
+		{
+			Layer layer = ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			if (!m_selection.IsActive())
+			{
+				return;
+			}
+			SKBitmap bitmap = layer.Bitmap();
+			int offsetX = layer.OffsetX();
+			int offsetY = layer.OffsetY();
+			SKRectI bounds = m_selection.Bounds();
+			int left = bounds.Left;
+			int top = bounds.Top;
+			int right = bounds.Right;
+			int bottom = bounds.Bottom;
+			if (left < offsetX)
+			{
+				left = offsetX;
+			}
+			if (top < offsetY)
+			{
+				top = offsetY;
+			}
+			if (right > offsetX + bitmap.Width)
+			{
+				right = offsetX + bitmap.Width;
+			}
+			if (bottom > offsetY + bitmap.Height)
+			{
+				bottom = offsetY + bitmap.Height;
+			}
+			if (right <= left || bottom <= top)
+			{
+				return;
+			}
+			byte[] mask = m_selection.Mask();
+			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
+			int rowBytes = bitmap.RowBytes;
+			byte fillRed = fill.Red;
+			byte fillGreen = fill.Green;
+			byte fillBlue = fill.Blue;
+			byte fillAlpha = fill.Alpha;
+			for (int canvasY = top; canvasY < bottom; canvasY++)
+			{
+				int maskRow = canvasY * m_width;
+				byte* row = basePointer + ((canvasY - offsetY) * rowBytes);
+				for (int canvasX = left; canvasX < right; canvasX++)
+				{
+					if (mask[maskRow + canvasX] == 0)
+					{
+						continue;
+					}
+					byte* pixel = row + ((canvasX - offsetX) * 4);
+					pixel[0] = fillRed;
+					pixel[1] = fillGreen;
+					pixel[2] = fillBlue;
+					pixel[3] = fillAlpha;
+				}
+			}
+			MarkComposeDirtyRegion(new SKRectI(left, top, right, bottom));
+		}
+
 		public void BeginStroke()
 		{
 			if (m_strokeSnapshot != null)
@@ -558,9 +624,11 @@ namespace Bitmute.Imaging
 				}
 				paint.Color = SKColors.White.WithAlpha(layer.Opacity());
 				paint.BlendMode = Layer.ToSkBlendMode(layer.BlendMode());
-				SKImage image = SKImage.FromBitmap(layer.Bitmap());
+				SKPixmap pixmap = layer.Bitmap().PeekPixels();
+				SKImage image = SKImage.FromPixels(pixmap);
 				canvas.DrawImage(image, layer.OffsetX(), layer.OffsetY(), sampling, paint);
 				image.Dispose();
+				pixmap.Dispose();
 			}
 			paint.Dispose();
 		}
@@ -799,9 +867,11 @@ namespace Bitmute.Imaging
 					SKPaint paint = new SKPaint();
 					paint.Color = SKColors.White.WithAlpha(layer.Opacity());
 					paint.BlendMode = Layer.ToSkBlendMode(layer.BlendMode());
-					SKImage image = SKImage.FromBitmap(layer.Bitmap());
+					SKPixmap pixmap = layer.Bitmap().PeekPixels();
+					SKImage image = SKImage.FromPixels(pixmap);
 					canvas.DrawImage(image, layer.OffsetX(), layer.OffsetY(), sampling, paint);
 					image.Dispose();
+					pixmap.Dispose();
 					paint.Dispose();
 					canvas.Restore();
 					canvas.Dispose();
@@ -809,7 +879,7 @@ namespace Bitmute.Imaging
 			}
 		}
 
-		private void BlendCustomLayer(SKBitmap target, int left, int top, int right, int bottom, Layer layer)
+		private unsafe void BlendCustomLayer(SKBitmap target, int left, int top, int right, int bottom, Layer layer)
 		{
 			SKBitmap source = layer.Bitmap();
 			int sourceWidth = source.Width;
@@ -818,18 +888,28 @@ namespace Bitmute.Imaging
 			int offsetY = layer.OffsetY();
 			int opacity = layer.Opacity();
 			eBlendMode mode = layer.BlendMode();
+			byte* sourceBase = (byte*)source.GetPixels().ToPointer();
+			int sourceRowBytes = source.RowBytes;
+			byte* targetBase = (byte*)target.GetPixels().ToPointer();
+			int targetRowBytes = target.RowBytes;
 			for (int canvasY = top; canvasY < bottom; canvasY++)
 			{
+				int bitmapY = canvasY - offsetY;
+				if (bitmapY < 0 || bitmapY >= sourceHeight)
+				{
+					continue;
+				}
+				byte* sourceRow = sourceBase + (bitmapY * sourceRowBytes);
+				byte* targetRow = targetBase + (canvasY * targetRowBytes);
 				for (int canvasX = left; canvasX < right; canvasX++)
 				{
 					int bitmapX = canvasX - offsetX;
-					int bitmapY = canvasY - offsetY;
-					if (bitmapX < 0 || bitmapY < 0 || bitmapX >= sourceWidth || bitmapY >= sourceHeight)
+					if (bitmapX < 0 || bitmapX >= sourceWidth)
 					{
 						continue;
 					}
-					SKColor sourceColor = source.GetPixel(bitmapX, bitmapY);
-					int sourceAlpha = sourceColor.Alpha;
+					byte* sourcePixel = sourceRow + (bitmapX * 4);
+					int sourceAlpha = sourcePixel[3];
 					if (sourceAlpha == 0)
 					{
 						continue;
@@ -839,41 +919,53 @@ namespace Bitmute.Imaging
 					{
 						continue;
 					}
+					byte* targetPixel = targetRow + (canvasX * 4);
 					if (mode == eBlendMode.Dissolve)
 					{
 						int threshold = ((canvasX * 73) + (canvasY * 151)) & 255;
 						if (effectiveAlpha > threshold)
 						{
-							target.SetPixel(canvasX, canvasY, new SKColor(sourceColor.Red, sourceColor.Green, sourceColor.Blue, 255));
+							targetPixel[0] = sourcePixel[0];
+							targetPixel[1] = sourcePixel[1];
+							targetPixel[2] = sourcePixel[2];
+							targetPixel[3] = 255;
 						}
 						continue;
 					}
-					SKColor baseColor = target.GetPixel(canvasX, canvasY);
+					int baseAlpha = targetPixel[3];
 					byte blendedRed;
 					byte blendedGreen;
 					byte blendedBlue;
-					if (baseColor.Alpha == 0)
+					if (baseAlpha == 0)
 					{
-						blendedRed = sourceColor.Red;
-						blendedGreen = sourceColor.Green;
-						blendedBlue = sourceColor.Blue;
+						blendedRed = sourcePixel[0];
+						blendedGreen = sourcePixel[1];
+						blendedBlue = sourcePixel[2];
 					}
 					else
 					{
-						BlendModes.Blend(mode, baseColor.Red, baseColor.Green, baseColor.Blue, sourceColor.Red, sourceColor.Green, sourceColor.Blue, out blendedRed, out blendedGreen, out blendedBlue);
+						int baseRed = ((targetPixel[0] * 255) + (baseAlpha / 2)) / baseAlpha;
+						int baseGreen = ((targetPixel[1] * 255) + (baseAlpha / 2)) / baseAlpha;
+						int baseBlue = ((targetPixel[2] * 255) + (baseAlpha / 2)) / baseAlpha;
+						if (baseRed > 255)
+						{
+							baseRed = 255;
+						}
+						if (baseGreen > 255)
+						{
+							baseGreen = 255;
+						}
+						if (baseBlue > 255)
+						{
+							baseBlue = 255;
+						}
+						BlendModes.Blend(mode, (byte)baseRed, (byte)baseGreen, (byte)baseBlue, sourcePixel[0], sourcePixel[1], sourcePixel[2], out blendedRed, out blendedGreen, out blendedBlue);
 					}
-					double sourceFraction = effectiveAlpha / 255.0;
-					double baseFraction = baseColor.Alpha / 255.0;
-					double outFraction = sourceFraction + (baseFraction * (1.0 - sourceFraction));
-					if (outFraction <= 0.0)
-					{
-						continue;
-					}
-					double baseWeight = baseFraction * (1.0 - sourceFraction);
-					int resultRed = (int)((((blendedRed * sourceFraction) + (baseColor.Red * baseWeight)) / outFraction) + 0.5);
-					int resultGreen = (int)((((blendedGreen * sourceFraction) + (baseColor.Green * baseWeight)) / outFraction) + 0.5);
-					int resultBlue = (int)((((blendedBlue * sourceFraction) + (baseColor.Blue * baseWeight)) / outFraction) + 0.5);
-					int resultAlpha = (int)((outFraction * 255.0) + 0.5);
+					int inverseAlpha = 255 - effectiveAlpha;
+					int resultRed = (((blendedRed * effectiveAlpha) + 127) / 255) + (((targetPixel[0] * inverseAlpha) + 127) / 255);
+					int resultGreen = (((blendedGreen * effectiveAlpha) + 127) / 255) + (((targetPixel[1] * inverseAlpha) + 127) / 255);
+					int resultBlue = (((blendedBlue * effectiveAlpha) + 127) / 255) + (((targetPixel[2] * inverseAlpha) + 127) / 255);
+					int resultAlpha = effectiveAlpha + (((baseAlpha * inverseAlpha) + 127) / 255);
 					if (resultRed > 255)
 					{
 						resultRed = 255;
@@ -890,7 +982,10 @@ namespace Bitmute.Imaging
 					{
 						resultAlpha = 255;
 					}
-					target.SetPixel(canvasX, canvasY, new SKColor((byte)resultRed, (byte)resultGreen, (byte)resultBlue, (byte)resultAlpha));
+					targetPixel[0] = (byte)resultRed;
+					targetPixel[1] = (byte)resultGreen;
+					targetPixel[2] = (byte)resultBlue;
+					targetPixel[3] = (byte)resultAlpha;
 				}
 			}
 		}
