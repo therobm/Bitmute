@@ -153,10 +153,9 @@ namespace Bitmute.UI
 			Border button = new Border();
 			button.WidthRequest = UiConstants.ToolButtonSize;
 			button.HeightRequest = UiConstants.ToolButtonSize;
-			button.BackgroundColor = UiConstants.ToolResting;
-			button.Stroke = UiConstants.Divider;
-			button.StrokeThickness = 1.0;
-			button.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(2.0) };
+			button.BackgroundColor = Colors.Transparent;
+			button.StrokeThickness = 0.0;
+			button.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(3.0) };
 			button.Content = icon;
 			ToolTipProperties.SetText(button, m_names[index]);
 
@@ -187,12 +186,10 @@ namespace Bitmute.UI
 				if (m_tools[index] == tool)
 				{
 					m_buttons[index].BackgroundColor = UiConstants.ToolSelected;
-					m_buttons[index].Stroke = UiConstants.Accent;
 				}
 				else
 				{
-					m_buttons[index].BackgroundColor = UiConstants.ToolResting;
-					m_buttons[index].Stroke = UiConstants.Divider;
+					m_buttons[index].BackgroundColor = Colors.Transparent;
 				}
 			}
 
