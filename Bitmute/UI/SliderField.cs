@@ -30,7 +30,7 @@ namespace Bitmute.UI
 
 			m_valueEntry = new Entry();
 			m_valueEntry.FontSize = 12.0;
-			m_valueEntry.WidthRequest = 40.0;
+			m_valueEntry.WidthRequest = 52.0;
 			m_valueEntry.HeightRequest = 24.0;
 			m_valueEntry.Margin = new Thickness(0.0);
 			m_valueEntry.Keyboard = Keyboard.Numeric;
@@ -39,13 +39,8 @@ namespace Bitmute.UI
 			m_valueEntry.VerticalOptions = LayoutOptions.Center;
 			m_valueEntry.HorizontalTextAlignment = TextAlignment.End;
 			m_valueEntry.Completed += OnEntryCommitted;
+			m_valueEntry.Focused += OnEntryFocused;
 			m_valueEntry.Unfocused += OnEntryUnfocused;
-
-			Label suffixLabel = new Label();
-			suffixLabel.Text = m_suffix.Trim();
-			suffixLabel.FontSize = 12.0;
-			suffixLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			suffixLabel.VerticalOptions = LayoutOptions.Center;
 
 			Label arrow = new Label();
 			arrow.Text = "▾";
@@ -59,7 +54,6 @@ namespace Bitmute.UI
 			HorizontalStackLayout row = new HorizontalStackLayout();
 			row.Spacing = 3.0;
 			row.Add(m_valueEntry);
-			row.Add(suffixLabel);
 			row.Add(arrow);
 
 			Border chip = new Border();
@@ -75,9 +69,48 @@ namespace Bitmute.UI
 			Content = chip;
 		}
 
+		private static int ExtractInt(string text)
+		{
+			if (text == null)
+			{
+				return int.MinValue;
+			}
+			string digits = "";
+			for (int index = 0; index < text.Length; index++)
+			{
+				char character = text[index];
+				bool isDigit = character >= '0' && character <= '9';
+				bool isLeadingMinus = character == '-' && digits.Length == 0;
+				if (isDigit || isLeadingMinus)
+				{
+					digits = digits + character;
+				}
+				else if (digits.Length > 0)
+				{
+					break;
+				}
+			}
+			if (digits.Length == 0 || digits == "-")
+			{
+				return int.MinValue;
+			}
+			int result = 0;
+			bool valid = int.TryParse(digits, out result);
+			if (!valid)
+			{
+				return int.MinValue;
+			}
+			return result;
+		}
+
 		private void OnEntryCommitted(object sender, EventArgs eventArgs)
 		{
 			ApplyTypedValue();
+		}
+
+		private void OnEntryFocused(object sender, FocusEventArgs eventArgs)
+		{
+			m_valueEntry.Text = m_value.ToString();
 		}
 
 		private void OnEntryUnfocused(object sender, FocusEventArgs eventArgs)
@@ -87,9 +120,8 @@ namespace Bitmute.UI
 
 		private void ApplyTypedValue()
 		{
-			int parsed = 0;
-			bool valid = int.TryParse(m_valueEntry.Text, out parsed);
-			if (!valid)
+			int parsed = ExtractInt(m_valueEntry.Text);
+			if (parsed == int.MinValue)
 			{
 				UpdateLabel();
 				return;
@@ -110,7 +142,7 @@ namespace Bitmute.UI
 
 		private void UpdateLabel()
 		{
-			m_valueEntry.Text = m_value.ToString();
+			m_valueEntry.Text = m_value + m_suffix;
 		}
 
 		public int Value()

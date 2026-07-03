@@ -134,7 +134,7 @@ namespace Bitmute.UI
 		{
 			m_zoomEntry = new Entry();
 			m_zoomEntry.Keyboard = Keyboard.Numeric;
-			m_zoomEntry.WidthRequest = 42.0;
+			m_zoomEntry.WidthRequest = 54.0;
 			m_zoomEntry.HeightRequest = UiConstants.DocumentBottomBar;
 			m_zoomEntry.FontSize = 10.0;
 			m_zoomEntry.Margin = new Thickness(0.0);
@@ -143,26 +143,61 @@ namespace Bitmute.UI
 			m_zoomEntry.VerticalOptions = LayoutOptions.Center;
 			m_zoomEntry.HorizontalTextAlignment = TextAlignment.End;
 			m_zoomEntry.Completed += OnZoomEntryCommitted;
+			m_zoomEntry.Focused += OnZoomEntryFocused;
 			m_zoomEntry.Unfocused += OnZoomEntryUnfocused;
-
-			Label percentLabel = new Label();
-			percentLabel.Text = "%";
-			percentLabel.FontSize = 10.0;
-			percentLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			percentLabel.VerticalOptions = LayoutOptions.Center;
 
 			HorizontalStackLayout zoomRow = new HorizontalStackLayout();
 			zoomRow.Spacing = 1.0;
 			zoomRow.Padding = new Thickness(4.0, 0.0, 2.0, 0.0);
 			zoomRow.VerticalOptions = LayoutOptions.Center;
 			zoomRow.Add(m_zoomEntry);
-			zoomRow.Add(percentLabel);
 			return zoomRow;
+		}
+
+		private static int ExtractInt(string text)
+		{
+			if (text == null)
+			{
+				return int.MinValue;
+			}
+			string digits = "";
+			for (int index = 0; index < text.Length; index++)
+			{
+				char character = text[index];
+				if (character >= '0' && character <= '9')
+				{
+					digits = digits + character;
+				}
+				else if (digits.Length > 0)
+				{
+					break;
+				}
+			}
+			if (digits.Length == 0)
+			{
+				return int.MinValue;
+			}
+			int result = 0;
+			bool valid = int.TryParse(digits, out result);
+			if (!valid)
+			{
+				return int.MinValue;
+			}
+			return result;
 		}
 
 		private void OnZoomEntryCommitted(object sender, EventArgs eventArgs)
 		{
 			ApplyZoomEntry();
+		}
+
+		private void OnZoomEntryFocused(object sender, FocusEventArgs eventArgs)
+		{
+			int current = ExtractInt(m_zoomEntry.Text);
+			if (current != int.MinValue)
+			{
+				m_zoomEntry.Text = current.ToString();
+			}
 		}
 
 		private void OnZoomEntryUnfocused(object sender, FocusEventArgs eventArgs)
@@ -172,9 +207,8 @@ namespace Bitmute.UI
 
 		private void ApplyZoomEntry()
 		{
-			int parsed = 0;
-			bool valid = int.TryParse(m_zoomEntry.Text, out parsed);
-			if (!valid)
+			int parsed = ExtractInt(m_zoomEntry.Text);
+			if (parsed == int.MinValue)
 			{
 				return;
 			}
@@ -186,7 +220,7 @@ namespace Bitmute.UI
 			SetTitle(m_baseTitle + "  —  " + percent + "%");
 			if (m_zoomEntry != null && !m_zoomEntry.IsFocused)
 			{
-				m_zoomEntry.Text = percent.ToString();
+				m_zoomEntry.Text = percent + "%";
 			}
 		}
 

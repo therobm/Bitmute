@@ -63,6 +63,10 @@ namespace Bitmute.UI
 				thumbSize = trackLength;
 			}
 			float maxScroll = total - viewport;
+			if (maxScroll <= 0.0f)
+			{
+				return;
+			}
 			float scrollPos = -offset;
 			if (scrollPos < 0.0f)
 			{

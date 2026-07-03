@@ -71,6 +71,12 @@ namespace Bitmute.UI
 		public static readonly Color RulerLight = Color.FromArgb("#E4E4E4");
 		public static readonly Color RulerTickDark = Color.FromArgb("#707070");
 		public static readonly Color RulerTickLight = Color.FromArgb("#808080");
+		public static readonly Color IconTintDark = Color.FromRgba(210, 210, 210, 255);
+		public static readonly Color IconTintLight = Color.FromRgba(50, 50, 50, 255);
+		public static readonly Color IconTintSelectedDark = Color.FromRgba(240, 240, 240, 255);
+		public static readonly Color IconTintSelectedLight = Color.FromRgba(24, 42, 68, 255);
+		public static readonly Color ScrollbarThumbDark = Color.FromRgba(90, 90, 90, 255);
+		public static readonly Color ScrollbarThumbLight = Color.FromRgba(156, 156, 156, 255);
 
 		private static Color Pick(Color light, Color dark)
 		{

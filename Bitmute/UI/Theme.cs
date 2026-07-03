@@ -159,18 +159,18 @@ namespace Bitmute.UI
 		{
 			if (s_dark)
 			{
-				return new SKColor(0xD2, 0xD2, 0xD2);
+				return new SKColor(UiConstants.IconTintDark.ToUint());
 			}
-			return new SKColor(50, 50, 50);
+			return new SKColor(UiConstants.IconTintLight.ToUint());
 		}
 
 		public static SKColor IconTintSelected()
 		{
 			if (s_dark)
 			{
-				return new SKColor(0xF0, 0xF0, 0xF0);
+				return new SKColor(UiConstants.IconTintSelectedDark.ToUint());
 			}
-			return new SKColor(0x18, 0x2A, 0x44);
+			return new SKColor(UiConstants.IconTintSelectedLight.ToUint());
 		}
 
 		public static SKColor ScrollbarTrack()
@@ -187,18 +187,18 @@ namespace Bitmute.UI
 		{
 			if (s_dark)
 			{
-				return new SKColor(0x5A, 0x5A, 0x5A);
+				return new SKColor(UiConstants.ScrollbarThumbDark.ToUint());
 			}
-			return new SKColor(0x9C, 0x9C, 0x9C);
+			return new SKColor(UiConstants.ScrollbarThumbLight.ToUint());
 		}
 
 		public static SKColor CanvasSurround()
 		{
 			if (s_dark)
 			{
-				return new SKColor(0x1E, 0x1E, 0x1E);
+				return new SKColor(UiConstants.CanvasInsetDark.ToUint());
 			}
-			return new SKColor(0x8C, 0x8C, 0x8C);
+			return new SKColor(UiConstants.CanvasInsetLight.ToUint());
 		}
 	}
 }
