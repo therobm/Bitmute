@@ -2536,7 +2536,21 @@ namespace Bitmute.UI
 			if (window != null)
 			{
 				m_activeDocumentWindow = window;
+				RefreshDocumentTitleBars();
 				RefreshPanels();
+			}
+		}
+
+		private void RefreshDocumentTitleBars()
+		{
+			for (int index = 0; index < m_documents.Count; index++)
+			{
+				DocumentWindow window = m_documents[index] as DocumentWindow;
+				if (window == null)
+				{
+					continue;
+				}
+				window.SetTitleBarActive(window == m_activeDocumentWindow);
 			}
 		}
 
@@ -2819,6 +2833,7 @@ namespace Bitmute.UI
 			if (window != null && m_activeDocumentWindow == window)
 			{
 				m_activeDocumentWindow = null;
+				RefreshDocumentTitleBars();
 			}
 		}
 

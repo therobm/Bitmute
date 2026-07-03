@@ -18,6 +18,7 @@ namespace Bitmute.UI
 		private double m_resizeOriginWidth;
 		private double m_resizeOriginHeight;
 		private Label m_titleLabel;
+		private Grid m_titleBar;
 		private ContentView m_contentHost;
 		private bool m_minimized;
 		private double m_restoreHeight;
@@ -81,7 +82,24 @@ namespace Bitmute.UI
 			raiseGesture.Tapped += OnPanelTapped;
 			titleBar.GestureRecognizers.Add(raiseGesture);
 
+			m_titleBar = titleBar;
 			return titleBar;
+		}
+
+		public void SetTitleBarActive(bool active)
+		{
+			if (m_titleBar == null)
+			{
+				return;
+			}
+			if (active)
+			{
+				m_titleBar.ThemeBg(UiConstants.TitleBarActiveLight, UiConstants.TitleBarActiveDark);
+			}
+			else
+			{
+				m_titleBar.ThemeBg(UiConstants.TitleBarLight, UiConstants.TitleBarDark);
+			}
 		}
 
 		private Border BuildResizeGrip()
