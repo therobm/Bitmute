@@ -1800,6 +1800,7 @@ namespace Bitmute.UI
 			AddAccelerator(element, (Windows.System.VirtualKey)187, OnAcceleratorZoomIn);
 			AddAccelerator(element, (Windows.System.VirtualKey)189, OnAcceleratorZoomOut);
 			AddBareAccelerator(element, Windows.System.VirtualKey.X, OnAcceleratorSwapColors);
+			AddBareAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDelete);
 			element.KeyboardAcceleratorPlacementMode = Microsoft.UI.Xaml.Input.KeyboardAcceleratorPlacementMode.Hidden;
 			element.AllowDrop = true;
 			element.DragOver += OnElementDragOver;
@@ -1861,6 +1862,62 @@ namespace Bitmute.UI
 				m_toolPalette.SwapColors();
 			}
 			args.Handled = true;
+		}
+
+		private void OnAcceleratorDelete(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			if (m_textEditActive)
+			{
+				return;
+			}
+			DoDeleteSelection();
+			args.Handled = true;
+		}
+
+		private void DoDeleteSelection()
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Selection selection = document.Selection();
+			if (!selection.IsActive())
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null || layer.IsText())
+			{
+				return;
+			}
+			SKColor fill = new SKColor(0, 0, 0, 0);
+			if (layer.IsBackground())
+			{
+				SKColor background = m_toolState.Background();
+				fill = new SKColor(background.Red, background.Green, background.Blue, 255);
+			}
+			SKRectI bounds = selection.Bounds();
+			document.BeginStroke();
+			for (int canvasY = bounds.Top; canvasY < bounds.Bottom; canvasY++)
+			{
+				for (int canvasX = bounds.Left; canvasX < bounds.Right; canvasX++)
+				{
+					if (!selection.IsSelected(canvasX, canvasY))
+					{
+						continue;
+					}
+					layer.SetPixelCanvas(canvasX, canvasY, fill);
+				}
+			}
+			document.EndStroke();
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.MarkComposeDirty();
+				canvas.InvalidateSurface();
+			}
+			RefreshLayerThumbnails();
 		}
 
 		private void OnAcceleratorNew(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
