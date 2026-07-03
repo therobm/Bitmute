@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Bitmute.Imaging;
 using Bitmute.Storage;
@@ -1335,7 +1336,35 @@ namespace Bitmute.UI
 			AddAccelerator(element, (Windows.System.VirtualKey)189, OnAcceleratorZoomOut);
 			AddBareAccelerator(element, Windows.System.VirtualKey.X, OnAcceleratorSwapColors);
 			element.KeyboardAcceleratorPlacementMode = Microsoft.UI.Xaml.Input.KeyboardAcceleratorPlacementMode.Hidden;
+			element.AllowDrop = true;
+			element.DragOver += OnElementDragOver;
+			element.Drop += OnElementDrop;
 			m_acceleratorsHooked = true;
+		}
+
+		private void OnElementDragOver(object sender, Microsoft.UI.Xaml.DragEventArgs args)
+		{
+			if (args.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
+			{
+				args.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
+			}
+		}
+
+		private async void OnElementDrop(object sender, Microsoft.UI.Xaml.DragEventArgs args)
+		{
+			if (!args.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
+			{
+				return;
+			}
+			System.Collections.Generic.IReadOnlyList<Windows.Storage.IStorageItem> items = await args.DataView.GetStorageItemsAsync();
+			for (int index = 0; index < items.Count; index++)
+			{
+				Windows.Storage.StorageFile file = items[index] as Windows.Storage.StorageFile;
+				if (file != null)
+				{
+					OpenDocumentFromPath(file.Path);
+				}
+			}
 		}
 
 		private void AddAccelerator(Microsoft.UI.Xaml.UIElement element, Windows.System.VirtualKey key, Windows.Foundation.TypedEventHandler<Microsoft.UI.Xaml.Input.KeyboardAccelerator, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs> handler)
@@ -1578,6 +1607,18 @@ namespace Bitmute.UI
 				{
 					return;
 				}
+				OpenDocumentFromPath(path);
+			}
+			catch (System.Exception error)
+			{
+				SetStatusMessage("Open failed: " + error.Message);
+			}
+		}
+
+		public void OpenDocumentFromPath(string path)
+		{
+			try
+			{
 				SkiaSharp.SKBitmap bitmap = ImageFile.DecodeFile(path);
 				if (bitmap == null)
 				{
