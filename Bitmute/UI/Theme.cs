@@ -190,5 +190,14 @@ namespace Bitmute.UI
 			}
 			return new SKColor(0x9C, 0x9C, 0x9C);
 		}
+
+		public static SKColor CanvasSurround()
+		{
+			if (s_dark)
+			{
+				return new SKColor(0x1E, 0x1E, 0x1E);
+			}
+			return new SKColor(0x8C, 0x8C, 0x8C);
+		}
 	}
 }

@@ -25,7 +25,6 @@ namespace Bitmute.UI
 			}
 		}
 
-		private static readonly SKColor s_workspace = new SKColor(0xCC, 0xCC, 0xCC);
 		private static readonly SKColor s_checkerLight = new SKColor(0xFF, 0xFF, 0xFF);
 		private static readonly SKColor s_checkerDark = new SKColor(0xC8, 0xC8, 0xC8);
 		private static readonly SKColor s_border = new SKColor(0x10, 0x10, 0x10);
@@ -52,6 +51,9 @@ namespace Bitmute.UI
 		private float m_antPhase;
 		private List<AntEdge> m_antEdges;
 		private int m_antEdgesGeneration;
+		private float m_cursorDeviceX;
+		private float m_cursorDeviceY;
+		private bool m_cursorInside;
 
 		private static SKBitmap CheckerTile()
 		{
@@ -122,7 +124,7 @@ namespace Bitmute.UI
 		{
 			SKCanvas canvas = eventArgs.Surface.Canvas;
 			SKImageInfo info = eventArgs.Info;
-			canvas.Clear(s_workspace);
+			canvas.Clear(Theme.CanvasSurround());
 
 			if (info.Width <= 0 || info.Height <= 0)
 			{
@@ -235,6 +237,43 @@ namespace Bitmute.UI
 				DrawLassoPreview(canvas, (LassoTool)tool);
 				return;
 			}
+			if (m_cursorInside && ShowsBrushCursor(tool))
+			{
+				DrawBrushCursor(canvas, main);
+			}
+		}
+
+		private bool ShowsBrushCursor(Tool tool)
+		{
+			return tool is BrushFamilyTool;
+		}
+
+		private void DrawBrushCursor(SKCanvas canvas, MainView main)
+		{
+			ToolState state = main.CurrentToolState();
+			if (state == null)
+			{
+				return;
+			}
+			float radius = (state.BrushSize() * m_zoom) / 2.0f;
+			if (radius < 1.0f)
+			{
+				radius = 1.0f;
+			}
+			SKPaint underlay = new SKPaint();
+			underlay.Style = SKPaintStyle.Stroke;
+			underlay.StrokeWidth = 2.0f;
+			underlay.Color = SKColors.Black;
+			underlay.IsAntialias = true;
+			canvas.DrawCircle(m_cursorDeviceX, m_cursorDeviceY, radius, underlay);
+			underlay.Dispose();
+			SKPaint overlay = new SKPaint();
+			overlay.Style = SKPaintStyle.Stroke;
+			overlay.StrokeWidth = 1.0f;
+			overlay.Color = SKColors.White;
+			overlay.IsAntialias = true;
+			canvas.DrawCircle(m_cursorDeviceX, m_cursorDeviceY, radius, overlay);
+			overlay.Dispose();
 		}
 
 		private void DrawLassoPreview(SKCanvas canvas, LassoTool lasso)
@@ -473,6 +512,16 @@ namespace Bitmute.UI
 		{
 			InvalidateSurface();
 			NotifyChrome();
+			if (Dispatcher != null)
+			{
+				Dispatcher.Dispatch(RepaintForTheme);
+			}
+		}
+
+		private void RepaintForTheme()
+		{
+			InvalidateSurface();
+			NotifyChrome();
 		}
 
 		protected override void OnHandlerChanged()
@@ -557,6 +606,22 @@ namespace Bitmute.UI
 			int pixelX = (int)Math.Floor(documentX);
 			int pixelY = (int)Math.Floor(documentY);
 			main.UpdateCursor(pixelX, pixelY);
+
+			m_cursorDeviceX = eventArgs.Location.X;
+			m_cursorDeviceY = eventArgs.Location.Y;
+			if (eventArgs.ActionType == SKTouchAction.Exited || eventArgs.ActionType == SKTouchAction.Cancelled)
+			{
+				m_cursorInside = false;
+				InvalidateSurface();
+			}
+			else
+			{
+				m_cursorInside = true;
+			}
+			if (eventArgs.ActionType == SKTouchAction.Moved && !eventArgs.InContact && ShowsBrushCursor(main.CurrentTool()))
+			{
+				InvalidateSurface();
+			}
 
 			if (eventArgs.ActionType == SKTouchAction.Pressed)
 			{
