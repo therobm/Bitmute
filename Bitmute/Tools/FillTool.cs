@@ -75,6 +75,7 @@ namespace Bitmute.Tools
 				return false;
 			}
 
+			bool[] filled = new bool[width * height];
 			Stack<int> pending = new Stack<int>();
 			pending.Push((seedY * width) + seedX);
 			for (;;)
@@ -95,11 +96,12 @@ namespace Bitmute.Tools
 				{
 					continue;
 				}
-				if (ColorMatch(current, fill, 0))
+				if (filled[index])
 				{
 					continue;
 				}
 				bitmap.SetPixel(pixelX, pixelY, fill);
+				filled[index] = true;
 				if (pixelX > 0)
 				{
 					pending.Push(index - 1);
@@ -117,7 +119,39 @@ namespace Bitmute.Tools
 					pending.Push(index + width);
 				}
 			}
+
+			DilateEdge(bitmap, filled, width, height, offsetX, offsetY, selection, fill);
 			return true;
+		}
+
+		private void DilateEdge(SKBitmap bitmap, bool[] filled, int width, int height, int offsetX, int offsetY, Selection selection, SKColor fill)
+		{
+			List<int> edge = new List<int>();
+			for (int pixelY = 0; pixelY < height; pixelY++)
+			{
+				for (int pixelX = 0; pixelX < width; pixelX++)
+				{
+					int index = (pixelY * width) + pixelX;
+					if (filled[index])
+					{
+						continue;
+					}
+					if (selection.IsActive() && !selection.IsSelected(pixelX + offsetX, pixelY + offsetY))
+					{
+						continue;
+					}
+					bool nextToFilled = (pixelX > 0 && filled[index - 1]) || (pixelX < width - 1 && filled[index + 1]) || (pixelY > 0 && filled[index - width]) || (pixelY < height - 1 && filled[index + width]);
+					if (nextToFilled)
+					{
+						edge.Add(index);
+					}
+				}
+			}
+			for (int position = 0; position < edge.Count; position++)
+			{
+				int index = edge[position];
+				bitmap.SetPixel(index % width, index / width, fill);
+			}
 		}
 
 		public override bool OnDragged(Document document, int x, int y, ToolState state)

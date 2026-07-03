@@ -48,6 +48,17 @@ namespace Bitmute
 				return;
 			}
 			Bitmute.UI.TitleBarChrome.Attach(appWindow.TitleBar);
+			window.Activated += OnNativeWindowActivated;
+		}
+
+		private static void OnNativeWindowActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
+		{
+			Microsoft.UI.Xaml.Window window = sender as Microsoft.UI.Xaml.Window;
+			if (window == null)
+			{
+				return;
+			}
+			window.DispatcherQueue.TryEnqueue(Bitmute.UI.TitleBarChrome.Apply);
 		}
 
 		private static void RegisterFonts(IFontCollection fonts)
