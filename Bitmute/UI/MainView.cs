@@ -1477,7 +1477,7 @@ namespace Bitmute.UI
 			{
 				rulerHeight = UiConstants.RulerThickness;
 			}
-			return UiConstants.TitleBarHeight + rulerHeight + UiConstants.ResizeGripSize + (2.0 * UiConstants.PanelBorderThickness);
+			return UiConstants.TitleBarHeight + rulerHeight + UiConstants.DocumentBottomBar + (2.0 * UiConstants.PanelBorderThickness);
 		}
 
 		private void PlaceAndAdd(DocumentWindow window)

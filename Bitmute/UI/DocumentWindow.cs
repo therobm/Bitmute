@@ -48,7 +48,7 @@ namespace Bitmute.UI
 			layout.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(UiConstants.ResizeGripSize)));
 			layout.RowDefinitions.Add(m_rulerRow);
 			layout.RowDefinitions.Add(new RowDefinition(GridLength.Star));
-			layout.RowDefinitions.Add(new RowDefinition(new GridLength(UiConstants.ResizeGripSize)));
+			layout.RowDefinitions.Add(new RowDefinition(new GridLength(UiConstants.DocumentBottomBar)));
 
 			Grid.SetRow(m_rulerCorner, 0);
 			Grid.SetColumn(m_rulerCorner, 0);
@@ -70,14 +70,21 @@ namespace Bitmute.UI
 			Grid.SetColumn(m_verticalScrollbar, 2);
 			layout.Add(m_verticalScrollbar);
 
-			Grid.SetRow(m_horizontalScrollbar, 2);
+			Grid bottomBar = new Grid();
+			bottomBar.ColumnSpacing = 2.0;
+			bottomBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			bottomBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+			View zoomField = BuildZoomField();
+			Grid.SetColumn(zoomField, 0);
+			bottomBar.Add(zoomField);
 			Grid.SetColumn(m_horizontalScrollbar, 1);
-			layout.Add(m_horizontalScrollbar);
+			bottomBar.Add(m_horizontalScrollbar);
+			Grid.SetRow(bottomBar, 2);
+			Grid.SetColumn(bottomBar, 0);
+			Grid.SetColumnSpan(bottomBar, 2);
+			layout.Add(bottomBar);
 
-			Grid outer = new Grid();
-			outer.Add(layout);
-			outer.Add(BuildZoomField());
-			SetPanelContent(outer);
+			SetPanelContent(layout);
 
 			bool rulersEnabled = true;
 			MainView main = MainView.Self;
@@ -127,9 +134,9 @@ namespace Bitmute.UI
 		{
 			m_zoomEntry = new Entry();
 			m_zoomEntry.Keyboard = Keyboard.Numeric;
-			m_zoomEntry.WidthRequest = 46.0;
-			m_zoomEntry.HeightRequest = 22.0;
-			m_zoomEntry.FontSize = 11.0;
+			m_zoomEntry.WidthRequest = 42.0;
+			m_zoomEntry.HeightRequest = UiConstants.DocumentBottomBar;
+			m_zoomEntry.FontSize = 10.0;
 			m_zoomEntry.Margin = new Thickness(0.0);
 			m_zoomEntry.BackgroundColor = Colors.Transparent;
 			m_zoomEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
@@ -140,26 +147,17 @@ namespace Bitmute.UI
 
 			Label percentLabel = new Label();
 			percentLabel.Text = "%";
-			percentLabel.FontSize = 11.0;
+			percentLabel.FontSize = 10.0;
 			percentLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			percentLabel.VerticalOptions = LayoutOptions.Center;
 
 			HorizontalStackLayout zoomRow = new HorizontalStackLayout();
 			zoomRow.Spacing = 1.0;
+			zoomRow.Padding = new Thickness(4.0, 0.0, 2.0, 0.0);
+			zoomRow.VerticalOptions = LayoutOptions.Center;
 			zoomRow.Add(m_zoomEntry);
 			zoomRow.Add(percentLabel);
-
-			Border zoomBox = new Border();
-			zoomBox.Padding = new Thickness(4.0, 0.0, 5.0, 0.0);
-			zoomBox.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
-			zoomBox.ThemeStroke(UiConstants.DividerLight, UiConstants.DividerDark);
-			zoomBox.StrokeThickness = 1.0;
-			zoomBox.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(2.0) };
-			zoomBox.HorizontalOptions = LayoutOptions.Start;
-			zoomBox.VerticalOptions = LayoutOptions.End;
-			zoomBox.Margin = new Thickness(UiConstants.RulerThickness + 4.0, 0.0, 0.0, UiConstants.ResizeGripSize + 4.0);
-			zoomBox.Content = zoomRow;
-			return zoomBox;
+			return zoomRow;
 		}
 
 		private void OnZoomEntryCommitted(object sender, EventArgs eventArgs)

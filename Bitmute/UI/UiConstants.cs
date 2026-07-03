@@ -18,6 +18,7 @@ namespace Bitmute.UI
 		public const double PanelMinWidth = 200.0;
 		public const double PanelMinHeight = 140.0;
 		public const double ResizeGripSize = 14.0;
+		public const double DocumentBottomBar = 20.0;
 		public const double CascadeOffset = 26.0;
 		public const double CloseButtonSize = 20.0;
 		public const double MinimizedPadding = 8.0;
