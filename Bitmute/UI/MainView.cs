@@ -1252,6 +1252,12 @@ namespace Bitmute.UI
 		{
 			Self = this;
 			Title = "Bitmute";
+			Theme.InitializeFromSystem();
+			Microsoft.Maui.Controls.Application application = Microsoft.Maui.Controls.Application.Current;
+			if (application != null)
+			{
+				application.RequestedThemeChanged += OnSystemThemeChanged;
+			}
 			BackgroundColor = UiConstants.WorkspaceBackdrop;
 
 			m_documents = new List<FloatingPanel>();
@@ -2143,6 +2149,11 @@ namespace Bitmute.UI
 				return m_smudgeTool;
 			}
 			return null;
+		}
+
+		private void OnSystemThemeChanged(object sender, Microsoft.Maui.Controls.AppThemeChangedEventArgs eventArgs)
+		{
+			Theme.OnSystemThemeChanged();
 		}
 
 		public double WorkspaceWidth()

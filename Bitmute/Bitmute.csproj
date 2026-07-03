@@ -40,7 +40,7 @@
 
 		<MauiImage Include="Resources\Images\*" />
 
-		<MauiImage Include="Resources\Toolbar\*.png" />
+		<MauiAsset Include="Resources\Toolbar\*.png" LogicalName="%(Filename)%(Extension)" />
 
 		<MauiFont Include="Resources\Fonts\*" />
 

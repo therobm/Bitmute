@@ -143,11 +143,10 @@ namespace Bitmute.UI
 
 		private Border BuildToolButton(int index)
 		{
-			Image icon = new Image();
-			icon.Source = m_icons[index];
-			icon.WidthRequest = 18.0;
-			icon.HeightRequest = 18.0;
-			icon.Aspect = Aspect.AspectFit;
+			IconView icon = new IconView(m_icons[index]);
+			icon.WidthRequest = 20.0;
+			icon.HeightRequest = 20.0;
+			icon.BackgroundColor = Colors.Transparent;
 			icon.HorizontalOptions = LayoutOptions.Center;
 			icon.VerticalOptions = LayoutOptions.Center;
 
