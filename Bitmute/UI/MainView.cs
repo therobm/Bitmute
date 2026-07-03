@@ -1650,7 +1650,7 @@ namespace Bitmute.UI
 			}
 			m_modalX = targetX;
 			m_modalY = targetY;
-			AbsoluteLayout.SetLayoutBounds(m_modalContent, new Rect(m_modalX, m_modalY, m_modalWidth, m_modalHeight));
+			AbsoluteLayout.SetLayoutBounds(m_modalContent, new Rect(m_modalX, m_modalY, m_modalWidth, AbsoluteLayout.AutoSize));
 		}
 
 		public void CloseModal()
