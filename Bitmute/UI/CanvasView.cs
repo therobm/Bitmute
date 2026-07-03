@@ -515,11 +515,13 @@ namespace Bitmute.UI
 			if (Dispatcher != null)
 			{
 				Dispatcher.Dispatch(RepaintForTheme);
+				Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(60.0), RepaintForTheme);
 			}
 		}
 
 		private void RepaintForTheme()
 		{
+			MarkComposeDirty();
 			InvalidateSurface();
 			NotifyChrome();
 		}

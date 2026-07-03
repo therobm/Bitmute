@@ -27,7 +27,7 @@ namespace Bitmute.UI
 
 			m_canvas = new CanvasView(document);
 			m_canvas.SetOwnerWindow(this);
-			m_canvas.ThemeBg(UiConstants.CanvasInsetLight, UiConstants.CanvasInsetDark);
+			m_canvas.BackgroundColor = Microsoft.Maui.Graphics.Colors.Transparent;
 
 			m_topRuler = new Ruler(m_canvas, true);
 			m_leftRuler = new Ruler(m_canvas, false);
