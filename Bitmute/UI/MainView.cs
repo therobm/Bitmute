@@ -1034,7 +1034,76 @@ namespace Bitmute.UI
 				s_clipboardBitmap.Dispose();
 			}
 			s_clipboardBitmap = copied;
+			CopyToSystemClipboard(copied);
 			SetStatusMessage("Copied");
+		}
+
+		private void CopyToSystemClipboard(SkiaSharp.SKBitmap bitmap)
+		{
+			try
+			{
+				SkiaSharp.SKImage image = SkiaSharp.SKImage.FromBitmap(bitmap);
+				SkiaSharp.SKData data = image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+				image.Dispose();
+				if (data == null)
+				{
+					return;
+				}
+				byte[] bytes = data.ToArray();
+				data.Dispose();
+				System.IO.MemoryStream memory = new System.IO.MemoryStream(bytes);
+				Windows.Storage.Streams.IRandomAccessStream randomStream = System.IO.WindowsRuntimeStreamExtensions.AsRandomAccessStream(memory);
+				Windows.Storage.Streams.RandomAccessStreamReference reference = Windows.Storage.Streams.RandomAccessStreamReference.CreateFromStream(randomStream);
+				Windows.ApplicationModel.DataTransfer.DataPackage package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+				package.SetBitmap(reference);
+				Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+			}
+			catch (Exception error)
+			{
+				Log.Exception(error);
+			}
+		}
+
+		private async System.Threading.Tasks.Task<SkiaSharp.SKBitmap> GetSystemClipboardBitmap()
+		{
+			try
+			{
+				Windows.ApplicationModel.DataTransfer.DataPackageView view = Windows.ApplicationModel.DataTransfer.Clipboard.GetContent();
+				if (view == null)
+				{
+					return null;
+				}
+				if (!view.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.Bitmap))
+				{
+					return null;
+				}
+				Windows.Storage.Streams.RandomAccessStreamReference reference = await view.GetBitmapAsync();
+				Windows.Storage.Streams.IRandomAccessStreamWithContentType stream = await reference.OpenReadAsync();
+				System.IO.Stream netStream = System.IO.WindowsRuntimeStreamExtensions.AsStreamForRead(stream);
+				SkiaSharp.SKBitmap decoded = SkiaSharp.SKBitmap.Decode(netStream);
+				netStream.Dispose();
+				if (decoded == null)
+				{
+					return null;
+				}
+				SkiaSharp.SKBitmap normalized = new SkiaSharp.SKBitmap(decoded.Width, decoded.Height, SkiaSharp.SKColorType.Rgba8888, SkiaSharp.SKAlphaType.Unpremul);
+				SkiaSharp.SKCanvas canvas = new SkiaSharp.SKCanvas(normalized);
+				canvas.Clear(SkiaSharp.SKColors.Transparent);
+				SkiaSharp.SKImage decodedImage = SkiaSharp.SKImage.FromBitmap(decoded);
+				SkiaSharp.SKSamplingOptions sampling = new SkiaSharp.SKSamplingOptions(SkiaSharp.SKFilterMode.Nearest, SkiaSharp.SKMipmapMode.None);
+				SkiaSharp.SKPaint imagePaint = new SkiaSharp.SKPaint();
+				canvas.DrawImage(decodedImage, 0.0f, 0.0f, sampling, imagePaint);
+				imagePaint.Dispose();
+				decodedImage.Dispose();
+				canvas.Dispose();
+				decoded.Dispose();
+				return normalized;
+			}
+			catch (Exception error)
+			{
+				Log.Exception(error);
+				return null;
+			}
 		}
 
 		private void DoCut()
@@ -1059,6 +1128,7 @@ namespace Bitmute.UI
 				s_clipboardBitmap.Dispose();
 			}
 			s_clipboardBitmap = copied;
+			CopyToSystemClipboard(copied);
 			document.BeginStroke();
 			EraseSelection(document, layer);
 			document.EndStroke();
@@ -1071,26 +1141,31 @@ namespace Bitmute.UI
 			SetStatusMessage("Cut");
 		}
 
-		private void DoPaste()
+		private async void DoPaste()
 		{
-			if (s_clipboardBitmap == null)
+			Document document = ActiveDocument();
+			if (document == null)
 			{
 				return;
 			}
-			Document document = ActiveDocument();
-			if (document == null)
+			SkiaSharp.SKBitmap pasted = await GetSystemClipboardBitmap();
+			if (pasted == null && s_clipboardBitmap != null)
+			{
+				pasted = s_clipboardBitmap.Copy();
+			}
+			if (pasted == null)
 			{
 				return;
 			}
 			Layer layer = document.AddLayer("Pasted");
 			if (layer == null)
 			{
+				pasted.Dispose();
 				return;
 			}
-			SkiaSharp.SKBitmap copy = s_clipboardBitmap.Copy();
-			layer.SetBitmap(copy);
-			int offsetX = (document.Width() - copy.Width) / 2;
-			int offsetY = (document.Height() - copy.Height) / 2;
+			layer.SetBitmap(pasted);
+			int offsetX = (document.Width() - pasted.Width) / 2;
+			int offsetY = (document.Height() - pasted.Height) / 2;
 			layer.SetOffset(offsetX, offsetY);
 			CanvasView canvas = ActiveCanvas();
 			if (canvas != null)
