@@ -17,8 +17,7 @@ namespace Bitmute.UI
 		private string m_suffix;
 		private Action<int> m_onChanged;
 		private Entry m_valueEntry;
-		private Slider m_popoutSlider;
-		private bool m_suppress;
+		private ValueSlider m_popoutSlider;
 
 		public SliderField(int minimum, int maximum, int value, string suffix, Action<int> onChanged)
 		{
@@ -129,9 +128,7 @@ namespace Bitmute.UI
 			UpdateLabel();
 			if (m_popoutSlider != null)
 			{
-				m_suppress = true;
-				m_popoutSlider.Value = m_value;
-				m_suppress = false;
+				m_popoutSlider.SetValueSilently(m_value);
 			}
 			if (m_onChanged != null)
 			{
@@ -155,9 +152,7 @@ namespace Bitmute.UI
 			UpdateLabel();
 			if (m_popoutSlider != null)
 			{
-				m_suppress = true;
-				m_popoutSlider.Value = m_value;
-				m_suppress = false;
+				m_popoutSlider.SetValueSilently(m_value);
 			}
 		}
 
@@ -193,31 +188,20 @@ namespace Bitmute.UI
 
 		private View BuildPopout()
 		{
-			m_popoutSlider = new Slider();
-			m_popoutSlider.Minimum = m_minimum;
-			m_popoutSlider.Maximum = m_maximum;
-			m_popoutSlider.Value = m_value;
-			m_popoutSlider.WidthRequest = 172.0;
+			m_popoutSlider = new ValueSlider(m_minimum, m_maximum, m_value, OnPopoutValue);
+			m_popoutSlider.WidthRequest = 176.0;
+			m_popoutSlider.HeightRequest = 28.0;
 			m_popoutSlider.VerticalOptions = LayoutOptions.Center;
-			m_popoutSlider.ValueChanged += OnPopoutChanged;
-			
+
 			HorizontalStackLayout body = new HorizontalStackLayout();
 			body.Padding = new Thickness(10.0, 4.0, 10.0, 4.0);
 			body.Add(m_popoutSlider);
 			return body;
 		}
 
-		private void OnPopoutChanged(object sender, ValueChangedEventArgs eventArgs)
+		private void OnPopoutValue(int value)
 		{
-			if (m_suppress)
-			{
-				return;
-			}
-			if (m_popoutSlider == null)
-			{
-				return;
-			}
-			m_value = (int)m_popoutSlider.Value;
+			m_value = ClampValue(value);
 			UpdateLabel();
 			if (m_onChanged != null)
 			{

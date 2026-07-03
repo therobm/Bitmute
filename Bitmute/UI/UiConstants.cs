@@ -79,6 +79,14 @@ namespace Bitmute.UI
 		public static readonly Color IconTintSelectedLight = Color.FromRgba(24, 42, 68, 255);
 		public static readonly Color ScrollbarThumbDark = Color.FromRgba(90, 90, 90, 255);
 		public static readonly Color ScrollbarThumbLight = Color.FromRgba(156, 156, 156, 255);
+		public static readonly Color SliderTrackDark = Color.FromRgba(32, 32, 32, 255);
+		public static readonly Color SliderTrackLight = Color.FromRgba(198, 198, 198, 255);
+		public static readonly Color SliderTrackBorderDark = Color.FromRgba(18, 18, 18, 255);
+		public static readonly Color SliderTrackBorderLight = Color.FromRgba(140, 140, 140, 255);
+		public static readonly Color SliderThumbDark = Color.FromRgba(61, 126, 219, 255);
+		public static readonly Color SliderThumbLight = Color.FromRgba(44, 107, 208, 255);
+		public static readonly Color SliderThumbBorderDark = Color.FromRgba(22, 44, 74, 255);
+		public static readonly Color SliderThumbBorderLight = Color.FromRgba(28, 66, 122, 255);
 
 		private static Color Pick(Color light, Color dark)
 		{
@@ -110,5 +118,9 @@ namespace Bitmute.UI
 		public static Color CanvasInset { get { return Pick(CanvasInsetLight, CanvasInsetDark); } }
 		public static Color Ruler { get { return Pick(RulerLight, RulerDark); } }
 		public static Color RulerTick { get { return Pick(RulerTickLight, RulerTickDark); } }
+		public static Color SliderTrack { get { return Pick(SliderTrackLight, SliderTrackDark); } }
+		public static Color SliderTrackBorder { get { return Pick(SliderTrackBorderLight, SliderTrackBorderDark); } }
+		public static Color SliderThumb { get { return Pick(SliderThumbLight, SliderThumbDark); } }
+		public static Color SliderThumbBorder { get { return Pick(SliderThumbBorderLight, SliderThumbBorderDark); } }
 	}
 }

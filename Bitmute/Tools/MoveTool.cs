@@ -6,6 +6,7 @@ namespace Bitmute.Tools
 	public class MoveTool : Tool
 	{
 		private bool m_offsetMode;
+		private bool m_textMode;
 		private SKBitmap m_moving;
 		private SKBitmap m_static;
 		private byte[] m_selectionMask;
@@ -14,6 +15,8 @@ namespace Bitmute.Tools
 		private int m_startY;
 		private int m_oldOffsetX;
 		private int m_oldOffsetY;
+		private int m_oldTextX;
+		private int m_oldTextY;
 
 		private SKBitmap ExtractSelected(Layer layer, Selection selection)
 		{
@@ -122,13 +125,22 @@ namespace Bitmute.Tools
 			if (selection.IsActive())
 			{
 				m_offsetMode = false;
+				m_textMode = false;
 				m_moving = ExtractSelected(layer, selection);
 				m_static = CloneWithSelectionCleared(layer, selection);
 				m_selectionMask = selection.MaskCopy();
 				m_selectionBounds = selection.Bounds();
 			}
+			else if (layer.IsText())
+			{
+				m_textMode = true;
+				m_offsetMode = false;
+				m_oldTextX = layer.TextX();
+				m_oldTextY = layer.TextY();
+			}
 			else
 			{
+				m_textMode = false;
 				m_offsetMode = true;
 				m_oldOffsetX = layer.OffsetX();
 				m_oldOffsetY = layer.OffsetY();
@@ -142,6 +154,12 @@ namespace Bitmute.Tools
 			if (layer == null)
 			{
 				return false;
+			}
+			if (m_textMode)
+			{
+				layer.SetTextPosition(m_oldTextX + (x - m_startX), m_oldTextY + (y - m_startY));
+				layer.RenderText();
+				return true;
 			}
 			if (m_offsetMode)
 			{
@@ -164,6 +182,13 @@ namespace Bitmute.Tools
 
 		public override void OnReleased(Document document, int x, int y, ToolState state)
 		{
+			if (m_textMode)
+			{
+				m_textMode = false;
+				ReleaseBuffers();
+				m_hasLast = false;
+				return;
+			}
 			if (m_offsetMode)
 			{
 				Layer layer = document.ActiveLayer();

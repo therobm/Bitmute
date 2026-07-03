@@ -73,16 +73,11 @@ namespace Bitmute.UI
 		private BoxView m_textColorSwatch;
 		private Button m_textCharButton;
 		private CheckBox m_charLeadingAutoCheck;
-		private Slider m_charLeadingSlider;
-		private Label m_charLeadingValue;
-		private Slider m_charTrackingSlider;
-		private Label m_charTrackingValue;
-		private Slider m_charHScaleSlider;
-		private Label m_charHScaleValue;
-		private Slider m_charVScaleSlider;
-		private Label m_charVScaleValue;
-		private Slider m_charBaselineSlider;
-		private Label m_charBaselineValue;
+		private SliderField m_charLeadingField;
+		private SliderField m_charTrackingField;
+		private SliderField m_charHScaleField;
+		private SliderField m_charVScaleField;
+		private SliderField m_charBaselineField;
 		private CheckBox m_charFauxBoldCheck;
 		private CheckBox m_charFauxItalicCheck;
 		private CheckBox m_charKerningAutoCheck;
@@ -3005,18 +3000,7 @@ namespace Bitmute.UI
 
 		private void OnTextCharClicked(object sender, System.EventArgs eventArgs)
 		{
-			if (m_pulldownPanel != null)
-			{
-				ClosePulldown();
-				return;
-			}
-			double anchorX = 0.0;
-			if (m_optionsRow != null && m_textCharButton != null)
-			{
-				anchorX = m_optionsRow.X + m_textCharButton.X;
-			}
-			double anchorY = UiConstants.MenuBarHeight + 1.0 + UiConstants.OptionsBarHeight + 1.0;
-			ShowPulldown(BuildCharacterPanelContent(), anchorX, anchorY, 300.0, 336.0);
+			ShowModal(BuildCharacterPanelContent(), 268.0, 320.0);
 		}
 
 		private int LeadingSliderValue()
@@ -3029,34 +3013,12 @@ namespace Bitmute.UI
 			return (int)leading;
 		}
 
-		private Slider MakeCharSlider(int minimum, int maximum, int value)
-		{
-			Slider slider = new Slider();
-			slider.Minimum = minimum;
-			slider.Maximum = maximum;
-			slider.Value = value;
-			slider.WidthRequest = 128.0;
-			slider.VerticalOptions = LayoutOptions.Center;
-			return slider;
-		}
-
-		private Label MakeCharValue(string text)
-		{
-			Label label = new Label();
-			label.Text = text;
-			label.FontSize = 12.0;
-			label.WidthRequest = 46.0;
-			label.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			label.VerticalOptions = LayoutOptions.Center;
-			return label;
-		}
-
-		private Grid BuildCharRow(string labelText, View control, View trailing)
+		private Grid BuildCharRow(string labelText, View control)
 		{
 			Label label = new Label();
 			label.Text = labelText;
 			label.FontSize = 12.0;
-			label.WidthRequest = 90.0;
+			label.WidthRequest = 96.0;
 			label.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			label.VerticalOptions = LayoutOptions.Center;
 
@@ -3064,77 +3026,124 @@ namespace Bitmute.UI
 			row.ColumnSpacing = 6.0;
 			row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-			row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			Grid.SetColumn(label, 0);
 			Grid.SetColumn(control, 1);
+			control.HorizontalOptions = LayoutOptions.End;
 			row.Add(label);
 			row.Add(control);
-			if (trailing != null)
-			{
-				Grid.SetColumn(trailing, 2);
-				row.Add(trailing);
-			}
 			return row;
 		}
 
 		private View BuildCharacterPanelContent()
 		{
-			m_charLeadingSlider = MakeCharSlider(0, 400, LeadingSliderValue());
-			m_charLeadingSlider.ValueChanged += OnCharLeadingChanged;
-			m_charLeadingValue = MakeCharValue(LeadingSliderValue() + " px");
+			m_charLeadingField = new SliderField(0, 400, LeadingSliderValue(), " px", OnCharLeadingValue);
+			m_charLeadingField.VerticalOptions = LayoutOptions.Center;
 
 			m_charLeadingAutoCheck = new CheckBox();
 			m_charLeadingAutoCheck.IsChecked = m_toolState.TextLeadingAuto();
 			m_charLeadingAutoCheck.VerticalOptions = LayoutOptions.Center;
+			m_charLeadingAutoCheck.HorizontalOptions = LayoutOptions.End;
 			m_charLeadingAutoCheck.CheckedChanged += OnCharLeadingAutoChanged;
 
-			m_charTrackingSlider = MakeCharSlider(-50, 200, m_toolState.TextTracking());
-			m_charTrackingSlider.ValueChanged += OnCharTrackingChanged;
-			m_charTrackingValue = MakeCharValue(m_toolState.TextTracking().ToString());
+			m_charTrackingField = new SliderField(-50, 200, m_toolState.TextTracking(), "", OnCharTrackingValue);
+			m_charTrackingField.VerticalOptions = LayoutOptions.Center;
 
-			m_charHScaleSlider = MakeCharSlider(10, 400, m_toolState.TextHorizontalScale());
-			m_charHScaleSlider.ValueChanged += OnCharHScaleChanged;
-			m_charHScaleValue = MakeCharValue(m_toolState.TextHorizontalScale() + " %");
+			m_charHScaleField = new SliderField(10, 400, m_toolState.TextHorizontalScale(), " %", OnCharHScaleValue);
+			m_charHScaleField.VerticalOptions = LayoutOptions.Center;
 
-			m_charVScaleSlider = MakeCharSlider(10, 400, m_toolState.TextVerticalScale());
-			m_charVScaleSlider.ValueChanged += OnCharVScaleChanged;
-			m_charVScaleValue = MakeCharValue(m_toolState.TextVerticalScale() + " %");
+			m_charVScaleField = new SliderField(10, 400, m_toolState.TextVerticalScale(), " %", OnCharVScaleValue);
+			m_charVScaleField.VerticalOptions = LayoutOptions.Center;
 
-			m_charBaselineSlider = MakeCharSlider(-100, 100, m_toolState.TextBaselineShift());
-			m_charBaselineSlider.ValueChanged += OnCharBaselineChanged;
-			m_charBaselineValue = MakeCharValue(m_toolState.TextBaselineShift() + " px");
+			m_charBaselineField = new SliderField(-100, 100, m_toolState.TextBaselineShift(), " px", OnCharBaselineValue);
+			m_charBaselineField.VerticalOptions = LayoutOptions.Center;
 
 			m_charFauxBoldCheck = new CheckBox();
 			m_charFauxBoldCheck.IsChecked = m_toolState.TextFauxBold();
 			m_charFauxBoldCheck.VerticalOptions = LayoutOptions.Center;
+			m_charFauxBoldCheck.HorizontalOptions = LayoutOptions.End;
 			m_charFauxBoldCheck.CheckedChanged += OnCharFauxBoldChanged;
 
 			m_charFauxItalicCheck = new CheckBox();
 			m_charFauxItalicCheck.IsChecked = m_toolState.TextFauxItalic();
 			m_charFauxItalicCheck.VerticalOptions = LayoutOptions.Center;
+			m_charFauxItalicCheck.HorizontalOptions = LayoutOptions.End;
 			m_charFauxItalicCheck.CheckedChanged += OnCharFauxItalicChanged;
 
 			m_charKerningAutoCheck = new CheckBox();
 			m_charKerningAutoCheck.IsChecked = m_toolState.TextKerningAuto();
 			m_charKerningAutoCheck.VerticalOptions = LayoutOptions.Center;
+			m_charKerningAutoCheck.HorizontalOptions = LayoutOptions.End;
 			m_charKerningAutoCheck.CheckedChanged += OnCharKerningChanged;
 
-			VerticalStackLayout body = new VerticalStackLayout();
-			body.Spacing = 6.0;
-			body.Padding = new Thickness(12.0);
-			body.Add(BuildCharRow("Leading", m_charLeadingSlider, m_charLeadingValue));
-			body.Add(BuildCharRow("Auto leading", m_charLeadingAutoCheck, null));
-			body.Add(BuildCharRow("Tracking", m_charTrackingSlider, m_charTrackingValue));
-			body.Add(BuildCharRow("Horiz Scale", m_charHScaleSlider, m_charHScaleValue));
-			body.Add(BuildCharRow("Vert Scale", m_charVScaleSlider, m_charVScaleValue));
-			body.Add(BuildCharRow("Baseline", m_charBaselineSlider, m_charBaselineValue));
-			body.Add(BuildCharRow("Faux Bold", m_charFauxBoldCheck, null));
-			body.Add(BuildCharRow("Faux Italic", m_charFauxItalicCheck, null));
-			body.Add(BuildCharRow("Kerning (Auto)", m_charKerningAutoCheck, null));
+			Label title = new Label();
+			title.Text = "Character";
+			title.FontSize = 12.0;
+			title.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			title.VerticalOptions = LayoutOptions.Center;
+			title.HorizontalOptions = LayoutOptions.Start;
 
-			ScrollView scroll = new ScrollView();
-			scroll.Content = body;
-			return scroll;
+			Label close = new Label();
+			close.Text = "✕";
+			close.FontSize = 12.0;
+			close.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			close.VerticalOptions = LayoutOptions.Center;
+			close.HorizontalOptions = LayoutOptions.End;
+			TapGestureRecognizer closeTap = new TapGestureRecognizer();
+			closeTap.Tapped += OnCharPanelClose;
+			close.GestureRecognizers.Add(closeTap);
+
+			Grid titleGrid = new Grid();
+			titleGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+			titleGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			Grid.SetColumn(title, 0);
+			Grid.SetColumn(close, 1);
+			titleGrid.Add(title);
+			titleGrid.Add(close);
+
+			Border titleBar = new Border();
+			titleBar.Padding = new Thickness(10.0, 5.0, 8.0, 5.0);
+			titleBar.StrokeThickness = 0.0;
+			titleBar.ThemeBg(UiConstants.TitleBarLight, UiConstants.TitleBarDark);
+			titleBar.Content = titleGrid;
+			PanGestureRecognizer titlePan = new PanGestureRecognizer();
+			titlePan.PanUpdated += OnCharPanelPan;
+			titleBar.GestureRecognizers.Add(titlePan);
+
+			VerticalStackLayout rows = new VerticalStackLayout();
+			rows.Spacing = 6.0;
+			rows.Padding = new Thickness(12.0, 10.0, 12.0, 12.0);
+			rows.Add(BuildCharRow("Leading", m_charLeadingField));
+			rows.Add(BuildCharRow("Auto leading", m_charLeadingAutoCheck));
+			rows.Add(BuildCharRow("Tracking", m_charTrackingField));
+			rows.Add(BuildCharRow("Horiz Scale", m_charHScaleField));
+			rows.Add(BuildCharRow("Vert Scale", m_charVScaleField));
+			rows.Add(BuildCharRow("Baseline", m_charBaselineField));
+			rows.Add(BuildCharRow("Faux Bold", m_charFauxBoldCheck));
+			rows.Add(BuildCharRow("Faux Italic", m_charFauxItalicCheck));
+			rows.Add(BuildCharRow("Kerning (Auto)", m_charKerningAutoCheck));
+
+			VerticalStackLayout body = new VerticalStackLayout();
+			body.Spacing = 0.0;
+			body.Add(titleBar);
+			body.Add(rows);
+
+			Border panel = new Border();
+			panel.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
+			panel.ThemeStroke(UiConstants.DividerLight, UiConstants.DividerDark);
+			panel.StrokeThickness = 1.0;
+			panel.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(3.0) };
+			panel.Content = body;
+			return panel;
+		}
+
+		private void OnCharPanelPan(object sender, PanUpdatedEventArgs eventArgs)
+		{
+			DragModal(eventArgs.StatusType, eventArgs.TotalX, eventArgs.TotalY);
+		}
+
+		private void OnCharPanelClose(object sender, TappedEventArgs eventArgs)
+		{
+			CloseModal();
 		}
 
 		private void OnCharLeadingAutoChanged(object sender, CheckedChangedEventArgs eventArgs)
@@ -3147,83 +3156,58 @@ namespace Bitmute.UI
 			RefreshTextEditStyle();
 		}
 
-		private void OnCharLeadingChanged(object sender, ValueChangedEventArgs eventArgs)
+		private void OnCharLeadingValue(int value)
 		{
-			if (m_toolState == null || m_charLeadingSlider == null)
+			if (m_toolState == null)
 			{
 				return;
 			}
-			int value = (int)m_charLeadingSlider.Value;
 			m_toolState.SetTextLeading(value);
 			m_toolState.SetTextLeadingAuto(false);
 			if (m_charLeadingAutoCheck != null)
 			{
 				m_charLeadingAutoCheck.IsChecked = false;
 			}
-			if (m_charLeadingValue != null)
-			{
-				m_charLeadingValue.Text = value + " px";
-			}
 			RefreshTextEditStyle();
 		}
 
-		private void OnCharTrackingChanged(object sender, ValueChangedEventArgs eventArgs)
+		private void OnCharTrackingValue(int value)
 		{
-			if (m_toolState == null || m_charTrackingSlider == null)
+			if (m_toolState == null)
 			{
 				return;
 			}
-			int value = (int)m_charTrackingSlider.Value;
 			m_toolState.SetTextTracking(value);
-			if (m_charTrackingValue != null)
-			{
-				m_charTrackingValue.Text = value.ToString();
-			}
 			RefreshTextEditStyle();
 		}
 
-		private void OnCharHScaleChanged(object sender, ValueChangedEventArgs eventArgs)
+		private void OnCharHScaleValue(int value)
 		{
-			if (m_toolState == null || m_charHScaleSlider == null)
+			if (m_toolState == null)
 			{
 				return;
 			}
-			int value = (int)m_charHScaleSlider.Value;
 			m_toolState.SetTextHorizontalScale(value);
-			if (m_charHScaleValue != null)
-			{
-				m_charHScaleValue.Text = value + " %";
-			}
 			RefreshTextEditStyle();
 		}
 
-		private void OnCharVScaleChanged(object sender, ValueChangedEventArgs eventArgs)
+		private void OnCharVScaleValue(int value)
 		{
-			if (m_toolState == null || m_charVScaleSlider == null)
+			if (m_toolState == null)
 			{
 				return;
 			}
-			int value = (int)m_charVScaleSlider.Value;
 			m_toolState.SetTextVerticalScale(value);
-			if (m_charVScaleValue != null)
-			{
-				m_charVScaleValue.Text = value + " %";
-			}
 			RefreshTextEditStyle();
 		}
 
-		private void OnCharBaselineChanged(object sender, ValueChangedEventArgs eventArgs)
+		private void OnCharBaselineValue(int value)
 		{
-			if (m_toolState == null || m_charBaselineSlider == null)
+			if (m_toolState == null)
 			{
 				return;
 			}
-			int value = (int)m_charBaselineSlider.Value;
 			m_toolState.SetTextBaselineShift(value);
-			if (m_charBaselineValue != null)
-			{
-				m_charBaselineValue.Text = value + " px";
-			}
 			RefreshTextEditStyle();
 		}
 

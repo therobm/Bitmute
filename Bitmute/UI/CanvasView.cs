@@ -942,7 +942,7 @@ namespace Bitmute.UI
 				return;
 			}
 
-			if (tool.IsDestructive())
+			if (tool.IsDestructive() && !(tool is MoveTool))
 			{
 				Bitmute.Imaging.Layer activeLayer = m_document.ActiveLayer();
 				if (activeLayer != null && activeLayer.IsText())
