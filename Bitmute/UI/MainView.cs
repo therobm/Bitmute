@@ -1801,6 +1801,8 @@ namespace Bitmute.UI
 			AddAccelerator(element, (Windows.System.VirtualKey)189, OnAcceleratorZoomOut);
 			AddBareAccelerator(element, Windows.System.VirtualKey.X, OnAcceleratorSwapColors);
 			AddBareAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDelete);
+			AddAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDeleteBackground);
+			AddAltAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDeleteForeground);
 			element.KeyboardAcceleratorPlacementMode = Microsoft.UI.Xaml.Input.KeyboardAcceleratorPlacementMode.Hidden;
 			element.AllowDrop = true;
 			element.DragOver += OnElementDragOver;
@@ -1851,6 +1853,15 @@ namespace Bitmute.UI
 			element.KeyboardAccelerators.Add(accelerator);
 		}
 
+		private void AddAltAccelerator(Microsoft.UI.Xaml.UIElement element, Windows.System.VirtualKey key, Windows.Foundation.TypedEventHandler<Microsoft.UI.Xaml.Input.KeyboardAccelerator, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs> handler)
+		{
+			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
+			accelerator.Key = key;
+			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.Menu;
+			accelerator.Invoked += handler;
+			element.KeyboardAccelerators.Add(accelerator);
+		}
+
 		private void OnAcceleratorSwapColors(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
 			if (m_textEditActive)
@@ -1870,11 +1881,54 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			DoDeleteSelection();
+			DoClearSelection();
 			args.Handled = true;
 		}
 
-		private void DoDeleteSelection()
+		private void OnAcceleratorDeleteForeground(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			if (m_textEditActive)
+			{
+				return;
+			}
+			SKColor foreground = m_toolState.Foreground();
+			FillSelectionWith(new SKColor(foreground.Red, foreground.Green, foreground.Blue, 255));
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorDeleteBackground(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			if (m_textEditActive)
+			{
+				return;
+			}
+			SKColor background = m_toolState.Background();
+			FillSelectionWith(new SKColor(background.Red, background.Green, background.Blue, 255));
+			args.Handled = true;
+		}
+
+		private void DoClearSelection()
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			SKColor fill = new SKColor(0, 0, 0, 0);
+			if (layer.IsBackground())
+			{
+				SKColor background = m_toolState.Background();
+				fill = new SKColor(background.Red, background.Green, background.Blue, 255);
+			}
+			FillSelectionWith(fill);
+		}
+
+		private void FillSelectionWith(SKColor fill)
 		{
 			Document document = ActiveDocument();
 			if (document == null)
@@ -1890,12 +1944,6 @@ namespace Bitmute.UI
 			if (layer == null || layer.IsText())
 			{
 				return;
-			}
-			SKColor fill = new SKColor(0, 0, 0, 0);
-			if (layer.IsBackground())
-			{
-				SKColor background = m_toolState.Background();
-				fill = new SKColor(background.Red, background.Green, background.Blue, 255);
 			}
 			SKRectI bounds = selection.Bounds();
 			document.BeginStroke();
