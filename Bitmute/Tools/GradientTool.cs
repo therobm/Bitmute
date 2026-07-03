@@ -41,26 +41,6 @@ namespace Bitmute.Tools
 			return m_endY;
 		}
 
-		private static SKColor SourceOver(SKColor source, SKColor destination)
-		{
-			int sourceAlpha = source.Alpha;
-			if (sourceAlpha == 255)
-			{
-				return source;
-			}
-			int inverse = 255 - sourceAlpha;
-			int destinationContribution = ((destination.Alpha * inverse) + 127) / 255;
-			int outAlpha = sourceAlpha + destinationContribution;
-			if (outAlpha == 0)
-			{
-				return new SKColor(0, 0, 0, 0);
-			}
-			int red = ((source.Red * sourceAlpha) + (destination.Red * destinationContribution) + (outAlpha / 2)) / outAlpha;
-			int green = ((source.Green * sourceAlpha) + (destination.Green * destinationContribution) + (outAlpha / 2)) / outAlpha;
-			int blue = ((source.Blue * sourceAlpha) + (destination.Blue * destinationContribution) + (outAlpha / 2)) / outAlpha;
-			return new SKColor((byte)red, (byte)green, (byte)blue, (byte)outAlpha);
-		}
-
 		private void SetConstrainedEnd(int rawEndX, int rawEndY, bool shift)
 		{
 			if (!shift)
@@ -130,33 +110,7 @@ namespace Bitmute.Tools
 			shader.Dispose();
 			gradientCanvas.Dispose();
 
-			Selection selection = document.Selection();
-			bool clip = selection.IsActive();
-			int offsetX = layer.OffsetX();
-			int offsetY = layer.OffsetY();
-			SKBitmap layerBitmap = layer.Bitmap();
-			int layerWidth = layerBitmap.Width;
-			int layerHeight = layerBitmap.Height;
-			for (int canvasY = 0; canvasY < documentHeight; canvasY++)
-			{
-				for (int canvasX = 0; canvasX < documentWidth; canvasX++)
-				{
-					if (clip && !selection.IsSelected(canvasX, canvasY))
-					{
-						continue;
-					}
-					int bitmapX = canvasX - offsetX;
-					int bitmapY = canvasY - offsetY;
-					if (bitmapX < 0 || bitmapY < 0 || bitmapX >= layerWidth || bitmapY >= layerHeight)
-					{
-						continue;
-					}
-					SKColor source = gradientBitmap.GetPixel(canvasX, canvasY);
-					SKColor destination = layerBitmap.GetPixel(bitmapX, bitmapY);
-					SKColor blended = SourceOver(source, destination);
-					layerBitmap.SetPixel(bitmapX, bitmapY, blended);
-				}
-			}
+			BlitCanvasBitmap(document, layer, gradientBitmap, 0, 0);
 			gradientBitmap.Dispose();
 			MarkStrokeDirty(document, 0, 0, documentWidth, documentHeight, 0);
 		}
