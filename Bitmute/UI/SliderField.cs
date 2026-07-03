@@ -16,7 +16,7 @@ namespace Bitmute.UI
 		private int m_value;
 		private string m_suffix;
 		private Action<int> m_onChanged;
-		private Label m_valueLabel;
+		private Entry m_valueEntry;
 		private Slider m_popoutSlider;
 		private bool m_suppress;
 
@@ -28,26 +28,42 @@ namespace Bitmute.UI
 			m_suffix = suffix;
 			m_onChanged = onChanged;
 
-			m_valueLabel = new Label();
-			m_valueLabel.FontSize = 12.0;
-			m_valueLabel.WidthRequest = 40.0;
-			m_valueLabel.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			m_valueLabel.VerticalOptions = LayoutOptions.Center;
-			m_valueLabel.HorizontalTextAlignment = TextAlignment.End;
+			m_valueEntry = new Entry();
+			m_valueEntry.FontSize = 12.0;
+			m_valueEntry.WidthRequest = 40.0;
+			m_valueEntry.HeightRequest = 24.0;
+			m_valueEntry.Margin = new Thickness(0.0);
+			m_valueEntry.Keyboard = Keyboard.Numeric;
+			m_valueEntry.BackgroundColor = Colors.Transparent;
+			m_valueEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_valueEntry.VerticalOptions = LayoutOptions.Center;
+			m_valueEntry.HorizontalTextAlignment = TextAlignment.End;
+			m_valueEntry.Completed += OnEntryCommitted;
+			m_valueEntry.Unfocused += OnEntryUnfocused;
+
+			Label suffixLabel = new Label();
+			suffixLabel.Text = m_suffix.Trim();
+			suffixLabel.FontSize = 12.0;
+			suffixLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			suffixLabel.VerticalOptions = LayoutOptions.Center;
 
 			Label arrow = new Label();
 			arrow.Text = "▾";
 			arrow.FontSize = 10.0;
 			arrow.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			arrow.VerticalOptions = LayoutOptions.Center;
+			TapGestureRecognizer arrowTap = new TapGestureRecognizer();
+			arrowTap.Tapped += OnArrowTapped;
+			arrow.GestureRecognizers.Add(arrowTap);
 
 			HorizontalStackLayout row = new HorizontalStackLayout();
-			row.Spacing = 4.0;
-			row.Add(m_valueLabel);
+			row.Spacing = 3.0;
+			row.Add(m_valueEntry);
+			row.Add(suffixLabel);
 			row.Add(arrow);
 
 			Border chip = new Border();
-			chip.Padding = new Thickness(6.0, 1.0, 5.0, 1.0);
+			chip.Padding = new Thickness(6.0, 0.0, 5.0, 0.0);
 			chip.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
 			chip.ThemeStroke(UiConstants.DividerLight, UiConstants.DividerDark);
 			chip.StrokeThickness = 1.0;
@@ -55,17 +71,46 @@ namespace Bitmute.UI
 			chip.VerticalOptions = LayoutOptions.Center;
 			chip.Content = row;
 
-			TapGestureRecognizer tap = new TapGestureRecognizer();
-			tap.Tapped += OnChipTapped;
-			chip.GestureRecognizers.Add(tap);
-
 			UpdateLabel();
 			Content = chip;
 		}
 
+		private void OnEntryCommitted(object sender, EventArgs eventArgs)
+		{
+			ApplyTypedValue();
+		}
+
+		private void OnEntryUnfocused(object sender, FocusEventArgs eventArgs)
+		{
+			ApplyTypedValue();
+		}
+
+		private void ApplyTypedValue()
+		{
+			int parsed = 0;
+			bool valid = int.TryParse(m_valueEntry.Text, out parsed);
+			if (!valid)
+			{
+				UpdateLabel();
+				return;
+			}
+			m_value = ClampValue(parsed);
+			UpdateLabel();
+			if (m_popoutSlider != null)
+			{
+				m_suppress = true;
+				m_popoutSlider.Value = m_value;
+				m_suppress = false;
+			}
+			if (m_onChanged != null)
+			{
+				m_onChanged(m_value);
+			}
+		}
+
 		private void UpdateLabel()
 		{
-			m_valueLabel.Text = m_value + m_suffix;
+			m_valueEntry.Text = m_value.ToString();
 		}
 
 		public int Value()
@@ -98,7 +143,7 @@ namespace Bitmute.UI
 			return value;
 		}
 
-		private void OnChipTapped(object sender, TappedEventArgs eventArgs)
+		private void OnArrowTapped(object sender, TappedEventArgs eventArgs)
 		{
 			MainView main = MainView.Self;
 			if (main == null)
