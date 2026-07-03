@@ -1,0 +1,49 @@
+name: Windows Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore workloads
+        run: dotnet workload restore Bitmute/Bitmute.csproj
+
+      - name: Compute version
+        id: version
+        shell: pwsh
+        run: |
+          $baseVersion = (Get-Content VERSION -Raw).Trim()
+          $fullVersion = "$baseVersion.${{ github.run_number }}"
+          "version=$fullVersion" >> $env:GITHUB_OUTPUT
+          Write-Host "Building version $fullVersion"
+
+      - name: Publish
+        run: >
+          dotnet publish Bitmute/Bitmute.csproj
+          -f net10.0-windows10.0.19041.0
+          -c Release
+          -p:WindowsPackageType=None
+          -p:PublishSingleFile=true
+          --self-contained true
+          -p:DebugType=none
+          -p:WindowsAppSDKSelfContained=true
+          -p:ApplicationDisplayVersion=${{ steps.version.outputs.version }}
+          -p:ApplicationVersion=${{ github.run_number }}
+          -o publish
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bitmute-${{ steps.version.outputs.version }}-win-x64
+          path: publish
