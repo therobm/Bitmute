@@ -28,16 +28,16 @@ namespace Bitmute.UI
 		public const double DefaultDocumentWindowWidth = 560.0;
 		public const double DefaultDocumentWindowHeight = 440.0;
 
-		public static readonly Color WorkspaceBackdropDark = Color.FromArgb("#B3B3B3");
+		public static readonly Color WorkspaceBackdropDark = Color.FromArgb("#444444");
 		public static readonly Color WorkspaceBackdropLight = Color.FromArgb("#8C8C8C");
-		public static readonly Color ChromeDark = Color.FromArgb("#383838");
-		public static readonly Color ChromeLight = Color.FromArgb("#ECECEC");
+		public static readonly Color ChromeDark = Color.FromArgb("#1a1a1a");
+		public static readonly Color ChromeLight = Color.FromArgb("#dadada");
 		public static readonly Color ChromeRaisedDark = Color.FromArgb("#444444");
 		public static readonly Color ChromeRaisedLight = Color.FromArgb("#DCDCDC");
 		public static readonly Color DividerDark = Color.FromArgb("#232323");
 		public static readonly Color DividerLight = Color.FromArgb("#B4B4B4");
-		public static readonly Color PanelSurfaceDark = Color.FromArgb("#3C3C3C");
-		public static readonly Color PanelSurfaceLight = Color.FromArgb("#F2F2F2");
+		public static readonly Color PanelSurfaceDark = Color.FromArgb("#222222");
+		public static readonly Color PanelSurfaceLight = Color.FromArgb("#eaeaea");
 		public static readonly Color TitleBarDark = Color.FromArgb("#2F2F2F");
 		public static readonly Color TitleBarLight = Color.FromArgb("#DDDDDD");
 		public static readonly Color TitleBarActiveDark = Color.FromArgb("#3D5A80");
@@ -51,7 +51,7 @@ namespace Bitmute.UI
 		public static readonly Color ToolRestingDark = Color.FromArgb("#404040");
 		public static readonly Color ToolRestingLight = Color.FromArgb("#D6D6D6");
 		public static readonly Color ToolButtonChipDark = Color.FromArgb("#3F3F3F");
-		public static readonly Color ToolButtonChipLight = Color.FromArgb("#C4C4C4");
+		public static readonly Color ToolButtonChipLight = Color.FromArgb("#eaeaea");
 		public static readonly Color ToolSelectedDark = Color.FromArgb("#2C5480");
 		public static readonly Color ToolSelectedLight = Color.FromArgb("#B9CDE8");
 		public static readonly Color ResizeGripDark = Color.FromArgb("#606060");
