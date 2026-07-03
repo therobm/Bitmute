@@ -53,8 +53,8 @@ namespace Bitmute.UI
 		private SliderField m_brushSmoothingField;
 		private Button m_brushSettingsButton;
 		private HorizontalStackLayout m_optionsRow;
-		private View m_pulldownCatcher;
 		private View m_pulldownPanel;
+		private long m_pulldownDismissTick;
 		private Picker m_brushTipPicker;
 		private Slider m_brushSpacingSlider;
 		private Label m_brushSpacingValue;
@@ -1930,10 +1930,35 @@ namespace Bitmute.UI
 			AddAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDeleteBackground);
 			AddAltAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDeleteForeground);
 			element.KeyboardAcceleratorPlacementMode = Microsoft.UI.Xaml.Input.KeyboardAcceleratorPlacementMode.Hidden;
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerPressedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGlobalPointerPressed), true);
 			element.AllowDrop = true;
 			element.DragOver += OnElementDragOver;
 			element.Drop += OnElementDrop;
 			m_acceleratorsHooked = true;
+		}
+
+		private void OnGlobalPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs args)
+		{
+			if (m_pulldownPanel == null)
+			{
+				return;
+			}
+			Microsoft.UI.Xaml.UIElement element = Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			Windows.Foundation.Point position = args.GetCurrentPoint(element).Position;
+			double panelX = m_pulldownPanel.X;
+			double panelY = m_pulldownPanel.Y;
+			double panelWidth = m_pulldownPanel.Width;
+			double panelHeight = m_pulldownPanel.Height;
+			if (position.X >= panelX && position.X <= panelX + panelWidth && position.Y >= panelY && position.Y <= panelY + panelHeight)
+			{
+				return;
+			}
+			m_pulldownDismissTick = System.Environment.TickCount64;
+			ClosePulldown();
 		}
 
 		private void OnElementDragOver(object sender, Microsoft.UI.Xaml.DragEventArgs args)
@@ -2901,7 +2926,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			if (m_pulldownPanel != null)
+			if (m_pulldownPanel != null || PulldownJustDismissed())
 			{
 				ClosePulldown();
 				return;
@@ -3010,18 +3035,8 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void OnPulldownCatcherTapped(object sender, TappedEventArgs eventArgs)
-		{
-			ClosePulldown();
-		}
-
 		private void ClosePulldown()
 		{
-			if (m_pulldownCatcher != null)
-			{
-				m_overlay.Remove(m_pulldownCatcher);
-				m_pulldownCatcher = null;
-			}
 			if (m_pulldownPanel != null)
 			{
 				m_overlay.Remove(m_pulldownPanel);
@@ -3029,20 +3044,15 @@ namespace Bitmute.UI
 			}
 		}
 
+		public bool PulldownJustDismissed()
+		{
+			return (System.Environment.TickCount64 - m_pulldownDismissTick) < 300;
+		}
+
 		public void ShowPulldown(View content, double anchorX, double anchorY, double width, double height)
 		{
 			ClosePulldown();
 			CloseMenu();
-
-			BoxView catcher = new BoxView();
-			catcher.Color = Colors.Transparent;
-			TapGestureRecognizer catcherTap = new TapGestureRecognizer();
-			catcherTap.Tapped += OnPulldownCatcherTapped;
-			catcher.GestureRecognizers.Add(catcherTap);
-			AbsoluteLayout.SetLayoutFlags(catcher, AbsoluteLayoutFlags.WidthProportional | AbsoluteLayoutFlags.HeightProportional);
-			AbsoluteLayout.SetLayoutBounds(catcher, new Rect(0.0, 0.0, 1.0, 1.0));
-			m_overlay.Add(catcher);
-			m_pulldownCatcher = catcher;
 
 			Border panel = new Border();
 			panel.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
@@ -3105,7 +3115,7 @@ namespace Bitmute.UI
 
 		private void OnFontButtonClicked(object sender, System.EventArgs eventArgs)
 		{
-			if (m_pulldownPanel != null)
+			if (m_pulldownPanel != null || PulldownJustDismissed())
 			{
 				ClosePulldown();
 				return;
@@ -3194,7 +3204,7 @@ namespace Bitmute.UI
 
 		private void OnStyleButtonClicked(object sender, System.EventArgs eventArgs)
 		{
-			if (m_pulldownPanel != null)
+			if (m_pulldownPanel != null || PulldownJustDismissed())
 			{
 				ClosePulldown();
 				return;

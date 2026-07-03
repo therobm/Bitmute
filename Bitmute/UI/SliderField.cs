@@ -44,18 +44,22 @@ namespace Bitmute.UI
 			arrow.Text = "▾";
 			arrow.FontSize = 10.0;
 			arrow.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			arrow.VerticalOptions = LayoutOptions.Center;
+			arrow.WidthRequest = 22.0;
+			arrow.HeightRequest = 24.0;
+			arrow.HorizontalTextAlignment = TextAlignment.Center;
+			arrow.VerticalTextAlignment = TextAlignment.Center;
+			arrow.VerticalOptions = LayoutOptions.Fill;
 			TapGestureRecognizer arrowTap = new TapGestureRecognizer();
 			arrowTap.Tapped += OnArrowTapped;
 			arrow.GestureRecognizers.Add(arrowTap);
 
 			HorizontalStackLayout row = new HorizontalStackLayout();
-			row.Spacing = 3.0;
+			row.Spacing = 0.0;
 			row.Add(m_valueEntry);
 			row.Add(arrow);
 
 			Border chip = new Border();
-			chip.Padding = new Thickness(0.0, 0.0, 5.0, 0.0);
+			chip.Padding = new Thickness(0.0);
 			chip.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
 			chip.ThemeStroke(UiConstants.DividerLight, UiConstants.DividerDark);
 			chip.StrokeThickness = 1.0;
@@ -173,6 +177,10 @@ namespace Bitmute.UI
 		{
 			MainView main = MainView.Self;
 			if (main == null)
+			{
+				return;
+			}
+			if (main.PulldownJustDismissed())
 			{
 				return;
 			}
