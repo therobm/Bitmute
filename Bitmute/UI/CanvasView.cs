@@ -40,6 +40,8 @@ namespace Bitmute.UI
 		private float m_zoom;
 		private float m_offsetX;
 		private float m_offsetY;
+		private float m_lastViewportWidth;
+		private float m_lastViewportHeight;
 		private bool m_viewInitialized;
 		private bool m_panning;
 		private float m_panLastX;
@@ -162,7 +164,27 @@ namespace Bitmute.UI
 				m_zoom = fit;
 				m_offsetX = (info.Width - (docWidth * m_zoom)) / 2.0f;
 				m_offsetY = (info.Height - (docHeight * m_zoom)) / 2.0f;
+				m_lastViewportWidth = info.Width;
+				m_lastViewportHeight = info.Height;
 				m_viewInitialized = true;
+				ReportZoomInfo();
+			}
+
+			bool viewportChanged = info.Width != m_lastViewportWidth || info.Height != m_lastViewportHeight;
+			if (viewportChanged)
+			{
+				float contentWidth = docWidth * m_zoom;
+				float contentHeight = docHeight * m_zoom;
+				if (contentWidth <= info.Width)
+				{
+					m_offsetX = (info.Width - contentWidth) / 2.0f;
+				}
+				if (contentHeight <= info.Height)
+				{
+					m_offsetY = (info.Height - contentHeight) / 2.0f;
+				}
+				m_lastViewportWidth = info.Width;
+				m_lastViewportHeight = info.Height;
 				ReportZoomInfo();
 			}
 
