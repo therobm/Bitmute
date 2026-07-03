@@ -85,6 +85,7 @@ namespace Bitmute.UI
 		private SmudgeTool m_smudgeTool;
 		private EyedropperTool m_eyedropperTool;
 		private FillTool m_fillTool;
+		private GradientTool m_gradientTool;
 		private LineTool m_lineTool;
 		private HandTool m_handTool;
 		private ZoomTool m_zoomTool;
@@ -1508,6 +1509,7 @@ namespace Bitmute.UI
 			m_smudgeTool = new SmudgeTool();
 			m_eyedropperTool = new EyedropperTool();
 			m_fillTool = new FillTool();
+			m_gradientTool = new GradientTool();
 			m_lineTool = new LineTool();
 			m_handTool = new HandTool();
 			m_zoomTool = new ZoomTool();
@@ -2610,6 +2612,10 @@ namespace Bitmute.UI
 			if (tool == eTool.Fill)
 			{
 				return m_fillTool;
+			}
+			if (tool == eTool.Gradient)
+			{
+				return m_gradientTool;
 			}
 			if (tool == eTool.Line)
 			{

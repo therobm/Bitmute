@@ -11,6 +11,7 @@ namespace Bitmute.Tools
 		Brush,
 		Eraser,
 		Fill,
+		Gradient,
 		Eyedropper,
 		Text,
 		Line,

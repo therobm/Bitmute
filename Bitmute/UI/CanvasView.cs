@@ -241,6 +241,11 @@ namespace Bitmute.UI
 				DrawLassoPreview(canvas, (LassoTool)tool);
 				return;
 			}
+			if (tool is GradientTool)
+			{
+				DrawGradientPreview(canvas, (GradientTool)tool);
+				return;
+			}
 			if (tool is ZoomTool && m_zoomDragging)
 			{
 				DrawZoomMarquee(canvas);
@@ -250,6 +255,34 @@ namespace Bitmute.UI
 			{
 				DrawBrushCursor(canvas, main);
 			}
+		}
+
+		private void DrawGradientPreview(SKCanvas canvas, GradientTool gradient)
+		{
+			if (!gradient.HasPreview())
+			{
+				return;
+			}
+			float startX = m_offsetX + (gradient.PreviewStartX() * m_zoom);
+			float startY = m_offsetY + (gradient.PreviewStartY() * m_zoom);
+			float endX = m_offsetX + (gradient.PreviewEndX() * m_zoom);
+			float endY = m_offsetY + (gradient.PreviewEndY() * m_zoom);
+			SKPaint underlay = new SKPaint();
+			underlay.Style = SKPaintStyle.Stroke;
+			underlay.StrokeWidth = 3.0f;
+			underlay.Color = SKColors.Black;
+			underlay.IsAntialias = true;
+			canvas.DrawLine(startX, startY, endX, endY, underlay);
+			underlay.Dispose();
+			SKPaint overlay = new SKPaint();
+			overlay.Style = SKPaintStyle.Stroke;
+			overlay.StrokeWidth = 1.0f;
+			overlay.Color = SKColors.White;
+			overlay.IsAntialias = true;
+			canvas.DrawLine(startX, startY, endX, endY, overlay);
+			canvas.DrawCircle(startX, startY, 3.0f, overlay);
+			canvas.DrawCircle(endX, endY, 3.0f, overlay);
+			overlay.Dispose();
 		}
 
 		private void DrawZoomMarquee(SKCanvas canvas)
@@ -847,7 +880,7 @@ namespace Bitmute.UI
 					InvalidateSurface();
 				}
 			}
-			if (tool is LineTool)
+			if (tool is LineTool || tool is GradientTool)
 			{
 				InvalidateSurface();
 			}
