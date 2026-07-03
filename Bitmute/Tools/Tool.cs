@@ -112,6 +112,10 @@ namespace Bitmute.Tools
 
 		protected eSelectionMode SelectionModeFromState(ToolState state)
 		{
+			if (state.ShiftHeld() && state.AltHeld())
+			{
+				return eSelectionMode.Intersect;
+			}
 			if (state.ShiftHeld())
 			{
 				return eSelectionMode.Add;

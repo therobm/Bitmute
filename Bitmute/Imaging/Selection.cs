@@ -6,7 +6,8 @@ namespace Bitmute.Imaging
 	{
 		Replace,
 		Add,
-		Subtract
+		Subtract,
+		Intersect
 	}
 
 	public class Selection
@@ -99,15 +100,6 @@ namespace Bitmute.Imaging
 
 		public void ApplyRect(SKRectI rect)
 		{
-			byte value = 255;
-			if (m_operationMode == eSelectionMode.Subtract)
-			{
-				value = 0;
-			}
-			for (int index = 0; index < m_mask.Length; index++)
-			{
-				m_mask[index] = m_baseMask[index];
-			}
 			int left = rect.Left;
 			int top = rect.Top;
 			int right = rect.Right;
@@ -128,6 +120,35 @@ namespace Bitmute.Imaging
 			{
 				bottom = m_height;
 			}
+			if (m_operationMode == eSelectionMode.Intersect)
+			{
+				for (int index = 0; index < m_mask.Length; index++)
+				{
+					m_mask[index] = 0;
+				}
+				for (int y = top; y < bottom; y++)
+				{
+					int rowStart = y * m_width;
+					for (int x = left; x < right; x++)
+					{
+						if (m_baseMask[rowStart + x] != 0)
+						{
+							m_mask[rowStart + x] = 255;
+						}
+					}
+				}
+				RecomputeFromMask();
+				return;
+			}
+			byte value = 255;
+			if (m_operationMode == eSelectionMode.Subtract)
+			{
+				value = 0;
+			}
+			for (int index = 0; index < m_mask.Length; index++)
+			{
+				m_mask[index] = m_baseMask[index];
+			}
 			for (int y = top; y < bottom; y++)
 			{
 				int rowStart = y * m_width;
@@ -141,6 +162,22 @@ namespace Bitmute.Imaging
 
 		public void ApplyMask(byte[] regionMask)
 		{
+			if (m_operationMode == eSelectionMode.Intersect)
+			{
+				for (int index = 0; index < m_mask.Length; index++)
+				{
+					if (m_baseMask[index] != 0 && regionMask[index] != 0)
+					{
+						m_mask[index] = 255;
+					}
+					else
+					{
+						m_mask[index] = 0;
+					}
+				}
+				RecomputeFromMask();
+				return;
+			}
 			byte value = 255;
 			if (m_operationMode == eSelectionMode.Subtract)
 			{
@@ -191,6 +228,22 @@ namespace Bitmute.Imaging
 			m_active = false;
 			m_bounds = SKRectI.Empty;
 			m_generation = m_generation + 1;
+		}
+
+		public void Invert()
+		{
+			for (int index = 0; index < m_mask.Length; index++)
+			{
+				if (m_mask[index] == 0)
+				{
+					m_mask[index] = 255;
+				}
+				else
+				{
+					m_mask[index] = 0;
+				}
+			}
+			RecomputeFromMask();
 		}
 
 		public void SelectRect(SKRectI rect)

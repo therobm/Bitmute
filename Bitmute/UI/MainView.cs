@@ -156,15 +156,7 @@ namespace Bitmute.UI
 			}
 			if (title == "Select")
 			{
-				if (item == "All")
-				{
-					return true;
-				}
-				if (item == "Deselect")
-				{
-					return true;
-				}
-				return false;
+				return true;
 			}
 			if (title == "Filter")
 			{
@@ -482,6 +474,11 @@ namespace Bitmute.UI
 			if (action == "Deselect")
 			{
 				DoDeselect();
+				return;
+			}
+			if (action == "Invert")
+			{
+				DoInvertSelection();
 				return;
 			}
 			if (action == "Invert Colors")
@@ -802,6 +799,17 @@ namespace Bitmute.UI
 				return;
 			}
 			canvas.CurrentDocument().Selection().Clear();
+			canvas.Redraw();
+		}
+
+		private void DoInvertSelection()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			canvas.CurrentDocument().Selection().Invert();
 			canvas.Redraw();
 		}
 
