@@ -54,6 +54,11 @@ namespace Bitmute.UI
 		private float m_cursorDeviceX;
 		private float m_cursorDeviceY;
 		private bool m_cursorInside;
+		private bool m_zoomDragging;
+		private float m_zoomDragStartX;
+		private float m_zoomDragStartY;
+		private float m_zoomDragCurrentX;
+		private float m_zoomDragCurrentY;
 
 		private static SKBitmap CheckerTile()
 		{
@@ -235,10 +240,46 @@ namespace Bitmute.UI
 				DrawLassoPreview(canvas, (LassoTool)tool);
 				return;
 			}
+			if (tool is ZoomTool && m_zoomDragging)
+			{
+				DrawZoomMarquee(canvas);
+				return;
+			}
 			if (m_cursorInside && ShowsBrushCursor(tool))
 			{
 				DrawBrushCursor(canvas, main);
 			}
+		}
+
+		private void DrawZoomMarquee(SKCanvas canvas)
+		{
+			float left = m_zoomDragStartX;
+			if (m_zoomDragCurrentX < left)
+			{
+				left = m_zoomDragCurrentX;
+			}
+			float top = m_zoomDragStartY;
+			if (m_zoomDragCurrentY < top)
+			{
+				top = m_zoomDragCurrentY;
+			}
+			float right = m_zoomDragStartX + m_zoomDragCurrentX - left;
+			float bottom = m_zoomDragStartY + m_zoomDragCurrentY - top;
+			SKRect rect = new SKRect(left, top, right, bottom);
+			SKPaint underlay = new SKPaint();
+			underlay.Style = SKPaintStyle.Stroke;
+			underlay.StrokeWidth = 2.0f;
+			underlay.Color = SKColors.Black;
+			underlay.IsAntialias = false;
+			canvas.DrawRect(rect, underlay);
+			underlay.Dispose();
+			SKPaint overlay = new SKPaint();
+			overlay.Style = SKPaintStyle.Stroke;
+			overlay.StrokeWidth = 1.0f;
+			overlay.Color = SKColors.White;
+			overlay.IsAntialias = false;
+			canvas.DrawRect(rect, overlay);
+			overlay.Dispose();
 		}
 
 		private bool ShowsBrushCursor(Tool tool)
@@ -700,14 +741,39 @@ namespace Bitmute.UI
 			{
 				if (eventArgs.ActionType == SKTouchAction.Pressed)
 				{
-					Windows.UI.Core.CoreVirtualKeyStates zoomAltState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Menu);
-					bool zoomAltHeld = (zoomAltState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
-					float zoomFactor = 1.25f;
-					if (zoomAltHeld)
+					m_zoomDragging = true;
+					m_zoomDragStartX = eventArgs.Location.X;
+					m_zoomDragStartY = eventArgs.Location.Y;
+					m_zoomDragCurrentX = eventArgs.Location.X;
+					m_zoomDragCurrentY = eventArgs.Location.Y;
+				}
+				else if (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact && m_zoomDragging)
+				{
+					m_zoomDragCurrentX = eventArgs.Location.X;
+					m_zoomDragCurrentY = eventArgs.Location.Y;
+					InvalidateSurface();
+				}
+				else if (eventArgs.ActionType == SKTouchAction.Released && m_zoomDragging)
+				{
+					m_zoomDragging = false;
+					float dragWidth = System.Math.Abs(m_zoomDragCurrentX - m_zoomDragStartX);
+					float dragHeight = System.Math.Abs(m_zoomDragCurrentY - m_zoomDragStartY);
+					if (dragWidth > 6.0f && dragHeight > 6.0f)
 					{
-						zoomFactor = 0.8f;
+						ZoomToScreenRect(m_zoomDragStartX, m_zoomDragStartY, m_zoomDragCurrentX, m_zoomDragCurrentY);
 					}
-					ApplyZoomAt(m_zoom * zoomFactor, eventArgs.Location.X, eventArgs.Location.Y);
+					else
+					{
+						Windows.UI.Core.CoreVirtualKeyStates zoomAltState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Menu);
+						bool zoomAltHeld = (zoomAltState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
+						float zoomFactor = 1.25f;
+						if (zoomAltHeld)
+						{
+							zoomFactor = 0.8f;
+						}
+						ApplyZoomAt(m_zoom * zoomFactor, eventArgs.Location.X, eventArgs.Location.Y);
+					}
+					InvalidateSurface();
 				}
 				eventArgs.Handled = true;
 				return;
@@ -856,6 +922,58 @@ namespace Bitmute.UI
 				percent = 3200;
 			}
 			ApplyZoomCentered(percent / 100.0f);
+		}
+
+		private void ZoomToScreenRect(float startX, float startY, float currentX, float currentY)
+		{
+			float left = startX;
+			if (currentX < left)
+			{
+				left = currentX;
+			}
+			float right = startX;
+			if (currentX > right)
+			{
+				right = currentX;
+			}
+			float top = startY;
+			if (currentY < top)
+			{
+				top = currentY;
+			}
+			float bottom = startY;
+			if (currentY > bottom)
+			{
+				bottom = currentY;
+			}
+			float rectWidth = right - left;
+			float rectHeight = bottom - top;
+			if (rectWidth < 1.0f || rectHeight < 1.0f)
+			{
+				return;
+			}
+			float documentCenterX = (((left + right) / 2.0f) - m_offsetX) / m_zoom;
+			float documentCenterY = (((top + bottom) / 2.0f) - m_offsetY) / m_zoom;
+			float zoomForWidth = (m_lastViewportWidth * m_zoom) / rectWidth;
+			float zoomForHeight = (m_lastViewportHeight * m_zoom) / rectHeight;
+			float newZoom = zoomForWidth;
+			if (zoomForHeight < newZoom)
+			{
+				newZoom = zoomForHeight;
+			}
+			if (newZoom < 0.05f)
+			{
+				newZoom = 0.05f;
+			}
+			if (newZoom > 32.0f)
+			{
+				newZoom = 32.0f;
+			}
+			m_zoom = newZoom;
+			m_offsetX = (m_lastViewportWidth / 2.0f) - (documentCenterX * m_zoom);
+			m_offsetY = (m_lastViewportHeight / 2.0f) - (documentCenterY * m_zoom);
+			ReportZoomInfo();
+			NotifyChrome();
 		}
 
 		public void FitToView()
