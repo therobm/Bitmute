@@ -112,7 +112,7 @@ namespace Bitmute.UI
 			{
 				return new SKColor(0xD2, 0xD2, 0xD2);
 			}
-			return new SKColor(0x2A, 0x2A, 0x2A);
+			return new SKColor(50, 50, 50);
 		}
 
 		public static SKColor IconTintSelected()
