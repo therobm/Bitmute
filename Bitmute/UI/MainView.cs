@@ -1183,10 +1183,16 @@ namespace Bitmute.UI
 
 			m_workspace = new AbsoluteLayout();
 			m_workspace.ThemeBg(UiConstants.WorkspaceBackdropLight, UiConstants.WorkspaceBackdropDark);
+
+			BoxView workspaceBackground = new BoxView();
+			workspaceBackground.Color = Colors.Transparent;
 			TapGestureRecognizer workspaceDoubleTap = new TapGestureRecognizer();
 			workspaceDoubleTap.NumberOfTapsRequired = 2;
 			workspaceDoubleTap.Tapped += OnWorkspaceDoubleTapped;
-			m_workspace.GestureRecognizers.Add(workspaceDoubleTap);
+			workspaceBackground.GestureRecognizers.Add(workspaceDoubleTap);
+			AbsoluteLayout.SetLayoutBounds(workspaceBackground, new Rect(0.0, 0.0, 1.0, 1.0));
+			AbsoluteLayout.SetLayoutFlags(workspaceBackground, AbsoluteLayoutFlags.All);
+			m_workspace.Add(workspaceBackground);
 
 			View dock = BuildPaletteDock();
 
