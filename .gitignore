@@ -480,3 +480,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Toolbar icon assets kept local until cleaned for upload
+Bitmute/Resources/Toolbar/*.png
+Bitmute/Resources/Toolbar/*.svg

@@ -13,6 +13,7 @@ namespace Bitmute.UI
 	{
 		private eTool[] m_tools;
 		private string[] m_glyphs;
+		private string[] m_icons;
 		private string[] m_names;
 		private Border[] m_buttons;
 		private eTool m_selectedTool;
@@ -142,12 +143,13 @@ namespace Bitmute.UI
 
 		private Border BuildToolButton(int index)
 		{
-			Label glyph = new Label();
-			glyph.Text = m_glyphs[index];
-			glyph.FontSize = 14.0;
-			glyph.TextColor = UiConstants.OnSurface;
-			glyph.HorizontalOptions = LayoutOptions.Center;
-			glyph.VerticalOptions = LayoutOptions.Center;
+			Image icon = new Image();
+			icon.Source = m_icons[index];
+			icon.WidthRequest = 18.0;
+			icon.HeightRequest = 18.0;
+			icon.Aspect = Aspect.AspectFit;
+			icon.HorizontalOptions = LayoutOptions.Center;
+			icon.VerticalOptions = LayoutOptions.Center;
 
 			Border button = new Border();
 			button.WidthRequest = UiConstants.ToolButtonSize;
@@ -156,7 +158,7 @@ namespace Bitmute.UI
 			button.Stroke = UiConstants.Divider;
 			button.StrokeThickness = 1.0;
 			button.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(2.0) };
-			button.Content = glyph;
+			button.Content = icon;
 			ToolTipProperties.SetText(button, m_names[index]);
 
 			TapGestureRecognizer tap = new TapGestureRecognizer();
@@ -206,6 +208,7 @@ namespace Bitmute.UI
 		{
 			m_tools = new eTool[] { eTool.Move, eTool.Select, eTool.EllipseSelect, eTool.Lasso, eTool.MagicWand, eTool.Pencil, eTool.Brush, eTool.Eraser, eTool.Clone, eTool.Fill, eTool.Eyedropper, eTool.Text, eTool.Line, eTool.Blur, eTool.Sharpen, eTool.Smudge, eTool.DodgeBurn, eTool.Zoom };
 			m_glyphs = new string[] { "✛︎", "⬚", "◯", "⬠", "✦︎", "✎︎", "▨", "▭", "⎘", "▣", "◉", "T", "╱", "○", "◭", "☟", "◐", "◎" };
+			m_icons = new string[] { "move.png", "box_select.png", "ellipse_select.png", "lasso.png", "magic_wand.png", "pencil.png", "brush.png", "eraser.png", "clone.png", "fill.png", "eyedropper.png", "text.png", "line.png", "blur.png", "sharpen.png", "smudge.png", "dodge_burn.png", "zoom.png" };
 			m_names = new string[] { "Move", "Rectangle Select", "Ellipse Select", "Poly Lasso", "Magic Wand", "Pencil", "Brush", "Eraser", "Clone (Alt-click sets source)", "Fill", "Eyedropper", "Text", "Line", "Blur", "Sharpen", "Smudge", "Dodge / Burn (Alt = Burn)", "Zoom" };
 			m_buttons = new Border[m_tools.Length];
 

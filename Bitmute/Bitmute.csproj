@@ -40,6 +40,8 @@
 
 		<MauiImage Include="Resources\Images\*" />
 
+		<MauiImage Include="Resources\Toolbar\*.png" />
+
 		<MauiFont Include="Resources\Fonts\*" />
 
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
