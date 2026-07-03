@@ -177,12 +177,10 @@ namespace Bitmute.UI
 			{
 				float contentWidth = docWidth * m_zoom;
 				float contentHeight = docHeight * m_zoom;
-				if (contentWidth <= info.Width)
+				bool fullyVisible = contentWidth <= info.Width && contentHeight <= info.Height;
+				if (fullyVisible)
 				{
 					m_offsetX = (info.Width - contentWidth) / 2.0f;
-				}
-				if (contentHeight <= info.Height)
-				{
 					m_offsetY = (info.Height - contentHeight) / 2.0f;
 				}
 				m_lastViewportWidth = info.Width;

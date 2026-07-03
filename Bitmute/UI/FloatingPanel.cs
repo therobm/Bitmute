@@ -209,23 +209,33 @@ namespace Bitmute.UI
 
 		private void MoveTo(double x, double y)
 		{
-			double maxX = WorkspaceWidth() - m_width;
-			double maxY = WorkspaceHeight() - m_height;
-			if (x < 0.0)
-			{
-				x = 0.0;
-			}
+			double minVisible = 25.0;
+			double workspaceWidth = WorkspaceWidth();
+			double workspaceHeight = WorkspaceHeight();
 			if (y < 0.0)
 			{
 				y = 0.0;
 			}
-			if (maxX >= 0.0 && x > maxX)
+			double minX = minVisible - m_width;
+			if (x < minX)
 			{
-				x = maxX;
+				x = minX;
 			}
-			if (maxY >= 0.0 && y > maxY)
+			if (workspaceWidth > 0.0)
 			{
-				y = maxY;
+				double maxX = workspaceWidth - minVisible;
+				if (x > maxX)
+				{
+					x = maxX;
+				}
+			}
+			if (workspaceHeight > 0.0)
+			{
+				double maxY = workspaceHeight - minVisible;
+				if (y > maxY)
+				{
+					y = maxY;
+				}
 			}
 			m_x = x;
 			m_y = y;

@@ -405,7 +405,12 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			layer.SetOpacity((byte)opacity);
+			int scaled = ((opacity * 255) + 50) / 100;
+			if (scaled > 255)
+			{
+				scaled = 255;
+			}
+			layer.SetOpacity((byte)scaled);
 			RecompositeActive();
 		}
 
@@ -429,7 +434,7 @@ namespace Bitmute.UI
 			opacityLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			opacityLabel.VerticalOptions = LayoutOptions.Center;
 
-			m_opacityField = new SliderField(0, 255, 255, "", OnOpacityValue);
+			m_opacityField = new SliderField(0, 100, 100, "%", OnOpacityValue);
 			m_opacityField.HorizontalOptions = LayoutOptions.End;
 			m_opacityField.VerticalOptions = LayoutOptions.Center;
 
@@ -528,7 +533,7 @@ namespace Bitmute.UI
 			Layer active = document.ActiveLayer();
 			if (active != null)
 			{
-				m_opacityField.SetValueSilently(active.Opacity());
+				m_opacityField.SetValueSilently(((active.Opacity() * 100) + 127) / 255);
 				m_suppress = true;
 				m_blendPicker.SelectedIndex = (int)active.BlendMode();
 				m_suppress = false;
