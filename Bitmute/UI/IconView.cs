@@ -23,6 +23,17 @@ namespace Bitmute.UI
 			Theme.Changed += OnThemeChanged;
 		}
 
+		public void SetIcon(string name)
+		{
+			if (m_name == name)
+			{
+				return;
+			}
+			m_name = name;
+			m_loadStarted = false;
+			InvalidateSurface();
+		}
+
 		public void SetSelected(bool selected)
 		{
 			if (m_selected == selected)

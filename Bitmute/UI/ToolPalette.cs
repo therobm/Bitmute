@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using Bitmute.Tools;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Shapes;
+using Microsoft.Maui.Dispatching;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Layouts;
 using SkiaSharp;
@@ -11,19 +13,58 @@ namespace Bitmute.UI
 {
 	public class ToolPalette : ContentView
 	{
-		private eTool[] m_tools;
-		private string[] m_glyphs;
-		private string[] m_icons;
-		private string[] m_names;
-		private Border[] m_buttons;
-		private IconView[] m_iconViews;
+		private const double FlyoutMemberSize = 30.0;
+		private const int LongPressMilliseconds = 400;
+
+		private eTool[][] m_groupTools;
+		private string[][] m_groupIcons;
+		private string[][] m_groupNames;
+		private int[] m_groupActive;
+		private Border[] m_cellButtons;
+		private IconView[] m_cellIcons;
 		private eTool m_selectedTool;
+
+		private IDispatcherTimer m_longPressTimer;
+		private int m_pressedCell;
+		private bool m_longPressFired;
+		private int m_flyoutGroup;
+		private List<Border> m_flyoutButtons;
+
 		private BoxView m_foregroundSwatch;
 		private BoxView m_backgroundSwatch;
 
 		private static Color ToMaui(SKColor color)
 		{
 			return new Color(color.Red / 255.0f, color.Green / 255.0f, color.Blue / 255.0f, color.Alpha / 255.0f);
+		}
+
+		private static double PageCoordinate(VisualElement element, bool horizontal)
+		{
+			double total = 0.0;
+			Element current = element;
+			for (int guard = 0; guard < 100; guard++)
+			{
+				VisualElement visual = current as VisualElement;
+				if (visual == null)
+				{
+					break;
+				}
+				if (horizontal)
+				{
+					total += visual.X;
+				}
+				else
+				{
+					total += visual.Y;
+				}
+				Element parent = current.Parent;
+				if (parent == null)
+				{
+					break;
+				}
+				current = parent;
+			}
+			return total;
 		}
 
 		private ToolState State()
@@ -170,15 +211,30 @@ namespace Bitmute.UI
 			m_backgroundSwatch.Color = ToMaui(state.Background());
 		}
 
-		private Border BuildToolButton(int index)
+		private Border BuildCell(int groupIndex)
 		{
-			IconView icon = new IconView(m_icons[index]);
+			int active = m_groupActive[groupIndex];
+			IconView icon = new IconView(m_groupIcons[groupIndex][active]);
 			icon.WidthRequest = 20.0;
 			icon.HeightRequest = 20.0;
 			icon.BackgroundColor = Colors.Transparent;
 			icon.HorizontalOptions = LayoutOptions.Center;
 			icon.VerticalOptions = LayoutOptions.Center;
-			m_iconViews[index] = icon;
+			m_cellIcons[groupIndex] = icon;
+
+			Grid content = new Grid();
+			content.Add(icon);
+			if (m_groupTools[groupIndex].Length > 1)
+			{
+				Label triangle = new Label();
+				triangle.Text = "◢";
+				triangle.FontSize = 7.0;
+				triangle.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+				triangle.HorizontalOptions = LayoutOptions.End;
+				triangle.VerticalOptions = LayoutOptions.End;
+				triangle.Margin = new Thickness(0.0, 0.0, 1.0, 0.0);
+				content.Add(triangle);
+			}
 
 			Border button = new Border();
 			button.WidthRequest = UiConstants.ToolButtonSize;
@@ -186,68 +242,233 @@ namespace Bitmute.UI
 			button.ThemeBg(UiConstants.ToolButtonChipLight, UiConstants.ToolButtonChipDark);
 			button.StrokeThickness = 0.0;
 			button.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(3.0) };
-			button.Content = icon;
-			ToolTipProperties.SetText(button, m_names[index]);
+			button.Content = content;
+			ToolTipProperties.SetText(button, m_groupNames[groupIndex][active]);
 
 			TapGestureRecognizer tap = new TapGestureRecognizer();
-			tap.Tapped += OnToolTapped;
+			tap.Tapped += OnCellTapped;
 			button.GestureRecognizers.Add(tap);
 
 			TapGestureRecognizer doubleTap = new TapGestureRecognizer();
 			doubleTap.NumberOfTapsRequired = 2;
-			doubleTap.Tapped += OnToolDoubleTapped;
+			doubleTap.Tapped += OnCellDoubleTapped;
 			button.GestureRecognizers.Add(doubleTap);
+
+			PointerGestureRecognizer pointer = new PointerGestureRecognizer();
+			pointer.PointerPressed += OnCellPointerPressed;
+			pointer.PointerReleased += OnCellPointerReleased;
+			button.GestureRecognizers.Add(pointer);
 
 			return button;
 		}
 
-		private void OnToolDoubleTapped(object sender, TappedEventArgs eventArgs)
+		private int CellIndexOf(object sender)
+		{
+			for (int index = 0; index < m_cellButtons.Length; index++)
+			{
+				if (ReferenceEquals(m_cellButtons[index], sender))
+				{
+					return index;
+				}
+			}
+			return -1;
+		}
+
+		private void OnCellTapped(object sender, TappedEventArgs eventArgs)
+		{
+			if (m_longPressFired)
+			{
+				m_longPressFired = false;
+				return;
+			}
+			int cell = CellIndexOf(sender);
+			if (cell < 0)
+			{
+				return;
+			}
+			SelectTool(m_groupTools[cell][m_groupActive[cell]]);
+		}
+
+		private void OnCellDoubleTapped(object sender, TappedEventArgs eventArgs)
 		{
 			MainView main = MainView.Self;
 			if (main == null)
 			{
 				return;
 			}
-			for (int index = 0; index < m_buttons.Length; index++)
+			int cell = CellIndexOf(sender);
+			if (cell < 0)
 			{
-				if (ReferenceEquals(m_buttons[index], sender))
+				return;
+			}
+			if (m_groupTools[cell][m_groupActive[cell]] == eTool.Zoom)
+			{
+				main.ZoomActiveTo100();
+			}
+		}
+
+		private void OnCellPointerPressed(object sender, PointerEventArgs eventArgs)
+		{
+			m_longPressFired = false;
+			int cell = CellIndexOf(sender);
+			if (cell < 0 || m_groupTools[cell].Length <= 1)
+			{
+				m_pressedCell = -1;
+				return;
+			}
+			m_pressedCell = cell;
+			if (m_longPressTimer == null && Dispatcher != null)
+			{
+				m_longPressTimer = Dispatcher.CreateTimer();
+				m_longPressTimer.Interval = TimeSpan.FromMilliseconds(LongPressMilliseconds);
+				m_longPressTimer.IsRepeating = false;
+				m_longPressTimer.Tick += OnLongPressTick;
+			}
+			if (m_longPressTimer != null)
+			{
+				m_longPressTimer.Stop();
+				m_longPressTimer.Start();
+			}
+		}
+
+		private void OnCellPointerReleased(object sender, PointerEventArgs eventArgs)
+		{
+			if (m_longPressTimer != null)
+			{
+				m_longPressTimer.Stop();
+			}
+			m_pressedCell = -1;
+		}
+
+		private void OnLongPressTick(object sender, EventArgs eventArgs)
+		{
+			if (m_longPressTimer != null)
+			{
+				m_longPressTimer.Stop();
+			}
+			if (m_pressedCell < 0)
+			{
+				return;
+			}
+			m_longPressFired = true;
+			OpenFlyout(m_pressedCell);
+		}
+
+		private void OnFlyoutMemberTapped(object sender, TappedEventArgs eventArgs)
+		{
+			if (m_flyoutButtons == null)
+			{
+				return;
+			}
+			for (int index = 0; index < m_flyoutButtons.Count; index++)
+			{
+				if (ReferenceEquals(m_flyoutButtons[index], sender))
 				{
-					if (m_tools[index] == eTool.Zoom)
-					{
-						main.ZoomActiveTo100();
-					}
+					SelectTool(m_groupTools[m_flyoutGroup][index]);
 					return;
 				}
 			}
 		}
 
-		private void OnToolTapped(object sender, TappedEventArgs eventArgs)
+		private void OpenFlyout(int groupIndex)
 		{
-			for (int index = 0; index < m_buttons.Length; index++)
+			MainView main = MainView.Self;
+			if (main == null)
 			{
-				if (ReferenceEquals(m_buttons[index], sender))
+				return;
+			}
+			m_flyoutGroup = groupIndex;
+			m_flyoutButtons = new List<Border>();
+
+			HorizontalStackLayout row = new HorizontalStackLayout();
+			row.Spacing = 4.0;
+			row.Padding = new Thickness(4.0);
+			for (int member = 0; member < m_groupTools[groupIndex].Length; member++)
+			{
+				IconView memberIcon = new IconView(m_groupIcons[groupIndex][member]);
+				memberIcon.WidthRequest = 20.0;
+				memberIcon.HeightRequest = 20.0;
+				memberIcon.BackgroundColor = Colors.Transparent;
+				memberIcon.HorizontalOptions = LayoutOptions.Center;
+				memberIcon.VerticalOptions = LayoutOptions.Center;
+
+				Border memberButton = new Border();
+				memberButton.WidthRequest = FlyoutMemberSize;
+				memberButton.HeightRequest = FlyoutMemberSize;
+				memberButton.ThemeBg(UiConstants.ToolButtonChipLight, UiConstants.ToolButtonChipDark);
+				memberButton.StrokeThickness = 0.0;
+				memberButton.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(3.0) };
+				memberButton.Content = memberIcon;
+				ToolTipProperties.SetText(memberButton, m_groupNames[groupIndex][member]);
+				TapGestureRecognizer memberTap = new TapGestureRecognizer();
+				memberTap.Tapped += OnFlyoutMemberTapped;
+				memberButton.GestureRecognizers.Add(memberTap);
+				m_flyoutButtons.Add(memberButton);
+				row.Add(memberButton);
+			}
+
+			double anchorX = PageCoordinate(m_cellButtons[groupIndex], true) + UiConstants.ToolButtonSize + 4.0;
+			double anchorY = PageCoordinate(m_cellButtons[groupIndex], false);
+			double width = (m_groupTools[groupIndex].Length * (FlyoutMemberSize + 4.0)) + 8.0;
+			main.ShowPulldown(row, anchorX, anchorY, width, FlyoutMemberSize + 10.0);
+		}
+
+		private int GroupOf(eTool tool)
+		{
+			for (int group = 0; group < m_groupTools.Length; group++)
+			{
+				for (int member = 0; member < m_groupTools[group].Length; member++)
 				{
-					SelectTool(m_tools[index]);
-					return;
+					if (m_groupTools[group][member] == tool)
+					{
+						return group;
+					}
 				}
 			}
+			return -1;
+		}
+
+		private int MemberOf(int groupIndex, eTool tool)
+		{
+			for (int member = 0; member < m_groupTools[groupIndex].Length; member++)
+			{
+				if (m_groupTools[groupIndex][member] == tool)
+				{
+					return member;
+				}
+			}
+			return -1;
 		}
 
 		private void SelectTool(eTool tool)
 		{
-			m_selectedTool = tool;
-			for (int index = 0; index < m_tools.Length; index++)
+			int groupIndex = GroupOf(tool);
+			if (groupIndex < 0)
 			{
-				if (m_tools[index] == tool)
+				return;
+			}
+			int memberIndex = MemberOf(groupIndex, tool);
+			if (memberIndex < 0)
+			{
+				return;
+			}
+			m_selectedTool = tool;
+			m_groupActive[groupIndex] = memberIndex;
+			m_cellIcons[groupIndex].SetIcon(m_groupIcons[groupIndex][memberIndex]);
+			ToolTipProperties.SetText(m_cellButtons[groupIndex], m_groupNames[groupIndex][memberIndex]);
+
+			for (int group = 0; group < m_cellButtons.Length; group++)
+			{
+				bool selected = group == groupIndex;
+				if (selected)
 				{
-					m_buttons[index].ThemeBg(UiConstants.ToolSelectedLight, UiConstants.ToolSelectedDark);
-					m_iconViews[index].SetSelected(true);
+					m_cellButtons[group].ThemeBg(UiConstants.ToolSelectedLight, UiConstants.ToolSelectedDark);
 				}
 				else
 				{
-					m_buttons[index].ThemeBg(UiConstants.ToolButtonChipLight, UiConstants.ToolButtonChipDark);
-					m_iconViews[index].SetSelected(false);
+					m_cellButtons[group].ThemeBg(UiConstants.ToolButtonChipLight, UiConstants.ToolButtonChipDark);
 				}
+				m_cellIcons[group].SetSelected(selected);
 			}
 
 			MainView main = MainView.Self;
@@ -259,12 +480,64 @@ namespace Bitmute.UI
 
 		public ToolPalette()
 		{
-			m_tools = new eTool[] { eTool.Move, eTool.Select, eTool.EllipseSelect, eTool.Lasso, eTool.MagicWand, eTool.Pencil, eTool.Brush, eTool.Eraser, eTool.Clone, eTool.Fill, eTool.Gradient, eTool.Eyedropper, eTool.Text, eTool.Line, eTool.RectangleShape, eTool.RoundedRectangleShape, eTool.EllipseShape, eTool.PolygonShape, eTool.Blur, eTool.Sharpen, eTool.Smudge, eTool.DodgeBurn, eTool.Hand, eTool.Zoom };
-			m_glyphs = new string[] { "✛︎", "⬚", "◯", "⬠", "✦︎", "✎︎", "▨", "▭", "⎘", "▣", "◧", "◉", "T", "╱", "▭", "▢", "◯", "⬡", "○", "◭", "☟", "◐", "✋", "◎" };
-			m_icons = new string[] { "move.png", "box_select.png", "ellipse_select.png", "lasso.png", "magic_wand.png", "pencil.png", "brush.png", "eraser.png", "clone.png", "fill.png", "gradient.png", "eyedropper.png", "text.png", "line.png", "rectangle.png", "rounded_rectangle.png", "ellipse.png", "polygon.png", "blur.png", "sharpen.png", "smudge.png", "dodge.png", "hand.png", "zoom.png" };
-			m_names = new string[] { "Move", "Rectangle Select", "Ellipse Select", "Poly Lasso", "Magic Wand", "Pencil", "Brush", "Eraser", "Clone (Alt-click sets source)", "Fill", "Gradient (drag the axis)", "Eyedropper", "Text", "Line", "Rectangle", "Rounded Rectangle", "Ellipse", "Polygon", "Blur", "Sharpen", "Smudge", "Dodge / Burn (Alt = Burn)", "Hand (drag to pan)", "Zoom (double-click tool = 100%)" };
-			m_buttons = new Border[m_tools.Length];
-			m_iconViews = new IconView[m_tools.Length];
+			m_groupTools = new eTool[][]
+			{
+				new eTool[] { eTool.Move },
+				new eTool[] { eTool.Select, eTool.EllipseSelect },
+				new eTool[] { eTool.Lasso },
+				new eTool[] { eTool.MagicWand },
+				new eTool[] { eTool.Brush, eTool.Pencil },
+				new eTool[] { eTool.Eraser },
+				new eTool[] { eTool.Clone },
+				new eTool[] { eTool.Fill, eTool.Gradient },
+				new eTool[] { eTool.Blur, eTool.Sharpen, eTool.Smudge },
+				new eTool[] { eTool.DodgeBurn },
+				new eTool[] { eTool.Text },
+				new eTool[] { eTool.Line, eTool.RectangleShape, eTool.RoundedRectangleShape, eTool.EllipseShape, eTool.PolygonShape },
+				new eTool[] { eTool.Eyedropper },
+				new eTool[] { eTool.Hand },
+				new eTool[] { eTool.Zoom }
+			};
+			m_groupIcons = new string[][]
+			{
+				new string[] { "move.png" },
+				new string[] { "box_select.png", "ellipse_select.png" },
+				new string[] { "lasso.png" },
+				new string[] { "magic_wand.png" },
+				new string[] { "brush.png", "pencil.png" },
+				new string[] { "eraser.png" },
+				new string[] { "clone.png" },
+				new string[] { "fill.png", "gradient.png" },
+				new string[] { "blur.png", "sharpen.png", "smudge.png" },
+				new string[] { "dodge.png" },
+				new string[] { "text.png" },
+				new string[] { "line.png", "rectangle.png", "rounded_rectangle.png", "ellipse.png", "polygon.png" },
+				new string[] { "eyedropper.png" },
+				new string[] { "hand.png" },
+				new string[] { "zoom.png" }
+			};
+			m_groupNames = new string[][]
+			{
+				new string[] { "Move" },
+				new string[] { "Rectangle Select", "Ellipse Select" },
+				new string[] { "Poly Lasso" },
+				new string[] { "Magic Wand" },
+				new string[] { "Brush", "Pencil" },
+				new string[] { "Eraser" },
+				new string[] { "Clone (Alt-click sets source)" },
+				new string[] { "Fill", "Gradient (drag the axis)" },
+				new string[] { "Blur", "Sharpen", "Smudge" },
+				new string[] { "Dodge / Burn (Alt = Burn)" },
+				new string[] { "Text" },
+				new string[] { "Line", "Rectangle", "Rounded Rectangle", "Ellipse", "Polygon" },
+				new string[] { "Eyedropper" },
+				new string[] { "Hand (drag to pan)" },
+				new string[] { "Zoom (double-click tool = 100%)" }
+			};
+			m_groupActive = new int[m_groupTools.Length];
+			m_cellButtons = new Border[m_groupTools.Length];
+			m_cellIcons = new IconView[m_groupTools.Length];
+			m_pressedCell = -1;
 
 			Grid grid = new Grid();
 			grid.Padding = new Thickness(5.0);
@@ -275,16 +548,16 @@ namespace Bitmute.UI
 			grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 
-			int rowCount = (m_tools.Length + 1) / 2;
+			int rowCount = (m_groupTools.Length + 1) / 2;
 			for (int row = 0; row < rowCount; row++)
 			{
 				grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
 			}
 
-			for (int index = 0; index < m_tools.Length; index++)
+			for (int index = 0; index < m_groupTools.Length; index++)
 			{
-				Border button = BuildToolButton(index);
-				m_buttons[index] = button;
+				Border button = BuildCell(index);
+				m_cellButtons[index] = button;
 				Grid.SetRow(button, index / 2);
 				Grid.SetColumn(button, index % 2);
 				grid.Add(button);
