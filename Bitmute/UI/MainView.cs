@@ -34,20 +34,15 @@ namespace Bitmute.UI
 		private double m_modalDragOriginX;
 		private double m_modalDragOriginY;
 		private Label m_optionsToolLabel;
-		private Slider m_brushSizeSlider;
-		private Label m_brushSizeValue;
+		private SliderField m_brushSizeField;
 		private Label m_brushHardnessLabel;
-		private Slider m_brushHardnessSlider;
-		private Label m_brushHardnessValue;
+		private SliderField m_brushHardnessField;
 		private Label m_brushOpacityLabel;
-		private Slider m_brushOpacitySlider;
-		private Label m_brushOpacityValue;
+		private SliderField m_brushOpacityField;
 		private Label m_brushFlowLabel;
-		private Slider m_brushFlowSlider;
-		private Label m_brushFlowValue;
+		private SliderField m_brushFlowField;
 		private Label m_brushSmoothingLabel;
-		private Slider m_brushSmoothingSlider;
-		private Label m_brushSmoothingValue;
+		private SliderField m_brushSmoothingField;
 		private Button m_brushSettingsButton;
 		private HorizontalStackLayout m_optionsRow;
 		private View m_pulldownCatcher;
@@ -1000,18 +995,8 @@ namespace Bitmute.UI
 			sizeLabel.FontSize = 12.0;
 			sizeLabel.VerticalOptions = LayoutOptions.Center;
 
-			m_brushSizeSlider = new Slider();
-			m_brushSizeSlider.Minimum = 1.0;
-			m_brushSizeSlider.Maximum = 100.0;
-			m_brushSizeSlider.WidthRequest = 180.0;
-			m_brushSizeSlider.VerticalOptions = LayoutOptions.Center;
-			m_brushSizeSlider.ValueChanged += OnBrushSizeChanged;
-
-			m_brushSizeValue = new Label();
-			m_brushSizeValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			m_brushSizeValue.FontSize = 12.0;
-			m_brushSizeValue.WidthRequest = 44.0;
-			m_brushSizeValue.VerticalOptions = LayoutOptions.Center;
+			m_brushSizeField = new SliderField(1, 100, m_toolState.BrushSize(), " px", OnBrushSizeValue);
+			m_brushSizeField.VerticalOptions = LayoutOptions.Center;
 
 			m_brushHardnessLabel = new Label();
 			m_brushHardnessLabel.Text = "Hardness";
@@ -1020,20 +1005,9 @@ namespace Bitmute.UI
 			m_brushHardnessLabel.VerticalOptions = LayoutOptions.Center;
 			m_brushHardnessLabel.IsVisible = false;
 
-			m_brushHardnessSlider = new Slider();
-			m_brushHardnessSlider.Minimum = 0.0;
-			m_brushHardnessSlider.Maximum = 100.0;
-			m_brushHardnessSlider.WidthRequest = 90.0;
-			m_brushHardnessSlider.VerticalOptions = LayoutOptions.Center;
-			m_brushHardnessSlider.IsVisible = false;
-			m_brushHardnessSlider.ValueChanged += OnBrushHardnessChanged;
-
-			m_brushHardnessValue = new Label();
-			m_brushHardnessValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			m_brushHardnessValue.FontSize = 12.0;
-			m_brushHardnessValue.WidthRequest = 40.0;
-			m_brushHardnessValue.VerticalOptions = LayoutOptions.Center;
-			m_brushHardnessValue.IsVisible = false;
+			m_brushHardnessField = new SliderField(0, 100, m_toolState.BrushHardness(), "%", OnBrushHardnessValue);
+			m_brushHardnessField.VerticalOptions = LayoutOptions.Center;
+			m_brushHardnessField.IsVisible = false;
 
 			m_brushOpacityLabel = new Label();
 			m_brushOpacityLabel.Text = "Opacity";
@@ -1042,20 +1016,9 @@ namespace Bitmute.UI
 			m_brushOpacityLabel.VerticalOptions = LayoutOptions.Center;
 			m_brushOpacityLabel.IsVisible = false;
 
-			m_brushOpacitySlider = new Slider();
-			m_brushOpacitySlider.Minimum = 1.0;
-			m_brushOpacitySlider.Maximum = 100.0;
-			m_brushOpacitySlider.WidthRequest = 90.0;
-			m_brushOpacitySlider.VerticalOptions = LayoutOptions.Center;
-			m_brushOpacitySlider.IsVisible = false;
-			m_brushOpacitySlider.ValueChanged += OnBrushOpacityChanged;
-
-			m_brushOpacityValue = new Label();
-			m_brushOpacityValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			m_brushOpacityValue.FontSize = 12.0;
-			m_brushOpacityValue.WidthRequest = 40.0;
-			m_brushOpacityValue.VerticalOptions = LayoutOptions.Center;
-			m_brushOpacityValue.IsVisible = false;
+			m_brushOpacityField = new SliderField(1, 100, m_toolState.BrushOpacity(), "%", OnBrushOpacityValue);
+			m_brushOpacityField.VerticalOptions = LayoutOptions.Center;
+			m_brushOpacityField.IsVisible = false;
 
 			m_brushFlowLabel = new Label();
 			m_brushFlowLabel.Text = "Flow";
@@ -1064,20 +1027,9 @@ namespace Bitmute.UI
 			m_brushFlowLabel.VerticalOptions = LayoutOptions.Center;
 			m_brushFlowLabel.IsVisible = false;
 
-			m_brushFlowSlider = new Slider();
-			m_brushFlowSlider.Minimum = 1.0;
-			m_brushFlowSlider.Maximum = 100.0;
-			m_brushFlowSlider.WidthRequest = 90.0;
-			m_brushFlowSlider.VerticalOptions = LayoutOptions.Center;
-			m_brushFlowSlider.IsVisible = false;
-			m_brushFlowSlider.ValueChanged += OnBrushFlowChanged;
-
-			m_brushFlowValue = new Label();
-			m_brushFlowValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			m_brushFlowValue.FontSize = 12.0;
-			m_brushFlowValue.WidthRequest = 40.0;
-			m_brushFlowValue.VerticalOptions = LayoutOptions.Center;
-			m_brushFlowValue.IsVisible = false;
+			m_brushFlowField = new SliderField(1, 100, m_toolState.BrushFlow(), "%", OnBrushFlowValue);
+			m_brushFlowField.VerticalOptions = LayoutOptions.Center;
+			m_brushFlowField.IsVisible = false;
 
 			m_brushSmoothingLabel = new Label();
 			m_brushSmoothingLabel.Text = "Smoothing";
@@ -1086,20 +1038,9 @@ namespace Bitmute.UI
 			m_brushSmoothingLabel.VerticalOptions = LayoutOptions.Center;
 			m_brushSmoothingLabel.IsVisible = false;
 
-			m_brushSmoothingSlider = new Slider();
-			m_brushSmoothingSlider.Minimum = 0.0;
-			m_brushSmoothingSlider.Maximum = 100.0;
-			m_brushSmoothingSlider.WidthRequest = 90.0;
-			m_brushSmoothingSlider.VerticalOptions = LayoutOptions.Center;
-			m_brushSmoothingSlider.IsVisible = false;
-			m_brushSmoothingSlider.ValueChanged += OnBrushSmoothingChanged;
-
-			m_brushSmoothingValue = new Label();
-			m_brushSmoothingValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			m_brushSmoothingValue.FontSize = 12.0;
-			m_brushSmoothingValue.WidthRequest = 40.0;
-			m_brushSmoothingValue.VerticalOptions = LayoutOptions.Center;
-			m_brushSmoothingValue.IsVisible = false;
+			m_brushSmoothingField = new SliderField(0, 100, m_toolState.BrushSmoothing(), "%", OnBrushSmoothingValue);
+			m_brushSmoothingField.VerticalOptions = LayoutOptions.Center;
+			m_brushSmoothingField.IsVisible = false;
 
 			m_brushModeLabel = new Label();
 			m_brushModeLabel.Text = "Mode";
@@ -1149,20 +1090,15 @@ namespace Bitmute.UI
 			options.Spacing = 8.0;
 			options.VerticalOptions = LayoutOptions.Center;
 			options.Add(sizeLabel);
-			options.Add(m_brushSizeSlider);
-			options.Add(m_brushSizeValue);
+			options.Add(m_brushSizeField);
 			options.Add(m_brushHardnessLabel);
-			options.Add(m_brushHardnessSlider);
-			options.Add(m_brushHardnessValue);
+			options.Add(m_brushHardnessField);
 			options.Add(m_brushOpacityLabel);
-			options.Add(m_brushOpacitySlider);
-			options.Add(m_brushOpacityValue);
+			options.Add(m_brushOpacityField);
 			options.Add(m_brushFlowLabel);
-			options.Add(m_brushFlowSlider);
-			options.Add(m_brushFlowValue);
+			options.Add(m_brushFlowField);
 			options.Add(m_brushSmoothingLabel);
-			options.Add(m_brushSmoothingSlider);
-			options.Add(m_brushSmoothingValue);
+			options.Add(m_brushSmoothingField);
 			options.Add(m_brushModeLabel);
 			options.Add(m_brushModePicker);
 			options.Add(m_brushSettingsButton);
@@ -1171,15 +1107,6 @@ namespace Bitmute.UI
 			Grid.SetColumn(options, 1);
 			bar.Add(options);
 
-			m_brushSizeSlider.Value = m_toolState.BrushSize();
-			m_brushHardnessSlider.Value = m_toolState.BrushHardness();
-			m_brushHardnessValue.Text = m_toolState.BrushHardness() + "%";
-			m_brushOpacitySlider.Value = m_toolState.BrushOpacity();
-			m_brushOpacityValue.Text = m_toolState.BrushOpacity() + "%";
-			m_brushFlowSlider.Value = m_toolState.BrushFlow();
-			m_brushFlowValue.Text = m_toolState.BrushFlow() + "%";
-			m_brushSmoothingSlider.Value = m_toolState.BrushSmoothing();
-			m_brushSmoothingValue.Text = m_toolState.BrushSmoothing() + "%";
 			m_lineAntiAliasCheck.IsChecked = m_toolState.LineAntiAlias();
 
 			return bar;
@@ -1982,17 +1909,13 @@ namespace Bitmute.UI
 			if (m_brushHardnessLabel != null)
 			{
 				m_brushHardnessLabel.IsVisible = isBrushFamily;
-				m_brushHardnessSlider.IsVisible = isBrushFamily;
-				m_brushHardnessValue.IsVisible = isBrushFamily;
+				m_brushHardnessField.IsVisible = isBrushFamily;
 				m_brushOpacityLabel.IsVisible = isBrushFamily;
-				m_brushOpacitySlider.IsVisible = isBrushFamily;
-				m_brushOpacityValue.IsVisible = isBrushFamily;
+				m_brushOpacityField.IsVisible = isBrushFamily;
 				m_brushFlowLabel.IsVisible = isBrushFamily;
-				m_brushFlowSlider.IsVisible = isBrushFamily;
-				m_brushFlowValue.IsVisible = isBrushFamily;
+				m_brushFlowField.IsVisible = isBrushFamily;
 				m_brushSmoothingLabel.IsVisible = isBrushFamily;
-				m_brushSmoothingSlider.IsVisible = isBrushFamily;
-				m_brushSmoothingValue.IsVisible = isBrushFamily;
+				m_brushSmoothingField.IsVisible = isBrushFamily;
 				m_brushModeLabel.IsVisible = isBrushFamily;
 				m_brushModePicker.IsVisible = isBrushFamily;
 				m_brushSettingsButton.IsVisible = isBrushFamily;
@@ -2003,60 +1926,40 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void OnBrushHardnessChanged(object sender, ValueChangedEventArgs eventArgs)
+		private void OnBrushHardnessValue(int hardness)
 		{
 			if (m_toolState == null)
 			{
 				return;
 			}
-			int hardness = (int)m_brushHardnessSlider.Value;
 			m_toolState.SetBrushHardness(hardness);
-			if (m_brushHardnessValue != null)
-			{
-				m_brushHardnessValue.Text = hardness + "%";
-			}
 		}
 
-		private void OnBrushOpacityChanged(object sender, ValueChangedEventArgs eventArgs)
+		private void OnBrushOpacityValue(int opacity)
 		{
 			if (m_toolState == null)
 			{
 				return;
 			}
-			int opacity = (int)m_brushOpacitySlider.Value;
 			m_toolState.SetBrushOpacity(opacity);
-			if (m_brushOpacityValue != null)
-			{
-				m_brushOpacityValue.Text = opacity + "%";
-			}
 		}
 
-		private void OnBrushFlowChanged(object sender, ValueChangedEventArgs eventArgs)
+		private void OnBrushFlowValue(int flow)
 		{
 			if (m_toolState == null)
 			{
 				return;
 			}
-			int flow = (int)m_brushFlowSlider.Value;
 			m_toolState.SetBrushFlow(flow);
-			if (m_brushFlowValue != null)
-			{
-				m_brushFlowValue.Text = flow + "%";
-			}
 		}
 
-		private void OnBrushSmoothingChanged(object sender, ValueChangedEventArgs eventArgs)
+		private void OnBrushSmoothingValue(int smoothing)
 		{
 			if (m_toolState == null)
 			{
 				return;
 			}
-			int smoothing = (int)m_brushSmoothingSlider.Value;
 			m_toolState.SetBrushSmoothing(smoothing);
-			if (m_brushSmoothingValue != null)
-			{
-				m_brushSmoothingValue.Text = smoothing + "%";
-			}
 		}
 
 		private void OnBrushModeChanged(object sender, System.EventArgs eventArgs)
@@ -2207,7 +2110,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void ShowPulldown(View content, double anchorX, double anchorY, double width, double height)
+		public void ShowPulldown(View content, double anchorX, double anchorY, double width, double height)
 		{
 			ClosePulldown();
 			CloseMenu();
@@ -2271,18 +2174,13 @@ namespace Bitmute.UI
 			m_toolState.SetLineAntiAlias(m_lineAntiAliasCheck.IsChecked);
 		}
 
-		private void OnBrushSizeChanged(object sender, ValueChangedEventArgs eventArgs)
+		private void OnBrushSizeValue(int size)
 		{
 			if (m_toolState == null)
 			{
 				return;
 			}
-			int size = (int)m_brushSizeSlider.Value;
 			m_toolState.SetBrushSize(size);
-			if (m_brushSizeValue != null)
-			{
-				m_brushSizeValue.Text = size + " px";
-			}
 		}
 
 		public async void PlaceText(CanvasView canvas, int x, int y)

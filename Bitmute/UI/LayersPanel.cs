@@ -21,8 +21,7 @@ namespace Bitmute.UI
 		private double m_dragTotalY;
 
 		private VerticalStackLayout m_listHost;
-		private Slider m_opacity;
-		private Label m_opacityValue;
+		private SliderField m_opacityField;
 		private Picker m_blendPicker;
 		private bool m_suppress;
 		private List<Border> m_eyeButtons;
@@ -394,12 +393,8 @@ namespace Bitmute.UI
 			Refresh();
 		}
 
-		private void OnOpacityChanged(object sender, ValueChangedEventArgs eventArgs)
+		private void OnOpacityValue(int opacity)
 		{
-			if (m_suppress)
-			{
-				return;
-			}
 			Document document = Doc();
 			if (document == null)
 			{
@@ -410,9 +405,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			byte opacity = (byte)m_opacity.Value;
-			layer.SetOpacity(opacity);
-			m_opacityValue.Text = opacity.ToString();
+			layer.SetOpacity((byte)opacity);
 			RecompositeActive();
 		}
 
@@ -436,29 +429,18 @@ namespace Bitmute.UI
 			opacityLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			opacityLabel.VerticalOptions = LayoutOptions.Center;
 
-			m_opacity = new Slider();
-			m_opacity.Minimum = 0.0;
-			m_opacity.Maximum = 255.0;
-			m_opacity.ValueChanged += OnOpacityChanged;
-
-			m_opacityValue = new Label();
-			m_opacityValue.FontSize = 11.0;
-			m_opacityValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			m_opacityValue.WidthRequest = 30.0;
-			m_opacityValue.HorizontalTextAlignment = TextAlignment.End;
-			m_opacityValue.VerticalOptions = LayoutOptions.Center;
+			m_opacityField = new SliderField(0, 255, 255, "", OnOpacityValue);
+			m_opacityField.HorizontalOptions = LayoutOptions.End;
+			m_opacityField.VerticalOptions = LayoutOptions.Center;
 
 			Grid opacityRow = new Grid();
 			opacityRow.ColumnSpacing = 6.0;
 			opacityRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			opacityRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-			opacityRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			Grid.SetColumn(opacityLabel, 0);
-			Grid.SetColumn(m_opacity, 1);
-			Grid.SetColumn(m_opacityValue, 2);
+			Grid.SetColumn(m_opacityField, 1);
 			opacityRow.Add(opacityLabel);
-			opacityRow.Add(m_opacity);
-			opacityRow.Add(m_opacityValue);
+			opacityRow.Add(m_opacityField);
 
 			Label blendLabel = new Label();
 			blendLabel.Text = "Blend";
@@ -546,11 +528,10 @@ namespace Bitmute.UI
 			Layer active = document.ActiveLayer();
 			if (active != null)
 			{
+				m_opacityField.SetValueSilently(active.Opacity());
 				m_suppress = true;
-				m_opacity.Value = active.Opacity();
 				m_blendPicker.SelectedIndex = (int)active.BlendMode();
 				m_suppress = false;
-				m_opacityValue.Text = active.Opacity().ToString();
 			}
 		}
 	}
