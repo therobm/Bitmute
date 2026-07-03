@@ -1,3 +1,5 @@
 <Solution>
-  <Project Path="Bitmute/Bitmute.csproj" />
+  <Project Path="Bitmute/Bitmute.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
 </Solution>
