@@ -27,6 +27,7 @@ namespace Bitmute.Tools
 		DodgeBurn,
 		Hand,
 		Zoom,
-		Ruler
+		Ruler,
+		MagneticLasso
 	}
 }

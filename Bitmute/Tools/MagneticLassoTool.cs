@@ -1,0 +1,420 @@
+using System;
+using System.Collections.Generic;
+using Bitmute.Imaging;
+using SkiaSharp;
+
+namespace Bitmute.Tools
+{
+	public class MagneticLassoTool : Tool
+	{
+		private const int MinimumVertices = 3;
+		private const int MinimumDistinctPoints = 3;
+		private const double MinimumArea = 4.0;
+		private const int MinimumVertexDistanceSquared = 4;
+
+		private List<int> m_verticesX;
+		private List<int> m_verticesY;
+		private bool m_active;
+
+		private static unsafe int Luminance(byte* basePointer, int rowBytes, int x, int y)
+		{
+			byte* pixel = basePointer + (y * rowBytes) + (x * 4);
+			int red = pixel[0];
+			int green = pixel[1];
+			int blue = pixel[2];
+			int alpha = pixel[3];
+			return ((((red * 299) + (green * 587) + (blue * 114)) / 1000) * alpha) / 255;
+		}
+
+		private static unsafe int GradientMagnitude(byte* basePointer, int rowBytes, int x, int y)
+		{
+			int horizontal = Luminance(basePointer, rowBytes, x + 1, y) - Luminance(basePointer, rowBytes, x - 1, y);
+			int vertical = Luminance(basePointer, rowBytes, x, y + 1) - Luminance(basePointer, rowBytes, x, y - 1);
+			if (horizontal < 0)
+			{
+				horizontal = -horizontal;
+			}
+			if (vertical < 0)
+			{
+				vertical = -vertical;
+			}
+			return horizontal + vertical;
+		}
+
+		private static unsafe void FindEdge(byte* basePointer, int rowBytes, int bitmapWidth, int bitmapHeight, int layerOffsetX, int layerOffsetY, int documentWidth, int documentHeight, int rawX, int rawY, int radius, int threshold, out int snappedX, out int snappedY)
+		{
+			snappedX = rawX;
+			snappedY = rawY;
+			bool found = false;
+			int bestGradient = 0;
+			int bestDistanceSquared = 0;
+			for (int deltaY = -radius; deltaY <= radius; deltaY++)
+			{
+				int canvasY = rawY + deltaY;
+				if (canvasY < 0 || canvasY >= documentHeight)
+				{
+					continue;
+				}
+				int bitmapY = canvasY - layerOffsetY;
+				if (bitmapY < 1 || bitmapY >= bitmapHeight - 1)
+				{
+					continue;
+				}
+				for (int deltaX = -radius; deltaX <= radius; deltaX++)
+				{
+					int canvasX = rawX + deltaX;
+					if (canvasX < 0 || canvasX >= documentWidth)
+					{
+						continue;
+					}
+					int bitmapX = canvasX - layerOffsetX;
+					if (bitmapX < 1 || bitmapX >= bitmapWidth - 1)
+					{
+						continue;
+					}
+					int gradient = GradientMagnitude(basePointer, rowBytes, bitmapX, bitmapY);
+					if (gradient <= threshold)
+					{
+						continue;
+					}
+					int distanceSquared = (deltaX * deltaX) + (deltaY * deltaY);
+					bool better = false;
+					if (!found)
+					{
+						better = true;
+					}
+					else if (gradient > bestGradient)
+					{
+						better = true;
+					}
+					else if (gradient == bestGradient && distanceSquared < bestDistanceSquared)
+					{
+						better = true;
+					}
+					if (!better)
+					{
+						continue;
+					}
+					found = true;
+					bestGradient = gradient;
+					bestDistanceSquared = distanceSquared;
+					snappedX = canvasX;
+					snappedY = canvasY;
+				}
+			}
+		}
+
+		private unsafe void SnapPoint(Document document, int rawX, int rawY, ToolState state, out int snappedX, out int snappedY)
+		{
+			snappedX = rawX;
+			snappedY = rawY;
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			SKBitmap bitmap = layer.Bitmap();
+			if (bitmap == null)
+			{
+				return;
+			}
+			int radius = state.MagneticWidth();
+			if (radius < 0)
+			{
+				radius = 0;
+			}
+			int threshold = (state.MagneticContrast() * 255) / 100;
+			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
+			FindEdge(basePointer, bitmap.RowBytes, bitmap.Width, bitmap.Height, layer.OffsetX(), layer.OffsetY(), document.Width(), document.Height(), rawX, rawY, radius, threshold, out snappedX, out snappedY);
+		}
+
+		private void AppendPoint(int x, int y)
+		{
+			int count = m_verticesX.Count;
+			if (count > 0)
+			{
+				if (m_verticesX[count - 1] == x && m_verticesY[count - 1] == y)
+				{
+					return;
+				}
+			}
+			m_verticesX.Add(x);
+			m_verticesY.Add(y);
+		}
+
+		private void AppendPointIfFar(int x, int y)
+		{
+			int count = m_verticesX.Count;
+			if (count > 0)
+			{
+				int deltaX = x - m_verticesX[count - 1];
+				int deltaY = y - m_verticesY[count - 1];
+				if ((deltaX * deltaX) + (deltaY * deltaY) < MinimumVertexDistanceSquared)
+				{
+					return;
+				}
+			}
+			m_verticesX.Add(x);
+			m_verticesY.Add(y);
+		}
+
+		private int DistinctPointCount()
+		{
+			int count = m_verticesX.Count;
+			int distinct = 0;
+			for (int i = 0; i < count; i++)
+			{
+				bool seen = false;
+				for (int j = 0; j < i; j++)
+				{
+					if (m_verticesX[j] == m_verticesX[i] && m_verticesY[j] == m_verticesY[i])
+					{
+						seen = true;
+						break;
+					}
+				}
+				if (!seen)
+				{
+					distinct = distinct + 1;
+				}
+			}
+			return distinct;
+		}
+
+		private double PolygonArea()
+		{
+			int count = m_verticesX.Count;
+			if (count < MinimumVertices)
+			{
+				return 0.0;
+			}
+			double sum = 0.0;
+			for (int i = 0; i < count; i++)
+			{
+				int j = i + 1;
+				if (j == count)
+				{
+					j = 0;
+				}
+				double ax = m_verticesX[i];
+				double ay = m_verticesY[i];
+				double bx = m_verticesX[j];
+				double by = m_verticesY[j];
+				sum = sum + ((ax * by) - (bx * ay));
+			}
+			double area = sum / 2.0;
+			if (area < 0.0)
+			{
+				area = -area;
+			}
+			return area;
+		}
+
+		private static void SortAscending(double[] values, int count)
+		{
+			for (int i = 1; i < count; i++)
+			{
+				double current = values[i];
+				int j = i - 1;
+				for (;;)
+				{
+					if (j < 0)
+					{
+						break;
+					}
+					if (values[j] <= current)
+					{
+						break;
+					}
+					values[j + 1] = values[j];
+					j = j - 1;
+				}
+				values[j + 1] = current;
+			}
+		}
+
+		private void CommitSelection(Document document)
+		{
+			int count = m_verticesX.Count;
+			if (count < MinimumVertices)
+			{
+				document.Selection().ApplyRect(SKRectI.Empty);
+				return;
+			}
+			if (DistinctPointCount() < MinimumDistinctPoints)
+			{
+				document.Selection().ApplyRect(SKRectI.Empty);
+				return;
+			}
+			if (PolygonArea() < MinimumArea)
+			{
+				document.Selection().ApplyRect(SKRectI.Empty);
+				return;
+			}
+			int documentWidth = document.Width();
+			int documentHeight = document.Height();
+			byte[] mask = new byte[documentWidth * documentHeight];
+
+			int minPolyY = documentHeight;
+			int maxPolyY = -1;
+			for (int i = 0; i < count; i++)
+			{
+				int vertexY = m_verticesY[i];
+				if (vertexY < minPolyY)
+				{
+					minPolyY = vertexY;
+				}
+				if (vertexY > maxPolyY)
+				{
+					maxPolyY = vertexY;
+				}
+			}
+			int scanTop = minPolyY;
+			if (scanTop < 0)
+			{
+				scanTop = 0;
+			}
+			int scanBottom = maxPolyY;
+			if (scanBottom > documentHeight - 1)
+			{
+				scanBottom = documentHeight - 1;
+			}
+
+			double[] crossings = new double[count];
+			for (int pixelY = scanTop; pixelY <= scanBottom; pixelY++)
+			{
+				double scanLine = pixelY + 0.5;
+				int crossCount = 0;
+				for (int i = 0; i < count; i++)
+				{
+					int j = i + 1;
+					if (j == count)
+					{
+						j = 0;
+					}
+					double ax = m_verticesX[i];
+					double ay = m_verticesY[i];
+					double bx = m_verticesX[j];
+					double by = m_verticesY[j];
+					bool crosses = (ay <= scanLine && by > scanLine) || (by <= scanLine && ay > scanLine);
+					if (!crosses)
+					{
+						continue;
+					}
+					double t = (scanLine - ay) / (by - ay);
+					crossings[crossCount] = ax + (t * (bx - ax));
+					crossCount = crossCount + 1;
+				}
+				SortAscending(crossings, crossCount);
+				for (int k = 0; k + 1 < crossCount; k = k + 2)
+				{
+					int spanLeft = (int)Math.Ceiling(crossings[k] - 0.5);
+					int spanRight = (int)Math.Floor(crossings[k + 1] - 0.5);
+					if (spanLeft < 0)
+					{
+						spanLeft = 0;
+					}
+					if (spanRight > documentWidth - 1)
+					{
+						spanRight = documentWidth - 1;
+					}
+					int rowStart = pixelY * documentWidth;
+					for (int pixelX = spanLeft; pixelX <= spanRight; pixelX++)
+					{
+						mask[rowStart + pixelX] = 255;
+					}
+				}
+			}
+
+			document.Selection().ApplyMask(mask);
+		}
+
+		public MagneticLassoTool()
+		{
+			m_verticesX = new List<int>();
+			m_verticesY = new List<int>();
+			m_active = false;
+		}
+
+		public override bool IsDestructive()
+		{
+			return false;
+		}
+
+		public void Reset()
+		{
+			m_verticesX.Clear();
+			m_verticesY.Clear();
+			m_active = false;
+		}
+
+		public bool HasPreview()
+		{
+			return m_active && m_verticesX.Count > 0;
+		}
+
+		public int VertexCount()
+		{
+			return m_verticesX.Count;
+		}
+
+		public int VertexX(int index)
+		{
+			return m_verticesX[index];
+		}
+
+		public int VertexY(int index)
+		{
+			return m_verticesY[index];
+		}
+
+		public override bool OnPressed(Document document, int x, int y, ToolState state)
+		{
+			m_active = true;
+			m_verticesX.Clear();
+			m_verticesY.Clear();
+			eSelectionMode mode = SelectionModeFromState(state);
+			if (mode == eSelectionMode.Replace)
+			{
+				document.Selection().Clear();
+			}
+			document.Selection().BeginOperation(mode);
+			int snappedX;
+			int snappedY;
+			SnapPoint(document, x, y, state, out snappedX, out snappedY);
+			AppendPoint(snappedX, snappedY);
+			return false;
+		}
+
+		public override bool OnDragged(Document document, int x, int y, ToolState state)
+		{
+			if (!m_active)
+			{
+				return false;
+			}
+			int snappedX;
+			int snappedY;
+			SnapPoint(document, x, y, state, out snappedX, out snappedY);
+			AppendPointIfFar(snappedX, snappedY);
+			return false;
+		}
+
+		public override void OnReleased(Document document, int x, int y, ToolState state)
+		{
+			if (!m_active)
+			{
+				m_hasLast = false;
+				return;
+			}
+			int snappedX;
+			int snappedY;
+			SnapPoint(document, x, y, state, out snappedX, out snappedY);
+			AppendPoint(snappedX, snappedY);
+			CommitSelection(document);
+			m_active = false;
+			m_verticesX.Clear();
+			m_verticesY.Clear();
+			m_hasLast = false;
+		}
+	}
+}

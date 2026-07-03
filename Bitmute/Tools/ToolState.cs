@@ -20,6 +20,8 @@ namespace Bitmute.Tools
 		private bool m_wandContiguous;
 		private bool m_wandSampleAll;
 		private bool m_wandAntiAlias;
+		private int m_magneticWidth;
+		private int m_magneticContrast;
 		private bool m_lineAntiAlias;
 		private int m_textSize;
 		private bool m_textBold;
@@ -56,6 +58,8 @@ namespace Bitmute.Tools
 			m_wandContiguous = true;
 			m_wandSampleAll = false;
 			m_wandAntiAlias = true;
+			m_magneticWidth = 10;
+			m_magneticContrast = 10;
 			m_lineAntiAlias = false;
 			m_textSize = 32;
 			m_textBold = false;
@@ -74,6 +78,38 @@ namespace Bitmute.Tools
 			m_textKerningAuto = true;
 			m_shiftHeld = false;
 			m_altHeld = false;
+		}
+
+		public int MagneticWidth()
+		{
+			return m_magneticWidth;
+		}
+
+		public void SetMagneticWidth(int width)
+		{
+			if (width < 1)
+			{
+				width = 1;
+			}
+			m_magneticWidth = width;
+		}
+
+		public int MagneticContrast()
+		{
+			return m_magneticContrast;
+		}
+
+		public void SetMagneticContrast(int contrast)
+		{
+			if (contrast < 0)
+			{
+				contrast = 0;
+			}
+			if (contrast > 100)
+			{
+				contrast = 100;
+			}
+			m_magneticContrast = contrast;
 		}
 
 		public bool WandContiguous()

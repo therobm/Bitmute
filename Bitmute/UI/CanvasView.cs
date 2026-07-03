@@ -251,6 +251,11 @@ namespace Bitmute.UI
 				DrawFreehandLassoPreview(canvas, (FreehandLassoTool)tool);
 				return;
 			}
+			if (tool is MagneticLassoTool)
+			{
+				DrawMagneticLassoPreview(canvas, (MagneticLassoTool)tool);
+				return;
+			}
 			if (tool is RulerTool)
 			{
 				DrawRulerPreview(canvas, (RulerTool)tool);
@@ -543,6 +548,42 @@ namespace Bitmute.UI
 		}
 
 		private void DrawFreehandLassoPreview(SKCanvas canvas, FreehandLassoTool lasso)
+		{
+			if (!lasso.HasPreview())
+			{
+				return;
+			}
+			int count = lasso.VertexCount();
+			if (count < 2)
+			{
+				return;
+			}
+			SKPathBuilder builder = new SKPathBuilder();
+			builder.MoveTo(m_offsetX + (lasso.VertexX(0) * m_zoom), m_offsetY + (lasso.VertexY(0) * m_zoom));
+			for (int index = 1; index < count; index++)
+			{
+				builder.LineTo(m_offsetX + (lasso.VertexX(index) * m_zoom), m_offsetY + (lasso.VertexY(index) * m_zoom));
+			}
+			SKPath path = builder.Snapshot();
+			SKPaint underlay = new SKPaint();
+			underlay.Style = SKPaintStyle.Stroke;
+			underlay.StrokeWidth = 3.0f;
+			underlay.Color = SKColors.Black;
+			underlay.IsAntialias = true;
+			canvas.DrawPath(path, underlay);
+			underlay.Dispose();
+			SKPaint overlay = new SKPaint();
+			overlay.Style = SKPaintStyle.Stroke;
+			overlay.StrokeWidth = 1.0f;
+			overlay.Color = SKColors.White;
+			overlay.IsAntialias = true;
+			canvas.DrawPath(path, overlay);
+			overlay.Dispose();
+			path.Dispose();
+			builder.Dispose();
+		}
+
+		private void DrawMagneticLassoPreview(SKCanvas canvas, MagneticLassoTool lasso)
 		{
 			if (!lasso.HasPreview())
 			{
@@ -1088,7 +1129,7 @@ namespace Bitmute.UI
 			{
 				main.OnCanvasInteracted();
 			}
-			bool isSelectionTool = tool is RectangleSelectTool || tool is EllipseSelectTool || tool is LassoTool || tool is FreehandLassoTool || tool is MagicWandTool;
+			bool isSelectionTool = tool is RectangleSelectTool || tool is EllipseSelectTool || tool is LassoTool || tool is FreehandLassoTool || tool is MagneticLassoTool || tool is MagicWandTool;
 			if (isSelectionTool)
 			{
 				bool acted = eventArgs.ActionType == SKTouchAction.Pressed || eventArgs.ActionType == SKTouchAction.Released || (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact);

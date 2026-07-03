@@ -6,7 +6,25 @@ namespace Bitmute.Imaging
 {
 	public class Document
 	{
-		private const int MaxUndoDepth = 100;
+		private static int s_maxUndoDepth = 100;
+
+		public static int MaxUndoDepth()
+		{
+			return s_maxUndoDepth;
+		}
+
+		public static void SetMaxUndoDepth(int depth)
+		{
+			if (depth < 10)
+			{
+				depth = 10;
+			}
+			if (depth > 500)
+			{
+				depth = 500;
+			}
+			s_maxUndoDepth = depth;
+		}
 
 		private int m_width;
 		private int m_height;
@@ -307,7 +325,7 @@ namespace Bitmute.Imaging
 			LayerEditCommand command = new LayerEditCommand(m_strokeLayerIndex, rect, before, after);
 			m_undoStack.Add(command);
 			m_redoStack.Clear();
-			if (m_undoStack.Count > MaxUndoDepth)
+			if (m_undoStack.Count > s_maxUndoDepth)
 			{
 				m_undoStack.RemoveAt(0);
 			}
@@ -320,7 +338,7 @@ namespace Bitmute.Imaging
 		{
 			m_undoStack.Add(command);
 			m_redoStack.Clear();
-			if (m_undoStack.Count > MaxUndoDepth)
+			if (m_undoStack.Count > s_maxUndoDepth)
 			{
 				m_undoStack.RemoveAt(0);
 			}

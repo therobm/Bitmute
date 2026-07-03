@@ -484,7 +484,7 @@ namespace Bitmute.UI
 			{
 				new eTool[] { eTool.Move },
 				new eTool[] { eTool.Select, eTool.EllipseSelect },
-				new eTool[] { eTool.Lasso, eTool.FreehandLasso },
+				new eTool[] { eTool.Lasso, eTool.FreehandLasso, eTool.MagneticLasso },
 				new eTool[] { eTool.MagicWand },
 				new eTool[] { eTool.Brush, eTool.Pencil },
 				new eTool[] { eTool.Eraser },
@@ -503,7 +503,7 @@ namespace Bitmute.UI
 			{
 				new string[] { "move.png" },
 				new string[] { "box_select.png", "ellipse_select.png" },
-				new string[] { "lasso.png", "freehand_lasso.png" },
+				new string[] { "lasso.png", "freehand_lasso.png", "magnetic_lasso.png" },
 				new string[] { "magic_wand.png" },
 				new string[] { "brush.png", "pencil.png" },
 				new string[] { "eraser.png" },
@@ -522,7 +522,7 @@ namespace Bitmute.UI
 			{
 				new string[] { "Move" },
 				new string[] { "Rectangle Select", "Ellipse Select" },
-				new string[] { "Poly Lasso", "Freehand Lasso" },
+				new string[] { "Poly Lasso", "Freehand Lasso", "Magnetic Lasso (drag along an edge)" },
 				new string[] { "Magic Wand" },
 				new string[] { "Brush", "Pencil" },
 				new string[] { "Eraser" },

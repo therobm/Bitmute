@@ -16,6 +16,7 @@ namespace Bitmute.UI
 		private Grid m_body;
 		private bool m_collapsed;
 		private Label m_collapseLabel;
+		private double m_lastPanY;
 
 		private Border BuildTab(int index)
 		{
@@ -130,6 +131,34 @@ namespace Bitmute.UI
 			return m_collapsed;
 		}
 
+		private void OnStripPan(object sender, PanUpdatedEventArgs eventArgs)
+		{
+			MainView main = MainView.Self;
+			if (main == null)
+			{
+				return;
+			}
+			if (eventArgs.StatusType == GestureStatus.Started)
+			{
+				m_lastPanY = 0.0;
+				ZIndex = 100;
+				return;
+			}
+			if (eventArgs.StatusType == GestureStatus.Running)
+			{
+				m_lastPanY = eventArgs.TotalY;
+				TranslationY = m_lastPanY;
+				return;
+			}
+			if (eventArgs.StatusType == GestureStatus.Completed || eventArgs.StatusType == GestureStatus.Canceled)
+			{
+				TranslationY = 0.0;
+				ZIndex = 0;
+				main.ReorderPalettePanel(this, m_lastPanY);
+				m_lastPanY = 0.0;
+			}
+		}
+
 		public PaletteGroup(string[] tabNames, View content)
 		{
 			m_tabNames = tabNames;
@@ -163,6 +192,10 @@ namespace Bitmute.UI
 			tabStrip.Add(tabs);
 			tabStrip.Add(m_collapseLabel);
 			tabStrip.Add(closeLabel);
+
+			PanGestureRecognizer stripDrag = new PanGestureRecognizer();
+			stripDrag.PanUpdated += OnStripPan;
+			tabStrip.GestureRecognizers.Add(stripDrag);
 
 			m_body = new Grid();
 			m_body.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);

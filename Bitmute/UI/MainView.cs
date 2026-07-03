@@ -34,6 +34,7 @@ namespace Bitmute.UI
 		private PaletteGroup m_swatchesGroup;
 		private PaletteGroup m_layersGroup;
 		private PaletteGroup m_infoGroup;
+		private List<PaletteGroup> m_paletteOrder;
 		private Grid m_paletteDock;
 		private bool m_navigatorPanelVisible = true;
 		private bool m_swatchesPanelVisible = true;
@@ -78,6 +79,10 @@ namespace Bitmute.UI
 		private CheckBox m_wandContiguousCheck;
 		private Label m_wandSampleAllLabel;
 		private CheckBox m_wandSampleAllCheck;
+		private Label m_magneticWidthLabel;
+		private SliderField m_magneticWidthField;
+		private Label m_magneticContrastLabel;
+		private SliderField m_magneticContrastField;
 		private Label m_textFontLabel;
 		private Button m_textFontButton;
 		private string[] m_fontFamilies;
@@ -143,6 +148,7 @@ namespace Bitmute.UI
 		private EllipseSelectTool m_ellipseSelectTool;
 		private LassoTool m_lassoTool;
 		private FreehandLassoTool m_freehandLassoTool;
+		private MagneticLassoTool m_magneticLassoTool;
 		private MagicWandTool m_magicWandTool;
 		private TextTool m_textTool;
 		private PencilTool m_pencilTool;
@@ -178,11 +184,11 @@ namespace Bitmute.UI
 		{
 			if (title == "File")
 			{
-				return new string[] { "New", "Open…", "Save…", "Exit" };
+				return new string[] { "New", "Open…", "Save…", "Save Project…", "Export As…", "Exit" };
 			}
 			if (title == "Edit")
 			{
-				return new string[] { "Undo", "Redo", "Cut", "Copy", "Paste" };
+				return new string[] { "Undo", "Redo", "Cut", "Copy", "Paste", "Preferences…" };
 			}
 			if (title == "Image")
 			{
@@ -227,6 +233,14 @@ namespace Bitmute.UI
 				{
 					return true;
 				}
+				if (item == "Save Project…")
+				{
+					return true;
+				}
+				if (item == "Export As…")
+				{
+					return true;
+				}
 				if (item == "Exit")
 				{
 					return true;
@@ -252,6 +266,10 @@ namespace Bitmute.UI
 					return true;
 				}
 				if (item == "Paste")
+				{
+					return true;
+				}
+				if (item == "Preferences…")
 				{
 					return true;
 				}
@@ -304,6 +322,10 @@ namespace Bitmute.UI
 					return true;
 				}
 				return false;
+			}
+			if (item == "About Bitmute")
+			{
+				return true;
 			}
 			return false;
 		}
@@ -738,6 +760,26 @@ namespace Bitmute.UI
 			if (action == "Rasterize Text")
 			{
 				DoRasterizeText();
+				return;
+			}
+			if (action == "Save Project…")
+			{
+				SaveProjectFlow();
+				return;
+			}
+			if (action == "Export As…")
+			{
+				OpenExportDialog();
+				return;
+			}
+			if (action == "Preferences…")
+			{
+				ShowModal(new PreferencesDialog(), 340.0, 260.0);
+				return;
+			}
+			if (action == "About Bitmute")
+			{
+				ShowModal(new AboutDialog(), 380.0, 300.0);
 				return;
 			}
 			if (action == "Canvas Size…")
@@ -1530,6 +1572,28 @@ namespace Bitmute.UI
 			m_wandSampleAllCheck.IsChecked = m_toolState.WandSampleAll();
 			m_wandSampleAllCheck.CheckedChanged += OnWandSampleAllChanged;
 
+			m_magneticWidthLabel = new Label();
+			m_magneticWidthLabel.Text = "Width";
+			m_magneticWidthLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_magneticWidthLabel.FontSize = 12.0;
+			m_magneticWidthLabel.VerticalOptions = LayoutOptions.Center;
+			m_magneticWidthLabel.IsVisible = false;
+
+			m_magneticWidthField = new SliderField(1, 40, m_toolState.MagneticWidth(), " px", OnMagneticWidthValue);
+			m_magneticWidthField.VerticalOptions = LayoutOptions.Center;
+			m_magneticWidthField.IsVisible = false;
+
+			m_magneticContrastLabel = new Label();
+			m_magneticContrastLabel.Text = "Contrast";
+			m_magneticContrastLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_magneticContrastLabel.FontSize = 12.0;
+			m_magneticContrastLabel.VerticalOptions = LayoutOptions.Center;
+			m_magneticContrastLabel.IsVisible = false;
+
+			m_magneticContrastField = new SliderField(0, 100, m_toolState.MagneticContrast(), "%", OnMagneticContrastValue);
+			m_magneticContrastField.VerticalOptions = LayoutOptions.Center;
+			m_magneticContrastField.IsVisible = false;
+
 			m_textFontLabel = new Label();
 			m_textFontLabel.Text = "Font";
 			m_textFontLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
@@ -1672,6 +1736,10 @@ namespace Bitmute.UI
 			options.Add(m_wandContiguousCheck);
 			options.Add(m_wandSampleAllLabel);
 			options.Add(m_wandSampleAllCheck);
+			options.Add(m_magneticWidthLabel);
+			options.Add(m_magneticWidthField);
+			options.Add(m_magneticContrastLabel);
+			options.Add(m_magneticContrastField);
 			options.Add(m_textFontLabel);
 			options.Add(m_textFontButton);
 			options.Add(m_textSizeLabel);
@@ -1746,14 +1814,16 @@ namespace Bitmute.UI
 			dock.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
 			dock.RowDefinitions.Add(new RowDefinition(new GridLength(0.0)));
 
-			Grid.SetRow(m_navigatorGroup, 0);
-			Grid.SetRow(m_swatchesGroup, 1);
-			Grid.SetRow(m_layersGroup, 2);
-			Grid.SetRow(m_infoGroup, 3);
 			dock.Add(m_navigatorGroup);
 			dock.Add(m_swatchesGroup);
 			dock.Add(m_layersGroup);
 			dock.Add(m_infoGroup);
+
+			m_paletteOrder = new List<PaletteGroup>();
+			m_paletteOrder.Add(m_navigatorGroup);
+			m_paletteOrder.Add(m_swatchesGroup);
+			m_paletteOrder.Add(m_layersGroup);
+			m_paletteOrder.Add(m_infoGroup);
 
 			m_paletteDock = dock;
 			RefreshDockLayout();
@@ -1771,15 +1841,85 @@ namespace Bitmute.UI
 			m_layersGroup.IsVisible = m_layersPanelVisible;
 			m_infoGroup.IsVisible = m_infoPanelVisible;
 			bool layersStretch = m_layersPanelVisible && !m_layersGroup.IsCollapsed();
-			GridLength layersLength = GridLength.Auto;
+			for (int index = 0; index < m_paletteOrder.Count; index++)
+			{
+				PaletteGroup group = m_paletteOrder[index];
+				Grid.SetRow(group, index);
+				GridLength height = GridLength.Auto;
+				if (group == m_layersGroup && layersStretch)
+				{
+					height = GridLength.Star;
+				}
+				m_paletteDock.RowDefinitions[index].Height = height;
+			}
 			GridLength fillerLength = GridLength.Star;
 			if (layersStretch)
 			{
-				layersLength = GridLength.Star;
 				fillerLength = new GridLength(0.0);
 			}
-			m_paletteDock.RowDefinitions[2].Height = layersLength;
-			m_paletteDock.RowDefinitions[4].Height = fillerLength;
+			m_paletteDock.RowDefinitions[m_paletteOrder.Count].Height = fillerLength;
+		}
+
+		public void ReorderPalettePanel(PaletteGroup group, double deltaY)
+		{
+			if (m_paletteOrder == null)
+			{
+				return;
+			}
+			if (!m_paletteOrder.Contains(group))
+			{
+				return;
+			}
+			List<PaletteGroup> visible = new List<PaletteGroup>();
+			List<double> centers = new List<double>();
+			for (int index = 0; index < m_paletteOrder.Count; index++)
+			{
+				PaletteGroup candidate = m_paletteOrder[index];
+				if (!candidate.IsVisible)
+				{
+					continue;
+				}
+				double center = candidate.Y + (candidate.Height / 2.0);
+				if (candidate == group)
+				{
+					center = center + deltaY;
+				}
+				visible.Add(candidate);
+				centers.Add(center);
+			}
+			for (int outer = 1; outer < visible.Count; outer++)
+			{
+				PaletteGroup movingGroup = visible[outer];
+				double movingCenter = centers[outer];
+				int inner = outer - 1;
+				for (;;)
+				{
+					if (inner < 0 || centers[inner] <= movingCenter)
+					{
+						break;
+					}
+					visible[inner + 1] = visible[inner];
+					centers[inner + 1] = centers[inner];
+					inner = inner - 1;
+				}
+				visible[inner + 1] = movingGroup;
+				centers[inner + 1] = movingCenter;
+			}
+			List<PaletteGroup> reordered = new List<PaletteGroup>();
+			for (int index = 0; index < visible.Count; index++)
+			{
+				reordered.Add(visible[index]);
+			}
+			for (int index = 0; index < m_paletteOrder.Count; index++)
+			{
+				PaletteGroup candidate = m_paletteOrder[index];
+				if (!candidate.IsVisible)
+				{
+					reordered.Add(candidate);
+				}
+			}
+			m_paletteOrder = reordered;
+			RefreshDockLayout();
 		}
 
 		public void OnPaletteGroupLayoutChanged()
@@ -1888,6 +2028,7 @@ namespace Bitmute.UI
 			Self = this;
 			Title = "Bitmute";
 			Theme.InitializeFromSystem();
+			Document.SetMaxUndoDepth(Microsoft.Maui.Storage.Preferences.Default.Get("undo_depth", 100));
 			Microsoft.Maui.Controls.Application application = Microsoft.Maui.Controls.Application.Current;
 			if (application != null)
 			{
@@ -1908,6 +2049,7 @@ namespace Bitmute.UI
 			m_ellipseSelectTool = new EllipseSelectTool();
 			m_lassoTool = new LassoTool();
 			m_freehandLassoTool = new FreehandLassoTool();
+			m_magneticLassoTool = new MagneticLassoTool();
 			m_magicWandTool = new MagicWandTool();
 			m_textTool = new TextTool();
 			m_pencilTool = new PencilTool();
@@ -2463,6 +2605,18 @@ namespace Bitmute.UI
 		{
 			try
 			{
+				if (path.ToLowerInvariant().EndsWith(".bitmute"))
+				{
+					Document project = BitmuteFile.Read(path);
+					if (project == null)
+					{
+						SetStatusMessage("Failed to open project");
+						return;
+					}
+					DocumentWindow projectWindow = new DocumentWindow(project);
+					PlaceAndAdd(projectWindow);
+					return;
+				}
 				SkiaSharp.SKBitmap bitmap = ImageFile.DecodeFile(path);
 				if (bitmap == null)
 				{
@@ -2489,6 +2643,143 @@ namespace Bitmute.UI
 				return;
 			}
 			await SaveDocumentAsync(model);
+		}
+
+		private async void SaveProjectFlow()
+		{
+			Document model = ActiveDocument();
+			if (model == null)
+			{
+				SetStatusMessage("No document to save");
+				return;
+			}
+			try
+			{
+				string path = await FileDialogs.PickSaveTypedAsync(model.Title(), "Bitmute Project", ".bitmute");
+				if (path == null)
+				{
+					return;
+				}
+				bool success = BitmuteFile.Write(path, model);
+				if (!success)
+				{
+					SetStatusMessage("Project save failed");
+					return;
+				}
+				model.MarkClean();
+				SetStatusMessage("Saved " + System.IO.Path.GetFileName(path));
+			}
+			catch (System.Exception error)
+			{
+				SetStatusMessage("Project save failed: " + error.Message);
+			}
+		}
+
+		private void OpenExportDialog()
+		{
+			if (ActiveDocument() == null)
+			{
+				SetStatusMessage("No document to export");
+				return;
+			}
+			ShowModal(new ExportDialog(), 340.0, 280.0);
+		}
+
+		private static string ExportLabel(string format)
+		{
+			if (format == "jpeg")
+			{
+				return "JPEG Image";
+			}
+			if (format == "bmp")
+			{
+				return "Bitmap Image";
+			}
+			if (format == "tga")
+			{
+				return "TGA Image";
+			}
+			if (format == "webp")
+			{
+				return "WebP Image";
+			}
+			return "PNG Image";
+		}
+
+		private static string ExportExtension(string format)
+		{
+			if (format == "jpeg")
+			{
+				return ".jpg";
+			}
+			if (format == "bmp")
+			{
+				return ".bmp";
+			}
+			if (format == "tga")
+			{
+				return ".tga";
+			}
+			if (format == "webp")
+			{
+				return ".webp";
+			}
+			return ".png";
+		}
+
+		public async void ConfirmExport(string format, int quality, bool lossless, bool rle)
+		{
+			CloseModal();
+			Document model = ActiveDocument();
+			if (model == null)
+			{
+				SetStatusMessage("No document to export");
+				return;
+			}
+			try
+			{
+				string path = await FileDialogs.PickSaveTypedAsync(model.Title(), ExportLabel(format), ExportExtension(format));
+				if (path == null)
+				{
+					return;
+				}
+				bool success = ImageFile.Export(model, path, format, quality, lossless, rle);
+				if (success)
+				{
+					SetStatusMessage("Exported " + System.IO.Path.GetFileName(path));
+				}
+				else
+				{
+					SetStatusMessage("Export failed");
+				}
+			}
+			catch (System.Exception error)
+			{
+				SetStatusMessage("Export failed: " + error.Message);
+			}
+		}
+
+		public int CurrentUndoDepth()
+		{
+			return Document.MaxUndoDepth();
+		}
+
+		public void ApplyUndoDepth(int depth)
+		{
+			Document.SetMaxUndoDepth(depth);
+			Microsoft.Maui.Storage.Preferences.Default.Set("undo_depth", Document.MaxUndoDepth());
+		}
+
+		public async void OpenRepoLink()
+		{
+			try
+			{
+				await Microsoft.Maui.ApplicationModel.Launcher.Default.OpenAsync(new System.Uri("https://github.com/therobm/Bitmute"));
+			}
+			catch (System.Exception error)
+			{
+				SetStatusMessage("Could not open link: " + error.Message);
+			}
 		}
 
 		private async System.Threading.Tasks.Task<bool> SaveDocumentAsync(Document model)
@@ -2870,6 +3161,14 @@ namespace Bitmute.UI
 				m_wandSampleAllLabel.IsVisible = isWand;
 				m_wandSampleAllCheck.IsVisible = isWand;
 			}
+			bool isMagnetic = tool == eTool.MagneticLasso;
+			if (m_magneticWidthLabel != null)
+			{
+				m_magneticWidthLabel.IsVisible = isMagnetic;
+				m_magneticWidthField.IsVisible = isMagnetic;
+				m_magneticContrastLabel.IsVisible = isMagnetic;
+				m_magneticContrastField.IsVisible = isMagnetic;
+			}
 			bool isText = tool == eTool.Text;
 			if (m_textFontLabel != null)
 			{
@@ -2920,6 +3219,10 @@ namespace Bitmute.UI
 			{
 				m_freehandLassoTool.Reset();
 			}
+			if (m_magneticLassoTool != null)
+			{
+				m_magneticLassoTool.Reset();
+			}
 			if (m_rulerTool != null)
 			{
 				m_rulerTool.Reset();
@@ -2960,6 +3263,24 @@ namespace Bitmute.UI
 				return;
 			}
 			m_toolState.SetWandSampleAll(m_wandSampleAllCheck.IsChecked);
+		}
+
+		private void OnMagneticWidthValue(int width)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetMagneticWidth(width);
+		}
+
+		private void OnMagneticContrastValue(int contrast)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetMagneticContrast(contrast);
 		}
 
 		private void OnBrushHardnessValue(int hardness)
@@ -4181,6 +4502,10 @@ namespace Bitmute.UI
 			if (tool == eTool.FreehandLasso)
 			{
 				return m_freehandLassoTool;
+			}
+			if (tool == eTool.MagneticLasso)
+			{
+				return m_magneticLassoTool;
 			}
 			if (tool == eTool.MagicWand)
 			{

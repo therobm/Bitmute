@@ -18,6 +18,9 @@ namespace Bitmute.Storage
 			extensions.Add(".jpeg");
 			extensions.Add(".bmp");
 			extensions.Add(".tga");
+			extensions.Add(".webp");
+			extensions.Add(".gif");
+			extensions.Add(".bitmute");
 
 			Dictionary<DevicePlatform, IEnumerable<string>> typeMap = new Dictionary<DevicePlatform, IEnumerable<string>>();
 			typeMap.Add(DevicePlatform.WinUI, extensions);
@@ -65,6 +68,37 @@ namespace Bitmute.Storage
 			bmpExtensions.Add(".bmp");
 			picker.FileTypeChoices.Add("Bitmap Image", bmpExtensions);
 
+			picker.SuggestedFileName = suggestedName;
+
+			Windows.Storage.StorageFile file = await picker.PickSaveFileAsync();
+			if (file == null)
+			{
+				return null;
+			}
+			return file.Path;
+		}
+
+		public static async Task<string> PickSaveTypedAsync(string suggestedName, string label, string extension)
+		{
+			IReadOnlyList<Window> windows = Application.Current.Windows;
+			if (windows.Count == 0)
+			{
+				return null;
+			}
+			object platformView = windows[0].Handler.PlatformView;
+			Microsoft.UI.Xaml.Window nativeWindow = platformView as Microsoft.UI.Xaml.Window;
+			if (nativeWindow == null)
+			{
+				return null;
+			}
+			IntPtr handle = WinRT.Interop.WindowNative.GetWindowHandle(nativeWindow);
+
+			Windows.Storage.Pickers.FileSavePicker picker = new Windows.Storage.Pickers.FileSavePicker();
+			WinRT.Interop.InitializeWithWindow.Initialize(picker, handle);
+
+			List<string> extensions = new List<string>();
+			extensions.Add(extension);
+			picker.FileTypeChoices.Add(label, extensions);
 			picker.SuggestedFileName = suggestedName;
 
 			Windows.Storage.StorageFile file = await picker.PickSaveFileAsync();
