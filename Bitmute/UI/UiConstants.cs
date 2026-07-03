@@ -40,6 +40,12 @@ namespace Bitmute.UI
 		public static readonly Color PanelSurfaceLight = Color.FromArgb("#eaeaea");
 		public static readonly Color TitleBarDark = Color.FromArgb("#2F2F2F");
 		public static readonly Color TitleBarLight = Color.FromArgb("#DDDDDD");
+		public static readonly Color AppTitleBarDark = Color.FromArgb("#111111");
+		public static readonly Color AppTitleBarLight = Color.FromArgb("#D2D2D2");
+		public static readonly Color AppTitleBarTextDark = Color.FromArgb("#E4E4E4");
+		public static readonly Color AppTitleBarTextLight = Color.FromArgb("#1E1E1E");
+		public static readonly Color AppTitleBarHoverDark = Color.FromArgb("#2A2A2A");
+		public static readonly Color AppTitleBarHoverLight = Color.FromArgb("#C0C0C0");
 		public static readonly Color TitleBarActiveDark = Color.FromArgb("#3D5A80");
 		public static readonly Color TitleBarActiveLight = Color.FromArgb("#B9CDE8");
 		public static readonly Color OnSurfaceDark = Color.FromArgb("#E4E4E4");
@@ -80,6 +86,9 @@ namespace Bitmute.UI
 		public static Color Divider { get { return Pick(DividerLight, DividerDark); } }
 		public static Color PanelSurface { get { return Pick(PanelSurfaceLight, PanelSurfaceDark); } }
 		public static Color TitleBar { get { return Pick(TitleBarLight, TitleBarDark); } }
+		public static Color AppTitleBar { get { return Pick(AppTitleBarLight, AppTitleBarDark); } }
+		public static Color AppTitleBarText { get { return Pick(AppTitleBarTextLight, AppTitleBarTextDark); } }
+		public static Color AppTitleBarHover { get { return Pick(AppTitleBarHoverLight, AppTitleBarHoverDark); } }
 		public static Color TitleBarActive { get { return Pick(TitleBarActiveLight, TitleBarActiveDark); } }
 		public static Color OnSurface { get { return Pick(OnSurfaceLight, OnSurfaceDark); } }
 		public static Color TextDim { get { return Pick(TextDimLight, TextDimDark); } }
