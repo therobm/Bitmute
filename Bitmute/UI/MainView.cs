@@ -1356,6 +1356,7 @@ namespace Bitmute.UI
 
 			m_workspace = new AbsoluteLayout();
 			m_workspace.ThemeBg(UiConstants.WorkspaceBackdropLight, UiConstants.WorkspaceBackdropDark);
+			m_workspace.SizeChanged += OnWorkspaceSizeChanged;
 
 			BoxView workspaceBackground = new BoxView();
 			workspaceBackground.Color = Colors.Transparent;
@@ -1956,6 +1957,19 @@ namespace Bitmute.UI
 		private void OnWorkspaceDoubleTapped(object sender, TappedEventArgs eventArgs)
 		{
 			OpenImageFlow();
+		}
+
+		private void OnWorkspaceSizeChanged(object sender, EventArgs eventArgs)
+		{
+			double width = m_workspace.Width;
+			double height = m_workspace.Height;
+			if (width <= 0.0 || height <= 0.0)
+			{
+				return;
+			}
+			RectangleGeometry geometry = new RectangleGeometry();
+			geometry.Rect = new Rect(0.0, 0.0, width, height);
+			m_workspace.Clip = geometry;
 		}
 
 		private void ShowModal(View content, double width, double height)
