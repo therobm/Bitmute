@@ -424,7 +424,7 @@ namespace Bitmute.UI
 			ClosePulldown();
 			CloseMenu();
 			m_openMenuIndex = index;
-			m_menuButtons[index].ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			m_menuButtons[index].ThemeBg(UiConstants.MenuOpenLight, UiConstants.MenuOpenDark);
 
 			string title = m_menuTitles[index];
 			string[] items = GetMenuItems(title);
