@@ -55,6 +55,10 @@ namespace Bitmute.Storage
 			Windows.Storage.Pickers.FileSavePicker picker = new Windows.Storage.Pickers.FileSavePicker();
 			WinRT.Interop.InitializeWithWindow.Initialize(picker, handle);
 
+			List<string> bitmuteExtensions = new List<string>();
+			bitmuteExtensions.Add(".bitmute");
+			picker.FileTypeChoices.Add("Bitmute Project", bitmuteExtensions);
+
 			List<string> pngExtensions = new List<string>();
 			pngExtensions.Add(".png");
 			picker.FileTypeChoices.Add("PNG Image", pngExtensions);
@@ -67,6 +71,14 @@ namespace Bitmute.Storage
 			List<string> bmpExtensions = new List<string>();
 			bmpExtensions.Add(".bmp");
 			picker.FileTypeChoices.Add("Bitmap Image", bmpExtensions);
+
+			List<string> tgaExtensions = new List<string>();
+			tgaExtensions.Add(".tga");
+			picker.FileTypeChoices.Add("TGA Image", tgaExtensions);
+
+			List<string> webpExtensions = new List<string>();
+			webpExtensions.Add(".webp");
+			picker.FileTypeChoices.Add("WebP Image", webpExtensions);
 
 			picker.SuggestedFileName = suggestedName;
 

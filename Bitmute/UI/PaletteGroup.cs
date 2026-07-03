@@ -131,6 +131,25 @@ namespace Bitmute.UI
 			return m_collapsed;
 		}
 
+		public string PanelKey()
+		{
+			return m_tabNames[0];
+		}
+
+		public void SetCollapsed(bool collapsed)
+		{
+			m_collapsed = collapsed;
+			m_body.IsVisible = !collapsed;
+			if (collapsed)
+			{
+				m_collapseLabel.Text = "▸";
+			}
+			else
+			{
+				m_collapseLabel.Text = "▾";
+			}
+		}
+
 		private void OnStripPan(object sender, PanUpdatedEventArgs eventArgs)
 		{
 			MainView main = MainView.Self;

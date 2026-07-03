@@ -170,6 +170,14 @@ namespace Bitmute.UI
 		private HandTool m_handTool;
 		private ZoomTool m_zoomTool;
 		private RulerTool m_rulerTool;
+		private CropTool m_cropTool;
+		private bool m_gridEnabled;
+		private List<string> m_recentMenuPaths;
+
+		private static string RecentMenuLabel(int index, string path)
+		{
+			return (index + 1) + "  " + System.IO.Path.GetFileName(path);
+		}
 
 		private static string PanelMenuLabel(string name, bool visible)
 		{
@@ -184,15 +192,38 @@ namespace Bitmute.UI
 		{
 			if (title == "File")
 			{
-				return new string[] { "New", "Open…", "Save…", "Save Project…", "Export As…", "Exit" };
+				List<string> fileItems = new List<string>();
+				fileItems.Add("New");
+				fileItems.Add("Open…");
+				fileItems.Add("Save");
+				fileItems.Add("Save As…");
+				fileItems.Add("Export As…");
+				m_recentMenuPaths.Clear();
+				List<string> recent = RecentFiles.List();
+				int recentCount = recent.Count;
+				if (recentCount > 8)
+				{
+					recentCount = 8;
+				}
+				for (int index = 0; index < recentCount; index++)
+				{
+					m_recentMenuPaths.Add(recent[index]);
+					fileItems.Add(RecentMenuLabel(index, recent[index]));
+				}
+				if (recentCount > 0)
+				{
+					fileItems.Add("Clear Recent");
+				}
+				fileItems.Add("Exit");
+				return fileItems.ToArray();
 			}
 			if (title == "Edit")
 			{
-				return new string[] { "Undo", "Redo", "Cut", "Copy", "Paste", "Preferences…" };
+				return new string[] { "Undo", "Redo", "Cut", "Copy", "Paste", "Stroke…", "Preferences…" };
 			}
 			if (title == "Image")
 			{
-				return new string[] { "Image Size…", "Canvas Size…", "Flip Horizontal", "Flip Vertical", "Rotate 90° CW", "Rotate 180°", "Rotate 90° CCW", "Crop to Selection", "Trim" };
+				return new string[] { "Image Size…", "Canvas Size…", "Flip Horizontal", "Flip Vertical", "Rotate 90° CW", "Rotate 180°", "Rotate 90° CCW", "Rotate Arbitrary…", "Crop to Selection", "Trim" };
 			}
 			if (title == "Layer")
 			{
@@ -208,7 +239,7 @@ namespace Bitmute.UI
 			}
 			if (title == "View")
 			{
-				return new string[] { "Zoom In", "Zoom Out", "Fit on Screen", "Rulers", "Toggle Light/Dark", "Use System Theme" };
+				return new string[] { "Zoom In", "Zoom Out", "Fit on Screen", "Rulers", "Grid" };
 			}
 			if (title == "Window")
 			{
@@ -221,59 +252,11 @@ namespace Bitmute.UI
 		{
 			if (title == "File")
 			{
-				if (item == "New")
-				{
-					return true;
-				}
-				if (item == "Open…")
-				{
-					return true;
-				}
-				if (item == "Save…")
-				{
-					return true;
-				}
-				if (item == "Save Project…")
-				{
-					return true;
-				}
-				if (item == "Export As…")
-				{
-					return true;
-				}
-				if (item == "Exit")
-				{
-					return true;
-				}
-				return false;
+				return true;
 			}
 			if (title == "Edit")
 			{
-				if (item == "Undo")
-				{
-					return true;
-				}
-				if (item == "Redo")
-				{
-					return true;
-				}
-				if (item == "Cut")
-				{
-					return true;
-				}
-				if (item == "Copy")
-				{
-					return true;
-				}
-				if (item == "Paste")
-				{
-					return true;
-				}
-				if (item == "Preferences…")
-				{
-					return true;
-				}
-				return false;
+				return true;
 			}
 			if (title == "Layer")
 			{
@@ -313,11 +296,11 @@ namespace Bitmute.UI
 				{
 					return true;
 				}
-				if (item == "Toggle Light/Dark")
+				if (item == "Rulers")
 				{
 					return true;
 				}
-				if (item == "Use System Theme")
+				if (item == "Grid")
 				{
 					return true;
 				}
@@ -350,6 +333,7 @@ namespace Bitmute.UI
 
 			PointerGestureRecognizer pointer = new PointerGestureRecognizer();
 			pointer.PointerEntered += OnMenuButtonPointerEntered;
+			pointer.PointerExited += OnMenuButtonPointerExited;
 			button.GestureRecognizers.Add(pointer);
 
 			return button;
@@ -369,19 +353,34 @@ namespace Bitmute.UI
 
 		private void OnMenuButtonPointerEntered(object sender, PointerEventArgs eventArgs)
 		{
-			if (m_openMenuIndex < 0)
-			{
-				return;
-			}
 			int index = FindMenuButtonIndex(sender);
 			if (index < 0)
 			{
+				return;
+			}
+			if (m_openMenuIndex < 0)
+			{
+				m_menuButtons[index].ThemeBg(UiConstants.MenuHoverLight, UiConstants.MenuHoverDark);
 				return;
 			}
 			if (index != m_openMenuIndex)
 			{
 				OpenMenu(index);
 			}
+		}
+
+		private void OnMenuButtonPointerExited(object sender, PointerEventArgs eventArgs)
+		{
+			int index = FindMenuButtonIndex(sender);
+			if (index < 0)
+			{
+				return;
+			}
+			if (index == m_openMenuIndex)
+			{
+				return;
+			}
+			m_menuButtons[index].ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
 		}
 
 		private View BuildMenuBar()
@@ -597,9 +596,14 @@ namespace Bitmute.UI
 				OpenImageFlow();
 				return;
 			}
-			if (action == "Save…")
+			if (action == "Save")
 			{
 				SaveImageFlow();
+				return;
+			}
+			if (action == "Save As…")
+			{
+				SaveAsFlow();
 				return;
 			}
 			if (action == "Exit")
@@ -627,15 +631,33 @@ namespace Bitmute.UI
 				ToggleRulers();
 				return;
 			}
-			if (action == "Toggle Light/Dark")
+			if (action == "Grid")
 			{
-				Theme.Toggle();
+				ToggleGrid();
 				return;
 			}
-			if (action == "Use System Theme")
+			if (action == "Rotate Arbitrary…")
 			{
-				Theme.UseSystem();
+				OpenAdjustment("rotate");
 				return;
+			}
+			if (action == "Stroke…")
+			{
+				OpenStrokeDialog();
+				return;
+			}
+			if (action == "Clear Recent")
+			{
+				RecentFiles.Clear();
+				return;
+			}
+			for (int recentIndex = 0; recentIndex < m_recentMenuPaths.Count; recentIndex++)
+			{
+				if (action == RecentMenuLabel(recentIndex, m_recentMenuPaths[recentIndex]))
+				{
+					OpenRecentFile(m_recentMenuPaths[recentIndex]);
+					return;
+				}
 			}
 			if (action == "All")
 			{
@@ -762,11 +784,6 @@ namespace Bitmute.UI
 				DoRasterizeText();
 				return;
 			}
-			if (action == "Save Project…")
-			{
-				SaveProjectFlow();
-				return;
-			}
 			if (action == "Export As…")
 			{
 				OpenExportDialog();
@@ -883,6 +900,11 @@ namespace Bitmute.UI
 
 		private void OpenAdjustment(string id)
 		{
+			if (id == "rotate")
+			{
+				ShowModal(new AdjustmentDialog("Rotate Arbitrary", "rotate", new string[] { "Angle" }, new int[] { -180 }, new int[] { 180 }, new int[] { 0 }), 360.0, 170.0);
+				return;
+			}
 			if (id == "bc")
 			{
 				ShowModal(new AdjustmentDialog("Brightness/Contrast", "bc", new string[] { "Brightness", "Contrast" }, new int[] { -100, -100 }, new int[] { 100, 100 }, new int[] { 0, 0 }), 360.0, 200.0);
@@ -933,6 +955,12 @@ namespace Bitmute.UI
 				return;
 			}
 			Document document = canvas.CurrentDocument();
+			if (id == "rotate")
+			{
+				document.RotateArbitrary(first, 2);
+				FinishCanvasOp(canvas, document);
+				return;
+			}
 			Layer activeLayer = document.ActiveLayer();
 			if (activeLayer == null)
 			{
@@ -1331,6 +1359,68 @@ namespace Bitmute.UI
 		public bool RulersEnabled()
 		{
 			return m_rulersEnabled;
+		}
+
+		private void ToggleGrid()
+		{
+			m_gridEnabled = !m_gridEnabled;
+			for (int index = 0; index < m_documents.Count; index++)
+			{
+				DocumentWindow window = m_documents[index] as DocumentWindow;
+				if (window != null)
+				{
+					window.Canvas().InvalidateSurface();
+				}
+			}
+		}
+
+		private void OpenRecentFile(string path)
+		{
+			if (!System.IO.File.Exists(path))
+			{
+				SetStatusMessage("File not found — removed from recent: " + System.IO.Path.GetFileName(path));
+				RecentFiles.Remove(path);
+				return;
+			}
+			OpenDocumentFromPath(path);
+		}
+
+		private void OpenStrokeDialog()
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				SetStatusMessage("No document");
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null || layer.IsText())
+			{
+				SetStatusMessage("Active layer cannot be stroked");
+				return;
+			}
+			ShowModal(new StrokeDialog(), 320.0, 220.0);
+		}
+
+		public void ApplyStroke(int width, int position)
+		{
+			CloseModal();
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			Layer layer = document.ActiveLayer();
+			if (layer == null || layer.IsText())
+			{
+				return;
+			}
+			document.BeginStroke();
+			SelectionStroke.Apply(document, m_toolState.Foreground(), width, position);
+			document.EndStroke();
+			canvas.InvalidateSurface();
+			RefreshLayerThumbnails();
 		}
 
 		private void ToggleRulers()
@@ -1826,8 +1916,155 @@ namespace Bitmute.UI
 			m_paletteOrder.Add(m_infoGroup);
 
 			m_paletteDock = dock;
+			LoadPanelLayout();
 			RefreshDockLayout();
 			return dock;
+		}
+
+		private PaletteGroup PanelForKey(string key)
+		{
+			if (key == "Navigator")
+			{
+				return m_navigatorGroup;
+			}
+			if (key == "Swatches")
+			{
+				return m_swatchesGroup;
+			}
+			if (key == "Layers")
+			{
+				return m_layersGroup;
+			}
+			if (key == "Info")
+			{
+				return m_infoGroup;
+			}
+			return null;
+		}
+
+		private bool PanelVisibleFlag(string key)
+		{
+			if (key == "Navigator")
+			{
+				return m_navigatorPanelVisible;
+			}
+			if (key == "Swatches")
+			{
+				return m_swatchesPanelVisible;
+			}
+			if (key == "Layers")
+			{
+				return m_layersPanelVisible;
+			}
+			return m_infoPanelVisible;
+		}
+
+		private void SetPanelVisibleFlag(string key, bool visible)
+		{
+			if (key == "Navigator")
+			{
+				m_navigatorPanelVisible = visible;
+			}
+			if (key == "Swatches")
+			{
+				m_swatchesPanelVisible = visible;
+			}
+			if (key == "Layers")
+			{
+				m_layersPanelVisible = visible;
+			}
+			if (key == "Info")
+			{
+				m_infoPanelVisible = visible;
+			}
+		}
+
+		private void SavePanelLayout()
+		{
+			if (m_paletteOrder == null)
+			{
+				return;
+			}
+			string order = "";
+			string hidden = "";
+			string collapsed = "";
+			for (int index = 0; index < m_paletteOrder.Count; index++)
+			{
+				PaletteGroup group = m_paletteOrder[index];
+				string key = group.PanelKey();
+				if (order.Length > 0)
+				{
+					order = order + ",";
+				}
+				order = order + key;
+				if (!PanelVisibleFlag(key))
+				{
+					if (hidden.Length > 0)
+					{
+						hidden = hidden + ",";
+					}
+					hidden = hidden + key;
+				}
+				if (group.IsCollapsed())
+				{
+					if (collapsed.Length > 0)
+					{
+						collapsed = collapsed + ",";
+					}
+					collapsed = collapsed + key;
+				}
+			}
+			Microsoft.Maui.Storage.Preferences.Default.Set("panel_order", order);
+			Microsoft.Maui.Storage.Preferences.Default.Set("panel_hidden", hidden);
+			Microsoft.Maui.Storage.Preferences.Default.Set("panel_collapsed", collapsed);
+		}
+
+		private void LoadPanelLayout()
+		{
+			string order = Microsoft.Maui.Storage.Preferences.Default.Get("panel_order", "");
+			if (order.Length > 0)
+			{
+				List<PaletteGroup> restored = new List<PaletteGroup>();
+				string[] orderKeys = order.Split(new char[] { ',' });
+				for (int index = 0; index < orderKeys.Length; index++)
+				{
+					PaletteGroup group = PanelForKey(orderKeys[index]);
+					if (group != null && !restored.Contains(group))
+					{
+						restored.Add(group);
+					}
+				}
+				for (int index = 0; index < m_paletteOrder.Count; index++)
+				{
+					if (!restored.Contains(m_paletteOrder[index]))
+					{
+						restored.Add(m_paletteOrder[index]);
+					}
+				}
+				m_paletteOrder = restored;
+			}
+			string hidden = Microsoft.Maui.Storage.Preferences.Default.Get("panel_hidden", "");
+			if (hidden.Length > 0)
+			{
+				string[] hiddenKeys = hidden.Split(new char[] { ',' });
+				for (int index = 0; index < hiddenKeys.Length; index++)
+				{
+					SetPanelVisibleFlag(hiddenKeys[index], false);
+				}
+			}
+			string collapsed = Microsoft.Maui.Storage.Preferences.Default.Get("panel_collapsed", "");
+			if (collapsed.Length > 0)
+			{
+				string[] collapsedKeys = collapsed.Split(new char[] { ',' });
+				for (int index = 0; index < collapsedKeys.Length; index++)
+				{
+					PaletteGroup group = PanelForKey(collapsedKeys[index]);
+					if (group != null)
+					{
+						group.SetCollapsed(true);
+					}
+				}
+			}
 		}
 
 		private void RefreshDockLayout()
@@ -1920,53 +2157,27 @@ namespace Bitmute.UI
 			}
 			m_paletteOrder = reordered;
 			RefreshDockLayout();
+			SavePanelLayout();
 		}
 
 		public void OnPaletteGroupLayoutChanged()
 		{
 			RefreshDockLayout();
+			SavePanelLayout();
 		}
 
 		public void ClosePalettePanel(string key)
 		{
-			if (key == "Navigator")
-			{
-				m_navigatorPanelVisible = false;
-			}
-			if (key == "Swatches")
-			{
-				m_swatchesPanelVisible = false;
-			}
-			if (key == "Layers")
-			{
-				m_layersPanelVisible = false;
-			}
-			if (key == "Info")
-			{
-				m_infoPanelVisible = false;
-			}
+			SetPanelVisibleFlag(key, false);
 			RefreshDockLayout();
+			SavePanelLayout();
 		}
 
 		private void ToggleDockPanel(string key)
 		{
-			if (key == "Navigator")
-			{
-				m_navigatorPanelVisible = !m_navigatorPanelVisible;
-			}
-			if (key == "Swatches")
-			{
-				m_swatchesPanelVisible = !m_swatchesPanelVisible;
-			}
-			if (key == "Layers")
-			{
-				m_layersPanelVisible = !m_layersPanelVisible;
-			}
-			if (key == "Info")
-			{
-				m_infoPanelVisible = !m_infoPanelVisible;
-			}
+			SetPanelVisibleFlag(key, !PanelVisibleFlag(key));
 			RefreshDockLayout();
+			SavePanelLayout();
 		}
 
 		private BoxView BuildDivider()
@@ -2071,6 +2282,9 @@ namespace Bitmute.UI
 			m_handTool = new HandTool();
 			m_zoomTool = new ZoomTool();
 			m_rulerTool = new RulerTool();
+			m_cropTool = new CropTool();
+			m_gridEnabled = false;
+			m_recentMenuPaths = new List<string>();
 
 			View menuBar = BuildMenuBar();
 			View optionsBar = BuildOptionsBar();
@@ -2613,6 +2827,8 @@ namespace Bitmute.UI
 						SetStatusMessage("Failed to open project");
 						return;
 					}
+					project.SetSourcePath(path);
+					RecentFiles.Add(path);
 					DocumentWindow projectWindow = new DocumentWindow(project);
 					PlaceAndAdd(projectWindow);
 					return;
@@ -2625,6 +2841,8 @@ namespace Bitmute.UI
 				}
 				string title = System.IO.Path.GetFileName(path);
 				Document model = Document.OpenImage(title, bitmap);
+				model.SetSourcePath(path);
+				RecentFiles.Add(path);
 				bitmap.Dispose();
 				DocumentWindow window = new DocumentWindow(model);
 				PlaceAndAdd(window);
@@ -2645,7 +2863,17 @@ namespace Bitmute.UI
 			await SaveDocumentAsync(model);
 		}
 
-		private async void SaveProjectFlow()
+		private static string SuggestedSaveName(Document model)
+		{
+			string title = model.Title();
+			if (title == null || title.Length == 0)
+			{
+				return "Untitled";
+			}
+			return System.IO.Path.GetFileNameWithoutExtension(title);
+		}
+
+		private async void SaveAsFlow()
 		{
 			Document model = ActiveDocument();
 			if (model == null)
@@ -2655,24 +2883,56 @@ namespace Bitmute.UI
 			}
 			try
 			{
-				string path = await FileDialogs.PickSaveTypedAsync(model.Title(), "Bitmute Project", ".bitmute");
+				string path = await FileDialogs.PickSaveAsync(SuggestedSaveName(model));
 				if (path == null)
 				{
 					return;
 				}
-				bool success = BitmuteFile.Write(path, model);
+				bool success = WriteDocumentTo(model, path);
 				if (!success)
 				{
-					SetStatusMessage("Project save failed");
+					SetStatusMessage("Save failed");
 					return;
 				}
+				model.SetSourcePath(path);
+				RecentFiles.Add(path);
 				model.MarkClean();
 				SetStatusMessage("Saved " + System.IO.Path.GetFileName(path));
 			}
 			catch (System.Exception error)
 			{
-				SetStatusMessage("Project save failed: " + error.Message);
+				SetStatusMessage("Save failed: " + error.Message);
 			}
+		}
+
+		private static bool WriteDocumentTo(Document model, string path)
+		{
+			if (path.ToLowerInvariant().EndsWith(".bitmute"))
+			{
+				return BitmuteFile.Write(path, model);
+			}
+			ImageFile.Encode(model, path);
+			return true;
+		}
+
+		private async System.Threading.Tasks.Task<bool> SaveAsBitmuteAsync(Document model)
+		{
+			string path = await FileDialogs.PickSaveTypedAsync(SuggestedSaveName(model), "Bitmute Project", ".bitmute");
+			if (path == null)
+			{
+				return false;
+			}
+			bool success = BitmuteFile.Write(path, model);
+			if (!success)
+			{
+				SetStatusMessage("Save failed");
+				return false;
+			}
+			model.SetSourcePath(path);
+			RecentFiles.Add(path);
+			model.MarkClean();
+			SetStatusMessage("Saved " + System.IO.Path.GetFileName(path));
+			return true;
 		}
 
 		private void OpenExportDialog()
@@ -2786,15 +3046,32 @@ namespace Bitmute.UI
 		{
 			try
 			{
-				string path = await FileDialogs.PickSaveAsync(model.Title());
-				if (path == null)
+				string sourcePath = model.SourcePath();
+				if (sourcePath == null || sourcePath.Length == 0)
 				{
-					return false;
+					return await SaveAsBitmuteAsync(model);
 				}
-				ImageFile.Encode(model, path);
-				model.MarkClean();
-				SetStatusMessage("Saved " + System.IO.Path.GetFileName(path));
-				return true;
+				if (sourcePath.ToLowerInvariant().EndsWith(".bitmute"))
+				{
+					bool projectSaved = BitmuteFile.Write(sourcePath, model);
+					if (!projectSaved)
+					{
+						SetStatusMessage("Save failed");
+						return false;
+					}
+					model.MarkClean();
+					SetStatusMessage("Saved " + System.IO.Path.GetFileName(sourcePath));
+					return true;
+				}
+				if (model.FlatCompatible())
+				{
+					ImageFile.Encode(model, sourcePath);
+					model.MarkClean();
+					SetStatusMessage("Saved " + System.IO.Path.GetFileName(sourcePath));
+					return true;
+				}
+				SetStatusMessage("Document no longer fits " + System.IO.Path.GetExtension(sourcePath) + " — saving as project");
+				return await SaveAsBitmuteAsync(model);
 			}
 			catch (System.Exception error)
 			{
@@ -3227,6 +3504,15 @@ namespace Bitmute.UI
 			{
 				m_rulerTool.Reset();
 			}
+			if (m_cropTool != null)
+			{
+				m_cropTool.Reset();
+			}
+		}
+
+		public bool GridEnabled()
+		{
+			return m_gridEnabled;
 		}
 
 		private void OnToleranceValue(int tolerance)
@@ -4590,6 +4876,10 @@ namespace Bitmute.UI
 			if (tool == eTool.Ruler)
 			{
 				return m_rulerTool;
+			}
+			if (tool == eTool.Crop)
+			{
+				return m_cropTool;
 			}
 			return null;
 		}

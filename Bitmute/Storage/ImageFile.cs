@@ -6,18 +6,26 @@ namespace Bitmute.Storage
 {
 	public static class ImageFile
 	{
-		private static SKEncodedImageFormat FormatFromPath(string path)
+		private static string FormatNameFromPath(string path)
 		{
 			string lower = path.ToLowerInvariant();
 			if (lower.EndsWith(".jpg") || lower.EndsWith(".jpeg"))
 			{
-				return SKEncodedImageFormat.Jpeg;
+				return "jpeg";
 			}
 			if (lower.EndsWith(".bmp"))
 			{
-				return SKEncodedImageFormat.Bmp;
+				return "bmp";
 			}
-			return SKEncodedImageFormat.Png;
+			if (lower.EndsWith(".tga"))
+			{
+				return "tga";
+			}
+			if (lower.EndsWith(".webp"))
+			{
+				return "webp";
+			}
+			return "png";
 		}
 
 		public static SKBitmap DecodeFile(string path)
@@ -34,17 +42,7 @@ namespace Bitmute.Storage
 
 		public static void Encode(Document document, string path)
 		{
-			SKBitmap composite = new SKBitmap(document.Width(), document.Height(), SKColorType.Rgba8888, SKAlphaType.Premul);
-			document.CompositeInto(composite);
-			SKImage image = SKImage.FromBitmap(composite);
-			SKEncodedImageFormat format = FormatFromPath(path);
-			SKData data = image.Encode(format, 95);
-			FileStream stream = File.Create(path);
-			data.SaveTo(stream);
-			stream.Dispose();
-			data.Dispose();
-			image.Dispose();
-			composite.Dispose();
+			Export(document, path, FormatNameFromPath(path), 95, false, true);
 		}
 
 		private static SKBitmap ToStraight(SKBitmap premultiplied)

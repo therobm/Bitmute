@@ -219,6 +219,12 @@ namespace Bitmute.UI
 			canvas.DrawRect(destination, borderPaint);
 			borderPaint.Dispose();
 
+			MainView gridMain = MainView.Self;
+			if (gridMain != null && gridMain.GridEnabled())
+			{
+				GridOverlay.Draw(canvas, m_offsetX, m_offsetY, m_zoom, m_document.Width(), m_document.Height(), 16, true);
+			}
+
 			DrawSelection(canvas);
 			DrawToolOverlay(canvas);
 		}
@@ -254,6 +260,11 @@ namespace Bitmute.UI
 			if (tool is MagneticLassoTool)
 			{
 				DrawMagneticLassoPreview(canvas, (MagneticLassoTool)tool);
+				return;
+			}
+			if (tool is CropTool)
+			{
+				DrawCropPreview(canvas, (CropTool)tool);
 				return;
 			}
 			if (tool is RulerTool)
@@ -581,6 +592,65 @@ namespace Bitmute.UI
 			overlay.Dispose();
 			path.Dispose();
 			builder.Dispose();
+		}
+
+		private void DrawCropPreview(SKCanvas canvas, CropTool crop)
+		{
+			if (!crop.HasPreview())
+			{
+				return;
+			}
+			float left = m_offsetX + (crop.RectLeft() * m_zoom);
+			float top = m_offsetY + (crop.RectTop() * m_zoom);
+			float right = m_offsetX + (crop.RectRight() * m_zoom);
+			float bottom = m_offsetY + (crop.RectBottom() * m_zoom);
+			float docLeft = m_offsetX;
+			float docTop = m_offsetY;
+			float docRight = m_offsetX + (m_document.Width() * m_zoom);
+			float docBottom = m_offsetY + (m_document.Height() * m_zoom);
+			SKPaint shade = new SKPaint();
+			shade.Style = SKPaintStyle.Fill;
+			shade.Color = new SKColor(0, 0, 0, 110);
+			canvas.DrawRect(new SKRect(docLeft, docTop, docRight, top), shade);
+			canvas.DrawRect(new SKRect(docLeft, bottom, docRight, docBottom), shade);
+			canvas.DrawRect(new SKRect(docLeft, top, left, bottom), shade);
+			canvas.DrawRect(new SKRect(right, top, docRight, bottom), shade);
+			shade.Dispose();
+			SKRect rect = new SKRect(left, top, right, bottom);
+			SKPaint underlay = new SKPaint();
+			underlay.Style = SKPaintStyle.Stroke;
+			underlay.StrokeWidth = 3.0f;
+			underlay.Color = SKColors.Black;
+			underlay.IsAntialias = true;
+			canvas.DrawRect(rect, underlay);
+			underlay.Dispose();
+			SKPaint overlay = new SKPaint();
+			overlay.Style = SKPaintStyle.Stroke;
+			overlay.StrokeWidth = 1.0f;
+			overlay.Color = SKColors.White;
+			overlay.IsAntialias = true;
+			canvas.DrawRect(rect, overlay);
+			SKPaint handleFill = new SKPaint();
+			handleFill.Style = SKPaintStyle.Fill;
+			handleFill.Color = SKColors.White;
+			handleFill.IsAntialias = true;
+			SKPaint handleBorder = new SKPaint();
+			handleBorder.Style = SKPaintStyle.Stroke;
+			handleBorder.StrokeWidth = 1.0f;
+			handleBorder.Color = SKColors.Black;
+			handleBorder.IsAntialias = true;
+			float handleSize = 3.5f;
+			canvas.DrawRect(new SKRect(left - handleSize, top - handleSize, left + handleSize, top + handleSize), handleFill);
+			canvas.DrawRect(new SKRect(left - handleSize, top - handleSize, left + handleSize, top + handleSize), handleBorder);
+			canvas.DrawRect(new SKRect(right - handleSize, top - handleSize, right + handleSize, top + handleSize), handleFill);
+			canvas.DrawRect(new SKRect(right - handleSize, top - handleSize, right + handleSize, top + handleSize), handleBorder);
+			canvas.DrawRect(new SKRect(left - handleSize, bottom - handleSize, left + handleSize, bottom + handleSize), handleFill);
+			canvas.DrawRect(new SKRect(left - handleSize, bottom - handleSize, left + handleSize, bottom + handleSize), handleBorder);
+			canvas.DrawRect(new SKRect(right - handleSize, bottom - handleSize, right + handleSize, bottom + handleSize), handleFill);
+			canvas.DrawRect(new SKRect(right - handleSize, bottom - handleSize, right + handleSize, bottom + handleSize), handleBorder);
+			handleFill.Dispose();
+			handleBorder.Dispose();
+			overlay.Dispose();
 		}
 
 		private void DrawMagneticLassoPreview(SKCanvas canvas, MagneticLassoTool lasso)
@@ -1079,6 +1149,8 @@ namespace Bitmute.UI
 			state.SetAltHeld(altHeld);
 
 			bool changed = false;
+			int preEventWidth = m_document.Width();
+			int preEventHeight = m_document.Height();
 			if (eventArgs.ActionType == SKTouchAction.Pressed)
 			{
 				m_toolStrokeActive = true;
@@ -1141,6 +1213,21 @@ namespace Bitmute.UI
 			if (tool is LineTool || tool is GradientTool || tool is ShapeTool || tool is RulerTool)
 			{
 				InvalidateSurface();
+			}
+			if (tool is CropTool)
+			{
+				bool cropActed = eventArgs.ActionType == SKTouchAction.Pressed || eventArgs.ActionType == SKTouchAction.Released || (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact);
+				if (cropActed)
+				{
+					InvalidateSurface();
+				}
+			}
+			if (m_document.Width() != preEventWidth || m_document.Height() != preEventHeight)
+			{
+				m_document.ResetSelection();
+				ResetView();
+				MarkComposeDirty();
+				main.RefreshLayerThumbnails();
 			}
 			eventArgs.Handled = true;
 		}

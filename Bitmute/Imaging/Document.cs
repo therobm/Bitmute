@@ -42,6 +42,7 @@ namespace Bitmute.Imaging
 		private SKRectI m_strokeDirtyRect;
 		private bool m_strokeDirtyValid;
 		private bool m_dirty;
+		private string m_sourcePath;
 
 		public static Document OpenImage(string title, SKBitmap source)
 		{
@@ -72,6 +73,30 @@ namespace Bitmute.Imaging
 			m_strokeDirtyRect = SKRectI.Empty;
 			m_strokeDirtyValid = false;
 			m_dirty = false;
+			m_sourcePath = null;
+		}
+
+		public string SourcePath()
+		{
+			return m_sourcePath;
+		}
+
+		public void SetSourcePath(string path)
+		{
+			m_sourcePath = path;
+		}
+
+		public bool FlatCompatible()
+		{
+			if (m_layers.Count != 1)
+			{
+				return false;
+			}
+			if (m_layers[0].IsText())
+			{
+				return false;
+			}
+			return true;
 		}
 
 		public bool IsDirty()
@@ -1158,19 +1183,23 @@ namespace Bitmute.Imaging
 
 		public void CropToSelection()
 		{
-			if (m_layers.Count == 0)
-			{
-				return;
-			}
 			if (!m_selection.IsActive())
 			{
 				return;
 			}
-			SKRectI b = m_selection.Bounds();
-			int left = b.Left;
-			int top = b.Top;
-			int right = b.Right;
-			int bottom = b.Bottom;
+			CropToRect(m_selection.Bounds());
+		}
+
+		public void CropToRect(SKRectI rect)
+		{
+			if (m_layers.Count == 0)
+			{
+				return;
+			}
+			int left = rect.Left;
+			int top = rect.Top;
+			int right = rect.Right;
+			int bottom = rect.Bottom;
 			if (left < 0)
 			{
 				left = 0;
@@ -1193,24 +1222,54 @@ namespace Bitmute.Imaging
 			{
 				return;
 			}
+			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
 			for (int index = 0; index < m_layers.Count; index++)
 			{
 				Layer layer = m_layers[index];
 				SKBitmap baked = BakeLayerToCanvas(layer);
 				SKBitmap destination = new SKBitmap(cropWidth, cropHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-				for (int y = 0; y < cropHeight; y++)
-				{
-					for (int x = 0; x < cropWidth; x++)
-					{
-						destination.SetPixel(x, y, baked.GetPixel(left + x, top + y));
-					}
-				}
+				destination.Erase(SKColors.Transparent);
+				SKCanvas canvas = new SKCanvas(destination);
+				SKPaint paint = new SKPaint();
+				paint.BlendMode = SKBlendMode.Src;
+				SKPixmap pixmap = baked.PeekPixels();
+				SKImage image = SKImage.FromPixels(pixmap);
+				canvas.DrawImage(image, -left, -top, sampling, paint);
+				image.Dispose();
+				pixmap.Dispose();
+				paint.Dispose();
+				canvas.Dispose();
+				baked.Dispose();
 				layer.SetBitmap(destination);
 				layer.SetOffset(0, 0);
 			}
 			m_width = cropWidth;
 			m_height = cropHeight;
 			m_selection.Clear();
+			m_dirty = true;
+		}
+
+		public void RotateArbitrary(double angleDegrees, int interpolation)
+		{
+			if (m_layers.Count == 0)
+			{
+				return;
+			}
+			int newWidth = m_width;
+			int newHeight = m_height;
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				SKBitmap baked = BakeLayerToCanvas(layer);
+				SKBitmap rotated = RotateTransform.Rotate(baked, angleDegrees, interpolation);
+				baked.Dispose();
+				layer.SetBitmap(rotated);
+				layer.SetOffset(0, 0);
+				newWidth = rotated.Width;
+				newHeight = rotated.Height;
+			}
+			m_width = newWidth;
+			m_height = newHeight;
 			m_dirty = true;
 		}
 

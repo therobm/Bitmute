@@ -28,6 +28,7 @@ namespace Bitmute.Tools
 		Hand,
 		Zoom,
 		Ruler,
-		MagneticLasso
+		MagneticLasso,
+		Crop
 	}
 }

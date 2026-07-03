@@ -35,6 +35,14 @@ namespace Bitmute.UI
 		public static readonly Color ChromeLight = Color.FromArgb("#dadada");
 		public static readonly Color ChromeRaisedDark = Color.FromArgb("#444444");
 		public static readonly Color ChromeRaisedLight = Color.FromArgb("#DCDCDC");
+		public static readonly Color MenuHoverDark = Color.FromArgb("#333333");
+		public static readonly Color MenuHoverLight = Color.FromArgb("#C8C8C8");
+		public static readonly Color DialogSurfaceDark = Color.FromArgb("#202020");
+		public static readonly Color DialogSurfaceLight = Color.FromArgb("#F0F0F0");
+		public static readonly Color ButtonFaceDark = Color.FromArgb("#333333");
+		public static readonly Color ButtonFaceLight = Color.FromArgb("#E1E1E1");
+		public static readonly Color ButtonBorderDark = Color.FromArgb("#5A5A5A");
+		public static readonly Color ButtonBorderLight = Color.FromArgb("#ADADAD");
 		public static readonly Color DividerDark = Color.FromArgb("#232323");
 		public static readonly Color DividerLight = Color.FromArgb("#B4B4B4");
 		public static readonly Color PanelSurfaceDark = Color.FromArgb("#222222");

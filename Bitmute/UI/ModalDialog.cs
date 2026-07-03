@@ -34,23 +34,25 @@ namespace Bitmute.UI
 		{
 			Label titleLabel = new Label();
 			titleLabel.Text = text;
-			titleLabel.FontSize = 13.0;
+			titleLabel.FontSize = 12.0;
 			titleLabel.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			titleLabel.VerticalOptions = LayoutOptions.Center;
 
 			Button closeButton = new Button();
 			closeButton.Text = "✕";
-			closeButton.FontSize = 12.0;
-			closeButton.WidthRequest = UiConstants.CloseButtonSize;
-			closeButton.HeightRequest = UiConstants.CloseButtonSize;
+			closeButton.FontSize = 11.0;
+			closeButton.WidthRequest = 40.0;
+			closeButton.HeightRequest = 30.0;
+			closeButton.CornerRadius = 0;
 			closeButton.Padding = new Thickness(0.0);
 			closeButton.BackgroundColor = Colors.Transparent;
 			closeButton.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			closeButton.Clicked += OnCloseClicked;
 
 			Grid titleBar = new Grid();
+			titleBar.HeightRequest = 30.0;
 			titleBar.ThemeBg(UiConstants.TitleBarLight, UiConstants.TitleBarDark);
-			titleBar.Padding = new Thickness(8.0, 2.0, 2.0, 2.0);
+			titleBar.Padding = new Thickness(10.0, 0.0, 0.0, 0.0);
 			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
 			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			Grid.SetColumn(titleLabel, 0);
@@ -64,27 +66,33 @@ namespace Bitmute.UI
 			return titleBar;
 		}
 
-		protected Button PrimaryButton(string text, EventHandler handler)
+		private static Button DialogButton(string text, EventHandler handler)
 		{
 			Button button = new Button();
 			button.Text = text;
 			button.FontSize = 12.0;
-			button.WidthRequest = 90.0;
-			button.ThemeBg(UiConstants.AccentLight, UiConstants.AccentDark);
+			button.WidthRequest = 88.0;
+			button.HeightRequest = 26.0;
+			button.Padding = new Thickness(0.0);
+			button.CornerRadius = 0;
+			button.BorderWidth = 1.0;
+			button.ThemeBg(UiConstants.ButtonFaceLight, UiConstants.ButtonFaceDark);
 			button.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			button.Clicked += handler;
 			return button;
 		}
 
+		protected Button PrimaryButton(string text, EventHandler handler)
+		{
+			Button button = DialogButton(text, handler);
+			button.SetAppThemeColor(Button.BorderColorProperty, UiConstants.AccentLight, UiConstants.AccentDark);
+			return button;
+		}
+
 		protected Button SecondaryButton(string text, EventHandler handler)
 		{
-			Button button = new Button();
-			button.Text = text;
-			button.FontSize = 12.0;
-			button.WidthRequest = 90.0;
-			button.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
-			button.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			button.Clicked += handler;
+			Button button = DialogButton(text, handler);
+			button.SetAppThemeColor(Button.BorderColorProperty, UiConstants.ButtonBorderLight, UiConstants.ButtonBorderDark);
 			return button;
 		}
 
@@ -115,10 +123,16 @@ namespace Bitmute.UI
 			layout.Add(innerLayout);
 
 			Border frame = new Border();
-			frame.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
+			frame.ThemeBg(UiConstants.DialogSurfaceLight, UiConstants.DialogSurfaceDark);
 			frame.ThemeStroke(UiConstants.DividerLight, UiConstants.DividerDark);
 			frame.StrokeThickness = 1.0;
 			frame.Content = layout;
+			Shadow shadow = new Shadow();
+			shadow.Brush = new SolidColorBrush(Colors.Black);
+			shadow.Opacity = 0.4f;
+			shadow.Radius = 16.0f;
+			shadow.Offset = new Point(0.0, 3.0);
+			frame.Shadow = shadow;
 
 			Content = frame;
 		}
