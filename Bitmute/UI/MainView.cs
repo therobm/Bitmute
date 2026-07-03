@@ -87,6 +87,10 @@ namespace Bitmute.UI
 		private FillTool m_fillTool;
 		private GradientTool m_gradientTool;
 		private LineTool m_lineTool;
+		private ShapeTool m_rectangleShapeTool;
+		private ShapeTool m_roundedRectangleShapeTool;
+		private ShapeTool m_ellipseShapeTool;
+		private ShapeTool m_polygonShapeTool;
 		private HandTool m_handTool;
 		private ZoomTool m_zoomTool;
 
@@ -1511,6 +1515,10 @@ namespace Bitmute.UI
 			m_fillTool = new FillTool();
 			m_gradientTool = new GradientTool();
 			m_lineTool = new LineTool();
+			m_rectangleShapeTool = new ShapeTool(eShapeKind.Rectangle);
+			m_roundedRectangleShapeTool = new ShapeTool(eShapeKind.RoundedRectangle);
+			m_ellipseShapeTool = new ShapeTool(eShapeKind.Ellipse);
+			m_polygonShapeTool = new ShapeTool(eShapeKind.Polygon);
 			m_handTool = new HandTool();
 			m_zoomTool = new ZoomTool();
 
@@ -2620,6 +2628,22 @@ namespace Bitmute.UI
 			if (tool == eTool.Line)
 			{
 				return m_lineTool;
+			}
+			if (tool == eTool.RectangleShape)
+			{
+				return m_rectangleShapeTool;
+			}
+			if (tool == eTool.RoundedRectangleShape)
+			{
+				return m_roundedRectangleShapeTool;
+			}
+			if (tool == eTool.EllipseShape)
+			{
+				return m_ellipseShapeTool;
+			}
+			if (tool == eTool.PolygonShape)
+			{
+				return m_polygonShapeTool;
 			}
 			if (tool == eTool.DodgeBurn)
 			{

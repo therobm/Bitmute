@@ -246,6 +246,11 @@ namespace Bitmute.UI
 				DrawGradientPreview(canvas, (GradientTool)tool);
 				return;
 			}
+			if (tool is ShapeTool)
+			{
+				DrawShapePreview(canvas, (ShapeTool)tool);
+				return;
+			}
 			if (tool is ZoomTool && m_zoomDragging)
 			{
 				DrawZoomMarquee(canvas);
@@ -255,6 +260,74 @@ namespace Bitmute.UI
 			{
 				DrawBrushCursor(canvas, main);
 			}
+		}
+
+		private void DrawShapePreview(SKCanvas canvas, ShapeTool shape)
+		{
+			if (!shape.HasPreview())
+			{
+				return;
+			}
+			float x0 = m_offsetX + (shape.PreviewStartX() * m_zoom);
+			float y0 = m_offsetY + (shape.PreviewStartY() * m_zoom);
+			float x1 = m_offsetX + (shape.PreviewEndX() * m_zoom);
+			float y1 = m_offsetY + (shape.PreviewEndY() * m_zoom);
+			float left = x0;
+			if (x1 < left)
+			{
+				left = x1;
+			}
+			float top = y0;
+			if (y1 < top)
+			{
+				top = y1;
+			}
+			float right = x0 + x1 - left;
+			float bottom = y0 + y1 - top;
+			SKRect rect = new SKRect(left, top, right, bottom);
+			SKPaint underlay = new SKPaint();
+			underlay.Style = SKPaintStyle.Stroke;
+			underlay.StrokeWidth = 3.0f;
+			underlay.Color = SKColors.Black;
+			underlay.IsAntialias = true;
+			SKPaint overlay = new SKPaint();
+			overlay.Style = SKPaintStyle.Stroke;
+			overlay.StrokeWidth = 1.0f;
+			overlay.Color = SKColors.White;
+			overlay.IsAntialias = true;
+			eShapeKind kind = shape.Kind();
+			if (kind == eShapeKind.Ellipse)
+			{
+				canvas.DrawOval(rect, underlay);
+				canvas.DrawOval(rect, overlay);
+			}
+			else if (kind == eShapeKind.RoundedRectangle)
+			{
+				float radius = (rect.Right - rect.Left);
+				if ((rect.Bottom - rect.Top) < radius)
+				{
+					radius = rect.Bottom - rect.Top;
+				}
+				radius = radius * 0.2f;
+				canvas.DrawRoundRect(rect, radius, radius, underlay);
+				canvas.DrawRoundRect(rect, radius, radius, overlay);
+			}
+			else if (kind == eShapeKind.Polygon)
+			{
+				SKPath underPath = ShapeTool.BuildPolygon(rect, ShapeTool.Sides());
+				canvas.DrawPath(underPath, underlay);
+				underPath.Dispose();
+				SKPath overPath = ShapeTool.BuildPolygon(rect, ShapeTool.Sides());
+				canvas.DrawPath(overPath, overlay);
+				overPath.Dispose();
+			}
+			else
+			{
+				canvas.DrawRect(rect, underlay);
+				canvas.DrawRect(rect, overlay);
+			}
+			underlay.Dispose();
+			overlay.Dispose();
 		}
 
 		private void DrawGradientPreview(SKCanvas canvas, GradientTool gradient)
@@ -880,7 +953,7 @@ namespace Bitmute.UI
 					InvalidateSurface();
 				}
 			}
-			if (tool is LineTool || tool is GradientTool)
+			if (tool is LineTool || tool is GradientTool || tool is ShapeTool)
 			{
 				InvalidateSurface();
 			}
