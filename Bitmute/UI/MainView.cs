@@ -208,13 +208,13 @@ namespace Bitmute.UI
 			}
 			if (title == "Image")
 			{
-				if (item == "Image Size…") return "Ctrl+I";
+				if (item == "Image Size…") return "Ctrl+Alt+I";
 			}
 			if (title == "Select")
 			{
 				if (item == "All") return "Ctrl+A";
 				if (item == "Deselect") return "Ctrl+D";
-				if (item == "Invert") return "Ctrl+Shift+I";
+				if (item == "Invert") return "Ctrl+I";
 			}
 			if (title == "View")
 			{
@@ -2432,8 +2432,8 @@ namespace Bitmute.UI
 			AddAccelerator(element, (Windows.System.VirtualKey)189, OnAcceleratorZoomOut);
 			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorSaveAs);
 			AddAccelerator(element, Windows.System.VirtualKey.E, OnAcceleratorExport);
-			AddAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorImageSize);
-			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorInvertSelection);
+			AddCtrlAltAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorImageSize);
+			AddAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorInvertSelection);
 			AddAccelerator(element, Windows.System.VirtualKey.R, OnAcceleratorRulers);
 			AddBareAccelerator(element, Windows.System.VirtualKey.X, OnAcceleratorSwapColors);
 			AddBareAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDelete);
@@ -2528,6 +2528,15 @@ namespace Bitmute.UI
 			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
 			accelerator.Key = key;
 			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.Control | Windows.System.VirtualKeyModifiers.Shift;
+			accelerator.Invoked += handler;
+			element.KeyboardAccelerators.Add(accelerator);
+		}
+
+		private void AddCtrlAltAccelerator(Microsoft.UI.Xaml.UIElement element, Windows.System.VirtualKey key, Windows.Foundation.TypedEventHandler<Microsoft.UI.Xaml.Input.KeyboardAccelerator, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs> handler)
+		{
+			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
+			accelerator.Key = key;
+			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.Control | Windows.System.VirtualKeyModifiers.Menu;
 			accelerator.Invoked += handler;
 			element.KeyboardAccelerators.Add(accelerator);
 		}
