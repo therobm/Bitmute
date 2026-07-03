@@ -56,7 +56,7 @@ namespace Bitmute.UI
 			row.Add(arrow);
 
 			Border chip = new Border();
-			chip.Padding = new Thickness(6.0, 0.0, 5.0, 0.0);
+			chip.Padding = new Thickness(0.0, 0.0, 5.0, 0.0);
 			chip.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
 			chip.ThemeStroke(UiConstants.DividerLight, UiConstants.DividerDark);
 			chip.StrokeThickness = 1.0;
@@ -200,7 +200,7 @@ namespace Bitmute.UI
 			m_popoutSlider.WidthRequest = 172.0;
 			m_popoutSlider.VerticalOptions = LayoutOptions.Center;
 			m_popoutSlider.ValueChanged += OnPopoutChanged;
-
+			
 			HorizontalStackLayout body = new HorizontalStackLayout();
 			body.Padding = new Thickness(10.0, 4.0, 10.0, 4.0);
 			body.Add(m_popoutSlider);

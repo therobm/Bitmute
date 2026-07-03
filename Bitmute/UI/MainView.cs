@@ -1390,7 +1390,7 @@ namespace Bitmute.UI
 
 			m_brushModePicker = new Picker();
 			m_brushModePicker.FontSize = 12.0;
-			m_brushModePicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_brushModePicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_brushModePicker.WidthRequest = 110.0;
 			m_brushModePicker.VerticalOptions = LayoutOptions.Center;
 			m_brushModePicker.IsVisible = false;
@@ -1483,7 +1483,7 @@ namespace Bitmute.UI
 
 			m_textAlignPicker = new Picker();
 			m_textAlignPicker.FontSize = 12.0;
-			m_textAlignPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_textAlignPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_textAlignPicker.VerticalOptions = LayoutOptions.Center;
 			m_textAlignPicker.IsVisible = false;
 			m_textAlignPicker.Items.Add("Left");
@@ -1501,7 +1501,7 @@ namespace Bitmute.UI
 
 			m_textAntiAliasPicker = new Picker();
 			m_textAntiAliasPicker.FontSize = 12.0;
-			m_textAntiAliasPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_textAntiAliasPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_textAntiAliasPicker.VerticalOptions = LayoutOptions.Center;
 			m_textAntiAliasPicker.IsVisible = false;
 			m_textAntiAliasPicker.Items.Add("None");
@@ -2635,7 +2635,7 @@ namespace Bitmute.UI
 
 			m_brushTipPicker = new Picker();
 			m_brushTipPicker.FontSize = 12.0;
-			m_brushTipPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_brushTipPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_brushTipPicker.Items.Add("Round");
 			m_brushTipPicker.Items.Add("Square");
 			m_brushTipPicker.SelectedIndex = 0;

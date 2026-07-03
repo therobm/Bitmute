@@ -47,7 +47,7 @@ namespace Bitmute.UI
 
 			m_tipPicker = new Picker();
 			m_tipPicker.FontSize = 12.0;
-			m_tipPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_tipPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_tipPicker.Items.Add("Round");
 			m_tipPicker.Items.Add("Square");
 			m_tipPicker.SelectedIndex = 0;

@@ -497,7 +497,7 @@ namespace Bitmute.UI
 
 			m_blendPicker = new Picker();
 			m_blendPicker.FontSize = 11.0;
-			m_blendPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_blendPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_blendPicker.Items.Add("Normal");
 			m_blendPicker.Items.Add("Multiply");
 			m_blendPicker.Items.Add("Screen");

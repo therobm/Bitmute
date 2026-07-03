@@ -97,7 +97,7 @@ namespace Bitmute.UI
 
 			m_backgroundPicker = new Picker();
 			m_backgroundPicker.FontSize = 12.0;
-			m_backgroundPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_backgroundPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_backgroundPicker.Items.Add("White");
 			m_backgroundPicker.Items.Add("Transparent");
 			m_backgroundPicker.SelectedIndex = 0;
