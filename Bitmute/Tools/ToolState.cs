@@ -22,6 +22,8 @@ namespace Bitmute.Tools
 		private bool m_textBold;
 		private bool m_textItalic;
 		private string m_textFontFamily;
+		private int m_textAlign;
+		private int m_textAntiAlias;
 		private bool m_shiftHeld;
 		private bool m_altHeld;
 
@@ -44,6 +46,8 @@ namespace Bitmute.Tools
 			m_textBold = false;
 			m_textItalic = false;
 			m_textFontFamily = "Segoe UI";
+			m_textAlign = 0;
+			m_textAntiAlias = 3;
 			m_shiftHeld = false;
 			m_altHeld = false;
 		}
@@ -86,6 +90,26 @@ namespace Bitmute.Tools
 		public void SetTextFontFamily(string family)
 		{
 			m_textFontFamily = family;
+		}
+
+		public int TextAlign()
+		{
+			return m_textAlign;
+		}
+
+		public void SetTextAlign(int align)
+		{
+			m_textAlign = align;
+		}
+
+		public int TextAntiAlias()
+		{
+			return m_textAntiAlias;
+		}
+
+		public void SetTextAntiAlias(int antiAlias)
+		{
+			m_textAntiAlias = antiAlias;
 		}
 
 		public bool LineAntiAlias()

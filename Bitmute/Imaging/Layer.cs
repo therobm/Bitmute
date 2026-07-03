@@ -21,6 +21,17 @@ namespace Bitmute.Imaging
 		private int m_offsetX;
 		private int m_offsetY;
 		private bool m_isBackground;
+		private bool m_isText;
+		private string m_text;
+		private int m_textX;
+		private int m_textY;
+		private float m_textSize;
+		private bool m_textBold;
+		private bool m_textItalic;
+		private string m_textFontFamily;
+		private SKColor m_textColor;
+		private int m_textAlign;
+		private int m_textAntiAlias;
 
 		public static SKBlendMode ToSkBlendMode(eBlendMode blendMode)
 		{
@@ -54,6 +65,105 @@ namespace Bitmute.Imaging
 			m_offsetX = 0;
 			m_offsetY = 0;
 			m_isBackground = false;
+			m_isText = false;
+			m_text = "";
+			m_textX = 0;
+			m_textY = 0;
+			m_textSize = 32.0f;
+			m_textBold = false;
+			m_textItalic = false;
+			m_textFontFamily = "Segoe UI";
+			m_textColor = new SKColor(0, 0, 0, 255);
+			m_textAlign = 0;
+			m_textAntiAlias = 3;
+		}
+
+		public bool IsText()
+		{
+			return m_isText;
+		}
+
+		public string Text()
+		{
+			return m_text;
+		}
+
+		public int TextX()
+		{
+			return m_textX;
+		}
+
+		public int TextY()
+		{
+			return m_textY;
+		}
+
+		public float TextSize()
+		{
+			return m_textSize;
+		}
+
+		public bool TextBold()
+		{
+			return m_textBold;
+		}
+
+		public bool TextItalic()
+		{
+			return m_textItalic;
+		}
+
+		public string TextFontFamily()
+		{
+			return m_textFontFamily;
+		}
+
+		public SKColor TextColor()
+		{
+			return m_textColor;
+		}
+
+		public int TextAlign()
+		{
+			return m_textAlign;
+		}
+
+		public int TextAntiAlias()
+		{
+			return m_textAntiAlias;
+		}
+
+		public void SetTextPosition(int x, int y)
+		{
+			m_isText = true;
+			m_textX = x;
+			m_textY = y;
+		}
+
+		public void SetTextString(string text)
+		{
+			m_text = text;
+		}
+
+		public void SetTextStyle(float size, string fontFamily, bool bold, bool italic, SKColor color, int align, int antiAlias)
+		{
+			m_textSize = size;
+			m_textFontFamily = fontFamily;
+			m_textBold = bold;
+			m_textItalic = italic;
+			m_textColor = color;
+			m_textAlign = align;
+			m_textAntiAlias = antiAlias;
+		}
+
+		public void RenderText()
+		{
+			m_bitmap.Erase(SKColors.Transparent);
+			if (!m_isText)
+			{
+				return;
+			}
+			TextRasterizer.Draw(m_bitmap, m_text, m_textX - m_offsetX, m_textY - m_offsetY, m_textColor, m_textSize, m_textFontFamily, m_textBold, m_textItalic, m_textAlign, m_textAntiAlias);
 		}
 
 		public bool IsBackground()

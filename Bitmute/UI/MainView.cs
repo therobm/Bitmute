@@ -66,6 +66,17 @@ namespace Bitmute.UI
 		private CheckBox m_textBoldCheck;
 		private Label m_textItalicLabel;
 		private CheckBox m_textItalicCheck;
+		private Label m_textAlignLabel;
+		private Picker m_textAlignPicker;
+		private Label m_textAntiAliasLabel;
+		private Picker m_textAntiAliasPicker;
+		private Label m_textColorLabel;
+		private BoxView m_textColorSwatch;
+		private Button m_textCharButton;
+		private Editor m_textEditor;
+		private CanvasView m_textEditCanvas;
+		private Bitmute.Imaging.Layer m_textEditLayer;
+		private bool m_textEditActive;
 		private Label m_statusInfoLabel;
 		private Label m_statusCursorLabel;
 		private string[] m_menuTitles;
@@ -1379,13 +1390,7 @@ namespace Bitmute.UI
 			m_textFontPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			m_textFontPicker.VerticalOptions = LayoutOptions.Center;
 			m_textFontPicker.IsVisible = false;
-			m_textFontPicker.Items.Add("Segoe UI");
-			m_textFontPicker.Items.Add("Arial");
-			m_textFontPicker.Items.Add("Times New Roman");
-			m_textFontPicker.Items.Add("Consolas");
-			m_textFontPicker.Items.Add("Georgia");
-			m_textFontPicker.Items.Add("Comic Sans MS");
-			m_textFontPicker.SelectedIndex = 0;
+			PopulateSystemFonts();
 			m_textFontPicker.SelectedIndexChanged += OnTextFontChanged;
 
 			m_textSizeLabel = new Label();
@@ -1425,6 +1430,71 @@ namespace Bitmute.UI
 			m_textItalicLabel.VerticalOptions = LayoutOptions.Center;
 			m_textItalicLabel.IsVisible = false;
 
+			m_textAlignLabel = new Label();
+			m_textAlignLabel.Text = "Align";
+			m_textAlignLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_textAlignLabel.FontSize = 12.0;
+			m_textAlignLabel.VerticalOptions = LayoutOptions.Center;
+			m_textAlignLabel.IsVisible = false;
+
+			m_textAlignPicker = new Picker();
+			m_textAlignPicker.FontSize = 12.0;
+			m_textAlignPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_textAlignPicker.VerticalOptions = LayoutOptions.Center;
+			m_textAlignPicker.IsVisible = false;
+			m_textAlignPicker.Items.Add("Left");
+			m_textAlignPicker.Items.Add("Center");
+			m_textAlignPicker.Items.Add("Right");
+			m_textAlignPicker.SelectedIndex = m_toolState.TextAlign();
+			m_textAlignPicker.SelectedIndexChanged += OnTextAlignChanged;
+
+			m_textAntiAliasLabel = new Label();
+			m_textAntiAliasLabel.Text = "Anti-alias";
+			m_textAntiAliasLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_textAntiAliasLabel.FontSize = 12.0;
+			m_textAntiAliasLabel.VerticalOptions = LayoutOptions.Center;
+			m_textAntiAliasLabel.IsVisible = false;
+
+			m_textAntiAliasPicker = new Picker();
+			m_textAntiAliasPicker.FontSize = 12.0;
+			m_textAntiAliasPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_textAntiAliasPicker.VerticalOptions = LayoutOptions.Center;
+			m_textAntiAliasPicker.IsVisible = false;
+			m_textAntiAliasPicker.Items.Add("None");
+			m_textAntiAliasPicker.Items.Add("Sharp");
+			m_textAntiAliasPicker.Items.Add("Crisp");
+			m_textAntiAliasPicker.Items.Add("Strong");
+			m_textAntiAliasPicker.Items.Add("Smooth");
+			m_textAntiAliasPicker.SelectedIndex = m_toolState.TextAntiAlias();
+			m_textAntiAliasPicker.SelectedIndexChanged += OnTextAntiAliasChanged;
+
+			m_textColorLabel = new Label();
+			m_textColorLabel.Text = "Color";
+			m_textColorLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_textColorLabel.FontSize = 12.0;
+			m_textColorLabel.VerticalOptions = LayoutOptions.Center;
+			m_textColorLabel.IsVisible = false;
+
+			m_textColorSwatch = new BoxView();
+			m_textColorSwatch.WidthRequest = 22.0;
+			m_textColorSwatch.HeightRequest = 18.0;
+			m_textColorSwatch.Color = FromSkColor(m_toolState.Foreground());
+			m_textColorSwatch.VerticalOptions = LayoutOptions.Center;
+			m_textColorSwatch.IsVisible = false;
+			TapGestureRecognizer textColorTap = new TapGestureRecognizer();
+			textColorTap.Tapped += OnTextColorTapped;
+			m_textColorSwatch.GestureRecognizers.Add(textColorTap);
+
+			m_textCharButton = new Button();
+			m_textCharButton.Text = "Character…";
+			m_textCharButton.FontSize = 12.0;
+			m_textCharButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
+			m_textCharButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			m_textCharButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_textCharButton.VerticalOptions = LayoutOptions.Center;
+			m_textCharButton.IsVisible = false;
+			m_textCharButton.Clicked += OnTextCharClicked;
+
 			HorizontalStackLayout options = new HorizontalStackLayout();
 			m_optionsRow = options;
 			options.Spacing = 8.0;
@@ -1452,6 +1522,13 @@ namespace Bitmute.UI
 			options.Add(m_textBoldCheck);
 			options.Add(m_textItalicLabel);
 			options.Add(m_textItalicCheck);
+			options.Add(m_textAlignLabel);
+			options.Add(m_textAlignPicker);
+			options.Add(m_textAntiAliasLabel);
+			options.Add(m_textAntiAliasPicker);
+			options.Add(m_textColorLabel);
+			options.Add(m_textColorSwatch);
+			options.Add(m_textCharButton);
 			Grid.SetColumn(options, 1);
 			bar.Add(options);
 
@@ -2253,6 +2330,11 @@ namespace Bitmute.UI
 			{
 				m_toolPalette.RefreshColors();
 			}
+			if (foreground && m_textColorSwatch != null)
+			{
+				m_textColorSwatch.Color = FromSkColor(color);
+			}
+			RefreshTextEditStyle();
 		}
 
 		public void ShowNewDocumentDialog()
@@ -2361,6 +2443,17 @@ namespace Bitmute.UI
 				m_textBoldCheck.IsVisible = isText;
 				m_textItalicLabel.IsVisible = isText;
 				m_textItalicCheck.IsVisible = isText;
+				m_textAlignLabel.IsVisible = isText;
+				m_textAlignPicker.IsVisible = isText;
+				m_textAntiAliasLabel.IsVisible = isText;
+				m_textAntiAliasPicker.IsVisible = isText;
+				m_textColorLabel.IsVisible = isText;
+				m_textColorSwatch.IsVisible = isText;
+				m_textCharButton.IsVisible = isText;
+			}
+			if (!isText)
+			{
+				CommitTextEdit();
 			}
 			bool isBrushFamily = tool == eTool.Brush || tool == eTool.Eraser || tool == eTool.Clone || tool == eTool.Blur || tool == eTool.Sharpen || tool == eTool.Smudge || tool == eTool.DodgeBurn;
 			bool usesSize = isBrushFamily || tool == eTool.Pencil || tool == eTool.Line;
@@ -2637,6 +2730,25 @@ namespace Bitmute.UI
 			m_toolState.SetLineAntiAlias(m_lineAntiAliasCheck.IsChecked);
 		}
 
+		private void PopulateSystemFonts()
+		{
+			string[] families = SkiaSharp.SKFontManager.Default.GetFontFamilies();
+			System.Array.Sort(families);
+			int selected = 0;
+			for (int index = 0; index < families.Length; index++)
+			{
+				m_textFontPicker.Items.Add(families[index]);
+				if (families[index] == m_toolState.TextFontFamily())
+				{
+					selected = index;
+				}
+			}
+			if (m_textFontPicker.Items.Count > 0)
+			{
+				m_textFontPicker.SelectedIndex = selected;
+			}
+		}
+
 		private void OnTextFontChanged(object sender, System.EventArgs eventArgs)
 		{
 			if (m_toolState == null)
@@ -2649,6 +2761,7 @@ namespace Bitmute.UI
 				return;
 			}
 			m_toolState.SetTextFontFamily(m_textFontPicker.Items[index]);
+			RefreshTextEditStyle();
 		}
 
 		private void OnTextSizeValue(int size)
@@ -2658,6 +2771,7 @@ namespace Bitmute.UI
 				return;
 			}
 			m_toolState.SetTextSize(size);
+			RefreshTextEditStyle();
 		}
 
 		private void OnTextBoldChanged(object sender, CheckedChangedEventArgs eventArgs)
@@ -2667,6 +2781,7 @@ namespace Bitmute.UI
 				return;
 			}
 			m_toolState.SetTextBold(m_textBoldCheck.IsChecked);
+			RefreshTextEditStyle();
 		}
 
 		private void OnTextItalicChanged(object sender, CheckedChangedEventArgs eventArgs)
@@ -2676,6 +2791,47 @@ namespace Bitmute.UI
 				return;
 			}
 			m_toolState.SetTextItalic(m_textItalicCheck.IsChecked);
+			RefreshTextEditStyle();
+		}
+
+		private void OnTextAlignChanged(object sender, System.EventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			int index = m_textAlignPicker.SelectedIndex;
+			if (index < 0)
+			{
+				return;
+			}
+			m_toolState.SetTextAlign(index);
+			RefreshTextEditStyle();
+		}
+
+		private void OnTextAntiAliasChanged(object sender, System.EventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			int index = m_textAntiAliasPicker.SelectedIndex;
+			if (index < 0)
+			{
+				return;
+			}
+			m_toolState.SetTextAntiAlias(index);
+			RefreshTextEditStyle();
+		}
+
+		private void OnTextColorTapped(object sender, TappedEventArgs eventArgs)
+		{
+			OpenColorPicker(true);
+		}
+
+		private void OnTextCharClicked(object sender, System.EventArgs eventArgs)
+		{
+			SetStatusMessage("Character / paragraph panel is coming soon");
 		}
 
 		private void OnBrushSizeValue(int size)
@@ -2687,28 +2843,174 @@ namespace Bitmute.UI
 			m_toolState.SetBrushSize(size);
 		}
 
-		public async void PlaceText(CanvasView canvas, int x, int y)
+		public void PlaceText(CanvasView canvas, int x, int y, float deviceX, float deviceY)
 		{
-			string text = await DisplayPromptAsync("Add Text", "Enter text:");
-			if (text == null)
-			{
-				return;
-			}
-			if (text.Length == 0)
-			{
-				return;
-			}
+			CommitTextEdit();
 			Document document = canvas.CurrentDocument();
-			Layer layer = document.ActiveLayer();
-			if (layer == null)
+			if (document == null)
 			{
 				return;
 			}
-			document.BeginStroke();
-			TextRasterizer.Draw(layer.Bitmap(), text, x - layer.OffsetX(), y - layer.OffsetY(), m_toolState.Foreground(), m_toolState.TextSize(), m_toolState.TextFontFamily(), m_toolState.TextBold(), m_toolState.TextItalic());
-			document.EndStroke();
+			Layer layer = document.ActiveLayer();
+			bool editExisting = layer != null && layer.IsText();
+			if (!editExisting)
+			{
+				layer = document.AddLayer("Text");
+				if (layer == null)
+				{
+					return;
+				}
+				layer.SetTextPosition(x, y);
+				layer.SetTextStyle(m_toolState.TextSize(), m_toolState.TextFontFamily(), m_toolState.TextBold(), m_toolState.TextItalic(), m_toolState.Foreground(), m_toolState.TextAlign(), m_toolState.TextAntiAlias());
+				if (m_layersPanel != null)
+				{
+					m_layersPanel.Refresh();
+				}
+			}
+
+			m_textEditCanvas = canvas;
+			m_textEditLayer = layer;
+			m_textEditActive = true;
+			layer.Bitmap().Erase(SkiaSharp.SKColors.Transparent);
 			canvas.MarkComposeDirty();
-			SetStatusMessage("Added text: " + text);
+
+			if (m_textEditor == null)
+			{
+				m_textEditor = new Editor();
+				m_textEditor.TextChanged += OnTextEditorChanged;
+			}
+			StyleTextEditor(canvas, layer);
+			m_textEditor.Text = layer.Text();
+
+			double editorX;
+			double editorY;
+			ComputeTextEditorPosition(canvas, deviceX, deviceY, out editorX, out editorY);
+			AbsoluteLayout.SetLayoutBounds(m_textEditor, new Rect(editorX, editorY, 260.0, 90.0));
+			AbsoluteLayout.SetLayoutFlags(m_textEditor, AbsoluteLayoutFlags.None);
+			m_textEditor.ZIndex = 5000;
+			if (!m_workspace.Contains(m_textEditor))
+			{
+				m_workspace.Add(m_textEditor);
+			}
+			m_textEditor.Focus();
+		}
+
+		private void ComputeTextEditorPosition(CanvasView canvas, float deviceX, float deviceY, out double editorX, out double editorY)
+		{
+			editorX = 20.0;
+			editorY = 20.0;
+			DocumentWindow window = m_activeDocumentWindow;
+			if (window == null)
+			{
+				return;
+			}
+			double density = Microsoft.Maui.Devices.DeviceDisplay.MainDisplayInfo.Density;
+			if (density < 0.1)
+			{
+				density = 1.0;
+			}
+			Rect bounds = AbsoluteLayout.GetLayoutBounds(window);
+			double rulers = 0.0;
+			if (m_rulersEnabled)
+			{
+				rulers = UiConstants.RulerThickness;
+			}
+			double canvasLeft = bounds.X + UiConstants.PanelBorderThickness + rulers;
+			double canvasTop = bounds.Y + UiConstants.TitleBarHeight + UiConstants.PanelBorderThickness + rulers;
+			editorX = canvasLeft + (deviceX / density);
+			editorY = canvasTop + (deviceY / density);
+		}
+
+		private void StyleTextEditor(CanvasView canvas, Layer layer)
+		{
+			double density = Microsoft.Maui.Devices.DeviceDisplay.MainDisplayInfo.Density;
+			if (density < 0.1)
+			{
+				density = 1.0;
+			}
+			double displaySize = (layer.TextSize() * canvas.Zoom()) / density;
+			if (displaySize < 8.0)
+			{
+				displaySize = 8.0;
+			}
+			m_textEditor.FontSize = displaySize;
+			m_textEditor.FontFamily = layer.TextFontFamily();
+			m_textEditor.FontAttributes = FontAttributes.None;
+			if (layer.TextBold())
+			{
+				m_textEditor.FontAttributes = m_textEditor.FontAttributes | FontAttributes.Bold;
+			}
+			if (layer.TextItalic())
+			{
+				m_textEditor.FontAttributes = m_textEditor.FontAttributes | FontAttributes.Italic;
+			}
+			m_textEditor.TextColor = FromSkColor(layer.TextColor());
+			m_textEditor.BackgroundColor = new Color(0.5f, 0.5f, 0.5f, 0.25f);
+		}
+
+		private static Color FromSkColor(SkiaSharp.SKColor color)
+		{
+			return new Color(color.Red / 255.0f, color.Green / 255.0f, color.Blue / 255.0f, color.Alpha / 255.0f);
+		}
+
+		private void OnTextEditorChanged(object sender, TextChangedEventArgs eventArgs)
+		{
+			if (!m_textEditActive || m_textEditLayer == null)
+			{
+				return;
+			}
+			m_textEditLayer.SetTextString(m_textEditor.Text);
+		}
+
+		public void CommitTextEdit()
+		{
+			if (!m_textEditActive)
+			{
+				return;
+			}
+			m_textEditActive = false;
+			Layer layer = m_textEditLayer;
+			CanvasView canvas = m_textEditCanvas;
+			if (m_textEditor != null && m_workspace.Contains(m_textEditor))
+			{
+				m_workspace.Remove(m_textEditor);
+			}
+			if (layer != null && canvas != null)
+			{
+				Document document = canvas.CurrentDocument();
+				layer.SetTextString(m_textEditor.Text);
+				layer.SetTextStyle(m_toolState.TextSize(), m_toolState.TextFontFamily(), m_toolState.TextBold(), m_toolState.TextItalic(), m_toolState.Foreground(), m_toolState.TextAlign(), m_toolState.TextAntiAlias());
+				document.BeginStroke();
+				layer.RenderText();
+				document.EndStroke();
+				string name = layer.Text();
+				if (name.Length > 18)
+				{
+					name = name.Substring(0, 18);
+				}
+				if (name.Length == 0)
+				{
+					name = "Text";
+				}
+				layer.SetName(name);
+				canvas.MarkComposeDirty();
+				if (m_layersPanel != null)
+				{
+					m_layersPanel.Refresh();
+				}
+			}
+			m_textEditLayer = null;
+			m_textEditCanvas = null;
+		}
+
+		private void RefreshTextEditStyle()
+		{
+			if (!m_textEditActive || m_textEditLayer == null || m_textEditCanvas == null)
+			{
+				return;
+			}
+			m_textEditLayer.SetTextStyle(m_toolState.TextSize(), m_toolState.TextFontFamily(), m_toolState.TextBold(), m_toolState.TextItalic(), m_toolState.Foreground(), m_toolState.TextAlign(), m_toolState.TextAntiAlias());
+			StyleTextEditor(m_textEditCanvas, m_textEditLayer);
 		}
 
 		public ToolState CurrentToolState()

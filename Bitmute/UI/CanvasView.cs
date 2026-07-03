@@ -822,7 +822,7 @@ namespace Bitmute.UI
 			{
 				if (eventArgs.ActionType == SKTouchAction.Pressed)
 				{
-					main.PlaceText(this, pixelX, pixelY);
+					main.PlaceText(this, pixelX, pixelY, eventArgs.Location.X, eventArgs.Location.Y);
 				}
 				eventArgs.Handled = true;
 				return;
