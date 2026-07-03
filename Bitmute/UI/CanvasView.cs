@@ -54,6 +54,7 @@ namespace Bitmute.UI
 		private float m_cursorDeviceX;
 		private float m_cursorDeviceY;
 		private bool m_cursorInside;
+		private bool m_toolStrokeActive;
 		private bool m_zoomDragging;
 		private float m_zoomDragStartX;
 		private float m_zoomDragStartY;
@@ -190,7 +191,7 @@ namespace Bitmute.UI
 					m_offsetX = (info.Width - contentWidth) / 2.0f;
 					m_offsetY = (info.Height - contentHeight) / 2.0f;
 				}
-				DebugLog.Write("resize viewport=" + info.Width + "x" + info.Height + " last=" + m_lastViewportWidth + "x" + m_lastViewportHeight + " doc=" + docWidth + "x" + docHeight + " zoom=" + m_zoom + " content=" + contentWidth + "x" + contentHeight + " fullyVisible=" + fullyVisible + " offset " + previousOffsetX + "," + previousOffsetY + " -> " + m_offsetX + "," + m_offsetY);
+				Bitmute.Log.Info("resize viewport=" + info.Width + "x" + info.Height + " last=" + m_lastViewportWidth + "x" + m_lastViewportHeight + " doc=" + docWidth + "x" + docHeight + " zoom=" + m_zoom + " content=" + contentWidth + "x" + contentHeight + " fullyVisible=" + fullyVisible + " offset " + previousOffsetX + "," + previousOffsetY + " -> " + m_offsetX + "," + m_offsetY);
 				m_lastViewportWidth = info.Width;
 				m_lastViewportHeight = info.Height;
 				ReportZoomInfo();
@@ -792,6 +793,7 @@ namespace Bitmute.UI
 			bool changed = false;
 			if (eventArgs.ActionType == SKTouchAction.Pressed)
 			{
+				m_toolStrokeActive = true;
 				if (tool.IsDestructive())
 				{
 					m_document.BeginStroke();
@@ -800,19 +802,27 @@ namespace Bitmute.UI
 			}
 			else if (eventArgs.ActionType == SKTouchAction.Moved)
 			{
-				if (eventArgs.InContact)
+				if (!eventArgs.InContact)
+				{
+					m_toolStrokeActive = false;
+				}
+				else if (m_toolStrokeActive)
 				{
 					changed = tool.OnDragged(m_document, pixelX, pixelY, state);
 				}
 			}
 			else if (eventArgs.ActionType == SKTouchAction.Released)
 			{
-				tool.OnReleased(m_document, pixelX, pixelY, state);
-				if (tool.IsDestructive())
+				if (m_toolStrokeActive)
 				{
-					m_document.EndStroke();
-					main.RefreshLayerThumbnails();
+					tool.OnReleased(m_document, pixelX, pixelY, state);
+					if (tool.IsDestructive())
+					{
+						m_document.EndStroke();
+						main.RefreshLayerThumbnails();
+					}
 				}
+				m_toolStrokeActive = false;
 			}
 
 			bool needsRepaint = changed || m_document.ComposeDirtyAny();
@@ -1033,7 +1043,7 @@ namespace Bitmute.UI
 
 		public void SetPanOffsetX(float offsetX)
 		{
-			DebugLog.Write("SetPanOffsetX " + m_offsetX + " -> " + offsetX);
+			Bitmute.Log.Info("SetPanOffsetX " + m_offsetX + " -> " + offsetX);
 			m_offsetX = offsetX;
 			InvalidateSurface();
 			NotifyChrome();
@@ -1041,7 +1051,7 @@ namespace Bitmute.UI
 
 		public void SetPanOffsetY(float offsetY)
 		{
-			DebugLog.Write("SetPanOffsetY " + m_offsetY + " -> " + offsetY);
+			Bitmute.Log.Info("SetPanOffsetY " + m_offsetY + " -> " + offsetY);
 			m_offsetY = offsetY;
 			InvalidateSurface();
 			NotifyChrome();
