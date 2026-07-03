@@ -18,6 +18,10 @@ namespace Bitmute.Tools
 		private eBlendMode m_brushMode;
 		private int m_fillTolerance;
 		private bool m_lineAntiAlias;
+		private int m_textSize;
+		private bool m_textBold;
+		private bool m_textItalic;
+		private string m_textFontFamily;
 		private bool m_shiftHeld;
 		private bool m_altHeld;
 
@@ -36,8 +40,52 @@ namespace Bitmute.Tools
 			m_brushMode = eBlendMode.Normal;
 			m_fillTolerance = 0;
 			m_lineAntiAlias = false;
+			m_textSize = 32;
+			m_textBold = false;
+			m_textItalic = false;
+			m_textFontFamily = "Segoe UI";
 			m_shiftHeld = false;
 			m_altHeld = false;
+		}
+
+		public int TextSize()
+		{
+			return m_textSize;
+		}
+
+		public void SetTextSize(int size)
+		{
+			m_textSize = size;
+		}
+
+		public bool TextBold()
+		{
+			return m_textBold;
+		}
+
+		public void SetTextBold(bool bold)
+		{
+			m_textBold = bold;
+		}
+
+		public bool TextItalic()
+		{
+			return m_textItalic;
+		}
+
+		public void SetTextItalic(bool italic)
+		{
+			m_textItalic = italic;
+		}
+
+		public string TextFontFamily()
+		{
+			return m_textFontFamily;
+		}
+
+		public void SetTextFontFamily(string family)
+		{
+			m_textFontFamily = family;
 		}
 
 		public bool LineAntiAlias()

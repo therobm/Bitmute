@@ -4,9 +4,20 @@ namespace Bitmute.Imaging
 {
 	public static class TextRasterizer
 	{
-		public static void Draw(SKBitmap bitmap, string text, int x, int y, SKColor color, float size)
+		public static void Draw(SKBitmap bitmap, string text, int x, int y, SKColor color, float size, string fontFamily, bool bold, bool italic)
 		{
-			SKTypeface typeface = SKFontManager.Default.MatchFamily("Segoe UI");
+			SKFontStyleWeight weight = SKFontStyleWeight.Normal;
+			if (bold)
+			{
+				weight = SKFontStyleWeight.Bold;
+			}
+			SKFontStyleSlant slant = SKFontStyleSlant.Upright;
+			if (italic)
+			{
+				slant = SKFontStyleSlant.Italic;
+			}
+			SKFontStyle fontStyle = new SKFontStyle(weight, SKFontStyleWidth.Normal, slant);
+			SKTypeface typeface = SKFontManager.Default.MatchFamily(fontFamily, fontStyle);
 			if (typeface == null)
 			{
 				typeface = SKTypeface.Default;

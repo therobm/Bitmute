@@ -58,6 +58,14 @@ namespace Bitmute.UI
 		private Picker m_brushModePicker;
 		private Label m_lineAntiAliasLabel;
 		private CheckBox m_lineAntiAliasCheck;
+		private Label m_textFontLabel;
+		private Picker m_textFontPicker;
+		private Label m_textSizeLabel;
+		private SliderField m_textSizeField;
+		private Label m_textBoldLabel;
+		private CheckBox m_textBoldCheck;
+		private Label m_textItalicLabel;
+		private CheckBox m_textItalicCheck;
 		private Label m_statusInfoLabel;
 		private Label m_statusCursorLabel;
 		private string[] m_menuTitles;
@@ -1358,6 +1366,65 @@ namespace Bitmute.UI
 			m_lineAntiAliasCheck.IsVisible = false;
 			m_lineAntiAliasCheck.CheckedChanged += OnLineAntiAliasChanged;
 
+			m_textFontLabel = new Label();
+			m_textFontLabel.Text = "Font";
+			m_textFontLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_textFontLabel.FontSize = 12.0;
+			m_textFontLabel.VerticalOptions = LayoutOptions.Center;
+			m_textFontLabel.IsVisible = false;
+
+			m_textFontPicker = new Picker();
+			m_textFontPicker.FontSize = 12.0;
+			m_textFontPicker.WidthRequest = 150.0;
+			m_textFontPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_textFontPicker.VerticalOptions = LayoutOptions.Center;
+			m_textFontPicker.IsVisible = false;
+			m_textFontPicker.Items.Add("Segoe UI");
+			m_textFontPicker.Items.Add("Arial");
+			m_textFontPicker.Items.Add("Times New Roman");
+			m_textFontPicker.Items.Add("Consolas");
+			m_textFontPicker.Items.Add("Georgia");
+			m_textFontPicker.Items.Add("Comic Sans MS");
+			m_textFontPicker.SelectedIndex = 0;
+			m_textFontPicker.SelectedIndexChanged += OnTextFontChanged;
+
+			m_textSizeLabel = new Label();
+			m_textSizeLabel.Text = "Size";
+			m_textSizeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_textSizeLabel.FontSize = 12.0;
+			m_textSizeLabel.VerticalOptions = LayoutOptions.Center;
+			m_textSizeLabel.IsVisible = false;
+
+			m_textSizeField = new SliderField(6, 200, m_toolState.TextSize(), " px", OnTextSizeValue);
+			m_textSizeField.VerticalOptions = LayoutOptions.Center;
+			m_textSizeField.IsVisible = false;
+
+			m_textBoldCheck = new CheckBox();
+			m_textBoldCheck.VerticalOptions = LayoutOptions.Center;
+			m_textBoldCheck.IsVisible = false;
+			m_textBoldCheck.IsChecked = m_toolState.TextBold();
+			m_textBoldCheck.CheckedChanged += OnTextBoldChanged;
+
+			m_textBoldLabel = new Label();
+			m_textBoldLabel.Text = "Bold";
+			m_textBoldLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_textBoldLabel.FontSize = 12.0;
+			m_textBoldLabel.VerticalOptions = LayoutOptions.Center;
+			m_textBoldLabel.IsVisible = false;
+
+			m_textItalicCheck = new CheckBox();
+			m_textItalicCheck.VerticalOptions = LayoutOptions.Center;
+			m_textItalicCheck.IsVisible = false;
+			m_textItalicCheck.IsChecked = m_toolState.TextItalic();
+			m_textItalicCheck.CheckedChanged += OnTextItalicChanged;
+
+			m_textItalicLabel = new Label();
+			m_textItalicLabel.Text = "Italic";
+			m_textItalicLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_textItalicLabel.FontSize = 12.0;
+			m_textItalicLabel.VerticalOptions = LayoutOptions.Center;
+			m_textItalicLabel.IsVisible = false;
+
 			HorizontalStackLayout options = new HorizontalStackLayout();
 			m_optionsRow = options;
 			options.Spacing = 8.0;
@@ -1377,6 +1444,14 @@ namespace Bitmute.UI
 			options.Add(m_brushSettingsButton);
 			options.Add(m_lineAntiAliasLabel);
 			options.Add(m_lineAntiAliasCheck);
+			options.Add(m_textFontLabel);
+			options.Add(m_textFontPicker);
+			options.Add(m_textSizeLabel);
+			options.Add(m_textSizeField);
+			options.Add(m_textBoldLabel);
+			options.Add(m_textBoldCheck);
+			options.Add(m_textItalicLabel);
+			options.Add(m_textItalicCheck);
 			Grid.SetColumn(options, 1);
 			bar.Add(options);
 
@@ -2275,6 +2350,18 @@ namespace Bitmute.UI
 			{
 				m_lineAntiAliasCheck.IsVisible = isLine;
 			}
+			bool isText = tool == eTool.Text;
+			if (m_textFontLabel != null)
+			{
+				m_textFontLabel.IsVisible = isText;
+				m_textFontPicker.IsVisible = isText;
+				m_textSizeLabel.IsVisible = isText;
+				m_textSizeField.IsVisible = isText;
+				m_textBoldLabel.IsVisible = isText;
+				m_textBoldCheck.IsVisible = isText;
+				m_textItalicLabel.IsVisible = isText;
+				m_textItalicCheck.IsVisible = isText;
+			}
 			bool isBrushFamily = tool == eTool.Brush || tool == eTool.Eraser || tool == eTool.Clone || tool == eTool.Blur || tool == eTool.Sharpen || tool == eTool.Smudge || tool == eTool.DodgeBurn;
 			bool usesSize = isBrushFamily || tool == eTool.Pencil || tool == eTool.Line;
 			if (m_brushSizeLabel != null)
@@ -2550,6 +2637,47 @@ namespace Bitmute.UI
 			m_toolState.SetLineAntiAlias(m_lineAntiAliasCheck.IsChecked);
 		}
 
+		private void OnTextFontChanged(object sender, System.EventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			int index = m_textFontPicker.SelectedIndex;
+			if (index < 0)
+			{
+				return;
+			}
+			m_toolState.SetTextFontFamily(m_textFontPicker.Items[index]);
+		}
+
+		private void OnTextSizeValue(int size)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetTextSize(size);
+		}
+
+		private void OnTextBoldChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetTextBold(m_textBoldCheck.IsChecked);
+		}
+
+		private void OnTextItalicChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetTextItalic(m_textItalicCheck.IsChecked);
+		}
+
 		private void OnBrushSizeValue(int size)
 		{
 			if (m_toolState == null)
@@ -2577,7 +2705,7 @@ namespace Bitmute.UI
 				return;
 			}
 			document.BeginStroke();
-			TextRasterizer.Draw(layer.Bitmap(), text, x - layer.OffsetX(), y - layer.OffsetY(), m_toolState.Foreground(), 32.0f);
+			TextRasterizer.Draw(layer.Bitmap(), text, x - layer.OffsetX(), y - layer.OffsetY(), m_toolState.Foreground(), m_toolState.TextSize(), m_toolState.TextFontFamily(), m_toolState.TextBold(), m_toolState.TextItalic());
 			document.EndStroke();
 			canvas.MarkComposeDirty();
 			SetStatusMessage("Added text: " + text);
