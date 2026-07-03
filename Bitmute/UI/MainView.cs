@@ -1171,6 +1171,10 @@ namespace Bitmute.UI
 
 			m_workspace = new AbsoluteLayout();
 			m_workspace.ThemeBg(UiConstants.WorkspaceBackdropLight, UiConstants.WorkspaceBackdropDark);
+			TapGestureRecognizer workspaceDoubleTap = new TapGestureRecognizer();
+			workspaceDoubleTap.NumberOfTapsRequired = 2;
+			workspaceDoubleTap.Tapped += OnWorkspaceDoubleTapped;
+			m_workspace.GestureRecognizers.Add(workspaceDoubleTap);
 
 			View dock = BuildPaletteDock();
 
@@ -1695,11 +1699,16 @@ namespace Bitmute.UI
 			CloseModal();
 		}
 
+		private void OnWorkspaceDoubleTapped(object sender, TappedEventArgs eventArgs)
+		{
+			OpenImageFlow();
+		}
+
 		private void ShowModal(View content, double width, double height)
 		{
 			CloseModal();
 			m_modalBackdrop = new BoxView();
-			m_modalBackdrop.Color = new Color(0.0f, 0.0f, 0.0f, 0.12f);
+			m_modalBackdrop.Color = Colors.Transparent;
 			AbsoluteLayout.SetLayoutBounds(m_modalBackdrop, new Rect(0.0, 0.0, 1.0, 1.0));
 			AbsoluteLayout.SetLayoutFlags(m_modalBackdrop, AbsoluteLayoutFlags.All);
 			TapGestureRecognizer backdropTap = new TapGestureRecognizer();
