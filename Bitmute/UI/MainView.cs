@@ -59,13 +59,12 @@ namespace Bitmute.UI
 		private Label m_lineAntiAliasLabel;
 		private CheckBox m_lineAntiAliasCheck;
 		private Label m_textFontLabel;
-		private Picker m_textFontPicker;
+		private Button m_textFontButton;
+		private string[] m_fontFamilies;
 		private Label m_textSizeLabel;
 		private SliderField m_textSizeField;
-		private Label m_textBoldLabel;
-		private CheckBox m_textBoldCheck;
-		private Label m_textItalicLabel;
-		private CheckBox m_textItalicCheck;
+		private Label m_textStyleLabel;
+		private Button m_textStyleButton;
 		private Label m_textAlignLabel;
 		private Picker m_textAlignPicker;
 		private Label m_textAntiAliasLabel;
@@ -1409,14 +1408,19 @@ namespace Bitmute.UI
 			m_textFontLabel.VerticalOptions = LayoutOptions.Center;
 			m_textFontLabel.IsVisible = false;
 
-			m_textFontPicker = new Picker();
-			m_textFontPicker.FontSize = 12.0;
-			m_textFontPicker.WidthRequest = 150.0;
-			m_textFontPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			m_textFontPicker.VerticalOptions = LayoutOptions.Center;
-			m_textFontPicker.IsVisible = false;
-			PopulateSystemFonts();
-			m_textFontPicker.SelectedIndexChanged += OnTextFontChanged;
+			m_fontFamilies = SkiaSharp.SKFontManager.Default.GetFontFamilies();
+			System.Array.Sort(m_fontFamilies);
+
+			m_textFontButton = new Button();
+			m_textFontButton.FontSize = 12.0;
+			m_textFontButton.WidthRequest = 160.0;
+			m_textFontButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
+			m_textFontButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			m_textFontButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_textFontButton.VerticalOptions = LayoutOptions.Center;
+			m_textFontButton.IsVisible = false;
+			m_textFontButton.Clicked += OnFontButtonClicked;
+			UpdateFontButtonText();
 
 			m_textSizeLabel = new Label();
 			m_textSizeLabel.Text = "Size";
@@ -1429,31 +1433,23 @@ namespace Bitmute.UI
 			m_textSizeField.VerticalOptions = LayoutOptions.Center;
 			m_textSizeField.IsVisible = false;
 
-			m_textBoldCheck = new CheckBox();
-			m_textBoldCheck.VerticalOptions = LayoutOptions.Center;
-			m_textBoldCheck.IsVisible = false;
-			m_textBoldCheck.IsChecked = m_toolState.TextBold();
-			m_textBoldCheck.CheckedChanged += OnTextBoldChanged;
+			m_textStyleLabel = new Label();
+			m_textStyleLabel.Text = "Style";
+			m_textStyleLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_textStyleLabel.FontSize = 12.0;
+			m_textStyleLabel.VerticalOptions = LayoutOptions.Center;
+			m_textStyleLabel.IsVisible = false;
 
-			m_textBoldLabel = new Label();
-			m_textBoldLabel.Text = "Bold";
-			m_textBoldLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_textBoldLabel.FontSize = 12.0;
-			m_textBoldLabel.VerticalOptions = LayoutOptions.Center;
-			m_textBoldLabel.IsVisible = false;
-
-			m_textItalicCheck = new CheckBox();
-			m_textItalicCheck.VerticalOptions = LayoutOptions.Center;
-			m_textItalicCheck.IsVisible = false;
-			m_textItalicCheck.IsChecked = m_toolState.TextItalic();
-			m_textItalicCheck.CheckedChanged += OnTextItalicChanged;
-
-			m_textItalicLabel = new Label();
-			m_textItalicLabel.Text = "Italic";
-			m_textItalicLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_textItalicLabel.FontSize = 12.0;
-			m_textItalicLabel.VerticalOptions = LayoutOptions.Center;
-			m_textItalicLabel.IsVisible = false;
+			m_textStyleButton = new Button();
+			m_textStyleButton.FontSize = 12.0;
+			m_textStyleButton.WidthRequest = 110.0;
+			m_textStyleButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
+			m_textStyleButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			m_textStyleButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_textStyleButton.VerticalOptions = LayoutOptions.Center;
+			m_textStyleButton.IsVisible = false;
+			m_textStyleButton.Clicked += OnStyleButtonClicked;
+			UpdateStyleButtonText();
 
 			m_textAlignLabel = new Label();
 			m_textAlignLabel.Text = "Align";
@@ -1540,13 +1536,11 @@ namespace Bitmute.UI
 			options.Add(m_lineAntiAliasLabel);
 			options.Add(m_lineAntiAliasCheck);
 			options.Add(m_textFontLabel);
-			options.Add(m_textFontPicker);
+			options.Add(m_textFontButton);
 			options.Add(m_textSizeLabel);
 			options.Add(m_textSizeField);
-			options.Add(m_textBoldLabel);
-			options.Add(m_textBoldCheck);
-			options.Add(m_textItalicLabel);
-			options.Add(m_textItalicCheck);
+			options.Add(m_textStyleLabel);
+			options.Add(m_textStyleButton);
 			options.Add(m_textAlignLabel);
 			options.Add(m_textAlignPicker);
 			options.Add(m_textAntiAliasLabel);
@@ -2493,13 +2487,11 @@ namespace Bitmute.UI
 			if (m_textFontLabel != null)
 			{
 				m_textFontLabel.IsVisible = isText;
-				m_textFontPicker.IsVisible = isText;
+				m_textFontButton.IsVisible = isText;
 				m_textSizeLabel.IsVisible = isText;
 				m_textSizeField.IsVisible = isText;
-				m_textBoldLabel.IsVisible = isText;
-				m_textBoldCheck.IsVisible = isText;
-				m_textItalicLabel.IsVisible = isText;
-				m_textItalicCheck.IsVisible = isText;
+				m_textStyleLabel.IsVisible = isText;
+				m_textStyleButton.IsVisible = isText;
 				m_textAlignLabel.IsVisible = isText;
 				m_textAlignPicker.IsVisible = isText;
 				m_textAntiAliasLabel.IsVisible = isText;
@@ -2787,37 +2779,66 @@ namespace Bitmute.UI
 			m_toolState.SetLineAntiAlias(m_lineAntiAliasCheck.IsChecked);
 		}
 
-		private void PopulateSystemFonts()
+		private void UpdateFontButtonText()
 		{
-			string[] families = SkiaSharp.SKFontManager.Default.GetFontFamilies();
-			System.Array.Sort(families);
-			int selected = 0;
-			for (int index = 0; index < families.Length; index++)
+			if (m_textFontButton == null || m_toolState == null)
 			{
-				m_textFontPicker.Items.Add(families[index]);
-				if (families[index] == m_toolState.TextFontFamily())
-				{
-					selected = index;
-				}
+				return;
 			}
-			if (m_textFontPicker.Items.Count > 0)
-			{
-				m_textFontPicker.SelectedIndex = selected;
-			}
+			m_textFontButton.Text = m_toolState.TextFontFamily();
+			m_textFontButton.FontFamily = m_toolState.TextFontFamily();
 		}
 
-		private void OnTextFontChanged(object sender, System.EventArgs eventArgs)
+		private void OnFontButtonClicked(object sender, System.EventArgs eventArgs)
 		{
-			if (m_toolState == null)
+			if (m_pulldownPanel != null)
+			{
+				ClosePulldown();
+				return;
+			}
+			double anchorX = 0.0;
+			if (m_optionsRow != null && m_textFontButton != null)
+			{
+				anchorX = m_optionsRow.X + m_textFontButton.X;
+			}
+			double anchorY = UiConstants.MenuBarHeight + 1.0 + UiConstants.OptionsBarHeight + 1.0;
+			ShowPulldown(BuildFontPulldownContent(), anchorX, anchorY, 240.0, 320.0);
+		}
+
+		private View BuildFontPulldownContent()
+		{
+			VerticalStackLayout list = new VerticalStackLayout();
+			list.Spacing = 0.0;
+			list.Padding = new Thickness(4.0);
+			for (int index = 0; index < m_fontFamilies.Length; index++)
+			{
+				string family = m_fontFamilies[index];
+				Label row = new Label();
+				row.Text = family;
+				row.FontFamily = family;
+				row.FontSize = 15.0;
+				row.Padding = new Thickness(8.0, 4.0, 8.0, 4.0);
+				row.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+				TapGestureRecognizer tap = new TapGestureRecognizer();
+				tap.Tapped += OnFontRowTapped;
+				row.GestureRecognizers.Add(tap);
+				list.Add(row);
+			}
+			ScrollView scroll = new ScrollView();
+			scroll.Content = list;
+			return scroll;
+		}
+
+		private void OnFontRowTapped(object sender, TappedEventArgs eventArgs)
+		{
+			Label row = sender as Label;
+			if (row == null || m_toolState == null)
 			{
 				return;
 			}
-			int index = m_textFontPicker.SelectedIndex;
-			if (index < 0)
-			{
-				return;
-			}
-			m_toolState.SetTextFontFamily(m_textFontPicker.Items[index]);
+			m_toolState.SetTextFontFamily(row.Text);
+			UpdateFontButtonText();
+			ClosePulldown();
 			RefreshTextEditStyle();
 		}
 
@@ -2831,23 +2852,96 @@ namespace Bitmute.UI
 			RefreshTextEditStyle();
 		}
 
-		private void OnTextBoldChanged(object sender, CheckedChangedEventArgs eventArgs)
+		private void UpdateStyleButtonText()
 		{
-			if (m_toolState == null)
+			if (m_textStyleButton == null || m_toolState == null)
 			{
 				return;
 			}
-			m_toolState.SetTextBold(m_textBoldCheck.IsChecked);
-			RefreshTextEditStyle();
+			m_textStyleButton.Text = StyleName(m_toolState.TextBold(), m_toolState.TextItalic());
 		}
 
-		private void OnTextItalicChanged(object sender, CheckedChangedEventArgs eventArgs)
+		private static string StyleName(bool bold, bool italic)
 		{
-			if (m_toolState == null)
+			if (bold && italic)
+			{
+				return "Bold Italic";
+			}
+			if (bold)
+			{
+				return "Bold";
+			}
+			if (italic)
+			{
+				return "Italic";
+			}
+			return "Regular";
+		}
+
+		private void OnStyleButtonClicked(object sender, System.EventArgs eventArgs)
+		{
+			if (m_pulldownPanel != null)
+			{
+				ClosePulldown();
+				return;
+			}
+			double anchorX = 0.0;
+			if (m_optionsRow != null && m_textStyleButton != null)
+			{
+				anchorX = m_optionsRow.X + m_textStyleButton.X;
+			}
+			double anchorY = UiConstants.MenuBarHeight + 1.0 + UiConstants.OptionsBarHeight + 1.0;
+			ShowPulldown(BuildStylePulldownContent(), anchorX, anchorY, 150.0, 140.0);
+		}
+
+		private View BuildStylePulldownContent()
+		{
+			VerticalStackLayout list = new VerticalStackLayout();
+			list.Spacing = 0.0;
+			list.Padding = new Thickness(4.0);
+			list.Add(BuildStyleRow("Regular", false, false));
+			list.Add(BuildStyleRow("Bold", true, false));
+			list.Add(BuildStyleRow("Italic", false, true));
+			list.Add(BuildStyleRow("Bold Italic", true, true));
+			return list;
+		}
+
+		private Label BuildStyleRow(string label, bool bold, bool italic)
+		{
+			Label row = new Label();
+			row.Text = label;
+			row.FontSize = 13.0;
+			row.Padding = new Thickness(8.0, 5.0, 8.0, 5.0);
+			row.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			FontAttributes attributes = FontAttributes.None;
+			if (bold)
+			{
+				attributes = attributes | FontAttributes.Bold;
+			}
+			if (italic)
+			{
+				attributes = attributes | FontAttributes.Italic;
+			}
+			row.FontAttributes = attributes;
+			TapGestureRecognizer tap = new TapGestureRecognizer();
+			tap.Tapped += OnStyleRowTapped;
+			row.GestureRecognizers.Add(tap);
+			return row;
+		}
+
+		private void OnStyleRowTapped(object sender, TappedEventArgs eventArgs)
+		{
+			Label row = sender as Label;
+			if (row == null || m_toolState == null)
 			{
 				return;
 			}
-			m_toolState.SetTextItalic(m_textItalicCheck.IsChecked);
+			bool bold = row.Text == "Bold" || row.Text == "Bold Italic";
+			bool italic = row.Text == "Italic" || row.Text == "Bold Italic";
+			m_toolState.SetTextBold(bold);
+			m_toolState.SetTextItalic(italic);
+			UpdateStyleButtonText();
+			ClosePulldown();
 			RefreshTextEditStyle();
 		}
 
@@ -3142,14 +3236,7 @@ namespace Bitmute.UI
 			{
 				m_textSizeField.SetValueSilently(m_toolState.TextSize());
 			}
-			if (m_textBoldCheck != null)
-			{
-				m_textBoldCheck.IsChecked = m_toolState.TextBold();
-			}
-			if (m_textItalicCheck != null)
-			{
-				m_textItalicCheck.IsChecked = m_toolState.TextItalic();
-			}
+			UpdateStyleButtonText();
 			if (m_textAlignPicker != null)
 			{
 				m_textAlignPicker.SelectedIndex = m_toolState.TextAlign();
@@ -3158,14 +3245,7 @@ namespace Bitmute.UI
 			{
 				m_textAntiAliasPicker.SelectedIndex = m_toolState.TextAntiAlias();
 			}
-			if (m_textFontPicker != null)
-			{
-				int fontIndex = m_textFontPicker.Items.IndexOf(m_toolState.TextFontFamily());
-				if (fontIndex >= 0)
-				{
-					m_textFontPicker.SelectedIndex = fontIndex;
-				}
-			}
+			UpdateFontButtonText();
 			if (m_textColorSwatch != null)
 			{
 				m_textColorSwatch.Color = FromSkColor(m_toolState.Foreground());
