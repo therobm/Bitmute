@@ -1018,7 +1018,7 @@ namespace Bitmute.UI
 			layer.Bitmap().Erase(SkiaSharp.SKColors.Transparent);
 		}
 
-		private void DoCopy()
+		private async void DoCopy()
 		{
 			Document document = ActiveDocument();
 			if (document == null)
@@ -1040,11 +1040,11 @@ namespace Bitmute.UI
 				s_clipboardBitmap.Dispose();
 			}
 			s_clipboardBitmap = copied;
-			CopyToSystemClipboard(copied);
 			SetStatusMessage("Copied");
+			await CopyToSystemClipboard(copied);
 		}
 
-		private void CopyToSystemClipboard(SkiaSharp.SKBitmap bitmap)
+		private async System.Threading.Tasks.Task CopyToSystemClipboard(SkiaSharp.SKBitmap bitmap)
 		{
 			try
 			{
@@ -1057,9 +1057,15 @@ namespace Bitmute.UI
 				}
 				byte[] bytes = data.ToArray();
 				data.Dispose();
-				System.IO.MemoryStream memory = new System.IO.MemoryStream(bytes);
-				Windows.Storage.Streams.IRandomAccessStream randomStream = System.IO.WindowsRuntimeStreamExtensions.AsRandomAccessStream(memory);
-				Windows.Storage.Streams.RandomAccessStreamReference reference = Windows.Storage.Streams.RandomAccessStreamReference.CreateFromStream(randomStream);
+				Windows.Storage.Streams.InMemoryRandomAccessStream stream = new Windows.Storage.Streams.InMemoryRandomAccessStream();
+				Windows.Storage.Streams.DataWriter writer = new Windows.Storage.Streams.DataWriter(stream);
+				writer.WriteBytes(bytes);
+				await writer.StoreAsync();
+				await writer.FlushAsync();
+				writer.DetachStream();
+				writer.Dispose();
+				stream.Seek(0);
+				Windows.Storage.Streams.RandomAccessStreamReference reference = Windows.Storage.Streams.RandomAccessStreamReference.CreateFromStream(stream);
 				Windows.ApplicationModel.DataTransfer.DataPackage package = new Windows.ApplicationModel.DataTransfer.DataPackage();
 				package.SetBitmap(reference);
 				Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
@@ -1088,6 +1094,7 @@ namespace Bitmute.UI
 				System.IO.Stream netStream = System.IO.WindowsRuntimeStreamExtensions.AsStreamForRead(stream);
 				SkiaSharp.SKBitmap decoded = SkiaSharp.SKBitmap.Decode(netStream);
 				netStream.Dispose();
+				stream.Dispose();
 				if (decoded == null)
 				{
 					return null;
@@ -1112,7 +1119,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void DoCut()
+		private async void DoCut()
 		{
 			Document document = ActiveDocument();
 			if (document == null)
@@ -1134,7 +1141,7 @@ namespace Bitmute.UI
 				s_clipboardBitmap.Dispose();
 			}
 			s_clipboardBitmap = copied;
-			CopyToSystemClipboard(copied);
+			await CopyToSystemClipboard(copied);
 			document.BeginStroke();
 			EraseSelection(document, layer);
 			document.EndStroke();

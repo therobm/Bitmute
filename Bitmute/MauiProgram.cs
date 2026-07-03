@@ -53,6 +53,10 @@ namespace Bitmute
 
 		private static void OnNativeWindowActivated(object sender, Microsoft.UI.Xaml.WindowActivatedEventArgs args)
 		{
+			if (args.WindowActivationState == Microsoft.UI.Xaml.WindowActivationState.Deactivated)
+			{
+				return;
+			}
 			Microsoft.UI.Xaml.Window window = sender as Microsoft.UI.Xaml.Window;
 			if (window == null)
 			{

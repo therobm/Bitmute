@@ -33,6 +33,18 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			try
+			{
+				ApplyColors();
+			}
+			catch (Exception error)
+			{
+				System.Diagnostics.Debug.WriteLine("TitleBarChrome.Apply failed: " + error.Message);
+			}
+		}
+
+		private static void ApplyColors()
+		{
 			Windows.UI.Color background = ToWindowsColor(UiConstants.AppTitleBar);
 			Windows.UI.Color foreground = ToWindowsColor(UiConstants.AppTitleBarText);
 			Windows.UI.Color hover = ToWindowsColor(UiConstants.AppTitleBarHover);
