@@ -21,6 +21,7 @@ namespace Bitmute.UI
 		private VerticalStackLayout m_listHost;
 		private Slider m_opacity;
 		private Label m_opacityValue;
+		private Picker m_blendPicker;
 		private bool m_suppress;
 		private List<Button> m_eyeButtons;
 		private List<int> m_eyeLayers;
@@ -325,6 +326,55 @@ namespace Bitmute.UI
 			Refresh();
 		}
 
+		private void OnBlendChanged(object sender, System.EventArgs eventArgs)
+		{
+			if (m_suppress)
+			{
+				return;
+			}
+			Document document = Doc();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			int index = m_blendPicker.SelectedIndex;
+			if (index < 0)
+			{
+				index = 0;
+			}
+			layer.SetBlendMode((eBlendMode)index);
+			RecompositeActive();
+		}
+
+		private void OnDuplicateClicked(object sender, System.EventArgs eventArgs)
+		{
+			Document document = Doc();
+			if (document == null)
+			{
+				return;
+			}
+			document.DuplicateLayer(document.ActiveLayerIndex());
+			RecompositeActive();
+			Refresh();
+		}
+
+		private void OnMergeClicked(object sender, System.EventArgs eventArgs)
+		{
+			Document document = Doc();
+			if (document == null)
+			{
+				return;
+			}
+			document.MergeDown(document.ActiveLayerIndex());
+			RecompositeActive();
+			Refresh();
+		}
+
 		private void OnOpacityChanged(object sender, ValueChangedEventArgs eventArgs)
 		{
 			if (m_suppress)
@@ -357,6 +407,8 @@ namespace Bitmute.UI
 			m_thumbnailLayers = new List<int>();
 
 			Button addButton = BuildActionButton("+", 30.0, OnAddClicked);
+			Button duplicateButton = BuildActionButton("Dup", 40.0, OnDuplicateClicked);
+			Button mergeButton = BuildActionButton("Merge", 54.0, OnMergeClicked);
 			Button deleteButton = BuildActionButton("Del", 40.0, OnDeleteClicked);
 
 			Label opacityLabel = new Label();
@@ -389,6 +441,37 @@ namespace Bitmute.UI
 			opacityRow.Add(m_opacity);
 			opacityRow.Add(m_opacityValue);
 
+			Label blendLabel = new Label();
+			blendLabel.Text = "Blend";
+			blendLabel.FontSize = 11.0;
+			blendLabel.TextColor = UiConstants.TextDim;
+			blendLabel.VerticalOptions = LayoutOptions.Center;
+
+			m_blendPicker = new Picker();
+			m_blendPicker.FontSize = 11.0;
+			m_blendPicker.TextColor = UiConstants.OnSurface;
+			m_blendPicker.Items.Add("Normal");
+			m_blendPicker.Items.Add("Multiply");
+			m_blendPicker.Items.Add("Screen");
+			m_blendPicker.Items.Add("Overlay");
+			m_blendPicker.Items.Add("Add");
+			m_blendPicker.SelectedIndex = 0;
+			m_blendPicker.SelectedIndexChanged += OnBlendChanged;
+
+			Grid blendRow = new Grid();
+			blendRow.ColumnSpacing = 6.0;
+			blendRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			blendRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+			Grid.SetColumn(blendLabel, 0);
+			Grid.SetColumn(m_blendPicker, 1);
+			blendRow.Add(blendLabel);
+			blendRow.Add(m_blendPicker);
+
+			VerticalStackLayout topStack = new VerticalStackLayout();
+			topStack.Spacing = 4.0;
+			topStack.Add(opacityRow);
+			topStack.Add(blendRow);
+
 			m_listHost = new VerticalStackLayout();
 			m_listHost.Spacing = 1.0;
 
@@ -398,6 +481,8 @@ namespace Bitmute.UI
 			HorizontalStackLayout bottomBar = new HorizontalStackLayout();
 			bottomBar.Spacing = 4.0;
 			bottomBar.Add(addButton);
+			bottomBar.Add(duplicateButton);
+			bottomBar.Add(mergeButton);
 			bottomBar.Add(deleteButton);
 
 			Grid layout = new Grid();
@@ -406,10 +491,10 @@ namespace Bitmute.UI
 			layout.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
 			layout.RowDefinitions.Add(new RowDefinition(GridLength.Star));
 			layout.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-			Grid.SetRow(opacityRow, 0);
+			Grid.SetRow(topStack, 0);
 			Grid.SetRow(listScroll, 1);
 			Grid.SetRow(bottomBar, 2);
-			layout.Add(opacityRow);
+			layout.Add(topStack);
 			layout.Add(listScroll);
 			layout.Add(bottomBar);
 
@@ -444,6 +529,7 @@ namespace Bitmute.UI
 			{
 				m_suppress = true;
 				m_opacity.Value = active.Opacity();
+				m_blendPicker.SelectedIndex = (int)active.BlendMode();
 				m_suppress = false;
 				m_opacityValue.Text = active.Opacity().ToString();
 			}

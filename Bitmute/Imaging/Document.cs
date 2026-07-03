@@ -392,6 +392,96 @@ namespace Bitmute.Imaging
 			MoveLayer(index, index - 1);
 		}
 
+		public void DuplicateLayer(int index)
+		{
+			if (index < 0 || index >= m_layers.Count)
+			{
+				return;
+			}
+			Layer source = m_layers[index];
+			SKBitmap sourceBitmap = source.Bitmap();
+			Layer copy = new Layer(source.Name() + " copy", sourceBitmap.Width, sourceBitmap.Height);
+			copy.SetBitmap(sourceBitmap.Copy());
+			copy.SetOffset(source.OffsetX(), source.OffsetY());
+			copy.SetOpacity(source.Opacity());
+			copy.SetBlendMode(source.BlendMode());
+			copy.SetVisible(source.IsVisible());
+			m_layers.Insert(index + 1, copy);
+			m_activeLayerIndex = index + 1;
+			m_dirty = true;
+		}
+
+		public void MergeDown(int index)
+		{
+			if (index <= 0 || index >= m_layers.Count)
+			{
+				return;
+			}
+			Layer upper = m_layers[index];
+			Layer lower = m_layers[index - 1];
+			SKBitmap upperBitmap = upper.Bitmap();
+			SKBitmap lowerBitmap = lower.Bitmap();
+			int upperLeft = upper.OffsetX();
+			int upperTop = upper.OffsetY();
+			int lowerLeft = lower.OffsetX();
+			int lowerTop = lower.OffsetY();
+			int left = upperLeft;
+			if (lowerLeft < left)
+			{
+				left = lowerLeft;
+			}
+			int top = upperTop;
+			if (lowerTop < top)
+			{
+				top = lowerTop;
+			}
+			int right = upperLeft + upperBitmap.Width;
+			int lowerRight = lowerLeft + lowerBitmap.Width;
+			if (lowerRight > right)
+			{
+				right = lowerRight;
+			}
+			int bottom = upperTop + upperBitmap.Height;
+			int lowerBottom = lowerTop + lowerBitmap.Height;
+			if (lowerBottom > bottom)
+			{
+				bottom = lowerBottom;
+			}
+			int mergedWidth = right - left;
+			int mergedHeight = bottom - top;
+			SKBitmap merged = new SKBitmap(mergedWidth, mergedHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			merged.Erase(SKColors.Transparent);
+			SKCanvas canvas = new SKCanvas(merged);
+			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
+			SKPaint paint = new SKPaint();
+			paint.BlendMode = SKBlendMode.SrcOver;
+			paint.Color = SKColors.White.WithAlpha(lower.Opacity());
+			SKImage lowerImage = SKImage.FromBitmap(lowerBitmap);
+			canvas.DrawImage(lowerImage, lowerLeft - left, lowerTop - top, sampling, paint);
+			lowerImage.Dispose();
+			paint.BlendMode = Layer.ToSkBlendMode(upper.BlendMode());
+			paint.Color = SKColors.White.WithAlpha(upper.Opacity());
+			SKImage upperImage = SKImage.FromBitmap(upperBitmap);
+			canvas.DrawImage(upperImage, upperLeft - left, upperTop - top, sampling, paint);
+			upperImage.Dispose();
+			paint.Dispose();
+			canvas.Dispose();
+			lower.SetBitmap(merged);
+			lower.SetOffset(left, top);
+			lower.SetOpacity(255);
+			lower.SetBlendMode(eBlendMode.Normal);
+			m_layers.RemoveAt(index);
+			if (m_activeLayerIndex >= m_layers.Count)
+			{
+				m_activeLayerIndex = m_layers.Count - 1;
+			}
+			else
+			{
+				m_activeLayerIndex = index - 1;
+			}
+			m_dirty = true;
+		}
+
 		public void DeleteLayer(int index)
 		{
 			if (m_layers.Count <= 1)
