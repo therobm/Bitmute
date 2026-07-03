@@ -115,7 +115,7 @@ namespace Bitmute.UI
 			}
 			if (title == "Window")
 			{
-				return new string[] { "Tools", "Layers", "Color" };
+				return new string[] { "Cascade", "Tile", "Tools", "Layers", "Color" };
 			}
 			return new string[] { "About Bitmute" };
 		}
@@ -165,6 +165,18 @@ namespace Bitmute.UI
 			if (title == "Image")
 			{
 				return true;
+			}
+			if (title == "Window")
+			{
+				if (item == "Cascade")
+				{
+					return true;
+				}
+				if (item == "Tile")
+				{
+					return true;
+				}
+				return false;
 			}
 			if (title == "View")
 			{
@@ -564,6 +576,16 @@ namespace Bitmute.UI
 			if (action == "Trim")
 			{
 				DoCanvasOp("trim");
+				return;
+			}
+			if (action == "Cascade")
+			{
+				DoCascadeWindows();
+				return;
+			}
+			if (action == "Tile")
+			{
+				DoTileWindows();
 				return;
 			}
 			if (action == "Canvas Size…")
@@ -1429,11 +1451,97 @@ namespace Bitmute.UI
 
 		private void PlaceAndAdd(DocumentWindow window)
 		{
+			double workspaceWidth = WorkspaceWidth();
+			double workspaceHeight = WorkspaceHeight();
+			double width = UiConstants.DefaultDocumentWindowWidth;
+			double height = UiConstants.DefaultDocumentWindowHeight;
+			if (workspaceWidth > 100.0 && workspaceHeight > 100.0)
+			{
+				width = workspaceWidth * 0.85;
+				height = workspaceHeight * 0.86;
+			}
 			double offset = m_cascadeCount * UiConstants.CascadeOffset;
 			m_cascadeCount++;
-			double x = 30.0 + offset;
-			double y = 24.0 + offset;
-			AddDocument(window, x, y, UiConstants.DefaultDocumentWindowWidth, UiConstants.DefaultDocumentWindowHeight);
+			double x = 20.0 + offset;
+			double y = 16.0 + offset;
+			if (workspaceWidth > 100.0 && x + width > workspaceWidth - 8.0)
+			{
+				x = workspaceWidth - 8.0 - width;
+				if (x < 8.0)
+				{
+					x = 8.0;
+				}
+			}
+			if (workspaceHeight > 100.0 && y + height > workspaceHeight - 8.0)
+			{
+				y = workspaceHeight - 8.0 - height;
+				if (y < 8.0)
+				{
+					y = 8.0;
+				}
+			}
+			AddDocument(window, x, y, width, height);
+		}
+
+		private System.Collections.Generic.List<DocumentWindow> DocumentWindows()
+		{
+			System.Collections.Generic.List<DocumentWindow> windows = new System.Collections.Generic.List<DocumentWindow>();
+			for (int index = 0; index < m_documents.Count; index++)
+			{
+				DocumentWindow window = m_documents[index] as DocumentWindow;
+				if (window != null)
+				{
+					windows.Add(window);
+				}
+			}
+			return windows;
+		}
+
+		private void DoCascadeWindows()
+		{
+			System.Collections.Generic.List<DocumentWindow> windows = DocumentWindows();
+			double workspaceWidth = WorkspaceWidth();
+			double workspaceHeight = WorkspaceHeight();
+			if (workspaceWidth <= 100.0 || workspaceHeight <= 100.0)
+			{
+				return;
+			}
+			double width = workspaceWidth * 0.72;
+			double height = workspaceHeight * 0.74;
+			for (int index = 0; index < windows.Count; index++)
+			{
+				double offset = index * UiConstants.CascadeOffset;
+				windows[index].SetBounds(20.0 + offset, 16.0 + offset, width, height);
+				BringToFront(windows[index]);
+			}
+			m_cascadeCount = windows.Count;
+		}
+
+		private void DoTileWindows()
+		{
+			System.Collections.Generic.List<DocumentWindow> windows = DocumentWindows();
+			int count = windows.Count;
+			if (count == 0)
+			{
+				return;
+			}
+			double workspaceWidth = WorkspaceWidth();
+			double workspaceHeight = WorkspaceHeight();
+			if (workspaceWidth <= 100.0 || workspaceHeight <= 100.0)
+			{
+				return;
+			}
+			int columns = (int)System.Math.Ceiling(System.Math.Sqrt(count));
+			int rows = (int)System.Math.Ceiling((double)count / columns);
+			double cellWidth = workspaceWidth / columns;
+			double cellHeight = workspaceHeight / rows;
+			for (int index = 0; index < count; index++)
+			{
+				int row = index / columns;
+				int column = index % columns;
+				windows[index].SetBounds(column * cellWidth, row * cellHeight, cellWidth, cellHeight);
+				BringToFront(windows[index]);
+			}
 		}
 
 		private async void OpenImageFlow()
