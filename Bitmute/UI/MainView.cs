@@ -62,6 +62,14 @@ namespace Bitmute.UI
 		private Picker m_brushModePicker;
 		private Label m_lineAntiAliasLabel;
 		private CheckBox m_lineAntiAliasCheck;
+		private Label m_toleranceLabel;
+		private SliderField m_toleranceField;
+		private Label m_wandAntiAliasLabel;
+		private CheckBox m_wandAntiAliasCheck;
+		private Label m_wandContiguousLabel;
+		private CheckBox m_wandContiguousCheck;
+		private Label m_wandSampleAllLabel;
+		private CheckBox m_wandSampleAllCheck;
 		private Label m_textFontLabel;
 		private Button m_textFontButton;
 		private string[] m_fontFamilies;
@@ -1453,6 +1461,56 @@ namespace Bitmute.UI
 			m_lineAntiAliasCheck.IsVisible = false;
 			m_lineAntiAliasCheck.CheckedChanged += OnLineAntiAliasChanged;
 
+			m_toleranceLabel = new Label();
+			m_toleranceLabel.Text = "Tolerance";
+			m_toleranceLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_toleranceLabel.FontSize = 12.0;
+			m_toleranceLabel.VerticalOptions = LayoutOptions.Center;
+			m_toleranceLabel.IsVisible = false;
+
+			m_toleranceField = new SliderField(0, 255, m_toolState.FillTolerance(), "", OnToleranceValue);
+			m_toleranceField.VerticalOptions = LayoutOptions.Center;
+			m_toleranceField.IsVisible = false;
+
+			m_wandAntiAliasLabel = new Label();
+			m_wandAntiAliasLabel.Text = "Anti-alias";
+			m_wandAntiAliasLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_wandAntiAliasLabel.FontSize = 12.0;
+			m_wandAntiAliasLabel.VerticalOptions = LayoutOptions.Center;
+			m_wandAntiAliasLabel.IsVisible = false;
+
+			m_wandAntiAliasCheck = new CheckBox();
+			m_wandAntiAliasCheck.VerticalOptions = LayoutOptions.Center;
+			m_wandAntiAliasCheck.IsVisible = false;
+			m_wandAntiAliasCheck.IsChecked = m_toolState.WandAntiAlias();
+			m_wandAntiAliasCheck.CheckedChanged += OnWandAntiAliasChanged;
+
+			m_wandContiguousLabel = new Label();
+			m_wandContiguousLabel.Text = "Contiguous";
+			m_wandContiguousLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_wandContiguousLabel.FontSize = 12.0;
+			m_wandContiguousLabel.VerticalOptions = LayoutOptions.Center;
+			m_wandContiguousLabel.IsVisible = false;
+
+			m_wandContiguousCheck = new CheckBox();
+			m_wandContiguousCheck.VerticalOptions = LayoutOptions.Center;
+			m_wandContiguousCheck.IsVisible = false;
+			m_wandContiguousCheck.IsChecked = m_toolState.WandContiguous();
+			m_wandContiguousCheck.CheckedChanged += OnWandContiguousChanged;
+
+			m_wandSampleAllLabel = new Label();
+			m_wandSampleAllLabel.Text = "Sample All Layers";
+			m_wandSampleAllLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_wandSampleAllLabel.FontSize = 12.0;
+			m_wandSampleAllLabel.VerticalOptions = LayoutOptions.Center;
+			m_wandSampleAllLabel.IsVisible = false;
+
+			m_wandSampleAllCheck = new CheckBox();
+			m_wandSampleAllCheck.VerticalOptions = LayoutOptions.Center;
+			m_wandSampleAllCheck.IsVisible = false;
+			m_wandSampleAllCheck.IsChecked = m_toolState.WandSampleAll();
+			m_wandSampleAllCheck.CheckedChanged += OnWandSampleAllChanged;
+
 			m_textFontLabel = new Label();
 			m_textFontLabel.Text = "Font";
 			m_textFontLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
@@ -1587,6 +1645,14 @@ namespace Bitmute.UI
 			options.Add(m_brushSettingsButton);
 			options.Add(m_lineAntiAliasLabel);
 			options.Add(m_lineAntiAliasCheck);
+			options.Add(m_toleranceLabel);
+			options.Add(m_toleranceField);
+			options.Add(m_wandAntiAliasLabel);
+			options.Add(m_wandAntiAliasCheck);
+			options.Add(m_wandContiguousLabel);
+			options.Add(m_wandContiguousCheck);
+			options.Add(m_wandSampleAllLabel);
+			options.Add(m_wandSampleAllCheck);
 			options.Add(m_textFontLabel);
 			options.Add(m_textFontButton);
 			options.Add(m_textSizeLabel);
@@ -2674,6 +2740,19 @@ namespace Bitmute.UI
 			{
 				m_lineAntiAliasCheck.IsVisible = isLine;
 			}
+			bool isWand = tool == eTool.MagicWand;
+			bool usesTolerance = isWand || tool == eTool.Fill;
+			if (m_toleranceLabel != null)
+			{
+				m_toleranceLabel.IsVisible = usesTolerance;
+				m_toleranceField.IsVisible = usesTolerance;
+				m_wandAntiAliasLabel.IsVisible = isWand;
+				m_wandAntiAliasCheck.IsVisible = isWand;
+				m_wandContiguousLabel.IsVisible = isWand;
+				m_wandContiguousCheck.IsVisible = isWand;
+				m_wandSampleAllLabel.IsVisible = isWand;
+				m_wandSampleAllCheck.IsVisible = isWand;
+			}
 			bool isText = tool == eTool.Text;
 			if (m_textFontLabel != null)
 			{
@@ -2728,6 +2807,42 @@ namespace Bitmute.UI
 			{
 				m_rulerTool.Reset();
 			}
+		}
+
+		private void OnToleranceValue(int tolerance)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetFillTolerance(tolerance);
+		}
+
+		private void OnWandAntiAliasChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetWandAntiAlias(m_wandAntiAliasCheck.IsChecked);
+		}
+
+		private void OnWandContiguousChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetWandContiguous(m_wandContiguousCheck.IsChecked);
+		}
+
+		private void OnWandSampleAllChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetWandSampleAll(m_wandSampleAllCheck.IsChecked);
 		}
 
 		private void OnBrushHardnessValue(int hardness)

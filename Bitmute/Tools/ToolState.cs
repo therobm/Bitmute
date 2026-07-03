@@ -17,6 +17,9 @@ namespace Bitmute.Tools
 		private int m_brushSmoothing;
 		private eBlendMode m_brushMode;
 		private int m_fillTolerance;
+		private bool m_wandContiguous;
+		private bool m_wandSampleAll;
+		private bool m_wandAntiAlias;
 		private bool m_lineAntiAlias;
 		private int m_textSize;
 		private bool m_textBold;
@@ -50,6 +53,9 @@ namespace Bitmute.Tools
 			m_brushSmoothing = 0;
 			m_brushMode = eBlendMode.Normal;
 			m_fillTolerance = 0;
+			m_wandContiguous = true;
+			m_wandSampleAll = false;
+			m_wandAntiAlias = true;
 			m_lineAntiAlias = false;
 			m_textSize = 32;
 			m_textBold = false;
@@ -68,6 +74,36 @@ namespace Bitmute.Tools
 			m_textKerningAuto = true;
 			m_shiftHeld = false;
 			m_altHeld = false;
+		}
+
+		public bool WandContiguous()
+		{
+			return m_wandContiguous;
+		}
+
+		public void SetWandContiguous(bool contiguous)
+		{
+			m_wandContiguous = contiguous;
+		}
+
+		public bool WandSampleAll()
+		{
+			return m_wandSampleAll;
+		}
+
+		public void SetWandSampleAll(bool sampleAll)
+		{
+			m_wandSampleAll = sampleAll;
+		}
+
+		public bool WandAntiAlias()
+		{
+			return m_wandAntiAlias;
+		}
+
+		public void SetWandAntiAlias(bool antiAlias)
+		{
+			m_wandAntiAlias = antiAlias;
 		}
 
 		public bool TextLeadingAuto()

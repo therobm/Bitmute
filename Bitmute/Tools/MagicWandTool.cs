@@ -6,12 +6,12 @@ namespace Bitmute.Tools
 {
 	public class MagicWandTool : Tool
 	{
-		private static bool ColorMatch(SKColor left, SKColor right, int tolerance)
+		private static bool ChannelsMatch(int leftRed, int leftGreen, int leftBlue, int leftAlpha, int rightRed, int rightGreen, int rightBlue, int rightAlpha, int tolerance)
 		{
-			int deltaRed = left.Red - right.Red;
-			int deltaGreen = left.Green - right.Green;
-			int deltaBlue = left.Blue - right.Blue;
-			int deltaAlpha = left.Alpha - right.Alpha;
+			int deltaRed = leftRed - rightRed;
+			int deltaGreen = leftGreen - rightGreen;
+			int deltaBlue = leftBlue - rightBlue;
+			int deltaAlpha = leftAlpha - rightAlpha;
 			if (deltaRed < 0)
 			{
 				deltaRed = -deltaRed;
@@ -35,27 +35,79 @@ namespace Bitmute.Tools
 			return true;
 		}
 
+		private static unsafe void ReadPixel(byte* basePointer, int rowBytes, int x, int y, bool premultiplied, out int red, out int green, out int blue, out int alpha)
+		{
+			byte* pixel = basePointer + (y * rowBytes) + (x * 4);
+			red = pixel[0];
+			green = pixel[1];
+			blue = pixel[2];
+			alpha = pixel[3];
+			if (!premultiplied || alpha == 0 || alpha == 255)
+			{
+				return;
+			}
+			red = ((red * 255) + (alpha / 2)) / alpha;
+			green = ((green * 255) + (alpha / 2)) / alpha;
+			blue = ((blue * 255) + (alpha / 2)) / alpha;
+			if (red > 255)
+			{
+				red = 255;
+			}
+			if (green > 255)
+			{
+				green = 255;
+			}
+			if (blue > 255)
+			{
+				blue = 255;
+			}
+		}
+
 		public override bool IsDestructive()
 		{
 			return false;
 		}
 
-		public override bool OnPressed(Document document, int x, int y, ToolState state)
+		public override unsafe bool OnPressed(Document document, int x, int y, ToolState state)
 		{
 			Layer layer = document.ActiveLayer();
 			if (layer == null)
 			{
 				return false;
 			}
-			SKBitmap bitmap = layer.Bitmap();
+			bool sampleAll = state.WandSampleAll();
+			bool contiguous = state.WandContiguous();
+			SKBitmap composed = null;
+			SKBitmap bitmap;
+			int offsetX;
+			int offsetY;
+			bool premultiplied;
+			if (sampleAll)
+			{
+				composed = new SKBitmap(document.Width(), document.Height(), SKColorType.Rgba8888, SKAlphaType.Premul);
+				document.CompositeInto(composed);
+				bitmap = composed;
+				offsetX = 0;
+				offsetY = 0;
+				premultiplied = true;
+			}
+			else
+			{
+				bitmap = layer.Bitmap();
+				offsetX = layer.OffsetX();
+				offsetY = layer.OffsetY();
+				premultiplied = false;
+			}
 			int width = bitmap.Width;
 			int height = bitmap.Height;
-			int offsetX = layer.OffsetX();
-			int offsetY = layer.OffsetY();
 			int seedX = x - offsetX;
 			int seedY = y - offsetY;
 			if (seedX < 0 || seedY < 0 || seedX >= width || seedY >= height)
 			{
+				if (composed != null)
+				{
+					composed.Dispose();
+				}
 				return false;
 			}
 
@@ -66,60 +118,108 @@ namespace Bitmute.Tools
 			}
 			document.Selection().BeginOperation(mode);
 
-			SKColor target = bitmap.GetPixel(seedX, seedY);
+			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
+			int rowBytes = bitmap.RowBytes;
+			int targetRed;
+			int targetGreen;
+			int targetBlue;
+			int targetAlpha;
+			ReadPixel(basePointer, rowBytes, seedX, seedY, premultiplied, out targetRed, out targetGreen, out targetBlue, out targetAlpha);
 			int tolerance = state.FillTolerance();
 			int documentWidth = document.Width();
 			int documentHeight = document.Height();
-			byte[] visited = new byte[width * height];
 			byte[] mask = new byte[documentWidth * documentHeight];
 			bool anySelected = false;
 
-			Stack<int> pending = new Stack<int>();
-			pending.Push((seedY * width) + seedX);
-			for (;;)
+			if (contiguous)
 			{
-				if (pending.Count == 0)
+				byte[] visited = new byte[width * height];
+				Stack<int> pending = new Stack<int>();
+				pending.Push((seedY * width) + seedX);
+				for (;;)
 				{
-					break;
+					if (pending.Count == 0)
+					{
+						break;
+					}
+					int index = pending.Pop();
+					if (visited[index] != 0)
+					{
+						continue;
+					}
+					visited[index] = 255;
+					int pixelX = index % width;
+					int pixelY = index / width;
+					int currentRed;
+					int currentGreen;
+					int currentBlue;
+					int currentAlpha;
+					ReadPixel(basePointer, rowBytes, pixelX, pixelY, premultiplied, out currentRed, out currentGreen, out currentBlue, out currentAlpha);
+					if (!ChannelsMatch(currentRed, currentGreen, currentBlue, currentAlpha, targetRed, targetGreen, targetBlue, targetAlpha, tolerance))
+					{
+						continue;
+					}
+					int canvasX = pixelX + offsetX;
+					int canvasY = pixelY + offsetY;
+					if (canvasX >= 0 && canvasY >= 0 && canvasX < documentWidth && canvasY < documentHeight)
+					{
+						mask[(canvasY * documentWidth) + canvasX] = 255;
+						anySelected = true;
+					}
+					if (pixelX > 0)
+					{
+						pending.Push(index - 1);
+					}
+					if (pixelX < width - 1)
+					{
+						pending.Push(index + 1);
+					}
+					if (pixelY > 0)
+					{
+						pending.Push(index - width);
+					}
+					if (pixelY < height - 1)
+					{
+						pending.Push(index + width);
+					}
 				}
-				int index = pending.Pop();
-				if (visited[index] != 0)
+			}
+			else
+			{
+				for (int pixelY = 0; pixelY < height; pixelY++)
 				{
-					continue;
-				}
-				int pixelX = index % width;
-				int pixelY = index / width;
-				SKColor current = bitmap.GetPixel(pixelX, pixelY);
-				if (!ColorMatch(current, target, tolerance))
-				{
-					continue;
-				}
-				visited[index] = 255;
-				int canvasX = pixelX + offsetX;
-				int canvasY = pixelY + offsetY;
-				if (canvasX >= 0 && canvasY >= 0 && canvasX < documentWidth && canvasY < documentHeight)
-				{
-					mask[(canvasY * documentWidth) + canvasX] = 255;
-					anySelected = true;
-				}
-				if (pixelX > 0)
-				{
-					pending.Push(index - 1);
-				}
-				if (pixelX < width - 1)
-				{
-					pending.Push(index + 1);
-				}
-				if (pixelY > 0)
-				{
-					pending.Push(index - width);
-				}
-				if (pixelY < height - 1)
-				{
-					pending.Push(index + width);
+					int canvasY = pixelY + offsetY;
+					if (canvasY < 0 || canvasY >= documentHeight)
+					{
+						continue;
+					}
+					int maskRow = canvasY * documentWidth;
+					for (int pixelX = 0; pixelX < width; pixelX++)
+					{
+						int canvasX = pixelX + offsetX;
+						if (canvasX < 0 || canvasX >= documentWidth)
+						{
+							continue;
+						}
+						int currentRed;
+						int currentGreen;
+						int currentBlue;
+						int currentAlpha;
+						ReadPixel(basePointer, rowBytes, pixelX, pixelY, premultiplied, out currentRed, out currentGreen, out currentBlue, out currentAlpha);
+						if (!ChannelsMatch(currentRed, currentGreen, currentBlue, currentAlpha, targetRed, targetGreen, targetBlue, targetAlpha, tolerance))
+						{
+							continue;
+						}
+						mask[maskRow + canvasX] = 255;
+						anySelected = true;
+					}
 				}
 			}
 
+			if (composed != null)
+			{
+				composed.Dispose();
+			}
 			if (!anySelected)
 			{
 				document.Selection().ApplyRect(SKRectI.Empty);
