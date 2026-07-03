@@ -51,6 +51,19 @@ namespace Bitmute.UI
 			}
 			darkPaint.Dispose();
 
+			if (layer.IsText())
+			{
+				SKPaint glyphPaint = new SKPaint();
+				glyphPaint.Color = new SKColor(0x40, 0x40, 0x40);
+				glyphPaint.IsAntialias = true;
+				SKFont glyphFont = new SKFont(SKTypeface.Default, ThumbnailHeight * 0.7f);
+				canvas.DrawText("T", ThumbnailWidth / 2.0f, ThumbnailHeight * 0.78f, SKTextAlign.Center, glyphFont, glyphPaint);
+				glyphFont.Dispose();
+				glyphPaint.Dispose();
+				canvas.Dispose();
+				return new SKBitmapImageSource { Bitmap = thumbnail };
+			}
+
 			SKBitmap source = layer.Bitmap();
 			float sourceAspect = (float)source.Width / (float)source.Height;
 			float thumbnailAspect = (float)ThumbnailWidth / (float)ThumbnailHeight;
@@ -193,6 +206,10 @@ namespace Bitmute.UI
 			TapGestureRecognizer tap = new TapGestureRecognizer();
 			tap.Tapped += OnRowTapped;
 			row.GestureRecognizers.Add(tap);
+			TapGestureRecognizer doubleTap = new TapGestureRecognizer();
+			doubleTap.NumberOfTapsRequired = 2;
+			doubleTap.Tapped += OnRowDoubleTapped;
+			row.GestureRecognizers.Add(doubleTap);
 			PanGestureRecognizer pan = new PanGestureRecognizer();
 			pan.PanUpdated += OnRowPan;
 			row.GestureRecognizers.Add(pan);
@@ -235,6 +252,31 @@ namespace Bitmute.UI
 				{
 					document.SetActiveLayerIndex(m_rowLayers[index]);
 					Refresh();
+					return;
+				}
+			}
+		}
+
+		private void OnRowDoubleTapped(object sender, TappedEventArgs eventArgs)
+		{
+			Document document = Doc();
+			if (document == null)
+			{
+				return;
+			}
+			for (int index = 0; index < m_rowBorders.Count; index++)
+			{
+				if (ReferenceEquals(m_rowBorders[index], sender))
+				{
+					Layer layer = document.Layers()[m_rowLayers[index]];
+					if (layer.IsText())
+					{
+						MainView main = MainView.Self;
+						if (main != null)
+						{
+							main.BeginTextEditForLayer(layer);
+						}
+					}
 					return;
 				}
 			}

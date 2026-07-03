@@ -156,6 +156,11 @@ namespace Bitmute.Imaging
 			m_textAntiAlias = antiAlias;
 		}
 
+		public void RasterizeText()
+		{
+			m_isText = false;
+		}
+
 		public void RenderText()
 		{
 			m_bitmap.Erase(SKColors.Transparent);

@@ -77,6 +77,18 @@ namespace Bitmute.UI
 		private CanvasView m_textEditCanvas;
 		private Bitmute.Imaging.Layer m_textEditLayer;
 		private bool m_textEditActive;
+		private bool m_textEditorKeyHooked;
+		private Microsoft.Maui.Dispatching.IDispatcherTimer m_caretTimer;
+		private bool m_caretVisible;
+		private string m_textPreEditString;
+		private bool m_textPreEditWasNew;
+		private float m_textPreEditSize;
+		private string m_textPreEditFont;
+		private bool m_textPreEditBold;
+		private bool m_textPreEditItalic;
+		private SKColor m_textPreEditColor;
+		private int m_textPreEditAlign;
+		private int m_textPreEditAntiAlias;
 		private Label m_statusInfoLabel;
 		private Label m_statusCursorLabel;
 		private string[] m_menuTitles;
@@ -130,7 +142,7 @@ namespace Bitmute.UI
 			}
 			if (title == "Layer")
 			{
-				return new string[] { "New Layer", "Delete Layer", "Merge Down" };
+				return new string[] { "New Layer", "Delete Layer", "Merge Down", "Rasterize Text" };
 			}
 			if (title == "Select")
 			{
@@ -192,6 +204,14 @@ namespace Bitmute.UI
 					return true;
 				}
 				if (item == "Paste")
+				{
+					return true;
+				}
+				return false;
+			}
+			if (title == "Layer")
+			{
+				if (item == "Rasterize Text")
 				{
 					return true;
 				}
@@ -663,6 +683,11 @@ namespace Bitmute.UI
 			if (action == "Tile")
 			{
 				DoTileWindows();
+				return;
+			}
+			if (action == "Rasterize Text")
+			{
+				DoRasterizeText();
 				return;
 			}
 			if (action == "Canvas Size…")
@@ -1815,6 +1840,10 @@ namespace Bitmute.UI
 
 		private void OnAcceleratorSwapColors(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
+			if (m_textEditActive)
+			{
+				return;
+			}
 			if (m_toolPalette != null)
 			{
 				m_toolPalette.SwapColors();
@@ -1842,42 +1871,70 @@ namespace Bitmute.UI
 
 		private void OnAcceleratorUndo(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
+			if (m_textEditActive)
+			{
+				return;
+			}
 			DoUndo();
 			args.Handled = true;
 		}
 
 		private void OnAcceleratorRedo(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
+			if (m_textEditActive)
+			{
+				return;
+			}
 			DoRedo();
 			args.Handled = true;
 		}
 
 		private void OnAcceleratorSelectAll(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
+			if (m_textEditActive)
+			{
+				return;
+			}
 			DoSelectAll();
 			args.Handled = true;
 		}
 
 		private void OnAcceleratorDeselect(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
+			if (m_textEditActive)
+			{
+				return;
+			}
 			DoDeselect();
 			args.Handled = true;
 		}
 
 		private void OnAcceleratorCopy(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
+			if (m_textEditActive)
+			{
+				return;
+			}
 			DoCopy();
 			args.Handled = true;
 		}
 
 		private void OnAcceleratorPaste(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
+			if (m_textEditActive)
+			{
+				return;
+			}
 			DoPaste();
 			args.Handled = true;
 		}
 
 		private void OnAcceleratorCut(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
+			if (m_textEditActive)
+			{
+				return;
+			}
 			DoCut();
 			args.Handled = true;
 		}
@@ -2114,7 +2171,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void SetStatusMessage(string message)
+		public void SetStatusMessage(string message)
 		{
 			if (m_statusCursorLabel != null)
 			{
@@ -2845,107 +2902,196 @@ namespace Bitmute.UI
 
 		public void PlaceText(CanvasView canvas, int x, int y, float deviceX, float deviceY)
 		{
-			CommitTextEdit();
 			Document document = canvas.CurrentDocument();
 			if (document == null)
 			{
 				return;
 			}
-			Layer layer = document.ActiveLayer();
-			bool editExisting = layer != null && layer.IsText();
-			if (!editExisting)
+			if (m_textEditActive && m_textEditLayer != null && ReferenceEquals(m_textEditCanvas, canvas))
 			{
-				layer = document.AddLayer("Text");
-				if (layer == null)
+				int caretIndex = TextRasterizer.CaretIndexAtPoint(m_textEditLayer.Text(), x, y, m_textEditLayer.TextX(), m_textEditLayer.TextY(), m_textEditLayer.TextSize(), m_textEditLayer.TextFontFamily(), m_textEditLayer.TextBold(), m_textEditLayer.TextItalic(), m_textEditLayer.TextAlign());
+				if (m_textEditor != null)
 				{
-					return;
+					m_textEditor.CursorPosition = caretIndex;
+					m_textEditor.SelectionLength = 0;
+					m_textEditor.Focus();
 				}
-				layer.SetTextPosition(x, y);
-				layer.SetTextStyle(m_toolState.TextSize(), m_toolState.TextFontFamily(), m_toolState.TextBold(), m_toolState.TextItalic(), m_toolState.Foreground(), m_toolState.TextAlign(), m_toolState.TextAntiAlias());
-				if (m_layersPanel != null)
+				m_caretVisible = true;
+				canvas.InvalidateSurface();
+				return;
+			}
+			CommitTextEdit();
+			Layer active = document.ActiveLayer();
+			bool editExisting = active != null && active.IsText();
+			if (editExisting)
+			{
+				BeginTextEdit(canvas, active, false);
+				return;
+			}
+			Layer layer = document.AddLayer("Text");
+			if (layer == null)
+			{
+				return;
+			}
+			layer.SetTextPosition(x, y);
+			layer.SetTextStyle(m_toolState.TextSize(), m_toolState.TextFontFamily(), m_toolState.TextBold(), m_toolState.TextItalic(), m_toolState.Foreground(), m_toolState.TextAlign(), m_toolState.TextAntiAlias());
+			if (m_layersPanel != null)
+			{
+				m_layersPanel.Refresh();
+			}
+			BeginTextEdit(canvas, layer, true);
+		}
+
+		public void BeginTextEditForLayer(Bitmute.Imaging.Layer layer)
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null || layer == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			if (document == null)
+			{
+				return;
+			}
+			int index = document.Layers().IndexOf(layer);
+			if (index < 0)
+			{
+				return;
+			}
+			CommitTextEdit();
+			document.SetActiveLayerIndex(index);
+			if (m_layersPanel != null)
+			{
+				m_layersPanel.Refresh();
+			}
+			if (m_toolState.Tool() != eTool.Text)
+			{
+				if (m_toolPalette != null)
 				{
-					m_layersPanel.Refresh();
+					m_toolPalette.SelectToolExternal(eTool.Text);
+				}
+				else
+				{
+					m_toolState.SetTool(eTool.Text);
+					OnToolSelected(eTool.Text);
 				}
 			}
+			BeginTextEdit(canvas, layer, false);
+		}
 
+		public void BeginTextEdit(CanvasView canvas, Layer layer, bool isNew)
+		{
 			m_textEditCanvas = canvas;
 			m_textEditLayer = layer;
 			m_textEditActive = true;
-			layer.Bitmap().Erase(SkiaSharp.SKColors.Transparent);
-			canvas.MarkComposeDirty();
+			m_textPreEditWasNew = isNew;
+			m_textPreEditString = layer.Text();
+			m_textPreEditSize = layer.TextSize();
+			m_textPreEditFont = layer.TextFontFamily();
+			m_textPreEditBold = layer.TextBold();
+			m_textPreEditItalic = layer.TextItalic();
+			m_textPreEditColor = layer.TextColor();
+			m_textPreEditAlign = layer.TextAlign();
+			m_textPreEditAntiAlias = layer.TextAntiAlias();
 
-			if (m_textEditor == null)
+			LoadTextStyleFromLayer(layer);
+
+			Document document = canvas.CurrentDocument();
+			if (document != null)
 			{
-				m_textEditor = new Editor();
-				m_textEditor.TextChanged += OnTextEditorChanged;
+				document.BeginStroke();
 			}
-			StyleTextEditor(canvas, layer);
-			m_textEditor.Text = layer.Text();
 
-			double editorX;
-			double editorY;
-			ComputeTextEditorPosition(canvas, deviceX, deviceY, out editorX, out editorY);
-			AbsoluteLayout.SetLayoutBounds(m_textEditor, new Rect(editorX, editorY, 260.0, 90.0));
-			AbsoluteLayout.SetLayoutFlags(m_textEditor, AbsoluteLayoutFlags.None);
-			m_textEditor.ZIndex = 5000;
+			EnsureTextEditor();
+			m_textEditor.Text = layer.Text();
+			m_textEditor.CursorPosition = layer.Text().Length;
+			m_textEditor.SelectionLength = 0;
+			PositionTextEditor();
+			m_textEditor.ZIndex = 0;
 			if (!m_workspace.Contains(m_textEditor))
 			{
 				m_workspace.Add(m_textEditor);
 			}
 			m_textEditor.Focus();
+
+			layer.RenderText();
+			canvas.MarkComposeDirty();
+			canvas.InvalidateSurface();
+			StartCaretBlink();
 		}
 
-		private void ComputeTextEditorPosition(CanvasView canvas, float deviceX, float deviceY, out double editorX, out double editorY)
+		private void EnsureTextEditor()
 		{
-			editorX = 20.0;
-			editorY = 20.0;
-			DocumentWindow window = m_activeDocumentWindow;
-			if (window == null)
+			if (m_textEditor != null)
 			{
 				return;
 			}
-			double density = Microsoft.Maui.Devices.DeviceDisplay.MainDisplayInfo.Density;
-			if (density < 0.1)
-			{
-				density = 1.0;
-			}
-			Rect bounds = AbsoluteLayout.GetLayoutBounds(window);
-			double rulers = 0.0;
-			if (m_rulersEnabled)
-			{
-				rulers = UiConstants.RulerThickness;
-			}
-			double canvasLeft = bounds.X + UiConstants.PanelBorderThickness + rulers;
-			double canvasTop = bounds.Y + UiConstants.TitleBarHeight + UiConstants.PanelBorderThickness + rulers;
-			editorX = canvasLeft + (deviceX / density);
-			editorY = canvasTop + (deviceY / density);
+			m_textEditor = new Editor();
+			m_textEditor.Opacity = 0.0;
+			m_textEditor.WidthRequest = 200.0;
+			m_textEditor.HeightRequest = 40.0;
+			m_textEditor.AutoSize = EditorAutoSizeOption.Disabled;
+			m_textEditor.TextChanged += OnTextEditorChanged;
+			m_textEditor.HandlerChanged += OnTextEditorHandlerChanged;
 		}
 
-		private void StyleTextEditor(CanvasView canvas, Layer layer)
+		private void PositionTextEditor()
 		{
-			double density = Microsoft.Maui.Devices.DeviceDisplay.MainDisplayInfo.Density;
-			if (density < 0.1)
+			double editorX = 8.0;
+			double editorY = 8.0;
+			DocumentWindow window = m_activeDocumentWindow;
+			if (window != null)
 			{
-				density = 1.0;
+				Rect bounds = AbsoluteLayout.GetLayoutBounds(window);
+				editorX = bounds.X + UiConstants.PanelBorderThickness + 8.0;
+				editorY = bounds.Y + UiConstants.TitleBarHeight + UiConstants.PanelBorderThickness + 8.0;
 			}
-			double displaySize = (layer.TextSize() * canvas.Zoom()) / density;
-			if (displaySize < 8.0)
+			AbsoluteLayout.SetLayoutBounds(m_textEditor, new Rect(editorX, editorY, 200.0, 40.0));
+			AbsoluteLayout.SetLayoutFlags(m_textEditor, AbsoluteLayoutFlags.None);
+		}
+
+		private void OnTextEditorHandlerChanged(object sender, System.EventArgs eventArgs)
+		{
+			if (m_textEditorKeyHooked)
 			{
-				displaySize = 8.0;
+				return;
 			}
-			m_textEditor.FontSize = displaySize;
-			m_textEditor.FontFamily = layer.TextFontFamily();
-			m_textEditor.FontAttributes = FontAttributes.None;
-			if (layer.TextBold())
+			if (m_textEditor == null || m_textEditor.Handler == null)
 			{
-				m_textEditor.FontAttributes = m_textEditor.FontAttributes | FontAttributes.Bold;
+				return;
 			}
-			if (layer.TextItalic())
+			Microsoft.UI.Xaml.UIElement element = m_textEditor.Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
 			{
-				m_textEditor.FontAttributes = m_textEditor.FontAttributes | FontAttributes.Italic;
+				return;
 			}
-			m_textEditor.TextColor = FromSkColor(layer.TextColor());
-			m_textEditor.BackgroundColor = new Color(0.5f, 0.5f, 0.5f, 0.25f);
+			element.KeyDown += OnTextEditorKeyDown;
+			m_textEditorKeyHooked = true;
+		}
+
+		private void OnTextEditorKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs args)
+		{
+			if (!m_textEditActive)
+			{
+				return;
+			}
+			if (args.Key == Windows.System.VirtualKey.Escape)
+			{
+				CancelTextEdit();
+				args.Handled = true;
+				return;
+			}
+			if (args.Key == Windows.System.VirtualKey.Enter)
+			{
+				Windows.UI.Core.CoreVirtualKeyStates shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift);
+				bool shiftHeld = (shiftState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
+				if (!shiftHeld)
+				{
+					CommitTextEdit();
+					args.Handled = true;
+				}
+			}
 		}
 
 		private static Color FromSkColor(SkiaSharp.SKColor color)
@@ -2959,7 +3105,151 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			m_textEditLayer.SetTextString(m_textEditor.Text);
+			string raw = m_textEditor.Text;
+			if (raw == null)
+			{
+				raw = "";
+			}
+			string normalized = raw.Replace('\r', '\n');
+			m_textEditLayer.SetTextString(normalized);
+			m_textEditLayer.RenderText();
+			if (m_textEditCanvas != null)
+			{
+				m_textEditCanvas.MarkComposeDirty();
+				m_textEditCanvas.InvalidateSurface();
+			}
+		}
+
+		private void LoadTextStyleFromLayer(Layer layer)
+		{
+			m_toolState.SetTextSize((int)layer.TextSize());
+			m_toolState.SetTextFontFamily(layer.TextFontFamily());
+			m_toolState.SetTextBold(layer.TextBold());
+			m_toolState.SetTextItalic(layer.TextItalic());
+			m_toolState.SetTextAlign(layer.TextAlign());
+			m_toolState.SetTextAntiAlias(layer.TextAntiAlias());
+			m_toolState.SetForeground(layer.TextColor());
+			SyncTextOptionsBar();
+			if (m_toolPalette != null)
+			{
+				m_toolPalette.RefreshColors();
+			}
+		}
+
+		private void SyncTextOptionsBar()
+		{
+			if (m_textSizeField != null)
+			{
+				m_textSizeField.SetValueSilently(m_toolState.TextSize());
+			}
+			if (m_textBoldCheck != null)
+			{
+				m_textBoldCheck.IsChecked = m_toolState.TextBold();
+			}
+			if (m_textItalicCheck != null)
+			{
+				m_textItalicCheck.IsChecked = m_toolState.TextItalic();
+			}
+			if (m_textAlignPicker != null)
+			{
+				m_textAlignPicker.SelectedIndex = m_toolState.TextAlign();
+			}
+			if (m_textAntiAliasPicker != null)
+			{
+				m_textAntiAliasPicker.SelectedIndex = m_toolState.TextAntiAlias();
+			}
+			if (m_textFontPicker != null)
+			{
+				int fontIndex = m_textFontPicker.Items.IndexOf(m_toolState.TextFontFamily());
+				if (fontIndex >= 0)
+				{
+					m_textFontPicker.SelectedIndex = fontIndex;
+				}
+			}
+			if (m_textColorSwatch != null)
+			{
+				m_textColorSwatch.Color = FromSkColor(m_toolState.Foreground());
+			}
+		}
+
+		private void StartCaretBlink()
+		{
+			m_caretVisible = true;
+			if (m_caretTimer == null && Dispatcher != null)
+			{
+				m_caretTimer = Dispatcher.CreateTimer();
+				m_caretTimer.Interval = System.TimeSpan.FromMilliseconds(530.0);
+				m_caretTimer.Tick += OnCaretTick;
+			}
+			if (m_caretTimer != null)
+			{
+				m_caretTimer.Start();
+			}
+		}
+
+		private void StopCaretBlink()
+		{
+			if (m_caretTimer != null)
+			{
+				m_caretTimer.Stop();
+			}
+			m_caretVisible = false;
+		}
+
+		private void OnCaretTick(object sender, System.EventArgs eventArgs)
+		{
+			m_caretVisible = !m_caretVisible;
+			if (m_textEditCanvas != null)
+			{
+				m_textEditCanvas.InvalidateSurface();
+			}
+		}
+
+		public bool IsTextEditActive()
+		{
+			return m_textEditActive;
+		}
+
+		public CanvasView TextEditCanvas()
+		{
+			return m_textEditCanvas;
+		}
+
+		public Bitmute.Imaging.Layer TextEditLayer()
+		{
+			return m_textEditLayer;
+		}
+
+		public int TextCaretIndex()
+		{
+			if (m_textEditor == null)
+			{
+				return 0;
+			}
+			return m_textEditor.CursorPosition;
+		}
+
+		public int TextSelectionStart()
+		{
+			if (m_textEditor == null)
+			{
+				return 0;
+			}
+			return m_textEditor.CursorPosition;
+		}
+
+		public int TextSelectionLength()
+		{
+			if (m_textEditor == null)
+			{
+				return 0;
+			}
+			return m_textEditor.SelectionLength;
+		}
+
+		public bool CaretVisible()
+		{
+			return m_caretVisible;
 		}
 
 		public void CommitTextEdit()
@@ -2969,6 +3259,7 @@ namespace Bitmute.UI
 				return;
 			}
 			m_textEditActive = false;
+			StopCaretBlink();
 			Layer layer = m_textEditLayer;
 			CanvasView canvas = m_textEditCanvas;
 			if (m_textEditor != null && m_workspace.Contains(m_textEditor))
@@ -2978,22 +3269,40 @@ namespace Bitmute.UI
 			if (layer != null && canvas != null)
 			{
 				Document document = canvas.CurrentDocument();
-				layer.SetTextString(m_textEditor.Text);
 				layer.SetTextStyle(m_toolState.TextSize(), m_toolState.TextFontFamily(), m_toolState.TextBold(), m_toolState.TextItalic(), m_toolState.Foreground(), m_toolState.TextAlign(), m_toolState.TextAntiAlias());
-				document.BeginStroke();
 				layer.RenderText();
-				document.EndStroke();
-				string name = layer.Text();
-				if (name.Length > 18)
+				if (layer.Text().Length == 0 && m_textPreEditWasNew)
 				{
-					name = name.Substring(0, 18);
+					if (document != null)
+					{
+						document.EndStroke();
+						int index = document.Layers().IndexOf(layer);
+						if (index >= 0)
+						{
+							document.DeleteLayer(index);
+						}
+					}
 				}
-				if (name.Length == 0)
+				else
 				{
-					name = "Text";
+					if (document != null)
+					{
+						document.EndStroke();
+					}
+					string name = layer.Text();
+					name = name.Replace('\n', ' ');
+					if (name.Length > 18)
+					{
+						name = name.Substring(0, 18);
+					}
+					if (name.Length == 0)
+					{
+						name = "Text";
+					}
+					layer.SetName(name);
 				}
-				layer.SetName(name);
 				canvas.MarkComposeDirty();
+				canvas.InvalidateSurface();
 				if (m_layersPanel != null)
 				{
 					m_layersPanel.Refresh();
@@ -3003,6 +3312,77 @@ namespace Bitmute.UI
 			m_textEditCanvas = null;
 		}
 
+		private void CancelTextEdit()
+		{
+			if (!m_textEditActive)
+			{
+				return;
+			}
+			m_textEditActive = false;
+			StopCaretBlink();
+			Layer layer = m_textEditLayer;
+			CanvasView canvas = m_textEditCanvas;
+			if (m_textEditor != null && m_workspace.Contains(m_textEditor))
+			{
+				m_workspace.Remove(m_textEditor);
+			}
+			if (layer != null && canvas != null)
+			{
+				Document document = canvas.CurrentDocument();
+				layer.SetTextString(m_textPreEditString);
+				layer.SetTextStyle(m_textPreEditSize, m_textPreEditFont, m_textPreEditBold, m_textPreEditItalic, m_textPreEditColor, m_textPreEditAlign, m_textPreEditAntiAlias);
+				layer.RenderText();
+				if (document != null)
+				{
+					document.EndStroke();
+					if (m_textPreEditWasNew)
+					{
+						int index = document.Layers().IndexOf(layer);
+						if (index >= 0)
+						{
+							document.DeleteLayer(index);
+						}
+					}
+				}
+				canvas.MarkComposeDirty();
+				canvas.InvalidateSurface();
+				if (m_layersPanel != null)
+				{
+					m_layersPanel.Refresh();
+				}
+			}
+			m_textEditLayer = null;
+			m_textEditCanvas = null;
+		}
+
+		public void DoRasterizeText()
+		{
+			CommitTextEdit();
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null || !layer.IsText())
+			{
+				SetStatusMessage("Active layer is not a text layer");
+				return;
+			}
+			layer.RenderText();
+			layer.RasterizeText();
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.MarkComposeDirty();
+				canvas.InvalidateSurface();
+			}
+			if (m_layersPanel != null)
+			{
+				m_layersPanel.Refresh();
+			}
+		}
+
 		private void RefreshTextEditStyle()
 		{
 			if (!m_textEditActive || m_textEditLayer == null || m_textEditCanvas == null)
@@ -3010,7 +3390,9 @@ namespace Bitmute.UI
 				return;
 			}
 			m_textEditLayer.SetTextStyle(m_toolState.TextSize(), m_toolState.TextFontFamily(), m_toolState.TextBold(), m_toolState.TextItalic(), m_toolState.Foreground(), m_toolState.TextAlign(), m_toolState.TextAntiAlias());
-			StyleTextEditor(m_textEditCanvas, m_textEditLayer);
+			m_textEditLayer.RenderText();
+			m_textEditCanvas.MarkComposeDirty();
+			m_textEditCanvas.InvalidateSurface();
 		}
 
 		public ToolState CurrentToolState()

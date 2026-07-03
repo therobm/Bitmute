@@ -230,6 +230,11 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			if (main.IsTextEditActive() && ReferenceEquals(main.TextEditCanvas(), this))
+			{
+				DrawTextEditOverlay(canvas, main);
+				return;
+			}
 			Tool tool = main.CurrentTool();
 			if (tool is LineTool)
 			{
@@ -392,6 +397,58 @@ namespace Bitmute.UI
 		private bool ShowsBrushCursor(Tool tool)
 		{
 			return tool is BrushFamilyTool;
+		}
+
+		private void DrawTextEditOverlay(SKCanvas canvas, MainView main)
+		{
+			Bitmute.Imaging.Layer layer = main.TextEditLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			string text = layer.Text();
+			int selectionStart = main.TextSelectionStart();
+			int selectionLength = main.TextSelectionLength();
+			if (selectionLength > 0)
+			{
+				System.Collections.Generic.List<SKRect> runs = TextRasterizer.MeasureSelectionRuns(text, selectionStart, selectionStart + selectionLength, layer.TextX(), layer.TextY(), layer.TextSize(), layer.TextFontFamily(), layer.TextBold(), layer.TextItalic(), layer.TextAlign());
+				SKPaint highlight = new SKPaint();
+				highlight.Style = SKPaintStyle.Fill;
+				highlight.Color = new SKColor(0x33, 0x99, 0xFF, 0x66);
+				highlight.IsAntialias = false;
+				for (int index = 0; index < runs.Count; index++)
+				{
+					SKRect run = runs[index];
+					SKRect screen = new SKRect(m_offsetX + (run.Left * m_zoom), m_offsetY + (run.Top * m_zoom), m_offsetX + (run.Right * m_zoom), m_offsetY + (run.Bottom * m_zoom));
+					canvas.DrawRect(screen, highlight);
+				}
+				highlight.Dispose();
+			}
+			if (main.CaretVisible())
+			{
+				int caretIndex = main.TextCaretIndex();
+				float caretX;
+				float caretY;
+				float caretHeight;
+				TextRasterizer.MeasureCaret(text, caretIndex, layer.TextX(), layer.TextY(), layer.TextSize(), layer.TextFontFamily(), layer.TextBold(), layer.TextItalic(), layer.TextAlign(), out caretX, out caretY, out caretHeight);
+				float screenX = m_offsetX + (caretX * m_zoom);
+				float screenTop = m_offsetY + (caretY * m_zoom);
+				float screenBottom = m_offsetY + ((caretY + caretHeight) * m_zoom);
+				SKPaint caretUnder = new SKPaint();
+				caretUnder.Style = SKPaintStyle.Stroke;
+				caretUnder.StrokeWidth = 3.0f;
+				caretUnder.Color = SKColors.White;
+				caretUnder.IsAntialias = false;
+				canvas.DrawLine(screenX, screenTop, screenX, screenBottom, caretUnder);
+				caretUnder.Dispose();
+				SKPaint caretPaint = new SKPaint();
+				caretPaint.Style = SKPaintStyle.Stroke;
+				caretPaint.StrokeWidth = 1.0f;
+				caretPaint.Color = SKColors.Black;
+				caretPaint.IsAntialias = false;
+				canvas.DrawLine(screenX, screenTop, screenX, screenBottom, caretPaint);
+				caretPaint.Dispose();
+			}
 		}
 
 		private void DrawBrushCursor(SKCanvas canvas, MainView main)
@@ -884,6 +941,20 @@ namespace Bitmute.UI
 				}
 				eventArgs.Handled = true;
 				return;
+			}
+
+			if (tool.IsDestructive())
+			{
+				Bitmute.Imaging.Layer activeLayer = m_document.ActiveLayer();
+				if (activeLayer != null && activeLayer.IsText())
+				{
+					if (eventArgs.ActionType == SKTouchAction.Pressed)
+					{
+						main.SetStatusMessage("Rasterize the text layer to paint on it");
+					}
+					eventArgs.Handled = true;
+					return;
+				}
 			}
 
 			Windows.UI.Core.CoreVirtualKeyStates shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift);

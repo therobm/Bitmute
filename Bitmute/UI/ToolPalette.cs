@@ -574,6 +574,11 @@ namespace Bitmute.UI
 			RefreshColors();
 		}
 
+		public void SelectToolExternal(eTool tool)
+		{
+			SelectTool(tool);
+		}
+
 		public eTool SelectedTool()
 		{
 			return m_selectedTool;
