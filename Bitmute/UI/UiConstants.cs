@@ -53,6 +53,8 @@ namespace Bitmute.UI
 		public static readonly Color OnSurfaceLight = Color.FromArgb("#1E1E1E");
 		public static readonly Color TextDimDark = Color.FromArgb("#9A9A9A");
 		public static readonly Color TextDimLight = Color.FromArgb("#6C6C6C");
+		public static readonly Color TextBackgroundDark = Color.FromArgb("#222222");
+		public static readonly Color TextBackgroundLight = Color.FromArgb("#fefefe");
 		public static readonly Color AccentDark = Color.FromArgb("#3D7EDB");
 		public static readonly Color AccentLight = Color.FromArgb("#2C6BD0");
 		public static readonly Color ToolRestingDark = Color.FromArgb("#404040");

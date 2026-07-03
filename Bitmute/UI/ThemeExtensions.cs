@@ -20,8 +20,9 @@ namespace Bitmute.UI
 			view.SetAppThemeColor(Button.TextColorProperty, light, dark);
 		}
 
-		public static void ThemeText(this Entry view, Color light, Color dark)
+		public static void ThemeText(this Entry view, Color light, Color dark, Color lightBackground, Color darkBackground)
 		{
+			view.SetAppThemeColor(Entry.BackgroundColorProperty, lightBackground, darkBackground);
 			view.SetAppThemeColor(Entry.TextColorProperty, light, dark);
 		}
 

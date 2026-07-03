@@ -79,7 +79,7 @@ namespace Bitmute.UI
 			Entry entry = new Entry();
 			entry.FontSize = 12.0;
 			entry.WidthRequest = 90.0;
-			entry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			entry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			entry.Keyboard = Keyboard.Numeric;
 			entry.Text = initial.ToString();
 			return entry;

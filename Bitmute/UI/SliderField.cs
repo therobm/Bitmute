@@ -34,8 +34,7 @@ namespace Bitmute.UI
 			m_valueEntry.HeightRequest = 24.0;
 			m_valueEntry.Margin = new Thickness(0.0);
 			m_valueEntry.Keyboard = Keyboard.Numeric;
-			m_valueEntry.BackgroundColor = Colors.Transparent;
-			m_valueEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_valueEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_valueEntry.VerticalOptions = LayoutOptions.Center;
 			m_valueEntry.HorizontalTextAlignment = TextAlignment.End;
 			m_valueEntry.Completed += OnEntryCommitted;

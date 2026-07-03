@@ -21,7 +21,7 @@ namespace Bitmute.UI
 			Entry entry = new Entry();
 			entry.FontSize = 12.0;
 			entry.WidthRequest = 90.0;
-			entry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			entry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			entry.Keyboard = Keyboard.Numeric;
 			entry.Text = initial.ToString();
 			return entry;
@@ -89,7 +89,7 @@ namespace Bitmute.UI
 		{
 			m_nameEntry = new Entry();
 			m_nameEntry.FontSize = 12.0;
-			m_nameEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_nameEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_nameEntry.Text = "Untitled";
 
 			m_widthEntry = BuildNumericEntry(DefaultWidth);

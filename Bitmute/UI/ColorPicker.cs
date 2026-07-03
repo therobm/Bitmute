@@ -53,7 +53,7 @@ namespace Bitmute.UI
 			Entry entry = new Entry();
 			entry.FontSize = 12.0;
 			entry.WidthRequest = 48.0;
-			entry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			entry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			entry.Keyboard = Keyboard.Numeric;
 			entry.Completed += OnChannelCompleted;
 			return entry;
@@ -347,7 +347,7 @@ namespace Bitmute.UI
 			m_hexEntry = new Entry();
 			m_hexEntry.FontSize = 12.0;
 			m_hexEntry.WidthRequest = 80.0;
-			m_hexEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_hexEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_hexEntry.Completed += OnHexCompleted;
 
 			VerticalStackLayout fields = new VerticalStackLayout();

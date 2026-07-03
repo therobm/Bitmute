@@ -139,7 +139,7 @@ namespace Bitmute.UI
 			m_zoomEntry.FontSize = 10.0;
 			m_zoomEntry.Margin = new Thickness(0.0);
 			m_zoomEntry.BackgroundColor = Colors.Transparent;
-			m_zoomEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_zoomEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_zoomEntry.VerticalOptions = LayoutOptions.Center;
 			m_zoomEntry.HorizontalTextAlignment = TextAlignment.End;
 			m_zoomEntry.Completed += OnZoomEntryCommitted;
