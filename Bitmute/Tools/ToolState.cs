@@ -24,6 +24,15 @@ namespace Bitmute.Tools
 		private string m_textFontFamily;
 		private int m_textAlign;
 		private int m_textAntiAlias;
+		private bool m_textLeadingAuto;
+		private float m_textLeading;
+		private int m_textTracking;
+		private int m_textHorizontalScale;
+		private int m_textVerticalScale;
+		private int m_textBaselineShift;
+		private bool m_textFauxBold;
+		private bool m_textFauxItalic;
+		private bool m_textKerningAuto;
 		private bool m_shiftHeld;
 		private bool m_altHeld;
 
@@ -48,8 +57,115 @@ namespace Bitmute.Tools
 			m_textFontFamily = "Segoe UI";
 			m_textAlign = 0;
 			m_textAntiAlias = 3;
+			m_textLeadingAuto = true;
+			m_textLeading = 0.0f;
+			m_textTracking = 0;
+			m_textHorizontalScale = 100;
+			m_textVerticalScale = 100;
+			m_textBaselineShift = 0;
+			m_textFauxBold = false;
+			m_textFauxItalic = false;
+			m_textKerningAuto = true;
 			m_shiftHeld = false;
 			m_altHeld = false;
+		}
+
+		public bool TextLeadingAuto()
+		{
+			return m_textLeadingAuto;
+		}
+
+		public void SetTextLeadingAuto(bool auto)
+		{
+			m_textLeadingAuto = auto;
+		}
+
+		public float TextLeading()
+		{
+			return m_textLeading;
+		}
+
+		public void SetTextLeading(float leading)
+		{
+			m_textLeading = leading;
+		}
+
+		public int TextTracking()
+		{
+			return m_textTracking;
+		}
+
+		public void SetTextTracking(int tracking)
+		{
+			m_textTracking = tracking;
+		}
+
+		public int TextHorizontalScale()
+		{
+			return m_textHorizontalScale;
+		}
+
+		public void SetTextHorizontalScale(int scale)
+		{
+			if (scale < 1)
+			{
+				scale = 1;
+			}
+			m_textHorizontalScale = scale;
+		}
+
+		public int TextVerticalScale()
+		{
+			return m_textVerticalScale;
+		}
+
+		public void SetTextVerticalScale(int scale)
+		{
+			if (scale < 1)
+			{
+				scale = 1;
+			}
+			m_textVerticalScale = scale;
+		}
+
+		public int TextBaselineShift()
+		{
+			return m_textBaselineShift;
+		}
+
+		public void SetTextBaselineShift(int shift)
+		{
+			m_textBaselineShift = shift;
+		}
+
+		public bool TextFauxBold()
+		{
+			return m_textFauxBold;
+		}
+
+		public void SetTextFauxBold(bool fauxBold)
+		{
+			m_textFauxBold = fauxBold;
+		}
+
+		public bool TextFauxItalic()
+		{
+			return m_textFauxItalic;
+		}
+
+		public void SetTextFauxItalic(bool fauxItalic)
+		{
+			m_textFauxItalic = fauxItalic;
+		}
+
+		public bool TextKerningAuto()
+		{
+			return m_textKerningAuto;
+		}
+
+		public void SetTextKerningAuto(bool auto)
+		{
+			m_textKerningAuto = auto;
 		}
 
 		public int TextSize()

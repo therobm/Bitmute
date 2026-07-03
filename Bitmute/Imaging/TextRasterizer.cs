@@ -39,16 +39,59 @@ namespace Bitmute.Imaging
 			return SKFontEdging.SubpixelAntialias;
 		}
 
-		private static float LineHeight(float size)
+		private static float EffectiveSize(Layer layer)
 		{
-			return size * 1.25f;
+			int verticalScale = layer.TextVerticalScale();
+			if (verticalScale < 1)
+			{
+				verticalScale = 1;
+			}
+			float size = layer.TextSize() * (verticalScale / 100.0f);
+			if (size < 1.0f)
+			{
+				size = 1.0f;
+			}
+			return size;
 		}
 
-		private static SKFont BuildFont(string fontFamily, bool bold, bool italic, float size)
+		private static SKFont BuildStyledFont(Layer layer)
 		{
-			SKTypeface typeface = Resolve(fontFamily, bold, italic);
-			SKFont font = new SKFont(typeface, size);
+			int verticalScale = layer.TextVerticalScale();
+			if (verticalScale < 1)
+			{
+				verticalScale = 1;
+			}
+			int horizontalScale = layer.TextHorizontalScale();
+			if (horizontalScale < 1)
+			{
+				horizontalScale = 1;
+			}
+			SKTypeface typeface = Resolve(layer.TextFontFamily(), layer.TextBold(), layer.TextItalic());
+			SKFont font = new SKFont(typeface, EffectiveSize(layer));
+			font.ScaleX = (float)horizontalScale / (float)verticalScale;
+			if (layer.TextFauxBold())
+			{
+				font.Embolden = true;
+			}
+			if (layer.TextFauxItalic())
+			{
+				font.SkewX = -0.25f;
+			}
 			return font;
+		}
+
+		private static float LineHeightFor(Layer layer)
+		{
+			if (!layer.TextLeadingAuto())
+			{
+				float leading = layer.TextLeading();
+				if (leading < 1.0f)
+				{
+					leading = 1.0f;
+				}
+				return leading;
+			}
+			return layer.TextSize() * 1.25f;
 		}
 
 		private static List<string> SplitLines(string text)
@@ -104,7 +147,7 @@ namespace Bitmute.Imaging
 			return position;
 		}
 
-		private static float ColumnX(SKFont font, string line, int column, float x, int alignment)
+		private static float PrefixAdvance(SKFont font, string line, int column, int tracking, bool kerningAuto)
 		{
 			if (column < 0)
 			{
@@ -114,47 +157,80 @@ namespace Bitmute.Imaging
 			{
 				column = line.Length;
 			}
-			float lineWidth = font.MeasureText(line);
-			float prefixWidth = font.MeasureText(line.Substring(0, column));
-			float left = x;
-			if (alignment == 1)
+			float advance;
+			if (kerningAuto)
 			{
-				left = x - (lineWidth / 2.0f);
+				advance = font.MeasureText(line.Substring(0, column));
 			}
-			else if (alignment == 2)
+			else
 			{
-				left = x - lineWidth;
+				advance = 0.0f;
+				for (int index = 0; index < column; index++)
+				{
+					advance = advance + font.MeasureText(line.Substring(index, 1));
+				}
 			}
-			return left + prefixWidth;
+			return advance + (tracking * column);
 		}
 
-		public static void Draw(SKBitmap bitmap, string text, int x, int y, SKColor color, float size, string fontFamily, bool bold, bool italic, int alignment, int antiAlias)
+		private static float LineLeft(float x, float lineAdvance, int alignment)
 		{
+			if (alignment == 1)
+			{
+				return x - (lineAdvance / 2.0f);
+			}
+			if (alignment == 2)
+			{
+				return x - lineAdvance;
+			}
+			return x;
+		}
+
+		private static float ColumnX(SKFont font, string line, int column, float x, int alignment, int tracking, bool kerningAuto)
+		{
+			float lineAdvance = PrefixAdvance(font, line, line.Length, tracking, kerningAuto);
+			float left = LineLeft(x, lineAdvance, alignment);
+			return left + PrefixAdvance(font, line, column, tracking, kerningAuto);
+		}
+
+		public static void Draw(Layer layer)
+		{
+			string text = layer.Text();
 			if (text == null || text.Length == 0)
 			{
 				return;
 			}
-			SKCanvas canvas = new SKCanvas(bitmap);
-			SKFont font = BuildFont(fontFamily, bold, italic, size);
-			font.Edging = Edging(antiAlias);
+			SKFont font = BuildStyledFont(layer);
+			font.Edging = Edging(layer.TextAntiAlias());
+			SKCanvas canvas = new SKCanvas(layer.Bitmap());
 			SKPaint paint = new SKPaint();
-			paint.Color = color;
-			paint.IsAntialias = antiAlias != 0;
-			SKTextAlign align = SKTextAlign.Left;
-			if (alignment == 1)
-			{
-				align = SKTextAlign.Center;
-			}
-			else if (alignment == 2)
-			{
-				align = SKTextAlign.Right;
-			}
-			float lineHeight = LineHeight(size);
+			paint.Color = layer.TextColor();
+			paint.IsAntialias = layer.TextAntiAlias() != 0;
+			int tracking = layer.TextTracking();
+			bool kerningAuto = layer.TextKerningAuto();
+			int alignment = layer.TextAlign();
+			float x = layer.TextX() - layer.OffsetX();
+			float y = layer.TextY() - layer.OffsetY();
+			float lineHeight = LineHeightFor(layer);
+			float baseline = y + layer.TextSize() - layer.TextBaselineShift();
 			List<string> lines = SplitLines(text);
-			float baseline = y + size;
 			for (int index = 0; index < lines.Count; index++)
 			{
-				canvas.DrawText(lines[index], x, baseline, align, font, paint);
+				string line = lines[index];
+				float lineAdvance = PrefixAdvance(font, line, line.Length, tracking, kerningAuto);
+				float left = LineLeft(x, lineAdvance, alignment);
+				if (tracking == 0 && kerningAuto)
+				{
+					canvas.DrawText(line, left, baseline, SKTextAlign.Left, font, paint);
+				}
+				else
+				{
+					for (int column = 0; column < line.Length; column++)
+					{
+						float charX = left + PrefixAdvance(font, line, column, tracking, kerningAuto);
+						canvas.DrawText(line.Substring(column, 1), charX, baseline, SKTextAlign.Left, font, paint);
+					}
+				}
 				baseline = baseline + lineHeight;
 			}
 			paint.Dispose();
@@ -162,38 +238,38 @@ namespace Bitmute.Imaging
 			canvas.Dispose();
 		}
 
-		public static void MeasureCaret(string text, int caretIndex, int x, int y, float size, string fontFamily, bool bold, bool italic, int alignment, out float caretX, out float caretY, out float caretHeight)
+		public static void MeasureCaret(Layer layer, int caretIndex, out float caretX, out float caretY, out float caretHeight)
 		{
-			string safeText = text;
-			if (safeText == null)
+			string text = layer.Text();
+			if (text == null)
 			{
-				safeText = "";
+				text = "";
 			}
-			SKFont font = BuildFont(fontFamily, bold, italic, size);
-			List<string> lines = SplitLines(safeText);
+			SKFont font = BuildStyledFont(layer);
+			List<string> lines = SplitLines(text);
 			int lineIndex;
 			int column;
 			LocateCaret(lines, caretIndex, out lineIndex, out column);
-			caretX = ColumnX(font, lines[lineIndex], column, x, alignment);
-			caretY = y + (lineIndex * LineHeight(size));
-			caretHeight = size;
+			caretX = ColumnX(font, lines[lineIndex], column, layer.TextX(), layer.TextAlign(), layer.TextTracking(), layer.TextKerningAuto());
+			caretY = layer.TextY() + (lineIndex * LineHeightFor(layer)) - layer.TextBaselineShift();
+			caretHeight = EffectiveSize(layer);
 			font.Dispose();
 		}
 
-		public static int CaretIndexAtPoint(string text, float documentX, float documentY, int x, int y, float size, string fontFamily, bool bold, bool italic, int alignment)
+		public static int CaretIndexAtPoint(Layer layer, float documentX, float documentY)
 		{
-			string safeText = text;
-			if (safeText == null)
+			string text = layer.Text();
+			if (text == null)
 			{
-				safeText = "";
+				text = "";
 			}
-			SKFont font = BuildFont(fontFamily, bold, italic, size);
-			List<string> lines = SplitLines(safeText);
-			float lineHeight = LineHeight(size);
+			SKFont font = BuildStyledFont(layer);
+			List<string> lines = SplitLines(text);
+			float lineHeight = LineHeightFor(layer);
 			int lineIndex = 0;
 			if (lineHeight > 0.0f)
 			{
-				lineIndex = (int)System.Math.Floor((documentY - y) / lineHeight);
+				lineIndex = (int)System.Math.Floor((documentY - layer.TextY()) / lineHeight);
 			}
 			if (lineIndex < 0)
 			{
@@ -204,11 +280,14 @@ namespace Bitmute.Imaging
 				lineIndex = lines.Count - 1;
 			}
 			string line = lines[lineIndex];
+			int tracking = layer.TextTracking();
+			bool kerningAuto = layer.TextKerningAuto();
+			int alignment = layer.TextAlign();
 			int bestColumn = 0;
 			float bestDistance = -1.0f;
 			for (int column = 0; column <= line.Length; column++)
 			{
-				float columnX = ColumnX(font, line, column, x, alignment);
+				float columnX = ColumnX(font, line, column, layer.TextX(), alignment, tracking, kerningAuto);
 				float distance = columnX - documentX;
 				if (distance < 0.0f)
 				{
@@ -224,13 +303,13 @@ namespace Bitmute.Imaging
 			return LineStartFlat(lines, lineIndex) + bestColumn;
 		}
 
-		public static List<SKRect> MeasureSelectionRuns(string text, int start, int end, int x, int y, float size, string fontFamily, bool bold, bool italic, int alignment)
+		public static List<SKRect> MeasureSelectionRuns(Layer layer, int start, int end)
 		{
 			List<SKRect> runs = new List<SKRect>();
-			string safeText = text;
-			if (safeText == null)
+			string text = layer.Text();
+			if (text == null)
 			{
-				safeText = "";
+				text = "";
 			}
 			int low = start;
 			int high = end;
@@ -244,9 +323,13 @@ namespace Bitmute.Imaging
 			{
 				return runs;
 			}
-			SKFont font = BuildFont(fontFamily, bold, italic, size);
-			List<string> lines = SplitLines(safeText);
-			float lineHeight = LineHeight(size);
+			SKFont font = BuildStyledFont(layer);
+			List<string> lines = SplitLines(text);
+			float lineHeight = LineHeightFor(layer);
+			int tracking = layer.TextTracking();
+			bool kerningAuto = layer.TextKerningAuto();
+			int alignment = layer.TextAlign();
+			float glyphHeight = EffectiveSize(layer);
 			for (int lineIndex = 0; lineIndex < lines.Count; lineIndex++)
 			{
 				string line = lines[lineIndex];
@@ -266,10 +349,10 @@ namespace Bitmute.Imaging
 				{
 					continue;
 				}
-				float leftX = ColumnX(font, line, runStart - lineStart, x, alignment);
-				float rightX = ColumnX(font, line, runEnd - lineStart, x, alignment);
-				float top = y + (lineIndex * lineHeight);
-				runs.Add(new SKRect(leftX, top, rightX, top + size));
+				float leftX = ColumnX(font, line, runStart - lineStart, layer.TextX(), alignment, tracking, kerningAuto);
+				float rightX = ColumnX(font, line, runEnd - lineStart, layer.TextX(), alignment, tracking, kerningAuto);
+				float top = layer.TextY() + (lineIndex * lineHeight) - layer.TextBaselineShift();
+				runs.Add(new SKRect(leftX, top, rightX, top + glyphHeight));
 			}
 			font.Dispose();
 			return runs;

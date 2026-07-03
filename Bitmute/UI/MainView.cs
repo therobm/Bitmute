@@ -72,6 +72,20 @@ namespace Bitmute.UI
 		private Label m_textColorLabel;
 		private BoxView m_textColorSwatch;
 		private Button m_textCharButton;
+		private CheckBox m_charLeadingAutoCheck;
+		private Slider m_charLeadingSlider;
+		private Label m_charLeadingValue;
+		private Slider m_charTrackingSlider;
+		private Label m_charTrackingValue;
+		private Slider m_charHScaleSlider;
+		private Label m_charHScaleValue;
+		private Slider m_charVScaleSlider;
+		private Label m_charVScaleValue;
+		private Slider m_charBaselineSlider;
+		private Label m_charBaselineValue;
+		private CheckBox m_charFauxBoldCheck;
+		private CheckBox m_charFauxItalicCheck;
+		private CheckBox m_charKerningAutoCheck;
 		private Editor m_textEditor;
 		private CanvasView m_textEditCanvas;
 		private Bitmute.Imaging.Layer m_textEditLayer;
@@ -88,6 +102,15 @@ namespace Bitmute.UI
 		private SKColor m_textPreEditColor;
 		private int m_textPreEditAlign;
 		private int m_textPreEditAntiAlias;
+		private bool m_textPreEditLeadingAuto;
+		private float m_textPreEditLeading;
+		private int m_textPreEditTracking;
+		private int m_textPreEditHorizontalScale;
+		private int m_textPreEditVerticalScale;
+		private int m_textPreEditBaselineShift;
+		private bool m_textPreEditFauxBold;
+		private bool m_textPreEditFauxItalic;
+		private bool m_textPreEditKerningAuto;
 		private Label m_statusInfoLabel;
 		private Label m_statusCursorLabel;
 		private string[] m_menuTitles;
@@ -2982,7 +3005,256 @@ namespace Bitmute.UI
 
 		private void OnTextCharClicked(object sender, System.EventArgs eventArgs)
 		{
-			SetStatusMessage("Character / paragraph panel is coming soon");
+			if (m_pulldownPanel != null)
+			{
+				ClosePulldown();
+				return;
+			}
+			double anchorX = 0.0;
+			if (m_optionsRow != null && m_textCharButton != null)
+			{
+				anchorX = m_optionsRow.X + m_textCharButton.X;
+			}
+			double anchorY = UiConstants.MenuBarHeight + 1.0 + UiConstants.OptionsBarHeight + 1.0;
+			ShowPulldown(BuildCharacterPanelContent(), anchorX, anchorY, 300.0, 336.0);
+		}
+
+		private int LeadingSliderValue()
+		{
+			float leading = m_toolState.TextLeading();
+			if (m_toolState.TextLeadingAuto() || leading < 1.0f)
+			{
+				leading = m_toolState.TextSize() * 1.25f;
+			}
+			return (int)leading;
+		}
+
+		private Slider MakeCharSlider(int minimum, int maximum, int value)
+		{
+			Slider slider = new Slider();
+			slider.Minimum = minimum;
+			slider.Maximum = maximum;
+			slider.Value = value;
+			slider.WidthRequest = 128.0;
+			slider.VerticalOptions = LayoutOptions.Center;
+			return slider;
+		}
+
+		private Label MakeCharValue(string text)
+		{
+			Label label = new Label();
+			label.Text = text;
+			label.FontSize = 12.0;
+			label.WidthRequest = 46.0;
+			label.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			label.VerticalOptions = LayoutOptions.Center;
+			return label;
+		}
+
+		private Grid BuildCharRow(string labelText, View control, View trailing)
+		{
+			Label label = new Label();
+			label.Text = labelText;
+			label.FontSize = 12.0;
+			label.WidthRequest = 90.0;
+			label.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			label.VerticalOptions = LayoutOptions.Center;
+
+			Grid row = new Grid();
+			row.ColumnSpacing = 6.0;
+			row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+			row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			Grid.SetColumn(label, 0);
+			Grid.SetColumn(control, 1);
+			row.Add(label);
+			row.Add(control);
+			if (trailing != null)
+			{
+				Grid.SetColumn(trailing, 2);
+				row.Add(trailing);
+			}
+			return row;
+		}
+
+		private View BuildCharacterPanelContent()
+		{
+			m_charLeadingSlider = MakeCharSlider(0, 400, LeadingSliderValue());
+			m_charLeadingSlider.ValueChanged += OnCharLeadingChanged;
+			m_charLeadingValue = MakeCharValue(LeadingSliderValue() + " px");
+
+			m_charLeadingAutoCheck = new CheckBox();
+			m_charLeadingAutoCheck.IsChecked = m_toolState.TextLeadingAuto();
+			m_charLeadingAutoCheck.VerticalOptions = LayoutOptions.Center;
+			m_charLeadingAutoCheck.CheckedChanged += OnCharLeadingAutoChanged;
+
+			m_charTrackingSlider = MakeCharSlider(-50, 200, m_toolState.TextTracking());
+			m_charTrackingSlider.ValueChanged += OnCharTrackingChanged;
+			m_charTrackingValue = MakeCharValue(m_toolState.TextTracking().ToString());
+
+			m_charHScaleSlider = MakeCharSlider(10, 400, m_toolState.TextHorizontalScale());
+			m_charHScaleSlider.ValueChanged += OnCharHScaleChanged;
+			m_charHScaleValue = MakeCharValue(m_toolState.TextHorizontalScale() + " %");
+
+			m_charVScaleSlider = MakeCharSlider(10, 400, m_toolState.TextVerticalScale());
+			m_charVScaleSlider.ValueChanged += OnCharVScaleChanged;
+			m_charVScaleValue = MakeCharValue(m_toolState.TextVerticalScale() + " %");
+
+			m_charBaselineSlider = MakeCharSlider(-100, 100, m_toolState.TextBaselineShift());
+			m_charBaselineSlider.ValueChanged += OnCharBaselineChanged;
+			m_charBaselineValue = MakeCharValue(m_toolState.TextBaselineShift() + " px");
+
+			m_charFauxBoldCheck = new CheckBox();
+			m_charFauxBoldCheck.IsChecked = m_toolState.TextFauxBold();
+			m_charFauxBoldCheck.VerticalOptions = LayoutOptions.Center;
+			m_charFauxBoldCheck.CheckedChanged += OnCharFauxBoldChanged;
+
+			m_charFauxItalicCheck = new CheckBox();
+			m_charFauxItalicCheck.IsChecked = m_toolState.TextFauxItalic();
+			m_charFauxItalicCheck.VerticalOptions = LayoutOptions.Center;
+			m_charFauxItalicCheck.CheckedChanged += OnCharFauxItalicChanged;
+
+			m_charKerningAutoCheck = new CheckBox();
+			m_charKerningAutoCheck.IsChecked = m_toolState.TextKerningAuto();
+			m_charKerningAutoCheck.VerticalOptions = LayoutOptions.Center;
+			m_charKerningAutoCheck.CheckedChanged += OnCharKerningChanged;
+
+			VerticalStackLayout body = new VerticalStackLayout();
+			body.Spacing = 6.0;
+			body.Padding = new Thickness(12.0);
+			body.Add(BuildCharRow("Leading", m_charLeadingSlider, m_charLeadingValue));
+			body.Add(BuildCharRow("Auto leading", m_charLeadingAutoCheck, null));
+			body.Add(BuildCharRow("Tracking", m_charTrackingSlider, m_charTrackingValue));
+			body.Add(BuildCharRow("Horiz Scale", m_charHScaleSlider, m_charHScaleValue));
+			body.Add(BuildCharRow("Vert Scale", m_charVScaleSlider, m_charVScaleValue));
+			body.Add(BuildCharRow("Baseline", m_charBaselineSlider, m_charBaselineValue));
+			body.Add(BuildCharRow("Faux Bold", m_charFauxBoldCheck, null));
+			body.Add(BuildCharRow("Faux Italic", m_charFauxItalicCheck, null));
+			body.Add(BuildCharRow("Kerning (Auto)", m_charKerningAutoCheck, null));
+
+			ScrollView scroll = new ScrollView();
+			scroll.Content = body;
+			return scroll;
+		}
+
+		private void OnCharLeadingAutoChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null || m_charLeadingAutoCheck == null)
+			{
+				return;
+			}
+			m_toolState.SetTextLeadingAuto(m_charLeadingAutoCheck.IsChecked);
+			RefreshTextEditStyle();
+		}
+
+		private void OnCharLeadingChanged(object sender, ValueChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null || m_charLeadingSlider == null)
+			{
+				return;
+			}
+			int value = (int)m_charLeadingSlider.Value;
+			m_toolState.SetTextLeading(value);
+			m_toolState.SetTextLeadingAuto(false);
+			if (m_charLeadingAutoCheck != null)
+			{
+				m_charLeadingAutoCheck.IsChecked = false;
+			}
+			if (m_charLeadingValue != null)
+			{
+				m_charLeadingValue.Text = value + " px";
+			}
+			RefreshTextEditStyle();
+		}
+
+		private void OnCharTrackingChanged(object sender, ValueChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null || m_charTrackingSlider == null)
+			{
+				return;
+			}
+			int value = (int)m_charTrackingSlider.Value;
+			m_toolState.SetTextTracking(value);
+			if (m_charTrackingValue != null)
+			{
+				m_charTrackingValue.Text = value.ToString();
+			}
+			RefreshTextEditStyle();
+		}
+
+		private void OnCharHScaleChanged(object sender, ValueChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null || m_charHScaleSlider == null)
+			{
+				return;
+			}
+			int value = (int)m_charHScaleSlider.Value;
+			m_toolState.SetTextHorizontalScale(value);
+			if (m_charHScaleValue != null)
+			{
+				m_charHScaleValue.Text = value + " %";
+			}
+			RefreshTextEditStyle();
+		}
+
+		private void OnCharVScaleChanged(object sender, ValueChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null || m_charVScaleSlider == null)
+			{
+				return;
+			}
+			int value = (int)m_charVScaleSlider.Value;
+			m_toolState.SetTextVerticalScale(value);
+			if (m_charVScaleValue != null)
+			{
+				m_charVScaleValue.Text = value + " %";
+			}
+			RefreshTextEditStyle();
+		}
+
+		private void OnCharBaselineChanged(object sender, ValueChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null || m_charBaselineSlider == null)
+			{
+				return;
+			}
+			int value = (int)m_charBaselineSlider.Value;
+			m_toolState.SetTextBaselineShift(value);
+			if (m_charBaselineValue != null)
+			{
+				m_charBaselineValue.Text = value + " px";
+			}
+			RefreshTextEditStyle();
+		}
+
+		private void OnCharFauxBoldChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null || m_charFauxBoldCheck == null)
+			{
+				return;
+			}
+			m_toolState.SetTextFauxBold(m_charFauxBoldCheck.IsChecked);
+			RefreshTextEditStyle();
+		}
+
+		private void OnCharFauxItalicChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null || m_charFauxItalicCheck == null)
+			{
+				return;
+			}
+			m_toolState.SetTextFauxItalic(m_charFauxItalicCheck.IsChecked);
+			RefreshTextEditStyle();
+		}
+
+		private void OnCharKerningChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null || m_charKerningAutoCheck == null)
+			{
+				return;
+			}
+			m_toolState.SetTextKerningAuto(m_charKerningAutoCheck.IsChecked);
+			RefreshTextEditStyle();
 		}
 
 		private void OnBrushSizeValue(int size)
@@ -3003,7 +3275,7 @@ namespace Bitmute.UI
 			}
 			if (m_textEditActive && m_textEditLayer != null && ReferenceEquals(m_textEditCanvas, canvas))
 			{
-				int caretIndex = TextRasterizer.CaretIndexAtPoint(m_textEditLayer.Text(), x, y, m_textEditLayer.TextX(), m_textEditLayer.TextY(), m_textEditLayer.TextSize(), m_textEditLayer.TextFontFamily(), m_textEditLayer.TextBold(), m_textEditLayer.TextItalic(), m_textEditLayer.TextAlign());
+				int caretIndex = TextRasterizer.CaretIndexAtPoint(m_textEditLayer, x, y);
 				if (m_textEditor != null)
 				{
 					m_textEditor.CursorPosition = caretIndex;
@@ -3028,7 +3300,7 @@ namespace Bitmute.UI
 				return;
 			}
 			layer.SetTextPosition(x, y);
-			layer.SetTextStyle(m_toolState.TextSize(), m_toolState.TextFontFamily(), m_toolState.TextBold(), m_toolState.TextItalic(), m_toolState.Foreground(), m_toolState.TextAlign(), m_toolState.TextAntiAlias());
+			ApplyToolStateToLayer(layer);
 			if (m_layersPanel != null)
 			{
 				m_layersPanel.Refresh();
@@ -3088,6 +3360,15 @@ namespace Bitmute.UI
 			m_textPreEditColor = layer.TextColor();
 			m_textPreEditAlign = layer.TextAlign();
 			m_textPreEditAntiAlias = layer.TextAntiAlias();
+			m_textPreEditLeadingAuto = layer.TextLeadingAuto();
+			m_textPreEditLeading = layer.TextLeading();
+			m_textPreEditTracking = layer.TextTracking();
+			m_textPreEditHorizontalScale = layer.TextHorizontalScale();
+			m_textPreEditVerticalScale = layer.TextVerticalScale();
+			m_textPreEditBaselineShift = layer.TextBaselineShift();
+			m_textPreEditFauxBold = layer.TextFauxBold();
+			m_textPreEditFauxItalic = layer.TextFauxItalic();
+			m_textPreEditKerningAuto = layer.TextKerningAuto();
 
 			LoadTextStyleFromLayer(layer);
 
@@ -3214,6 +3495,12 @@ namespace Bitmute.UI
 			}
 		}
 
+		private void ApplyToolStateToLayer(Layer layer)
+		{
+			layer.SetTextStyle(m_toolState.TextSize(), m_toolState.TextFontFamily(), m_toolState.TextBold(), m_toolState.TextItalic(), m_toolState.Foreground(), m_toolState.TextAlign(), m_toolState.TextAntiAlias());
+			layer.SetTextCharacter(m_toolState.TextLeadingAuto(), m_toolState.TextLeading(), m_toolState.TextTracking(), m_toolState.TextHorizontalScale(), m_toolState.TextVerticalScale(), m_toolState.TextBaselineShift(), m_toolState.TextFauxBold(), m_toolState.TextFauxItalic(), m_toolState.TextKerningAuto());
+		}
+
 		private void LoadTextStyleFromLayer(Layer layer)
 		{
 			m_toolState.SetTextSize((int)layer.TextSize());
@@ -3223,6 +3510,15 @@ namespace Bitmute.UI
 			m_toolState.SetTextAlign(layer.TextAlign());
 			m_toolState.SetTextAntiAlias(layer.TextAntiAlias());
 			m_toolState.SetForeground(layer.TextColor());
+			m_toolState.SetTextLeadingAuto(layer.TextLeadingAuto());
+			m_toolState.SetTextLeading(layer.TextLeading());
+			m_toolState.SetTextTracking(layer.TextTracking());
+			m_toolState.SetTextHorizontalScale(layer.TextHorizontalScale());
+			m_toolState.SetTextVerticalScale(layer.TextVerticalScale());
+			m_toolState.SetTextBaselineShift(layer.TextBaselineShift());
+			m_toolState.SetTextFauxBold(layer.TextFauxBold());
+			m_toolState.SetTextFauxItalic(layer.TextFauxItalic());
+			m_toolState.SetTextKerningAuto(layer.TextKerningAuto());
 			SyncTextOptionsBar();
 			if (m_toolPalette != null)
 			{
@@ -3349,7 +3645,7 @@ namespace Bitmute.UI
 			if (layer != null && canvas != null)
 			{
 				Document document = canvas.CurrentDocument();
-				layer.SetTextStyle(m_toolState.TextSize(), m_toolState.TextFontFamily(), m_toolState.TextBold(), m_toolState.TextItalic(), m_toolState.Foreground(), m_toolState.TextAlign(), m_toolState.TextAntiAlias());
+				ApplyToolStateToLayer(layer);
 				layer.RenderText();
 				if (layer.Text().Length == 0 && m_textPreEditWasNew)
 				{
@@ -3411,6 +3707,7 @@ namespace Bitmute.UI
 				Document document = canvas.CurrentDocument();
 				layer.SetTextString(m_textPreEditString);
 				layer.SetTextStyle(m_textPreEditSize, m_textPreEditFont, m_textPreEditBold, m_textPreEditItalic, m_textPreEditColor, m_textPreEditAlign, m_textPreEditAntiAlias);
+				layer.SetTextCharacter(m_textPreEditLeadingAuto, m_textPreEditLeading, m_textPreEditTracking, m_textPreEditHorizontalScale, m_textPreEditVerticalScale, m_textPreEditBaselineShift, m_textPreEditFauxBold, m_textPreEditFauxItalic, m_textPreEditKerningAuto);
 				layer.RenderText();
 				if (document != null)
 				{
@@ -3469,7 +3766,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			m_textEditLayer.SetTextStyle(m_toolState.TextSize(), m_toolState.TextFontFamily(), m_toolState.TextBold(), m_toolState.TextItalic(), m_toolState.Foreground(), m_toolState.TextAlign(), m_toolState.TextAntiAlias());
+			ApplyToolStateToLayer(m_textEditLayer);
 			m_textEditLayer.RenderText();
 			m_textEditCanvas.MarkComposeDirty();
 			m_textEditCanvas.InvalidateSurface();

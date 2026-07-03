@@ -406,12 +406,11 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			string text = layer.Text();
 			int selectionStart = main.TextSelectionStart();
 			int selectionLength = main.TextSelectionLength();
 			if (selectionLength > 0)
 			{
-				System.Collections.Generic.List<SKRect> runs = TextRasterizer.MeasureSelectionRuns(text, selectionStart, selectionStart + selectionLength, layer.TextX(), layer.TextY(), layer.TextSize(), layer.TextFontFamily(), layer.TextBold(), layer.TextItalic(), layer.TextAlign());
+				System.Collections.Generic.List<SKRect> runs = TextRasterizer.MeasureSelectionRuns(layer, selectionStart, selectionStart + selectionLength);
 				SKPaint highlight = new SKPaint();
 				highlight.Style = SKPaintStyle.Fill;
 				highlight.Color = new SKColor(0x33, 0x99, 0xFF, 0x66);
@@ -430,7 +429,7 @@ namespace Bitmute.UI
 				float caretX;
 				float caretY;
 				float caretHeight;
-				TextRasterizer.MeasureCaret(text, caretIndex, layer.TextX(), layer.TextY(), layer.TextSize(), layer.TextFontFamily(), layer.TextBold(), layer.TextItalic(), layer.TextAlign(), out caretX, out caretY, out caretHeight);
+				TextRasterizer.MeasureCaret(layer, caretIndex, out caretX, out caretY, out caretHeight);
 				float screenX = m_offsetX + (caretX * m_zoom);
 				float screenTop = m_offsetY + (caretY * m_zoom);
 				float screenBottom = m_offsetY + ((caretY + caretHeight) * m_zoom);

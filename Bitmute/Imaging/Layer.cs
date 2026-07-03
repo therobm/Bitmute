@@ -32,6 +32,15 @@ namespace Bitmute.Imaging
 		private SKColor m_textColor;
 		private int m_textAlign;
 		private int m_textAntiAlias;
+		private bool m_textLeadingAuto;
+		private float m_textLeading;
+		private int m_textTracking;
+		private int m_textHorizontalScale;
+		private int m_textVerticalScale;
+		private int m_textBaselineShift;
+		private bool m_textFauxBold;
+		private bool m_textFauxItalic;
+		private bool m_textKerningAuto;
 
 		public static SKBlendMode ToSkBlendMode(eBlendMode blendMode)
 		{
@@ -76,6 +85,73 @@ namespace Bitmute.Imaging
 			m_textColor = new SKColor(0, 0, 0, 255);
 			m_textAlign = 0;
 			m_textAntiAlias = 3;
+			m_textLeadingAuto = true;
+			m_textLeading = 0.0f;
+			m_textTracking = 0;
+			m_textHorizontalScale = 100;
+			m_textVerticalScale = 100;
+			m_textBaselineShift = 0;
+			m_textFauxBold = false;
+			m_textFauxItalic = false;
+			m_textKerningAuto = true;
+		}
+
+		public bool TextLeadingAuto()
+		{
+			return m_textLeadingAuto;
+		}
+
+		public float TextLeading()
+		{
+			return m_textLeading;
+		}
+
+		public int TextTracking()
+		{
+			return m_textTracking;
+		}
+
+		public int TextHorizontalScale()
+		{
+			return m_textHorizontalScale;
+		}
+
+		public int TextVerticalScale()
+		{
+			return m_textVerticalScale;
+		}
+
+		public int TextBaselineShift()
+		{
+			return m_textBaselineShift;
+		}
+
+		public bool TextFauxBold()
+		{
+			return m_textFauxBold;
+		}
+
+		public bool TextFauxItalic()
+		{
+			return m_textFauxItalic;
+		}
+
+		public bool TextKerningAuto()
+		{
+			return m_textKerningAuto;
+		}
+
+		public void SetTextCharacter(bool leadingAuto, float leading, int tracking, int horizontalScale, int verticalScale, int baselineShift, bool fauxBold, bool fauxItalic, bool kerningAuto)
+		{
+			m_textLeadingAuto = leadingAuto;
+			m_textLeading = leading;
+			m_textTracking = tracking;
+			m_textHorizontalScale = horizontalScale;
+			m_textVerticalScale = verticalScale;
+			m_textBaselineShift = baselineShift;
+			m_textFauxBold = fauxBold;
+			m_textFauxItalic = fauxItalic;
+			m_textKerningAuto = kerningAuto;
 		}
 
 		public bool IsText()
@@ -168,7 +244,7 @@ namespace Bitmute.Imaging
 			{
 				return;
 			}
-			TextRasterizer.Draw(m_bitmap, m_text, m_textX - m_offsetX, m_textY - m_offsetY, m_textColor, m_textSize, m_textFontFamily, m_textBold, m_textItalic, m_textAlign, m_textAntiAlias);
+			TextRasterizer.Draw(this);
 		}
 
 		public bool IsBackground()
