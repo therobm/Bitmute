@@ -16,6 +16,8 @@ namespace Bitmute.UI
 	{
 		public static MainView Self;
 
+		private static SkiaSharp.SKBitmap s_clipboardBitmap;
+
 		private const double MenuItemHeight = 26.0;
 		private const double DropdownWidth = 190.0;
 
@@ -153,6 +155,18 @@ namespace Bitmute.UI
 					return true;
 				}
 				if (item == "Redo")
+				{
+					return true;
+				}
+				if (item == "Cut")
+				{
+					return true;
+				}
+				if (item == "Copy")
+				{
+					return true;
+				}
+				if (item == "Paste")
 				{
 					return true;
 				}
@@ -454,6 +468,21 @@ namespace Bitmute.UI
 			if (action == "Redo")
 			{
 				DoRedo();
+				return;
+			}
+			if (action == "Cut")
+			{
+				DoCut();
+				return;
+			}
+			if (action == "Copy")
+			{
+				DoCopy();
+				return;
+			}
+			if (action == "Paste")
+			{
+				DoPaste();
 				return;
 			}
 			if (action == "Open…")
@@ -931,6 +960,150 @@ namespace Bitmute.UI
 			}
 		}
 
+		private SkiaSharp.SKBitmap ExtractSelection(Document document, Layer layer)
+		{
+			Selection selection = document.Selection();
+			if (selection != null && selection.IsActive())
+			{
+				SkiaSharp.SKRectI bounds = selection.Bounds();
+				int width = bounds.Width;
+				int height = bounds.Height;
+				if (width <= 0 || height <= 0)
+				{
+					return null;
+				}
+				SkiaSharp.SKBitmap result = new SkiaSharp.SKBitmap(width, height, SkiaSharp.SKColorType.Rgba8888, SkiaSharp.SKAlphaType.Unpremul);
+				result.Erase(SkiaSharp.SKColors.Transparent);
+				for (int row = 0; row < height; row++)
+				{
+					for (int column = 0; column < width; column++)
+					{
+						int canvasX = bounds.Left + column;
+						int canvasY = bounds.Top + row;
+						if (selection.IsSelected(canvasX, canvasY))
+						{
+							result.SetPixel(column, row, layer.GetPixelCanvas(canvasX, canvasY));
+						}
+					}
+				}
+				return result;
+			}
+			return layer.Bitmap().Copy();
+		}
+
+		private void EraseSelection(Document document, Layer layer)
+		{
+			Selection selection = document.Selection();
+			if (selection != null && selection.IsActive())
+			{
+				SkiaSharp.SKRectI bounds = selection.Bounds();
+				for (int canvasY = bounds.Top; canvasY < bounds.Bottom; canvasY++)
+				{
+					for (int canvasX = bounds.Left; canvasX < bounds.Right; canvasX++)
+					{
+						if (selection.IsSelected(canvasX, canvasY))
+						{
+							layer.SetPixelCanvas(canvasX, canvasY, SkiaSharp.SKColors.Transparent);
+						}
+					}
+				}
+				return;
+			}
+			layer.Bitmap().Erase(SkiaSharp.SKColors.Transparent);
+		}
+
+		private void DoCopy()
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			SkiaSharp.SKBitmap copied = ExtractSelection(document, layer);
+			if (copied == null)
+			{
+				return;
+			}
+			if (s_clipboardBitmap != null)
+			{
+				s_clipboardBitmap.Dispose();
+			}
+			s_clipboardBitmap = copied;
+			SetStatusMessage("Copied");
+		}
+
+		private void DoCut()
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			SkiaSharp.SKBitmap copied = ExtractSelection(document, layer);
+			if (copied == null)
+			{
+				return;
+			}
+			if (s_clipboardBitmap != null)
+			{
+				s_clipboardBitmap.Dispose();
+			}
+			s_clipboardBitmap = copied;
+			document.BeginStroke();
+			EraseSelection(document, layer);
+			document.EndStroke();
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.MarkComposeDirty();
+			}
+			RefreshLayerThumbnails();
+			SetStatusMessage("Cut");
+		}
+
+		private void DoPaste()
+		{
+			if (s_clipboardBitmap == null)
+			{
+				return;
+			}
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.AddLayer("Pasted");
+			if (layer == null)
+			{
+				return;
+			}
+			SkiaSharp.SKBitmap copy = s_clipboardBitmap.Copy();
+			layer.SetBitmap(copy);
+			int offsetX = (document.Width() - copy.Width) / 2;
+			int offsetY = (document.Height() - copy.Height) / 2;
+			layer.SetOffset(offsetX, offsetY);
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.MarkComposeDirty();
+			}
+			if (m_layersPanel != null)
+			{
+				m_layersPanel.Refresh();
+			}
+			SetStatusMessage("Pasted");
+		}
+
 		public bool RulersEnabled()
 		{
 			return m_rulersEnabled;
@@ -1335,6 +1508,9 @@ namespace Bitmute.UI
 			AddAccelerator(element, Windows.System.VirtualKey.Y, OnAcceleratorRedo);
 			AddAccelerator(element, Windows.System.VirtualKey.A, OnAcceleratorSelectAll);
 			AddAccelerator(element, Windows.System.VirtualKey.D, OnAcceleratorDeselect);
+			AddAccelerator(element, Windows.System.VirtualKey.C, OnAcceleratorCopy);
+			AddAccelerator(element, Windows.System.VirtualKey.V, OnAcceleratorPaste);
+			AddAccelerator(element, Windows.System.VirtualKey.X, OnAcceleratorCut);
 			AddAccelerator(element, Windows.System.VirtualKey.Number0, OnAcceleratorFit);
 			AddAccelerator(element, Windows.System.VirtualKey.Add, OnAcceleratorZoomIn);
 			AddAccelerator(element, Windows.System.VirtualKey.Subtract, OnAcceleratorZoomOut);
@@ -1439,6 +1615,24 @@ namespace Bitmute.UI
 		private void OnAcceleratorDeselect(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
 			DoDeselect();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorCopy(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			DoCopy();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorPaste(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			DoPaste();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorCut(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			DoCut();
 			args.Handled = true;
 		}
 
