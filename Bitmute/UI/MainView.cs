@@ -27,6 +27,10 @@ namespace Bitmute.UI
 		private DocumentWindow m_activeDocumentWindow;
 		private ToolPalette m_toolPalette;
 		private LayersPanel m_layersPanel;
+		private NavigatorPanel m_navigatorPanel;
+		private InfoPanel m_infoPanel;
+		private HistoryPanel m_historyPanel;
+		private SwatchesPanel m_swatchesPanel;
 		private bool m_rulersEnabled = true;
 		private BoxView m_modalBackdrop;
 		private View m_modalContent;
@@ -122,6 +126,7 @@ namespace Bitmute.UI
 		private RectangleSelectTool m_rectangleSelectTool;
 		private EllipseSelectTool m_ellipseSelectTool;
 		private LassoTool m_lassoTool;
+		private FreehandLassoTool m_freehandLassoTool;
 		private MagicWandTool m_magicWandTool;
 		private TextTool m_textTool;
 		private PencilTool m_pencilTool;
@@ -142,6 +147,7 @@ namespace Bitmute.UI
 		private ShapeTool m_polygonShapeTool;
 		private HandTool m_handTool;
 		private ZoomTool m_zoomTool;
+		private RulerTool m_rulerTool;
 
 		private string[] GetMenuItems(string title)
 		{
@@ -1296,6 +1302,30 @@ namespace Bitmute.UI
 			{
 				m_statusCursorLabel.Text = "x: " + x + "   y: " + y;
 			}
+			if (m_infoPanel == null)
+			{
+				return;
+			}
+			m_infoPanel.UpdateCursor(x, y);
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				m_infoPanel.UpdatePixel(new SKColor(0, 0, 0, 0), false);
+				m_infoPanel.UpdateSelection(new SKRectI(0, 0, 0, 0), false);
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			bool hasPixel = layer != null && x >= 0 && y >= 0 && x < document.Width() && y < document.Height();
+			if (hasPixel)
+			{
+				m_infoPanel.UpdatePixel(layer.GetPixelCanvas(x, y), true);
+			}
+			else
+			{
+				m_infoPanel.UpdatePixel(new SKColor(0, 0, 0, 0), false);
+			}
+			Selection selection = document.Selection();
+			m_infoPanel.UpdateSelection(selection.Bounds(), selection.IsActive());
 		}
 
 		public void UpdateZoomInfo(int zoomPercent, int width, int height)
@@ -1303,6 +1333,10 @@ namespace Bitmute.UI
 			if (m_statusInfoLabel != null)
 			{
 				m_statusInfoLabel.Text = zoomPercent + "%      " + width + " × " + height + " px";
+			}
+			if (m_navigatorPanel != null)
+			{
+				m_navigatorPanel.RefreshView();
 			}
 		}
 
@@ -1605,17 +1639,41 @@ namespace Bitmute.UI
 
 		private View BuildPaletteDock()
 		{
+			m_navigatorPanel = new NavigatorPanel();
+			PaletteGroup navigatorGroup = new PaletteGroup(new string[] { "Navigator" }, m_navigatorPanel);
+
+			m_swatchesPanel = new SwatchesPanel();
+			PaletteGroup swatchesGroup = new PaletteGroup(new string[] { "Swatches" }, m_swatchesPanel);
+
 			m_layersPanel = new LayersPanel();
 			PaletteGroup layersGroup = new PaletteGroup(new string[] { "Layers", "Channels" }, m_layersPanel);
+
+			m_historyPanel = new HistoryPanel();
+			PaletteGroup historyGroup = new PaletteGroup(new string[] { "History" }, m_historyPanel);
+
+			m_infoPanel = new InfoPanel();
+			PaletteGroup infoGroup = new PaletteGroup(new string[] { "Info" }, m_infoPanel);
 
 			Grid dock = new Grid();
 			dock.ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
 			dock.Padding = new Thickness(4.0);
 			dock.RowSpacing = 4.0;
+			dock.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+			dock.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
 			dock.RowDefinitions.Add(new RowDefinition(GridLength.Star));
+			dock.RowDefinitions.Add(new RowDefinition(new GridLength(150.0)));
+			dock.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
 
-			Grid.SetRow(layersGroup, 0);
+			Grid.SetRow(navigatorGroup, 0);
+			Grid.SetRow(swatchesGroup, 1);
+			Grid.SetRow(layersGroup, 2);
+			Grid.SetRow(historyGroup, 3);
+			Grid.SetRow(infoGroup, 4);
+			dock.Add(navigatorGroup);
+			dock.Add(swatchesGroup);
 			dock.Add(layersGroup);
+			dock.Add(historyGroup);
+			dock.Add(infoGroup);
 
 			return dock;
 		}
@@ -1698,6 +1756,7 @@ namespace Bitmute.UI
 			m_rectangleSelectTool = new RectangleSelectTool();
 			m_ellipseSelectTool = new EllipseSelectTool();
 			m_lassoTool = new LassoTool();
+			m_freehandLassoTool = new FreehandLassoTool();
 			m_magicWandTool = new MagicWandTool();
 			m_textTool = new TextTool();
 			m_pencilTool = new PencilTool();
@@ -1718,6 +1777,7 @@ namespace Bitmute.UI
 			m_polygonShapeTool = new ShapeTool(eShapeKind.Polygon);
 			m_handTool = new HandTool();
 			m_zoomTool = new ZoomTool();
+			m_rulerTool = new RulerTool();
 
 			View menuBar = BuildMenuBar();
 			View optionsBar = BuildOptionsBar();
@@ -2358,6 +2418,14 @@ namespace Bitmute.UI
 			{
 				m_layersPanel.Refresh();
 			}
+			if (m_historyPanel != null)
+			{
+				m_historyPanel.Refresh();
+			}
+			if (m_navigatorPanel != null)
+			{
+				m_navigatorPanel.RefreshView();
+			}
 		}
 
 		public void OnCanvasInteracted()
@@ -2508,6 +2576,10 @@ namespace Bitmute.UI
 			{
 				m_textColorSwatch.Color = FromSkColor(color);
 			}
+			if (m_swatchesPanel != null)
+			{
+				m_swatchesPanel.AddRecent(color);
+			}
 			RefreshTextEditStyle();
 		}
 
@@ -2542,6 +2614,14 @@ namespace Bitmute.UI
 			if (m_layersPanel != null)
 			{
 				m_layersPanel.RefreshThumbnails();
+			}
+			if (m_historyPanel != null)
+			{
+				m_historyPanel.Refresh();
+			}
+			if (m_navigatorPanel != null)
+			{
+				m_navigatorPanel.RefreshView();
 			}
 		}
 
@@ -2651,6 +2731,14 @@ namespace Bitmute.UI
 			if (m_lassoTool != null)
 			{
 				m_lassoTool.Reset();
+			}
+			if (m_freehandLassoTool != null)
+			{
+				m_freehandLassoTool.Reset();
+			}
+			if (m_rulerTool != null)
+			{
+				m_rulerTool.Reset();
 			}
 		}
 
@@ -3885,6 +3973,10 @@ namespace Bitmute.UI
 			{
 				return m_lassoTool;
 			}
+			if (tool == eTool.FreehandLasso)
+			{
+				return m_freehandLassoTool;
+			}
 			if (tool == eTool.MagicWand)
 			{
 				return m_magicWandTool;
@@ -3964,6 +4056,10 @@ namespace Bitmute.UI
 			if (tool == eTool.Zoom)
 			{
 				return m_zoomTool;
+			}
+			if (tool == eTool.Ruler)
+			{
+				return m_rulerTool;
 			}
 			return null;
 		}

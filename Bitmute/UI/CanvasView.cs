@@ -246,6 +246,16 @@ namespace Bitmute.UI
 				DrawLassoPreview(canvas, (LassoTool)tool);
 				return;
 			}
+			if (tool is FreehandLassoTool)
+			{
+				DrawFreehandLassoPreview(canvas, (FreehandLassoTool)tool);
+				return;
+			}
+			if (tool is RulerTool)
+			{
+				DrawRulerPreview(canvas, (RulerTool)tool);
+				return;
+			}
 			if (tool is GradientTool)
 			{
 				DrawGradientPreview(canvas, (GradientTool)tool);
@@ -530,6 +540,70 @@ namespace Bitmute.UI
 			}
 			markerFill.Dispose();
 			markerBorder.Dispose();
+		}
+
+		private void DrawFreehandLassoPreview(SKCanvas canvas, FreehandLassoTool lasso)
+		{
+			if (!lasso.HasPreview())
+			{
+				return;
+			}
+			int count = lasso.VertexCount();
+			if (count < 2)
+			{
+				return;
+			}
+			SKPathBuilder builder = new SKPathBuilder();
+			builder.MoveTo(m_offsetX + (lasso.VertexX(0) * m_zoom), m_offsetY + (lasso.VertexY(0) * m_zoom));
+			for (int index = 1; index < count; index++)
+			{
+				builder.LineTo(m_offsetX + (lasso.VertexX(index) * m_zoom), m_offsetY + (lasso.VertexY(index) * m_zoom));
+			}
+			SKPath path = builder.Snapshot();
+			SKPaint underlay = new SKPaint();
+			underlay.Style = SKPaintStyle.Stroke;
+			underlay.StrokeWidth = 3.0f;
+			underlay.Color = SKColors.Black;
+			underlay.IsAntialias = true;
+			canvas.DrawPath(path, underlay);
+			underlay.Dispose();
+			SKPaint overlay = new SKPaint();
+			overlay.Style = SKPaintStyle.Stroke;
+			overlay.StrokeWidth = 1.0f;
+			overlay.Color = SKColors.White;
+			overlay.IsAntialias = true;
+			canvas.DrawPath(path, overlay);
+			overlay.Dispose();
+			path.Dispose();
+			builder.Dispose();
+		}
+
+		private void DrawRulerPreview(SKCanvas canvas, RulerTool ruler)
+		{
+			if (!ruler.HasPreview())
+			{
+				return;
+			}
+			float startX = m_offsetX + (ruler.PreviewStartX() * m_zoom);
+			float startY = m_offsetY + (ruler.PreviewStartY() * m_zoom);
+			float endX = m_offsetX + (ruler.PreviewEndX() * m_zoom);
+			float endY = m_offsetY + (ruler.PreviewEndY() * m_zoom);
+			SKPaint underlay = new SKPaint();
+			underlay.Style = SKPaintStyle.Stroke;
+			underlay.StrokeWidth = 3.0f;
+			underlay.Color = SKColors.Black;
+			underlay.IsAntialias = true;
+			canvas.DrawLine(startX, startY, endX, endY, underlay);
+			underlay.Dispose();
+			SKPaint overlay = new SKPaint();
+			overlay.Style = SKPaintStyle.Stroke;
+			overlay.StrokeWidth = 1.0f;
+			overlay.Color = SKColors.White;
+			overlay.IsAntialias = true;
+			canvas.DrawLine(startX, startY, endX, endY, overlay);
+			canvas.DrawCircle(startX, startY, 3.0f, overlay);
+			canvas.DrawCircle(endX, endY, 3.0f, overlay);
+			overlay.Dispose();
 		}
 
 		private void DrawLinePreview(SKCanvas canvas, LineTool line)
@@ -1014,7 +1088,7 @@ namespace Bitmute.UI
 			{
 				main.OnCanvasInteracted();
 			}
-			bool isSelectionTool = tool is RectangleSelectTool || tool is EllipseSelectTool || tool is LassoTool || tool is MagicWandTool;
+			bool isSelectionTool = tool is RectangleSelectTool || tool is EllipseSelectTool || tool is LassoTool || tool is FreehandLassoTool || tool is MagicWandTool;
 			if (isSelectionTool)
 			{
 				bool acted = eventArgs.ActionType == SKTouchAction.Pressed || eventArgs.ActionType == SKTouchAction.Released || (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact);
@@ -1023,7 +1097,7 @@ namespace Bitmute.UI
 					InvalidateSurface();
 				}
 			}
-			if (tool is LineTool || tool is GradientTool || tool is ShapeTool)
+			if (tool is LineTool || tool is GradientTool || tool is ShapeTool || tool is RulerTool)
 			{
 				InvalidateSurface();
 			}

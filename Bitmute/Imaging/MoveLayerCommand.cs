@@ -24,6 +24,11 @@ namespace Bitmute.Imaging
 			m_newOffsetY = newOffsetY;
 		}
 
+		public override string Label()
+		{
+			return "Move Layer";
+		}
+
 		private Layer TargetLayer(Document document)
 		{
 			List<Layer> layers = document.Layers();

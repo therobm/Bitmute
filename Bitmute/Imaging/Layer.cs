@@ -5,10 +5,32 @@ namespace Bitmute.Imaging
 	public enum eBlendMode
 	{
 		Normal,
+		Dissolve,
+		Darken,
 		Multiply,
+		ColorBurn,
+		LinearBurn,
+		DarkerColor,
+		Lighten,
 		Screen,
+		ColorDodge,
+		Add,
+		LighterColor,
 		Overlay,
-		Add
+		SoftLight,
+		HardLight,
+		VividLight,
+		LinearLight,
+		PinLight,
+		HardMix,
+		Difference,
+		Exclusion,
+		Subtract,
+		Divide,
+		Hue,
+		Saturation,
+		Color,
+		Luminosity
 	}
 
 	public class Layer
@@ -42,23 +64,116 @@ namespace Bitmute.Imaging
 		private bool m_textFauxItalic;
 		private bool m_textKerningAuto;
 
+		public static bool IsCustomBlend(eBlendMode blendMode)
+		{
+			if (blendMode == eBlendMode.Dissolve)
+			{
+				return true;
+			}
+			if (blendMode == eBlendMode.LinearBurn)
+			{
+				return true;
+			}
+			if (blendMode == eBlendMode.DarkerColor)
+			{
+				return true;
+			}
+			if (blendMode == eBlendMode.LighterColor)
+			{
+				return true;
+			}
+			if (blendMode == eBlendMode.VividLight)
+			{
+				return true;
+			}
+			if (blendMode == eBlendMode.LinearLight)
+			{
+				return true;
+			}
+			if (blendMode == eBlendMode.PinLight)
+			{
+				return true;
+			}
+			if (blendMode == eBlendMode.HardMix)
+			{
+				return true;
+			}
+			if (blendMode == eBlendMode.Subtract)
+			{
+				return true;
+			}
+			if (blendMode == eBlendMode.Divide)
+			{
+				return true;
+			}
+			return false;
+		}
+
 		public static SKBlendMode ToSkBlendMode(eBlendMode blendMode)
 		{
+			if (blendMode == eBlendMode.Darken)
+			{
+				return SKBlendMode.Darken;
+			}
 			if (blendMode == eBlendMode.Multiply)
 			{
 				return SKBlendMode.Multiply;
+			}
+			if (blendMode == eBlendMode.ColorBurn)
+			{
+				return SKBlendMode.ColorBurn;
+			}
+			if (blendMode == eBlendMode.Lighten)
+			{
+				return SKBlendMode.Lighten;
 			}
 			if (blendMode == eBlendMode.Screen)
 			{
 				return SKBlendMode.Screen;
 			}
-			if (blendMode == eBlendMode.Overlay)
+			if (blendMode == eBlendMode.ColorDodge)
 			{
-				return SKBlendMode.Overlay;
+				return SKBlendMode.ColorDodge;
 			}
 			if (blendMode == eBlendMode.Add)
 			{
 				return SKBlendMode.Plus;
+			}
+			if (blendMode == eBlendMode.Overlay)
+			{
+				return SKBlendMode.Overlay;
+			}
+			if (blendMode == eBlendMode.SoftLight)
+			{
+				return SKBlendMode.SoftLight;
+			}
+			if (blendMode == eBlendMode.HardLight)
+			{
+				return SKBlendMode.HardLight;
+			}
+			if (blendMode == eBlendMode.Difference)
+			{
+				return SKBlendMode.Difference;
+			}
+			if (blendMode == eBlendMode.Exclusion)
+			{
+				return SKBlendMode.Exclusion;
+			}
+			if (blendMode == eBlendMode.Hue)
+			{
+				return SKBlendMode.Hue;
+			}
+			if (blendMode == eBlendMode.Saturation)
+			{
+				return SKBlendMode.Saturation;
+			}
+			if (blendMode == eBlendMode.Color)
+			{
+				return SKBlendMode.Color;
+			}
+			if (blendMode == eBlendMode.Luminosity)
+			{
+				return SKBlendMode.Luminosity;
 			}
 			return SKBlendMode.SrcOver;
 		}

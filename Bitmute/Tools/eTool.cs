@@ -6,6 +6,7 @@ namespace Bitmute.Tools
 		Select,
 		EllipseSelect,
 		Lasso,
+		FreehandLasso,
 		MagicWand,
 		Pencil,
 		Brush,
@@ -25,6 +26,7 @@ namespace Bitmute.Tools
 		Smudge,
 		DodgeBurn,
 		Hand,
-		Zoom
+		Zoom,
+		Ruler
 	}
 }

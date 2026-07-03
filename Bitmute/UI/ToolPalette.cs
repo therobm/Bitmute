@@ -484,7 +484,7 @@ namespace Bitmute.UI
 			{
 				new eTool[] { eTool.Move },
 				new eTool[] { eTool.Select, eTool.EllipseSelect },
-				new eTool[] { eTool.Lasso },
+				new eTool[] { eTool.Lasso, eTool.FreehandLasso },
 				new eTool[] { eTool.MagicWand },
 				new eTool[] { eTool.Brush, eTool.Pencil },
 				new eTool[] { eTool.Eraser },
@@ -494,6 +494,7 @@ namespace Bitmute.UI
 				new eTool[] { eTool.DodgeBurn },
 				new eTool[] { eTool.Text },
 				new eTool[] { eTool.Line, eTool.RectangleShape, eTool.RoundedRectangleShape, eTool.EllipseShape, eTool.PolygonShape },
+				new eTool[] { eTool.Ruler },
 				new eTool[] { eTool.Eyedropper },
 				new eTool[] { eTool.Hand },
 				new eTool[] { eTool.Zoom }
@@ -502,7 +503,7 @@ namespace Bitmute.UI
 			{
 				new string[] { "move.png" },
 				new string[] { "box_select.png", "ellipse_select.png" },
-				new string[] { "lasso.png" },
+				new string[] { "lasso.png", "freehand_lasso.png" },
 				new string[] { "magic_wand.png" },
 				new string[] { "brush.png", "pencil.png" },
 				new string[] { "eraser.png" },
@@ -512,6 +513,7 @@ namespace Bitmute.UI
 				new string[] { "dodge.png" },
 				new string[] { "text.png" },
 				new string[] { "line.png", "rectangle.png", "rounded_rectangle.png", "ellipse.png", "polygon.png" },
+				new string[] { "ruler.png" },
 				new string[] { "eyedropper.png" },
 				new string[] { "hand.png" },
 				new string[] { "zoom.png" }
@@ -520,7 +522,7 @@ namespace Bitmute.UI
 			{
 				new string[] { "Move" },
 				new string[] { "Rectangle Select", "Ellipse Select" },
-				new string[] { "Poly Lasso" },
+				new string[] { "Poly Lasso", "Freehand Lasso" },
 				new string[] { "Magic Wand" },
 				new string[] { "Brush", "Pencil" },
 				new string[] { "Eraser" },
@@ -530,6 +532,7 @@ namespace Bitmute.UI
 				new string[] { "Dodge / Burn (Alt = Burn)" },
 				new string[] { "Text" },
 				new string[] { "Line", "Rectangle", "Rounded Rectangle", "Ellipse", "Polygon" },
+				new string[] { "Ruler / Measure" },
 				new string[] { "Eyedropper" },
 				new string[] { "Hand (drag to pan)" },
 				new string[] { "Zoom (double-click tool = 100%)" }

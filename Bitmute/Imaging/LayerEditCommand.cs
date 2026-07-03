@@ -18,6 +18,11 @@ namespace Bitmute.Imaging
 			m_after = after;
 		}
 
+		public override string Label()
+		{
+			return "Edit";
+		}
+
 		private SKBitmap LayerBitmap(Document document)
 		{
 			List<Layer> layers = document.Layers();

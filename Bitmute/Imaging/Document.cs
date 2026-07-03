@@ -291,6 +291,47 @@ namespace Bitmute.Imaging
 			return true;
 		}
 
+		public List<string> HistoryLabels()
+		{
+			List<string> labels = new List<string>();
+			for (int index = 0; index < m_undoStack.Count; index++)
+			{
+				labels.Add(m_undoStack[index].Label());
+			}
+			for (int index = m_redoStack.Count - 1; index >= 0; index--)
+			{
+				labels.Add(m_redoStack[index].Label());
+			}
+			return labels;
+		}
+
+		public int HistoryIndex()
+		{
+			return m_undoStack.Count;
+		}
+
+		public void JumpToHistory(int appliedCount)
+		{
+			int current = m_undoStack.Count;
+			if (appliedCount < current)
+			{
+				int steps = current - appliedCount;
+				for (int index = 0; index < steps; index++)
+				{
+					Undo();
+				}
+				return;
+			}
+			if (appliedCount > current)
+			{
+				int steps = appliedCount - current;
+				for (int index = 0; index < steps; index++)
+				{
+					Redo();
+				}
+			}
+		}
+
 		public int Width()
 		{
 			return m_width;
@@ -541,6 +582,23 @@ namespace Bitmute.Imaging
 			return true;
 		}
 
+		private bool AnyVisibleCustomBlend()
+		{
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				if (!layer.IsVisible())
+				{
+					continue;
+				}
+				if (Layer.IsCustomBlend(layer.BlendMode()))
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+
 		public void CompositeInto(SKBitmap target)
 		{
 			CompositeRegion(target, new SKRectI(0, 0, m_width, m_height));
@@ -551,6 +609,11 @@ namespace Bitmute.Imaging
 			if (AllVisibleLayersNormal())
 			{
 				CompositeRegionRaw(target, region);
+				return;
+			}
+			if (AnyVisibleCustomBlend())
+			{
+				CompositeRegionSoftware(target, region);
 				return;
 			}
 			CompositeRegionSkia(target, region);
@@ -675,6 +738,161 @@ namespace Bitmute.Imaging
 			DrawLayers(canvas);
 			canvas.Restore();
 			canvas.Dispose();
+		}
+
+		private void CompositeRegionSoftware(SKBitmap target, SKRectI region)
+		{
+			int left = region.Left;
+			int top = region.Top;
+			int right = region.Right;
+			int bottom = region.Bottom;
+			if (left < 0)
+			{
+				left = 0;
+			}
+			if (top < 0)
+			{
+				top = 0;
+			}
+			if (right > target.Width)
+			{
+				right = target.Width;
+			}
+			if (bottom > target.Height)
+			{
+				bottom = target.Height;
+			}
+			if (right <= left || bottom <= top)
+			{
+				return;
+			}
+			SKRect clipRect = new SKRect(left, top, right, bottom);
+
+			SKCanvas clearCanvas = new SKCanvas(target);
+			clearCanvas.Save();
+			clearCanvas.ClipRect(clipRect);
+			SKPaint clearPaint = new SKPaint();
+			clearPaint.Color = SKColors.Transparent;
+			clearPaint.BlendMode = SKBlendMode.Src;
+			clearCanvas.DrawRect(clipRect, clearPaint);
+			clearPaint.Dispose();
+			clearCanvas.Restore();
+			clearCanvas.Dispose();
+
+			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				if (!layer.IsVisible())
+				{
+					continue;
+				}
+				if (Layer.IsCustomBlend(layer.BlendMode()))
+				{
+					BlendCustomLayer(target, left, top, right, bottom, layer);
+				}
+				else
+				{
+					SKCanvas canvas = new SKCanvas(target);
+					canvas.Save();
+					canvas.ClipRect(clipRect);
+					SKPaint paint = new SKPaint();
+					paint.Color = SKColors.White.WithAlpha(layer.Opacity());
+					paint.BlendMode = Layer.ToSkBlendMode(layer.BlendMode());
+					SKImage image = SKImage.FromBitmap(layer.Bitmap());
+					canvas.DrawImage(image, layer.OffsetX(), layer.OffsetY(), sampling, paint);
+					image.Dispose();
+					paint.Dispose();
+					canvas.Restore();
+					canvas.Dispose();
+				}
+			}
+		}
+
+		private void BlendCustomLayer(SKBitmap target, int left, int top, int right, int bottom, Layer layer)
+		{
+			SKBitmap source = layer.Bitmap();
+			int sourceWidth = source.Width;
+			int sourceHeight = source.Height;
+			int offsetX = layer.OffsetX();
+			int offsetY = layer.OffsetY();
+			int opacity = layer.Opacity();
+			eBlendMode mode = layer.BlendMode();
+			for (int canvasY = top; canvasY < bottom; canvasY++)
+			{
+				for (int canvasX = left; canvasX < right; canvasX++)
+				{
+					int bitmapX = canvasX - offsetX;
+					int bitmapY = canvasY - offsetY;
+					if (bitmapX < 0 || bitmapY < 0 || bitmapX >= sourceWidth || bitmapY >= sourceHeight)
+					{
+						continue;
+					}
+					SKColor sourceColor = source.GetPixel(bitmapX, bitmapY);
+					int sourceAlpha = sourceColor.Alpha;
+					if (sourceAlpha == 0)
+					{
+						continue;
+					}
+					int effectiveAlpha = ((sourceAlpha * opacity) + 127) / 255;
+					if (effectiveAlpha == 0)
+					{
+						continue;
+					}
+					if (mode == eBlendMode.Dissolve)
+					{
+						int threshold = ((canvasX * 73) + (canvasY * 151)) & 255;
+						if (effectiveAlpha > threshold)
+						{
+							target.SetPixel(canvasX, canvasY, new SKColor(sourceColor.Red, sourceColor.Green, sourceColor.Blue, 255));
+						}
+						continue;
+					}
+					SKColor baseColor = target.GetPixel(canvasX, canvasY);
+					byte blendedRed;
+					byte blendedGreen;
+					byte blendedBlue;
+					if (baseColor.Alpha == 0)
+					{
+						blendedRed = sourceColor.Red;
+						blendedGreen = sourceColor.Green;
+						blendedBlue = sourceColor.Blue;
+					}
+					else
+					{
+						BlendModes.Blend(mode, baseColor.Red, baseColor.Green, baseColor.Blue, sourceColor.Red, sourceColor.Green, sourceColor.Blue, out blendedRed, out blendedGreen, out blendedBlue);
+					}
+					double sourceFraction = effectiveAlpha / 255.0;
+					double baseFraction = baseColor.Alpha / 255.0;
+					double outFraction = sourceFraction + (baseFraction * (1.0 - sourceFraction));
+					if (outFraction <= 0.0)
+					{
+						continue;
+					}
+					double baseWeight = baseFraction * (1.0 - sourceFraction);
+					int resultRed = (int)((((blendedRed * sourceFraction) + (baseColor.Red * baseWeight)) / outFraction) + 0.5);
+					int resultGreen = (int)((((blendedGreen * sourceFraction) + (baseColor.Green * baseWeight)) / outFraction) + 0.5);
+					int resultBlue = (int)((((blendedBlue * sourceFraction) + (baseColor.Blue * baseWeight)) / outFraction) + 0.5);
+					int resultAlpha = (int)((outFraction * 255.0) + 0.5);
+					if (resultRed > 255)
+					{
+						resultRed = 255;
+					}
+					if (resultGreen > 255)
+					{
+						resultGreen = 255;
+					}
+					if (resultBlue > 255)
+					{
+						resultBlue = 255;
+					}
+					if (resultAlpha > 255)
+					{
+						resultAlpha = 255;
+					}
+					target.SetPixel(canvasX, canvasY, new SKColor((byte)resultRed, (byte)resultGreen, (byte)resultBlue, (byte)resultAlpha));
+				}
+			}
 		}
 
 		private SKBitmap BakeLayerToCanvas(Layer layer)
