@@ -786,6 +786,13 @@ namespace Bitmute.UI
 			InvalidateSurface();
 		}
 
+		public void ResetView()
+		{
+			m_viewInitialized = false;
+			InvalidateSurface();
+			NotifyChrome();
+		}
+
 		public void Redraw()
 		{
 			InvalidateSurface();

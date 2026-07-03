@@ -155,6 +155,11 @@ namespace Bitmute.Imaging
 			return m_strokeSnapshot;
 		}
 
+		public void ResetSelection()
+		{
+			m_selection = new Selection(m_width, m_height);
+		}
+
 		public void BeginStroke()
 		{
 			if (m_strokeSnapshot != null)
@@ -670,6 +675,401 @@ namespace Bitmute.Imaging
 			DrawLayers(canvas);
 			canvas.Restore();
 			canvas.Dispose();
+		}
+
+		private SKBitmap BakeLayerToCanvas(Layer layer)
+		{
+			SKBitmap baked = new SKBitmap(m_width, m_height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			baked.Erase(SKColors.Transparent);
+			SKCanvas canvas = new SKCanvas(baked);
+			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
+			SKPaint paint = new SKPaint();
+			paint.BlendMode = SKBlendMode.Src;
+			SKImage image = SKImage.FromBitmap(layer.Bitmap());
+			canvas.DrawImage(image, layer.OffsetX(), layer.OffsetY(), sampling, paint);
+			image.Dispose();
+			paint.Dispose();
+			canvas.Dispose();
+			return baked;
+		}
+
+		public void FlipHorizontal()
+		{
+			if (m_layers.Count == 0)
+			{
+				return;
+			}
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				SKBitmap baked = BakeLayerToCanvas(layer);
+				SKBitmap destination = new SKBitmap(m_width, m_height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				for (int y = 0; y < m_height; y++)
+				{
+					for (int x = 0; x < m_width; x++)
+					{
+						destination.SetPixel(x, y, baked.GetPixel(m_width - 1 - x, y));
+					}
+				}
+				layer.SetBitmap(destination);
+				layer.SetOffset(0, 0);
+			}
+			m_dirty = true;
+		}
+
+		public void FlipVertical()
+		{
+			if (m_layers.Count == 0)
+			{
+				return;
+			}
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				SKBitmap baked = BakeLayerToCanvas(layer);
+				SKBitmap destination = new SKBitmap(m_width, m_height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				for (int y = 0; y < m_height; y++)
+				{
+					for (int x = 0; x < m_width; x++)
+					{
+						destination.SetPixel(x, y, baked.GetPixel(x, m_height - 1 - y));
+					}
+				}
+				layer.SetBitmap(destination);
+				layer.SetOffset(0, 0);
+			}
+			m_dirty = true;
+		}
+
+		public void Rotate180()
+		{
+			if (m_layers.Count == 0)
+			{
+				return;
+			}
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				SKBitmap baked = BakeLayerToCanvas(layer);
+				SKBitmap destination = new SKBitmap(m_width, m_height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				for (int y = 0; y < m_height; y++)
+				{
+					for (int x = 0; x < m_width; x++)
+					{
+						destination.SetPixel(x, y, baked.GetPixel(m_width - 1 - x, m_height - 1 - y));
+					}
+				}
+				layer.SetBitmap(destination);
+				layer.SetOffset(0, 0);
+			}
+			m_dirty = true;
+		}
+
+		public void Rotate90()
+		{
+			if (m_layers.Count == 0)
+			{
+				return;
+			}
+			int sourceWidth = m_width;
+			int sourceHeight = m_height;
+			int destinationWidth = sourceHeight;
+			int destinationHeight = sourceWidth;
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				SKBitmap baked = BakeLayerToCanvas(layer);
+				SKBitmap destination = new SKBitmap(destinationWidth, destinationHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				for (int y = 0; y < destinationHeight; y++)
+				{
+					for (int x = 0; x < destinationWidth; x++)
+					{
+						destination.SetPixel(x, y, baked.GetPixel(y, (sourceHeight - 1) - x));
+					}
+				}
+				layer.SetBitmap(destination);
+				layer.SetOffset(0, 0);
+			}
+			m_width = destinationWidth;
+			m_height = destinationHeight;
+			m_dirty = true;
+		}
+
+		public void Rotate270()
+		{
+			if (m_layers.Count == 0)
+			{
+				return;
+			}
+			int sourceWidth = m_width;
+			int sourceHeight = m_height;
+			int destinationWidth = sourceHeight;
+			int destinationHeight = sourceWidth;
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				SKBitmap baked = BakeLayerToCanvas(layer);
+				SKBitmap destination = new SKBitmap(destinationWidth, destinationHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				for (int y = 0; y < destinationHeight; y++)
+				{
+					for (int x = 0; x < destinationWidth; x++)
+					{
+						destination.SetPixel(x, y, baked.GetPixel((sourceWidth - 1) - y, x));
+					}
+				}
+				layer.SetBitmap(destination);
+				layer.SetOffset(0, 0);
+			}
+			m_width = destinationWidth;
+			m_height = destinationHeight;
+			m_dirty = true;
+		}
+
+		public void CropToSelection()
+		{
+			if (m_layers.Count == 0)
+			{
+				return;
+			}
+			if (!m_selection.IsActive())
+			{
+				return;
+			}
+			SKRectI b = m_selection.Bounds();
+			int left = b.Left;
+			int top = b.Top;
+			int right = b.Right;
+			int bottom = b.Bottom;
+			if (left < 0)
+			{
+				left = 0;
+			}
+			if (top < 0)
+			{
+				top = 0;
+			}
+			if (right > m_width)
+			{
+				right = m_width;
+			}
+			if (bottom > m_height)
+			{
+				bottom = m_height;
+			}
+			int cropWidth = right - left;
+			int cropHeight = bottom - top;
+			if (cropWidth <= 0 || cropHeight <= 0)
+			{
+				return;
+			}
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				SKBitmap baked = BakeLayerToCanvas(layer);
+				SKBitmap destination = new SKBitmap(cropWidth, cropHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				for (int y = 0; y < cropHeight; y++)
+				{
+					for (int x = 0; x < cropWidth; x++)
+					{
+						destination.SetPixel(x, y, baked.GetPixel(left + x, top + y));
+					}
+				}
+				layer.SetBitmap(destination);
+				layer.SetOffset(0, 0);
+			}
+			m_width = cropWidth;
+			m_height = cropHeight;
+			m_selection.Clear();
+			m_dirty = true;
+		}
+
+		public void Trim()
+		{
+			if (m_layers.Count == 0)
+			{
+				return;
+			}
+			int unionLeft = m_width;
+			int unionTop = m_height;
+			int unionRight = -1;
+			int unionBottom = -1;
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				SKRectI contentBounds = PixelRegion.ComputeContentBounds(layer.Bitmap());
+				if (contentBounds.Width <= 0)
+				{
+					continue;
+				}
+				int canvasLeft = contentBounds.Left + layer.OffsetX();
+				int canvasTop = contentBounds.Top + layer.OffsetY();
+				int canvasRight = contentBounds.Right + layer.OffsetX();
+				int canvasBottom = contentBounds.Bottom + layer.OffsetY();
+				if (canvasLeft < unionLeft)
+				{
+					unionLeft = canvasLeft;
+				}
+				if (canvasTop < unionTop)
+				{
+					unionTop = canvasTop;
+				}
+				if (canvasRight > unionRight)
+				{
+					unionRight = canvasRight;
+				}
+				if (canvasBottom > unionBottom)
+				{
+					unionBottom = canvasBottom;
+				}
+			}
+			if (unionRight < 0)
+			{
+				return;
+			}
+			if (unionLeft < 0)
+			{
+				unionLeft = 0;
+			}
+			if (unionTop < 0)
+			{
+				unionTop = 0;
+			}
+			if (unionRight > m_width)
+			{
+				unionRight = m_width;
+			}
+			if (unionBottom > m_height)
+			{
+				unionBottom = m_height;
+			}
+			int trimWidth = unionRight - unionLeft;
+			int trimHeight = unionBottom - unionTop;
+			if (trimWidth <= 0 || trimHeight <= 0)
+			{
+				return;
+			}
+			if (unionLeft == 0 && unionTop == 0 && trimWidth == m_width && trimHeight == m_height)
+			{
+				return;
+			}
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				SKBitmap baked = BakeLayerToCanvas(layer);
+				SKBitmap destination = new SKBitmap(trimWidth, trimHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				for (int y = 0; y < trimHeight; y++)
+				{
+					for (int x = 0; x < trimWidth; x++)
+					{
+						destination.SetPixel(x, y, baked.GetPixel(unionLeft + x, unionTop + y));
+					}
+				}
+				layer.SetBitmap(destination);
+				layer.SetOffset(0, 0);
+			}
+			m_width = trimWidth;
+			m_height = trimHeight;
+			m_dirty = true;
+		}
+
+		public void ResizeCanvas(int newWidth, int newHeight, int anchorX, int anchorY)
+		{
+			if (m_layers.Count == 0)
+			{
+				return;
+			}
+			if (newWidth <= 0 || newHeight <= 0)
+			{
+				return;
+			}
+			int dx = 0;
+			if (anchorX == 1)
+			{
+				dx = newWidth - m_width;
+			}
+			else if (anchorX == 0)
+			{
+				dx = (newWidth - m_width) / 2;
+			}
+			int dy = 0;
+			if (anchorY == 1)
+			{
+				dy = newHeight - m_height;
+			}
+			else if (anchorY == 0)
+			{
+				dy = (newHeight - m_height) / 2;
+			}
+			int sourceWidth = m_width;
+			int sourceHeight = m_height;
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				SKBitmap baked = BakeLayerToCanvas(layer);
+				SKBitmap destination = new SKBitmap(newWidth, newHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				destination.Erase(SKColors.Transparent);
+				for (int y = 0; y < sourceHeight; y++)
+				{
+					int destinationY = y + dy;
+					if (destinationY < 0 || destinationY >= newHeight)
+					{
+						continue;
+					}
+					for (int x = 0; x < sourceWidth; x++)
+					{
+						int destinationX = x + dx;
+						if (destinationX < 0 || destinationX >= newWidth)
+						{
+							continue;
+						}
+						destination.SetPixel(destinationX, destinationY, baked.GetPixel(x, y));
+					}
+				}
+				layer.SetBitmap(destination);
+				layer.SetOffset(0, 0);
+			}
+			m_width = newWidth;
+			m_height = newHeight;
+			m_dirty = true;
+		}
+
+		public void ScaleImage(int newWidth, int newHeight, int interpolation)
+		{
+			if (m_layers.Count == 0)
+			{
+				return;
+			}
+			if (newWidth <= 0 || newHeight <= 0)
+			{
+				return;
+			}
+			SKFilterMode filterMode = SKFilterMode.Linear;
+			if (interpolation == 0)
+			{
+				filterMode = SKFilterMode.Nearest;
+			}
+			SKSamplingOptions sampling = new SKSamplingOptions(filterMode, SKMipmapMode.None);
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				SKBitmap baked = BakeLayerToCanvas(layer);
+				SKBitmap destination = new SKBitmap(newWidth, newHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				destination.Erase(SKColors.Transparent);
+				SKCanvas canvas = new SKCanvas(destination);
+				SKImage image = SKImage.FromBitmap(baked);
+				SKRect destinationRect = new SKRect(0.0f, 0.0f, newWidth, newHeight);
+				SKPaint paint = new SKPaint();
+				paint.BlendMode = SKBlendMode.Src;
+				canvas.DrawImage(image, destinationRect, sampling, paint);
+				paint.Dispose();
+				image.Dispose();
+				canvas.Dispose();
+				layer.SetBitmap(destination);
+				layer.SetOffset(0, 0);
+			}
+			m_width = newWidth;
+			m_height = newHeight;
+			m_dirty = true;
 		}
 	}
 }

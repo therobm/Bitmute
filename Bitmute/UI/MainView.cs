@@ -95,7 +95,7 @@ namespace Bitmute.UI
 			}
 			if (title == "Image")
 			{
-				return new string[] { "Image Size…", "Canvas Size…" };
+				return new string[] { "Image Size…", "Canvas Size…", "Flip Horizontal", "Flip Vertical", "Rotate 90° CW", "Rotate 180°", "Rotate 90° CCW", "Crop to Selection", "Trim" };
 			}
 			if (title == "Layer")
 			{
@@ -167,6 +167,10 @@ namespace Bitmute.UI
 				return false;
 			}
 			if (title == "Filter")
+			{
+				return true;
+			}
+			if (title == "Image")
 			{
 				return true;
 			}
@@ -530,6 +534,138 @@ namespace Bitmute.UI
 				OpenAdjustment("pixelate");
 				return;
 			}
+			if (action == "Flip Horizontal")
+			{
+				DoCanvasOp("fliph");
+				return;
+			}
+			if (action == "Flip Vertical")
+			{
+				DoCanvasOp("flipv");
+				return;
+			}
+			if (action == "Rotate 90° CW")
+			{
+				DoCanvasOp("rot90");
+				return;
+			}
+			if (action == "Rotate 180°")
+			{
+				DoCanvasOp("rot180");
+				return;
+			}
+			if (action == "Rotate 90° CCW")
+			{
+				DoCanvasOp("rot270");
+				return;
+			}
+			if (action == "Crop to Selection")
+			{
+				DoCanvasOp("crop");
+				return;
+			}
+			if (action == "Trim")
+			{
+				DoCanvasOp("trim");
+				return;
+			}
+			if (action == "Canvas Size…")
+			{
+				OpenSizeDialog(true);
+				return;
+			}
+			if (action == "Image Size…")
+			{
+				OpenSizeDialog(false);
+				return;
+			}
+		}
+
+		private void OpenSizeDialog(bool canvasMode)
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			string title = "Image Size";
+			if (canvasMode)
+			{
+				title = "Canvas Size";
+			}
+			ShowModal(new SizeDialog(title, canvasMode, document.Width(), document.Height()), 340.0, 260.0);
+		}
+
+		private void FinishCanvasOp(CanvasView canvas, Document document)
+		{
+			document.ResetSelection();
+			canvas.ResetView();
+			canvas.MarkComposeDirty();
+			RefreshLayerThumbnails();
+		}
+
+		private void DoCanvasOp(string op)
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			if (op == "fliph")
+			{
+				document.FlipHorizontal();
+			}
+			else if (op == "flipv")
+			{
+				document.FlipVertical();
+			}
+			else if (op == "rot90")
+			{
+				document.Rotate90();
+			}
+			else if (op == "rot180")
+			{
+				document.Rotate180();
+			}
+			else if (op == "rot270")
+			{
+				document.Rotate270();
+			}
+			else if (op == "crop")
+			{
+				document.CropToSelection();
+			}
+			else if (op == "trim")
+			{
+				document.Trim();
+			}
+			FinishCanvasOp(canvas, document);
+		}
+
+		public void ApplyCanvasSize(int width, int height, int anchorX, int anchorY)
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			document.ResizeCanvas(width, height, anchorX, anchorY);
+			FinishCanvasOp(canvas, document);
+		}
+
+		public void ApplyImageSize(int width, int height, int interpolation)
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			document.ScaleImage(width, height, interpolation);
+			FinishCanvasOp(canvas, document);
 		}
 
 		private void OpenAdjustment(string id)
