@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Generic;
 using Bitmute.Imaging;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Graphics;
 using SkiaSharp;
 using SkiaSharp.Views.Maui.Controls;
@@ -23,7 +25,7 @@ namespace Bitmute.UI
 		private Label m_opacityValue;
 		private Picker m_blendPicker;
 		private bool m_suppress;
-		private List<Button> m_eyeButtons;
+		private List<Border> m_eyeButtons;
 		private List<int> m_eyeLayers;
 		private List<Border> m_rowBorders;
 		private List<int> m_rowLayers;
@@ -124,22 +126,29 @@ namespace Bitmute.UI
 		{
 			Layer layer = document.Layers()[layerIndex];
 
-			Button eye = new Button();
-			if (layer.IsVisible())
+			string eyeIcon = "eye.png";
+			if (!layer.IsVisible())
 			{
-				eye.Text = "●";
+				eyeIcon = "eye_off.png";
 			}
-			else
-			{
-				eye.Text = "○";
-			}
-			eye.FontSize = 11.0;
-			eye.WidthRequest = 26.0;
-			eye.HeightRequest = 24.0;
+			IconView eyeView = new IconView(eyeIcon);
+			eyeView.WidthRequest = 16.0;
+			eyeView.HeightRequest = 16.0;
+			eyeView.BackgroundColor = Colors.Transparent;
+			eyeView.HorizontalOptions = LayoutOptions.Center;
+			eyeView.VerticalOptions = LayoutOptions.Center;
+
+			Border eye = new Border();
+			eye.WidthRequest = 24.0;
+			eye.HeightRequest = 22.0;
 			eye.Padding = new Thickness(0.0);
 			eye.BackgroundColor = Colors.Transparent;
-			eye.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			eye.Clicked += OnEyeClicked;
+			eye.StrokeThickness = 0.0;
+			eye.Content = eyeView;
+			ToolTipProperties.SetText(eye, "Toggle visibility");
+			TapGestureRecognizer eyeTap = new TapGestureRecognizer();
+			eyeTap.Tapped += OnEyeClicked;
+			eye.GestureRecognizers.Add(eyeTap);
 			m_eyeButtons.Add(eye);
 			m_eyeLayers.Add(layerIndex);
 
@@ -194,7 +203,7 @@ namespace Bitmute.UI
 			return row;
 		}
 
-		private void OnEyeClicked(object sender, System.EventArgs eventArgs)
+		private void OnEyeClicked(object sender, TappedEventArgs eventArgs)
 		{
 			Document document = Doc();
 			if (document == null)
@@ -232,17 +241,27 @@ namespace Bitmute.UI
 			}
 		}
 
-		private Button BuildActionButton(string text, double width, System.EventHandler handler)
+		private Border BuildActionButton(string icon, string tip, EventHandler<TappedEventArgs> handler)
 		{
-			Button button = new Button();
-			button.Text = text;
-			button.FontSize = 11.0;
-			button.WidthRequest = width;
-			button.HeightRequest = 20.0;
+			IconView view = new IconView(icon);
+			view.WidthRequest = 16.0;
+			view.HeightRequest = 16.0;
+			view.BackgroundColor = Colors.Transparent;
+			view.HorizontalOptions = LayoutOptions.Center;
+			view.VerticalOptions = LayoutOptions.Center;
+
+			Border button = new Border();
+			button.WidthRequest = 30.0;
+			button.HeightRequest = 24.0;
 			button.Padding = new Thickness(0.0);
 			button.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
-			button.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			button.Clicked += handler;
+			button.StrokeThickness = 0.0;
+			button.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(3.0) };
+			button.Content = view;
+			ToolTipProperties.SetText(button, tip);
+			TapGestureRecognizer tap = new TapGestureRecognizer();
+			tap.Tapped += handler;
+			button.GestureRecognizers.Add(tap);
 			return button;
 		}
 
@@ -301,7 +320,7 @@ namespace Bitmute.UI
 			Refresh();
 		}
 
-		private void OnAddClicked(object sender, System.EventArgs eventArgs)
+		private void OnAddClicked(object sender, TappedEventArgs eventArgs)
 		{
 			Document document = Doc();
 			if (document == null)
@@ -314,7 +333,7 @@ namespace Bitmute.UI
 			Refresh();
 		}
 
-		private void OnDeleteClicked(object sender, System.EventArgs eventArgs)
+		private void OnDeleteClicked(object sender, TappedEventArgs eventArgs)
 		{
 			Document document = Doc();
 			if (document == null)
@@ -351,7 +370,7 @@ namespace Bitmute.UI
 			RecompositeActive();
 		}
 
-		private void OnDuplicateClicked(object sender, System.EventArgs eventArgs)
+		private void OnDuplicateClicked(object sender, TappedEventArgs eventArgs)
 		{
 			Document document = Doc();
 			if (document == null)
@@ -363,7 +382,7 @@ namespace Bitmute.UI
 			Refresh();
 		}
 
-		private void OnMergeClicked(object sender, System.EventArgs eventArgs)
+		private void OnMergeClicked(object sender, TappedEventArgs eventArgs)
 		{
 			Document document = Doc();
 			if (document == null)
@@ -399,17 +418,17 @@ namespace Bitmute.UI
 
 		public LayersPanel()
 		{
-			m_eyeButtons = new List<Button>();
+			m_eyeButtons = new List<Border>();
 			m_eyeLayers = new List<int>();
 			m_rowBorders = new List<Border>();
 			m_rowLayers = new List<int>();
 			m_thumbnailImages = new List<Image>();
 			m_thumbnailLayers = new List<int>();
 
-			Button addButton = BuildActionButton("+", 30.0, OnAddClicked);
-			Button duplicateButton = BuildActionButton("Dup", 40.0, OnDuplicateClicked);
-			Button mergeButton = BuildActionButton("Merge", 54.0, OnMergeClicked);
-			Button deleteButton = BuildActionButton("Del", 40.0, OnDeleteClicked);
+			Border addButton = BuildActionButton("layer_add.png", "New layer", OnAddClicked);
+			Border duplicateButton = BuildActionButton("layer_duplicate.png", "Duplicate layer", OnDuplicateClicked);
+			Border mergeButton = BuildActionButton("layer_merge.png", "Merge down", OnMergeClicked);
+			Border deleteButton = BuildActionButton("layer_delete.png", "Delete layer", OnDeleteClicked);
 
 			Label opacityLabel = new Label();
 			opacityLabel.Text = "Opacity";
