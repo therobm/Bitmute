@@ -188,6 +188,44 @@ namespace Bitmute.UI
 			return name;
 		}
 
+		private static string AcceleratorForItem(string title, string item)
+		{
+			if (title == "File")
+			{
+				if (item == "New") return "Ctrl+N";
+				if (item == "Open…") return "Ctrl+O";
+				if (item == "Save") return "Ctrl+S";
+				if (item == "Save As…") return "Ctrl+Shift+S";
+				if (item == "Export As…") return "Ctrl+E";
+			}
+			if (title == "Edit")
+			{
+				if (item == "Undo") return "Ctrl+Z";
+				if (item == "Redo") return "Ctrl+Y";
+				if (item == "Cut") return "Ctrl+X";
+				if (item == "Copy") return "Ctrl+C";
+				if (item == "Paste") return "Ctrl+V";
+			}
+			if (title == "Image")
+			{
+				if (item == "Image Size…") return "Ctrl+I";
+			}
+			if (title == "Select")
+			{
+				if (item == "All") return "Ctrl+A";
+				if (item == "Deselect") return "Ctrl+D";
+				if (item == "Invert") return "Ctrl+Shift+I";
+			}
+			if (title == "View")
+			{
+				if (item == "Zoom In") return "Ctrl++";
+				if (item == "Zoom Out") return "Ctrl+-";
+				if (item == "Fit on Screen") return "Ctrl+0";
+				if (item == "Rulers") return "Ctrl+R";
+			}
+			return "";
+		}
+
 		private string[] GetMenuItems(string title)
 		{
 			if (title == "File")
@@ -474,6 +512,12 @@ namespace Bitmute.UI
 		{
 			bool enabled = IsItemEnabled(title, item);
 
+			string accelerator = AcceleratorForItem(title, item);
+
+			Grid rowContent = new Grid();
+			rowContent.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+			rowContent.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+
 			Label label = new Label();
 			label.Text = item;
 			label.FontSize = 12.0;
@@ -486,13 +530,33 @@ namespace Bitmute.UI
 			{
 				label.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			}
+			Grid.SetColumn(label, 0);
+			rowContent.Add(label);
+
+			if (accelerator.Length > 0)
+			{
+				Label accelLabel = new Label();
+				accelLabel.Text = accelerator;
+				accelLabel.FontSize = 12.0;
+				accelLabel.VerticalOptions = LayoutOptions.Center;
+				if (enabled)
+				{
+					accelLabel.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+				}
+				else
+				{
+					accelLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+				}
+				Grid.SetColumn(accelLabel, 1);
+				rowContent.Add(accelLabel);
+			}
 
 			Border row = new Border();
 			row.HeightRequest = MenuItemHeight;
 			row.Padding = new Thickness(12.0, 0.0, 12.0, 0.0);
 			row.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
 			row.StrokeThickness = 0.0;
-			row.Content = label;
+			row.Content = rowContent;
 
 			if (enabled)
 			{
@@ -2366,6 +2430,11 @@ namespace Bitmute.UI
 			AddAccelerator(element, Windows.System.VirtualKey.Subtract, OnAcceleratorZoomOut);
 			AddAccelerator(element, (Windows.System.VirtualKey)187, OnAcceleratorZoomIn);
 			AddAccelerator(element, (Windows.System.VirtualKey)189, OnAcceleratorZoomOut);
+			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorSaveAs);
+			AddAccelerator(element, Windows.System.VirtualKey.E, OnAcceleratorExport);
+			AddAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorImageSize);
+			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorInvertSelection);
+			AddAccelerator(element, Windows.System.VirtualKey.R, OnAcceleratorRulers);
 			AddBareAccelerator(element, Windows.System.VirtualKey.X, OnAcceleratorSwapColors);
 			AddBareAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDelete);
 			AddAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDeleteBackground);
@@ -2450,6 +2519,15 @@ namespace Bitmute.UI
 			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
 			accelerator.Key = key;
 			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.Menu;
+			accelerator.Invoked += handler;
+			element.KeyboardAccelerators.Add(accelerator);
+		}
+
+		private void AddCtrlShiftAccelerator(Microsoft.UI.Xaml.UIElement element, Windows.System.VirtualKey key, Windows.Foundation.TypedEventHandler<Microsoft.UI.Xaml.Input.KeyboardAccelerator, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs> handler)
+		{
+			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
+			accelerator.Key = key;
+			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.Control | Windows.System.VirtualKeyModifiers.Shift;
 			accelerator.Invoked += handler;
 			element.KeyboardAccelerators.Add(accelerator);
 		}
@@ -2651,6 +2729,40 @@ namespace Bitmute.UI
 		private void OnAcceleratorZoomOut(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
 			DoZoomOut();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorSaveAs(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			SaveAsFlow();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorExport(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			OpenExportDialog();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorImageSize(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			OpenSizeDialog(false);
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorInvertSelection(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			if (m_textEditActive)
+			{
+				return;
+			}
+			DoInvertSelection();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorRulers(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			ToggleRulers();
 			args.Handled = true;
 		}
 
