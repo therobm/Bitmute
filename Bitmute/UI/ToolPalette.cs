@@ -16,6 +16,7 @@ namespace Bitmute.UI
 		private string[] m_icons;
 		private string[] m_names;
 		private Border[] m_buttons;
+		private IconView[] m_iconViews;
 		private eTool m_selectedTool;
 		private BoxView m_foregroundSwatch;
 		private BoxView m_backgroundSwatch;
@@ -149,11 +150,12 @@ namespace Bitmute.UI
 			icon.BackgroundColor = Colors.Transparent;
 			icon.HorizontalOptions = LayoutOptions.Center;
 			icon.VerticalOptions = LayoutOptions.Center;
+			m_iconViews[index] = icon;
 
 			Border button = new Border();
 			button.WidthRequest = UiConstants.ToolButtonSize;
 			button.HeightRequest = UiConstants.ToolButtonSize;
-			button.BackgroundColor = Colors.Transparent;
+			button.BackgroundColor = UiConstants.ToolButtonChip;
 			button.StrokeThickness = 0.0;
 			button.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(3.0) };
 			button.Content = icon;
@@ -186,10 +188,12 @@ namespace Bitmute.UI
 				if (m_tools[index] == tool)
 				{
 					m_buttons[index].BackgroundColor = UiConstants.ToolSelected;
+					m_iconViews[index].SetSelected(true);
 				}
 				else
 				{
-					m_buttons[index].BackgroundColor = Colors.Transparent;
+					m_buttons[index].BackgroundColor = UiConstants.ToolButtonChip;
+					m_iconViews[index].SetSelected(false);
 				}
 			}
 
@@ -207,6 +211,7 @@ namespace Bitmute.UI
 			m_icons = new string[] { "move.png", "box_select.png", "ellipse_select.png", "lasso.png", "magic_wand.png", "pencil.png", "brush.png", "eraser.png", "clone.png", "fill.png", "eyedropper.png", "text.png", "line.png", "blur.png", "sharpen.png", "smudge.png", "dodge_burn.png", "zoom.png" };
 			m_names = new string[] { "Move", "Rectangle Select", "Ellipse Select", "Poly Lasso", "Magic Wand", "Pencil", "Brush", "Eraser", "Clone (Alt-click sets source)", "Fill", "Eyedropper", "Text", "Line", "Blur", "Sharpen", "Smudge", "Dodge / Burn (Alt = Burn)", "Zoom" };
 			m_buttons = new Border[m_tools.Length];
+			m_iconViews = new IconView[m_tools.Length];
 
 			Grid grid = new Grid();
 			grid.Padding = new Thickness(5.0);

@@ -86,11 +86,7 @@ namespace Bitmute.UI
 
 		public static SKColor IconTint()
 		{
-			if (s_dark)
-			{
-				return new SKColor(0xC8, 0xC8, 0xC8);
-			}
-			return new SKColor(0x2A, 0x2A, 0x2A);
+			return new SKColor(0x26, 0x26, 0x26);
 		}
 	}
 }

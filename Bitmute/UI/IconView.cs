@@ -14,12 +14,23 @@ namespace Bitmute.UI
 
 		private string m_name;
 		private bool m_loadStarted;
+		private bool m_selected;
 
 		public IconView(string name)
 		{
 			m_name = name;
 			PaintSurface += OnPaintSurface;
 			Theme.Changed += OnThemeChanged;
+		}
+
+		public void SetSelected(bool selected)
+		{
+			if (m_selected == selected)
+			{
+				return;
+			}
+			m_selected = selected;
+			InvalidateSurface();
 		}
 
 		private void OnThemeChanged(object sender, EventArgs eventArgs)
@@ -65,9 +76,14 @@ namespace Bitmute.UI
 				return;
 			}
 
+			SKColor tint = Theme.IconTint();
+			if (m_selected)
+			{
+				tint = new SKColor(0xF0, 0xF0, 0xF0);
+			}
 			SKPaint paint = new SKPaint();
 			paint.IsAntialias = true;
-			paint.ColorFilter = SKColorFilter.CreateBlendMode(Theme.IconTint(), SKBlendMode.SrcIn);
+			paint.ColorFilter = SKColorFilter.CreateBlendMode(tint, SKBlendMode.SrcIn);
 			SKRect destination = new SKRect(0.0f, 0.0f, eventArgs.Info.Width, eventArgs.Info.Height);
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None);
 			SKImage image = SKImage.FromBitmap(bitmap);

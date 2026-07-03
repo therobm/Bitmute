@@ -40,6 +40,7 @@ namespace Bitmute.UI
 		public static readonly Color TextDim = Color.FromArgb("#9A9A9A");
 		public static readonly Color Accent = Color.FromArgb("#3D7EDB");
 		public static readonly Color ToolResting = Color.FromArgb("#404040");
+		public static readonly Color ToolButtonChip = Color.FromArgb("#A6A6A6");
 		public static readonly Color ToolSelected = Color.FromArgb("#2C5480");
 		public static readonly Color ResizeGrip = Color.FromArgb("#606060");
 		public static readonly Color CanvasPaper = Color.FromArgb("#FFFFFF");
