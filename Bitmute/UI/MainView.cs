@@ -37,6 +37,7 @@ namespace Bitmute.UI
 		private double m_modalDragOriginX;
 		private double m_modalDragOriginY;
 		private Label m_optionsToolLabel;
+		private Label m_brushSizeLabel;
 		private SliderField m_brushSizeField;
 		private Label m_brushHardnessLabel;
 		private SliderField m_brushHardnessField;
@@ -1254,11 +1255,11 @@ namespace Bitmute.UI
 			Grid.SetColumn(m_optionsToolLabel, 0);
 			bar.Add(m_optionsToolLabel);
 
-			Label sizeLabel = new Label();
-			sizeLabel.Text = "Size";
-			sizeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			sizeLabel.FontSize = 12.0;
-			sizeLabel.VerticalOptions = LayoutOptions.Center;
+			m_brushSizeLabel = new Label();
+			m_brushSizeLabel.Text = "Size";
+			m_brushSizeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_brushSizeLabel.FontSize = 12.0;
+			m_brushSizeLabel.VerticalOptions = LayoutOptions.Center;
 
 			m_brushSizeField = new SliderField(1, 100, m_toolState.BrushSize(), " px", OnBrushSizeValue);
 			m_brushSizeField.VerticalOptions = LayoutOptions.Center;
@@ -1354,7 +1355,7 @@ namespace Bitmute.UI
 			m_optionsRow = options;
 			options.Spacing = 8.0;
 			options.VerticalOptions = LayoutOptions.Center;
-			options.Add(sizeLabel);
+			options.Add(m_brushSizeLabel);
 			options.Add(m_brushSizeField);
 			options.Add(m_brushHardnessLabel);
 			options.Add(m_brushHardnessField);
@@ -2268,6 +2269,12 @@ namespace Bitmute.UI
 				m_lineAntiAliasCheck.IsVisible = isLine;
 			}
 			bool isBrushFamily = tool == eTool.Brush || tool == eTool.Eraser || tool == eTool.Clone || tool == eTool.Blur || tool == eTool.Sharpen || tool == eTool.Smudge || tool == eTool.DodgeBurn;
+			bool usesSize = isBrushFamily || tool == eTool.Pencil || tool == eTool.Line;
+			if (m_brushSizeLabel != null)
+			{
+				m_brushSizeLabel.IsVisible = usesSize;
+				m_brushSizeField.IsVisible = usesSize;
+			}
 			if (m_brushHardnessLabel != null)
 			{
 				m_brushHardnessLabel.IsVisible = isBrushFamily;
