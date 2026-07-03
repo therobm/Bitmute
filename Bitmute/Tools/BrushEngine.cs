@@ -313,6 +313,11 @@ namespace Bitmute.Tools
 			{
 				return;
 			}
+			if (m_op == eBrushOp.Smudge)
+			{
+				StampSmudgeDab(layer, centerX, centerY, selection);
+				return;
+			}
 			int rowBytes = bitmap.RowBytes;
 			int originalRowBytes = m_original.RowBytes;
 			int layerOffsetX = layer.OffsetX();
@@ -404,35 +409,6 @@ namespace Bitmute.Tools
 						destinationPixel[3] = originalPixel[3];
 						continue;
 					}
-					if (m_op == eBrushOp.Smudge)
-					{
-						double curRed = destinationPixel[0];
-						double curGreen = destinationPixel[1];
-						double curBlue = destinationPixel[2];
-						double curAlpha = destinationPixel[3];
-						if (!m_smudgeStarted)
-						{
-							m_smudgeR = curRed;
-							m_smudgeG = curGreen;
-							m_smudgeB = curBlue;
-							m_smudgeA = curAlpha;
-							m_smudgeStarted = true;
-						}
-						double mix = tip * m_opacity;
-						if (mix > 1.0)
-						{
-							mix = 1.0;
-						}
-						destinationPixel[0] = ClampByte(curRed + ((m_smudgeR - curRed) * mix));
-						destinationPixel[1] = ClampByte(curGreen + ((m_smudgeG - curGreen) * mix));
-						destinationPixel[2] = ClampByte(curBlue + ((m_smudgeB - curBlue) * mix));
-						destinationPixel[3] = ClampByte(curAlpha + ((m_smudgeA - curAlpha) * mix));
-						m_smudgeR = m_smudgeR + ((curRed - m_smudgeR) * mix);
-						m_smudgeG = m_smudgeG + ((curGreen - m_smudgeG) * mix);
-						m_smudgeB = m_smudgeB + ((curBlue - m_smudgeB) * mix);
-						m_smudgeA = m_smudgeA + ((curAlpha - m_smudgeA) * mix);
-						continue;
-					}
 					if (m_op == eBrushOp.Clone)
 					{
 						int cloneX = bitmapX - m_cloneOffsetX;
@@ -493,6 +469,125 @@ namespace Bitmute.Tools
 					destinationPixel[3] = (byte)((outAlpha * 255.0) + 0.5);
 				}
 			}
+		}
+
+		private unsafe void StampSmudgeDab(Layer layer, double centerX, double centerY, Selection selection)
+		{
+			SKBitmap bitmap = layer.Bitmap();
+			int rowBytes = bitmap.RowBytes;
+			int layerOffsetX = layer.OffsetX();
+			int layerOffsetY = layer.OffsetY();
+			byte* pixels = (byte*)bitmap.GetPixels().ToPointer();
+			bool clip = selection != null && selection.IsActive();
+			int radius = m_radius;
+			int minCanvasX = (int)System.Math.Floor(centerX) - radius - 1;
+			int maxCanvasX = (int)System.Math.Ceiling(centerX) + radius + 1;
+			int minCanvasY = (int)System.Math.Floor(centerY) - radius - 1;
+			int maxCanvasY = (int)System.Math.Ceiling(centerY) + radius + 1;
+
+			double sumRed = 0.0;
+			double sumGreen = 0.0;
+			double sumBlue = 0.0;
+			double sumAlpha = 0.0;
+			double sumWeight = 0.0;
+			for (int canvasY = minCanvasY; canvasY <= maxCanvasY; canvasY++)
+			{
+				int bitmapY = canvasY - layerOffsetY;
+				if (bitmapY < 0 || bitmapY >= m_height)
+				{
+					continue;
+				}
+				double offsetY = canvasY - centerY;
+				for (int canvasX = minCanvasX; canvasX <= maxCanvasX; canvasX++)
+				{
+					double tip = TipCoverage(canvasX - centerX, offsetY);
+					if (tip <= 0.0)
+					{
+						continue;
+					}
+					if (clip && !selection.IsSelected(canvasX, canvasY))
+					{
+						continue;
+					}
+					int bitmapX = canvasX - layerOffsetX;
+					if (bitmapX < 0 || bitmapX >= m_width)
+					{
+						continue;
+					}
+					byte* pixel = pixels + (bitmapY * rowBytes) + (bitmapX * 4);
+					sumRed = sumRed + (pixel[0] * tip);
+					sumGreen = sumGreen + (pixel[1] * tip);
+					sumBlue = sumBlue + (pixel[2] * tip);
+					sumAlpha = sumAlpha + (pixel[3] * tip);
+					sumWeight = sumWeight + tip;
+				}
+			}
+			if (sumWeight <= 0.0)
+			{
+				return;
+			}
+			double averageRed = sumRed / sumWeight;
+			double averageGreen = sumGreen / sumWeight;
+			double averageBlue = sumBlue / sumWeight;
+			double averageAlpha = sumAlpha / sumWeight;
+			if (!m_smudgeStarted)
+			{
+				m_smudgeR = averageRed;
+				m_smudgeG = averageGreen;
+				m_smudgeB = averageBlue;
+				m_smudgeA = averageAlpha;
+				m_smudgeStarted = true;
+			}
+
+			double strength = m_opacity;
+			if (strength > 1.0)
+			{
+				strength = 1.0;
+			}
+			for (int canvasY = minCanvasY; canvasY <= maxCanvasY; canvasY++)
+			{
+				int bitmapY = canvasY - layerOffsetY;
+				if (bitmapY < 0 || bitmapY >= m_height)
+				{
+					continue;
+				}
+				double offsetY = canvasY - centerY;
+				for (int canvasX = minCanvasX; canvasX <= maxCanvasX; canvasX++)
+				{
+					double tip = TipCoverage(canvasX - centerX, offsetY);
+					if (tip <= 0.0)
+					{
+						continue;
+					}
+					if (clip && !selection.IsSelected(canvasX, canvasY))
+					{
+						continue;
+					}
+					int bitmapX = canvasX - layerOffsetX;
+					if (bitmapX < 0 || bitmapX >= m_width)
+					{
+						continue;
+					}
+					double mix = tip * strength;
+					if (mix > 1.0)
+					{
+						mix = 1.0;
+					}
+					byte* pixel = pixels + (bitmapY * rowBytes) + (bitmapX * 4);
+					double currentRed = pixel[0];
+					double currentGreen = pixel[1];
+					double currentBlue = pixel[2];
+					double currentAlpha = pixel[3];
+					pixel[0] = ClampByte(currentRed + ((m_smudgeR - currentRed) * mix));
+					pixel[1] = ClampByte(currentGreen + ((m_smudgeG - currentGreen) * mix));
+					pixel[2] = ClampByte(currentBlue + ((m_smudgeB - currentBlue) * mix));
+					pixel[3] = ClampByte(currentAlpha + ((m_smudgeA - currentAlpha) * mix));
+				}
+			}
+			m_smudgeR = m_smudgeR + ((averageRed - m_smudgeR) * strength);
+			m_smudgeG = m_smudgeG + ((averageGreen - m_smudgeG) * strength);
+			m_smudgeB = m_smudgeB + ((averageBlue - m_smudgeB) * strength);
+			m_smudgeA = m_smudgeA + ((averageAlpha - m_smudgeA) * strength);
 		}
 
 		private void MarkDirty(Document document, double x0, double y0, double x1, double y1)
