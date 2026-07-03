@@ -49,6 +49,12 @@ namespace Bitmute.UI
 		private Slider m_brushSmoothingSlider;
 		private Label m_brushSmoothingValue;
 		private Button m_brushSettingsButton;
+		private HorizontalStackLayout m_optionsRow;
+		private View m_pulldownCatcher;
+		private View m_pulldownPanel;
+		private Picker m_brushTipPicker;
+		private Slider m_brushSpacingSlider;
+		private Label m_brushSpacingValue;
 		private Label m_brushModeLabel;
 		private Picker m_brushModePicker;
 		private Label m_lineAntiAliasLabel;
@@ -297,6 +303,7 @@ namespace Bitmute.UI
 
 		private void OpenMenu(int index)
 		{
+			ClosePulldown();
 			CloseMenu();
 			m_openMenuIndex = index;
 			m_menuButtons[index].ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
@@ -1138,6 +1145,7 @@ namespace Bitmute.UI
 			m_lineAntiAliasCheck.CheckedChanged += OnLineAntiAliasChanged;
 
 			HorizontalStackLayout options = new HorizontalStackLayout();
+			m_optionsRow = options;
 			options.Spacing = 8.0;
 			options.VerticalOptions = LayoutOptions.Center;
 			options.Add(sizeLabel);
@@ -1473,16 +1481,57 @@ namespace Bitmute.UI
 			args.Handled = true;
 		}
 
+		private double WindowChromeWidth()
+		{
+			double rulerWidth = 0.0;
+			if (m_rulersEnabled)
+			{
+				rulerWidth = UiConstants.RulerThickness;
+			}
+			return rulerWidth + UiConstants.ResizeGripSize + (2.0 * UiConstants.PanelBorderThickness);
+		}
+
+		private double WindowChromeHeight()
+		{
+			double rulerHeight = 0.0;
+			if (m_rulersEnabled)
+			{
+				rulerHeight = UiConstants.RulerThickness;
+			}
+			return UiConstants.TitleBarHeight + rulerHeight + UiConstants.ResizeGripSize + (2.0 * UiConstants.PanelBorderThickness);
+		}
+
 		private void PlaceAndAdd(DocumentWindow window)
 		{
 			double workspaceWidth = WorkspaceWidth();
 			double workspaceHeight = WorkspaceHeight();
 			double width = UiConstants.DefaultDocumentWindowWidth;
 			double height = UiConstants.DefaultDocumentWindowHeight;
+			Document model = window.DocumentModel();
+			if (model != null)
+			{
+				double density = Microsoft.Maui.Devices.DeviceDisplay.MainDisplayInfo.Density;
+				if (density < 0.1)
+				{
+					density = 1.0;
+				}
+				double canvasDipWidth = model.Width() / density;
+				double canvasDipHeight = model.Height() / density;
+				width = System.Math.Ceiling(canvasDipWidth) + WindowChromeWidth() + 2.0;
+				height = System.Math.Ceiling(canvasDipHeight) + WindowChromeHeight() + 2.0;
+			}
 			if (workspaceWidth > 100.0 && workspaceHeight > 100.0)
 			{
-				width = workspaceWidth * 0.85;
-				height = workspaceHeight * 0.86;
+				double maximumWidth = workspaceWidth - 16.0;
+				double maximumHeight = workspaceHeight - 16.0;
+				if (width > maximumWidth)
+				{
+					width = maximumWidth;
+				}
+				if (height > maximumHeight)
+				{
+					height = maximumHeight;
+				}
 			}
 			double offset = m_cascadeCount * UiConstants.CascadeOffset;
 			m_cascadeCount++;
@@ -1903,6 +1952,7 @@ namespace Bitmute.UI
 
 		public void OnToolSelected(eTool tool)
 		{
+			ClosePulldown();
 			if (m_toolState != null)
 			{
 				m_toolState.SetTool(tool);
@@ -2021,8 +2071,169 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			BrushSettingsDialog dialog = new BrushSettingsDialog(m_toolState.BrushSquareTip(), m_toolState.BrushSpacing());
-			ShowModal(dialog, 300.0, 150.0);
+			if (m_pulldownPanel != null)
+			{
+				ClosePulldown();
+				return;
+			}
+			double anchorX = 0.0;
+			if (m_optionsRow != null && m_brushSettingsButton != null)
+			{
+				anchorX = m_optionsRow.X + m_brushSettingsButton.X;
+			}
+			double anchorY = UiConstants.MenuBarHeight + 1.0 + UiConstants.OptionsBarHeight + 1.0;
+			ShowPulldown(BuildBrushSettingsContent(), anchorX, anchorY, 288.0, 108.0);
+		}
+
+		private View BuildBrushSettingsContent()
+		{
+			Label tipLabel = new Label();
+			tipLabel.Text = "Tip";
+			tipLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			tipLabel.FontSize = 12.0;
+			tipLabel.WidthRequest = 60.0;
+			tipLabel.VerticalOptions = LayoutOptions.Center;
+
+			m_brushTipPicker = new Picker();
+			m_brushTipPicker.FontSize = 12.0;
+			m_brushTipPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_brushTipPicker.Items.Add("Round");
+			m_brushTipPicker.Items.Add("Square");
+			m_brushTipPicker.SelectedIndex = 0;
+			if (m_toolState.BrushSquareTip())
+			{
+				m_brushTipPicker.SelectedIndex = 1;
+			}
+			m_brushTipPicker.SelectedIndexChanged += OnBrushTipPulldownChanged;
+
+			Grid tipRow = new Grid();
+			tipRow.ColumnSpacing = 8.0;
+			tipRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			tipRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+			Grid.SetColumn(tipLabel, 0);
+			Grid.SetColumn(m_brushTipPicker, 1);
+			tipRow.Add(tipLabel);
+			tipRow.Add(m_brushTipPicker);
+
+			Label spacingLabel = new Label();
+			spacingLabel.Text = "Spacing";
+			spacingLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			spacingLabel.FontSize = 12.0;
+			spacingLabel.WidthRequest = 60.0;
+			spacingLabel.VerticalOptions = LayoutOptions.Center;
+
+			m_brushSpacingSlider = new Slider();
+			m_brushSpacingSlider.Minimum = 1.0;
+			m_brushSpacingSlider.Maximum = 100.0;
+			m_brushSpacingSlider.WidthRequest = 140.0;
+			m_brushSpacingSlider.VerticalOptions = LayoutOptions.Center;
+			m_brushSpacingSlider.Value = m_toolState.BrushSpacing();
+			m_brushSpacingSlider.ValueChanged += OnBrushSpacingPulldownChanged;
+
+			m_brushSpacingValue = new Label();
+			m_brushSpacingValue.Text = m_toolState.BrushSpacing() + "%";
+			m_brushSpacingValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_brushSpacingValue.FontSize = 12.0;
+			m_brushSpacingValue.WidthRequest = 44.0;
+			m_brushSpacingValue.VerticalOptions = LayoutOptions.Center;
+
+			Grid spacingRow = new Grid();
+			spacingRow.ColumnSpacing = 8.0;
+			spacingRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			spacingRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			spacingRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			Grid.SetColumn(spacingLabel, 0);
+			Grid.SetColumn(m_brushSpacingSlider, 1);
+			Grid.SetColumn(m_brushSpacingValue, 2);
+			spacingRow.Add(spacingLabel);
+			spacingRow.Add(m_brushSpacingSlider);
+			spacingRow.Add(m_brushSpacingValue);
+
+			VerticalStackLayout body = new VerticalStackLayout();
+			body.Spacing = 10.0;
+			body.Padding = new Thickness(12.0);
+			body.Add(tipRow);
+			body.Add(spacingRow);
+			return body;
+		}
+
+		private void OnBrushTipPulldownChanged(object sender, System.EventArgs eventArgs)
+		{
+			if (m_brushTipPicker == null)
+			{
+				return;
+			}
+			ApplyBrushTip(m_brushTipPicker.SelectedIndex == 1);
+		}
+
+		private void OnBrushSpacingPulldownChanged(object sender, ValueChangedEventArgs eventArgs)
+		{
+			if (m_brushSpacingSlider == null)
+			{
+				return;
+			}
+			int spacing = (int)m_brushSpacingSlider.Value;
+			ApplyBrushSpacing(spacing);
+			if (m_brushSpacingValue != null)
+			{
+				m_brushSpacingValue.Text = spacing + "%";
+			}
+		}
+
+		private void OnPulldownCatcherTapped(object sender, TappedEventArgs eventArgs)
+		{
+			ClosePulldown();
+		}
+
+		private void ClosePulldown()
+		{
+			if (m_pulldownCatcher != null)
+			{
+				m_overlay.Remove(m_pulldownCatcher);
+				m_pulldownCatcher = null;
+			}
+			if (m_pulldownPanel != null)
+			{
+				m_overlay.Remove(m_pulldownPanel);
+				m_pulldownPanel = null;
+			}
+		}
+
+		private void ShowPulldown(View content, double anchorX, double anchorY, double width, double height)
+		{
+			ClosePulldown();
+			CloseMenu();
+
+			BoxView catcher = new BoxView();
+			catcher.Color = Colors.Transparent;
+			TapGestureRecognizer catcherTap = new TapGestureRecognizer();
+			catcherTap.Tapped += OnPulldownCatcherTapped;
+			catcher.GestureRecognizers.Add(catcherTap);
+			AbsoluteLayout.SetLayoutFlags(catcher, AbsoluteLayoutFlags.WidthProportional | AbsoluteLayoutFlags.HeightProportional);
+			AbsoluteLayout.SetLayoutBounds(catcher, new Rect(0.0, 0.0, 1.0, 1.0));
+			m_overlay.Add(catcher);
+			m_pulldownCatcher = catcher;
+
+			Border panel = new Border();
+			panel.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
+			panel.ThemeStroke(UiConstants.DividerLight, UiConstants.DividerDark);
+			panel.StrokeThickness = 1.0;
+			panel.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(3.0) };
+			panel.Content = content;
+
+			double overlayWidth = m_overlay.Width;
+			if (overlayWidth > 0.0 && anchorX + width > overlayWidth)
+			{
+				anchorX = overlayWidth - width;
+			}
+			if (anchorX < 0.0)
+			{
+				anchorX = 0.0;
+			}
+			AbsoluteLayout.SetLayoutFlags(panel, AbsoluteLayoutFlags.None);
+			AbsoluteLayout.SetLayoutBounds(panel, new Rect(anchorX, anchorY, width, height));
+			m_overlay.Add(panel);
+			m_pulldownPanel = panel;
 		}
 
 		public void ApplyBrushTip(bool square)
