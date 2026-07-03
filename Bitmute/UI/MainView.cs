@@ -1519,6 +1519,14 @@ namespace Bitmute.UI
 				double canvasDipHeight = model.Height() / density;
 				width = System.Math.Ceiling(canvasDipWidth) + WindowChromeWidth() + 2.0;
 				height = System.Math.Ceiling(canvasDipHeight) + WindowChromeHeight() + 2.0;
+				if (width < UiConstants.PanelMinWidth)
+				{
+					width = UiConstants.PanelMinWidth;
+				}
+				if (height < UiConstants.PanelMinHeight)
+				{
+					height = UiConstants.PanelMinHeight;
+				}
 			}
 			if (workspaceWidth > 100.0 && workspaceHeight > 100.0)
 			{
