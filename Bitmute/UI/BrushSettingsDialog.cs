@@ -5,29 +5,11 @@ using Microsoft.Maui.Graphics;
 
 namespace Bitmute.UI
 {
-	public class BrushSettingsDialog : ContentView
+	public class BrushSettingsDialog : ModalDialog
 	{
 		private Picker m_tipPicker;
 		private Slider m_spacingSlider;
 		private Label m_spacingValue;
-
-		private void OnTitlePan(object sender, PanUpdatedEventArgs eventArgs)
-		{
-			MainView main = MainView.Self;
-			if (main != null)
-			{
-				main.DragModal(eventArgs.StatusType, eventArgs.TotalX, eventArgs.TotalY);
-			}
-		}
-
-		private void OnCloseClicked(object sender, EventArgs eventArgs)
-		{
-			MainView main = MainView.Self;
-			if (main != null)
-			{
-				main.CloseModal();
-			}
-		}
 
 		private void OnTipChanged(object sender, EventArgs eventArgs)
 		{
@@ -52,40 +34,6 @@ namespace Bitmute.UI
 			{
 				m_spacingValue.Text = spacing + "%";
 			}
-		}
-
-		private View BuildTitleBar(string text)
-		{
-			Label titleLabel = new Label();
-			titleLabel.Text = text;
-			titleLabel.FontSize = 13.0;
-			titleLabel.TextColor = UiConstants.OnSurface;
-			titleLabel.VerticalOptions = LayoutOptions.Center;
-
-			Button closeButton = new Button();
-			closeButton.Text = "✕";
-			closeButton.FontSize = 12.0;
-			closeButton.WidthRequest = UiConstants.CloseButtonSize;
-			closeButton.HeightRequest = UiConstants.CloseButtonSize;
-			closeButton.Padding = new Thickness(0.0);
-			closeButton.BackgroundColor = Colors.Transparent;
-			closeButton.TextColor = UiConstants.TextDim;
-			closeButton.Clicked += OnCloseClicked;
-
-			Grid titleBar = new Grid();
-			titleBar.BackgroundColor = UiConstants.TitleBar;
-			titleBar.Padding = new Thickness(8.0, 2.0, 2.0, 2.0);
-			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
-			Grid.SetColumn(titleLabel, 0);
-			Grid.SetColumn(closeButton, 1);
-			titleBar.Add(titleLabel);
-			titleBar.Add(closeButton);
-
-			PanGestureRecognizer pan = new PanGestureRecognizer();
-			pan.PanUpdated += OnTitlePan;
-			titleBar.GestureRecognizers.Add(pan);
-			return titleBar;
 		}
 
 		public BrushSettingsDialog(bool square, int spacing)
@@ -152,24 +100,12 @@ namespace Bitmute.UI
 			spacingRow.Add(m_spacingSlider);
 			spacingRow.Add(m_spacingValue);
 
-			VerticalStackLayout innerLayout = new VerticalStackLayout();
-			innerLayout.Spacing = 10.0;
-			innerLayout.Padding = new Thickness(12.0);
-			innerLayout.Add(tipRow);
-			innerLayout.Add(spacingRow);
+			VerticalStackLayout body = new VerticalStackLayout();
+			body.Spacing = 10.0;
+			body.Add(tipRow);
+			body.Add(spacingRow);
 
-			VerticalStackLayout layout = new VerticalStackLayout();
-			layout.Spacing = 0.0;
-			layout.Add(BuildTitleBar("Brush Settings"));
-			layout.Add(innerLayout);
-
-			Border frame = new Border();
-			frame.BackgroundColor = UiConstants.PanelSurface;
-			frame.Stroke = UiConstants.Divider;
-			frame.StrokeThickness = 1.0;
-			frame.Content = layout;
-
-			Content = frame;
+			ComposeDialog("Brush Settings", body, null);
 		}
 	}
 }

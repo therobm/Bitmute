@@ -1606,7 +1606,7 @@ namespace Bitmute.UI
 			{
 				m_modalY = 0.0;
 			}
-			AbsoluteLayout.SetLayoutBounds(content, new Rect(m_modalX, m_modalY, width, height));
+			AbsoluteLayout.SetLayoutBounds(content, new Rect(m_modalX, m_modalY, width, AbsoluteLayout.AutoSize));
 			AbsoluteLayout.SetLayoutFlags(content, AbsoluteLayoutFlags.None);
 			content.ZIndex = m_topZIndex + 1001;
 			m_workspace.Add(content);

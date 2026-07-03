@@ -5,7 +5,7 @@ using Microsoft.Maui.Graphics;
 
 namespace Bitmute.UI
 {
-	public class SizeDialog : ContentView
+	public class SizeDialog : ModalDialog
 	{
 		private const int MaximumSize = 8192;
 
@@ -16,22 +16,9 @@ namespace Bitmute.UI
 		private Picker m_verticalAnchor;
 		private Picker m_interpolation;
 
-		private void OnTitlePan(object sender, PanUpdatedEventArgs eventArgs)
-		{
-			MainView main = MainView.Self;
-			if (main != null)
-			{
-				main.DragModal(eventArgs.StatusType, eventArgs.TotalX, eventArgs.TotalY);
-			}
-		}
-
 		private void OnCancelClicked(object sender, EventArgs eventArgs)
 		{
-			MainView main = MainView.Self;
-			if (main != null)
-			{
-				main.CloseModal();
-			}
+			CloseModal();
 		}
 
 		private int ParseSize(Entry entry, int fallback)
@@ -84,7 +71,7 @@ namespace Bitmute.UI
 			{
 				main.ApplyImageSize(width, height, m_interpolation.SelectedIndex);
 			}
-			main.CloseModal();
+			CloseModal();
 		}
 
 		private Entry BuildNumericEntry(int initial)
@@ -118,51 +105,16 @@ namespace Bitmute.UI
 			return row;
 		}
 
-		private View BuildTitleBar(string text)
-		{
-			Label titleLabel = new Label();
-			titleLabel.Text = text;
-			titleLabel.FontSize = 13.0;
-			titleLabel.TextColor = UiConstants.OnSurface;
-			titleLabel.VerticalOptions = LayoutOptions.Center;
-
-			Button closeButton = new Button();
-			closeButton.Text = "✕";
-			closeButton.FontSize = 12.0;
-			closeButton.WidthRequest = UiConstants.CloseButtonSize;
-			closeButton.HeightRequest = UiConstants.CloseButtonSize;
-			closeButton.Padding = new Thickness(0.0);
-			closeButton.BackgroundColor = Colors.Transparent;
-			closeButton.TextColor = UiConstants.TextDim;
-			closeButton.Clicked += OnCancelClicked;
-
-			Grid titleBar = new Grid();
-			titleBar.BackgroundColor = UiConstants.TitleBar;
-			titleBar.Padding = new Thickness(8.0, 2.0, 2.0, 2.0);
-			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
-			Grid.SetColumn(titleLabel, 0);
-			Grid.SetColumn(closeButton, 1);
-			titleBar.Add(titleLabel);
-			titleBar.Add(closeButton);
-
-			PanGestureRecognizer pan = new PanGestureRecognizer();
-			pan.PanUpdated += OnTitlePan;
-			titleBar.GestureRecognizers.Add(pan);
-			return titleBar;
-		}
-
 		public SizeDialog(string title, bool canvasMode, int currentWidth, int currentHeight)
 		{
 			m_canvasMode = canvasMode;
 			m_widthEntry = BuildNumericEntry(currentWidth);
 			m_heightEntry = BuildNumericEntry(currentHeight);
 
-			VerticalStackLayout innerLayout = new VerticalStackLayout();
-			innerLayout.Spacing = 8.0;
-			innerLayout.Padding = new Thickness(12.0);
-			innerLayout.Add(BuildRow("Width", m_widthEntry));
-			innerLayout.Add(BuildRow("Height", m_heightEntry));
+			VerticalStackLayout body = new VerticalStackLayout();
+			body.Spacing = 8.0;
+			body.Add(BuildRow("Width", m_widthEntry));
+			body.Add(BuildRow("Height", m_heightEntry));
 
 			if (canvasMode)
 			{
@@ -182,8 +134,8 @@ namespace Bitmute.UI
 				m_verticalAnchor.Items.Add("Bottom");
 				m_verticalAnchor.SelectedIndex = 1;
 
-				innerLayout.Add(BuildRow("Anchor X", m_horizontalAnchor));
-				innerLayout.Add(BuildRow("Anchor Y", m_verticalAnchor));
+				body.Add(BuildRow("Anchor X", m_horizontalAnchor));
+				body.Add(BuildRow("Anchor Y", m_verticalAnchor));
 			}
 			else
 			{
@@ -194,44 +146,12 @@ namespace Bitmute.UI
 				m_interpolation.Items.Add("Bilinear");
 				m_interpolation.Items.Add("Bicubic");
 				m_interpolation.SelectedIndex = 2;
-				innerLayout.Add(BuildRow("Resample", m_interpolation));
+				body.Add(BuildRow("Resample", m_interpolation));
 			}
 
-			Button applyButton = new Button();
-			applyButton.Text = "Apply";
-			applyButton.FontSize = 12.0;
-			applyButton.WidthRequest = 90.0;
-			applyButton.BackgroundColor = UiConstants.Accent;
-			applyButton.TextColor = UiConstants.OnSurface;
-			applyButton.Clicked += OnApplyClicked;
-
-			Button cancelButton = new Button();
-			cancelButton.Text = "Cancel";
-			cancelButton.FontSize = 12.0;
-			cancelButton.WidthRequest = 90.0;
-			cancelButton.BackgroundColor = UiConstants.ChromeRaised;
-			cancelButton.TextColor = UiConstants.OnSurface;
-			cancelButton.Clicked += OnCancelClicked;
-
-			HorizontalStackLayout buttons = new HorizontalStackLayout();
-			buttons.Spacing = 8.0;
-			buttons.HorizontalOptions = LayoutOptions.End;
-			buttons.Add(cancelButton);
-			buttons.Add(applyButton);
-			innerLayout.Add(buttons);
-
-			VerticalStackLayout layout = new VerticalStackLayout();
-			layout.Spacing = 0.0;
-			layout.Add(BuildTitleBar(title));
-			layout.Add(innerLayout);
-
-			Border frame = new Border();
-			frame.BackgroundColor = UiConstants.PanelSurface;
-			frame.Stroke = UiConstants.Divider;
-			frame.StrokeThickness = 1.0;
-			frame.Content = layout;
-
-			Content = frame;
+			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
+			Button applyButton = PrimaryButton("Apply", OnApplyClicked);
+			ComposeDialog(title, body, ButtonRow(cancelButton, applyButton));
 		}
 	}
 }
