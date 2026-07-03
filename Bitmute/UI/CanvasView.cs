@@ -682,6 +682,39 @@ namespace Bitmute.UI
 				return;
 			}
 
+			if (tool is HandTool)
+			{
+				if (eventArgs.ActionType == SKTouchAction.Pressed)
+				{
+					m_panning = true;
+					m_panLastX = eventArgs.Location.X;
+					m_panLastY = eventArgs.Location.Y;
+				}
+				else if (eventArgs.ActionType == SKTouchAction.Released)
+				{
+					m_panning = false;
+				}
+				eventArgs.Handled = true;
+				return;
+			}
+
+			if (tool is ZoomTool)
+			{
+				if (eventArgs.ActionType == SKTouchAction.Pressed)
+				{
+					Windows.UI.Core.CoreVirtualKeyStates zoomAltState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Menu);
+					bool zoomAltHeld = (zoomAltState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
+					float zoomFactor = 1.25f;
+					if (zoomAltHeld)
+					{
+						zoomFactor = 0.8f;
+					}
+					ApplyZoomAt(m_zoom * zoomFactor, eventArgs.Location.X, eventArgs.Location.Y);
+				}
+				eventArgs.Handled = true;
+				return;
+			}
+
 			Windows.UI.Core.CoreVirtualKeyStates shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift);
 			bool shiftHeld = (shiftState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
 			state.SetShiftHeld(shiftHeld);
@@ -800,6 +833,31 @@ namespace Bitmute.UI
 		public void ZoomOut()
 		{
 			ApplyZoomCentered(m_zoom * 0.8f);
+		}
+
+		public void ZoomTo100()
+		{
+			m_zoom = 1.0f;
+			float docWidth = m_document.Width();
+			float docHeight = m_document.Height();
+			m_offsetX = (m_lastViewportWidth - (docWidth * m_zoom)) / 2.0f;
+			m_offsetY = (m_lastViewportHeight - (docHeight * m_zoom)) / 2.0f;
+			ReportZoomInfo();
+			NotifyChrome();
+			InvalidateSurface();
+		}
+
+		public void SetZoomPercentValue(int percent)
+		{
+			if (percent < 5)
+			{
+				percent = 5;
+			}
+			if (percent > 3200)
+			{
+				percent = 3200;
+			}
+			ApplyZoomCentered(percent / 100.0f);
 		}
 
 		public void FitToView()

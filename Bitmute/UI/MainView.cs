@@ -83,6 +83,8 @@ namespace Bitmute.UI
 		private EyedropperTool m_eyedropperTool;
 		private FillTool m_fillTool;
 		private LineTool m_lineTool;
+		private HandTool m_handTool;
+		private ZoomTool m_zoomTool;
 
 		private string[] GetMenuItems(string title)
 		{
@@ -919,6 +921,15 @@ namespace Bitmute.UI
 			}
 		}
 
+		public void ZoomActiveTo100()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.ZoomTo100();
+			}
+		}
+
 		public bool RulersEnabled()
 		{
 			return m_rulersEnabled;
@@ -1242,6 +1253,8 @@ namespace Bitmute.UI
 			m_eyedropperTool = new EyedropperTool();
 			m_fillTool = new FillTool();
 			m_lineTool = new LineTool();
+			m_handTool = new HandTool();
+			m_zoomTool = new ZoomTool();
 
 			View menuBar = BuildMenuBar();
 			View optionsBar = BuildOptionsBar();
@@ -2291,6 +2304,14 @@ namespace Bitmute.UI
 			if (tool == eTool.Smudge)
 			{
 				return m_smudgeTool;
+			}
+			if (tool == eTool.Hand)
+			{
+				return m_handTool;
+			}
+			if (tool == eTool.Zoom)
+			{
+				return m_zoomTool;
 			}
 			return null;
 		}

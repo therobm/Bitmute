@@ -193,7 +193,32 @@ namespace Bitmute.UI
 			tap.Tapped += OnToolTapped;
 			button.GestureRecognizers.Add(tap);
 
+			TapGestureRecognizer doubleTap = new TapGestureRecognizer();
+			doubleTap.NumberOfTapsRequired = 2;
+			doubleTap.Tapped += OnToolDoubleTapped;
+			button.GestureRecognizers.Add(doubleTap);
+
 			return button;
+		}
+
+		private void OnToolDoubleTapped(object sender, TappedEventArgs eventArgs)
+		{
+			MainView main = MainView.Self;
+			if (main == null)
+			{
+				return;
+			}
+			for (int index = 0; index < m_buttons.Length; index++)
+			{
+				if (ReferenceEquals(m_buttons[index], sender))
+				{
+					if (m_tools[index] == eTool.Zoom)
+					{
+						main.ZoomActiveTo100();
+					}
+					return;
+				}
+			}
 		}
 
 		private void OnToolTapped(object sender, TappedEventArgs eventArgs)
@@ -234,10 +259,10 @@ namespace Bitmute.UI
 
 		public ToolPalette()
 		{
-			m_tools = new eTool[] { eTool.Move, eTool.Select, eTool.EllipseSelect, eTool.Lasso, eTool.MagicWand, eTool.Pencil, eTool.Brush, eTool.Eraser, eTool.Clone, eTool.Fill, eTool.Eyedropper, eTool.Text, eTool.Line, eTool.Blur, eTool.Sharpen, eTool.Smudge, eTool.DodgeBurn, eTool.Zoom };
-			m_glyphs = new string[] { "✛︎", "⬚", "◯", "⬠", "✦︎", "✎︎", "▨", "▭", "⎘", "▣", "◉", "T", "╱", "○", "◭", "☟", "◐", "◎" };
-			m_icons = new string[] { "move.png", "box_select.png", "ellipse_select.png", "lasso.png", "magic_wand.png", "pencil.png", "brush.png", "eraser.png", "clone.png", "fill.png", "eyedropper.png", "text.png", "line.png", "blur.png", "sharpen.png", "smudge.png", "dodge.png", "zoom.png" };
-			m_names = new string[] { "Move", "Rectangle Select", "Ellipse Select", "Poly Lasso", "Magic Wand", "Pencil", "Brush", "Eraser", "Clone (Alt-click sets source)", "Fill", "Eyedropper", "Text", "Line", "Blur", "Sharpen", "Smudge", "Dodge / Burn (Alt = Burn)", "Zoom" };
+			m_tools = new eTool[] { eTool.Move, eTool.Select, eTool.EllipseSelect, eTool.Lasso, eTool.MagicWand, eTool.Pencil, eTool.Brush, eTool.Eraser, eTool.Clone, eTool.Fill, eTool.Eyedropper, eTool.Text, eTool.Line, eTool.Blur, eTool.Sharpen, eTool.Smudge, eTool.DodgeBurn, eTool.Hand, eTool.Zoom };
+			m_glyphs = new string[] { "✛︎", "⬚", "◯", "⬠", "✦︎", "✎︎", "▨", "▭", "⎘", "▣", "◉", "T", "╱", "○", "◭", "☟", "◐", "✋", "◎" };
+			m_icons = new string[] { "move.png", "box_select.png", "ellipse_select.png", "lasso.png", "magic_wand.png", "pencil.png", "brush.png", "eraser.png", "clone.png", "fill.png", "eyedropper.png", "text.png", "line.png", "blur.png", "sharpen.png", "smudge.png", "dodge.png", "hand.png", "zoom.png" };
+			m_names = new string[] { "Move", "Rectangle Select", "Ellipse Select", "Poly Lasso", "Magic Wand", "Pencil", "Brush", "Eraser", "Clone (Alt-click sets source)", "Fill", "Eyedropper", "Text", "Line", "Blur", "Sharpen", "Smudge", "Dodge / Burn (Alt = Burn)", "Hand (drag to pan)", "Zoom (double-click tool = 100%)" };
 			m_buttons = new Border[m_tools.Length];
 			m_iconViews = new IconView[m_tools.Length];
 

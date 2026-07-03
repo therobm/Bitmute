@@ -19,6 +19,7 @@ namespace Bitmute.Tools
 		Sharpen,
 		Smudge,
 		DodgeBurn,
+		Hand,
 		Zoom
 	}
 }
