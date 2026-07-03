@@ -177,9 +177,10 @@ namespace Bitmute.UI
 		{
 			if (s_dark)
 			{
-				return new SKColor(0x26, 0x26, 0x26);
+				return new SKColor(UiConstants.PanelSurfaceDark.ToUint());
 			}
-			return new SKColor(0xCE, 0xCE, 0xCE);
+			
+			return new SKColor(UiConstants.PanelSurfaceLight.ToUint());
 		}
 
 		public static SKColor ScrollbarThumb()
