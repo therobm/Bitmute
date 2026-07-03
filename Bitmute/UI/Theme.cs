@@ -123,5 +123,23 @@ namespace Bitmute.UI
 			}
 			return new SKColor(0x18, 0x2A, 0x44);
 		}
+
+		public static SKColor ScrollbarTrack()
+		{
+			if (s_dark)
+			{
+				return new SKColor(0x26, 0x26, 0x26);
+			}
+			return new SKColor(0xCE, 0xCE, 0xCE);
+		}
+
+		public static SKColor ScrollbarThumb()
+		{
+			if (s_dark)
+			{
+				return new SKColor(0x5A, 0x5A, 0x5A);
+			}
+			return new SKColor(0x9C, 0x9C, 0x9C);
+		}
 	}
 }

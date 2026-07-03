@@ -1,3 +1,4 @@
+using System;
 using SkiaSharp;
 using SkiaSharp.Views.Maui;
 using SkiaSharp.Views.Maui.Controls;
@@ -18,13 +19,19 @@ namespace Bitmute.UI
 			EnableTouchEvents = true;
 			PaintSurface += OnPaintSurface;
 			Touch += OnTouch;
+			Theme.Changed += OnThemeChanged;
+		}
+
+		private void OnThemeChanged(object sender, EventArgs eventArgs)
+		{
+			InvalidateSurface();
 		}
 
 		private void OnPaintSurface(object sender, SKPaintSurfaceEventArgs eventArgs)
 		{
 			SKCanvas canvas = eventArgs.Surface.Canvas;
 			SKImageInfo info = eventArgs.Info;
-			canvas.Clear(new SKColor(0xB0, 0xB0, 0xB0));
+			canvas.Clear(Theme.ScrollbarTrack());
 
 			float trackLength = info.Width;
 			float trackThickness = info.Height;
@@ -71,7 +78,7 @@ namespace Bitmute.UI
 			}
 
 			SKPaint thumbPaint = new SKPaint();
-			thumbPaint.Color = new SKColor(0x70, 0x70, 0x70);
+			thumbPaint.Color = Theme.ScrollbarThumb();
 			thumbPaint.IsAntialias = true;
 			SKRect thumb;
 			if (m_horizontal)
