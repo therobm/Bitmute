@@ -76,16 +76,30 @@ namespace Bitmute.UI
 			RefreshColors();
 		}
 
-		private Button BuildCornerButton(string glyph, string tip, EventHandler handler)
+		private void OnSwapCornerTapped(object sender, TappedEventArgs eventArgs)
 		{
-			Button button = new Button();
-			button.Text = glyph;
-			button.FontSize = 10.0;
+			OnSwapTapped(sender, eventArgs);
+		}
+
+		private void OnResetCornerTapped(object sender, TappedEventArgs eventArgs)
+		{
+			OnResetTapped(sender, eventArgs);
+		}
+
+		private Border BuildCornerButton(View content, string tip, EventHandler<TappedEventArgs> handler)
+		{
+			Border button = new Border();
+			button.WidthRequest = 14.0;
+			button.HeightRequest = 14.0;
 			button.Padding = new Thickness(0.0);
 			button.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
-			button.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			button.Clicked += handler;
+			button.StrokeThickness = 0.0;
+			button.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(2.0) };
+			button.Content = content;
 			ToolTipProperties.SetText(button, tip);
+			TapGestureRecognizer tap = new TapGestureRecognizer();
+			tap.Tapped += handler;
+			button.GestureRecognizers.Add(tap);
 			return button;
 		}
 
@@ -101,8 +115,22 @@ namespace Bitmute.UI
 			foregroundTap.Tapped += OnForegroundTapped;
 			m_foregroundSwatch.GestureRecognizers.Add(foregroundTap);
 
-			Button swapButton = BuildCornerButton("⇄", "Swap colors (X)", OnSwapTapped);
-			Button resetButton = BuildCornerButton("D", "Default black/white", OnResetTapped);
+			IconView swapIcon = new IconView("swap_colors.png");
+			swapIcon.WidthRequest = 12.0;
+			swapIcon.HeightRequest = 12.0;
+			swapIcon.BackgroundColor = Colors.Transparent;
+			swapIcon.HorizontalOptions = LayoutOptions.Center;
+			swapIcon.VerticalOptions = LayoutOptions.Center;
+
+			Label resetLabel = new Label();
+			resetLabel.Text = "D";
+			resetLabel.FontSize = 9.0;
+			resetLabel.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			resetLabel.HorizontalTextAlignment = TextAlignment.Center;
+			resetLabel.VerticalTextAlignment = TextAlignment.Center;
+
+			Border swapButton = BuildCornerButton(swapIcon, "Swap colors (X)", OnSwapCornerTapped);
+			Border resetButton = BuildCornerButton(resetLabel, "Default black/white", OnResetCornerTapped);
 
 			AbsoluteLayout swatchStack = new AbsoluteLayout();
 			swatchStack.WidthRequest = 54.0;
@@ -111,9 +139,9 @@ namespace Bitmute.UI
 			AbsoluteLayout.SetLayoutFlags(m_backgroundSwatch, AbsoluteLayoutFlags.None);
 			AbsoluteLayout.SetLayoutBounds(m_foregroundSwatch, new Rect(0.0, 0.0, 30.0, 30.0));
 			AbsoluteLayout.SetLayoutFlags(m_foregroundSwatch, AbsoluteLayoutFlags.None);
-			AbsoluteLayout.SetLayoutBounds(swapButton, new Rect(38.0, 0.0, 16.0, 16.0));
+			AbsoluteLayout.SetLayoutBounds(swapButton, new Rect(40.0, 0.0, 14.0, 14.0));
 			AbsoluteLayout.SetLayoutFlags(swapButton, AbsoluteLayoutFlags.None);
-			AbsoluteLayout.SetLayoutBounds(resetButton, new Rect(0.0, 38.0, 16.0, 16.0));
+			AbsoluteLayout.SetLayoutBounds(resetButton, new Rect(0.0, 40.0, 14.0, 14.0));
 			AbsoluteLayout.SetLayoutFlags(resetButton, AbsoluteLayoutFlags.None);
 			swatchStack.Add(m_backgroundSwatch);
 			swatchStack.Add(m_foregroundSwatch);
