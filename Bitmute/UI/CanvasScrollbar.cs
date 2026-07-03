@@ -11,6 +11,7 @@ namespace Bitmute.UI
 
 		private CanvasView m_canvas;
 		private bool m_horizontal;
+		private bool m_dragging;
 
 		public CanvasScrollbar(CanvasView canvas, bool horizontal)
 		{
@@ -95,9 +96,21 @@ namespace Bitmute.UI
 
 		private void OnTouch(object sender, SKTouchEventArgs eventArgs)
 		{
-			bool active = eventArgs.ActionType == SKTouchAction.Pressed || (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact);
-			if (!active)
+			if (eventArgs.ActionType == SKTouchAction.Pressed)
 			{
+				m_dragging = true;
+			}
+			else if (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact)
+			{
+				if (!m_dragging)
+				{
+					eventArgs.Handled = true;
+					return;
+				}
+			}
+			else
+			{
+				m_dragging = false;
 				eventArgs.Handled = true;
 				return;
 			}

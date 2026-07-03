@@ -184,14 +184,11 @@ namespace Bitmute.UI
 				float contentWidth = docWidth * m_zoom;
 				float contentHeight = docHeight * m_zoom;
 				bool fullyVisible = contentWidth <= info.Width && contentHeight <= info.Height;
-				float previousOffsetX = m_offsetX;
-				float previousOffsetY = m_offsetY;
 				if (fullyVisible)
 				{
 					m_offsetX = (info.Width - contentWidth) / 2.0f;
 					m_offsetY = (info.Height - contentHeight) / 2.0f;
 				}
-				Bitmute.Log.Info("resize viewport=" + info.Width + "x" + info.Height + " last=" + m_lastViewportWidth + "x" + m_lastViewportHeight + " doc=" + docWidth + "x" + docHeight + " zoom=" + m_zoom + " content=" + contentWidth + "x" + contentHeight + " fullyVisible=" + fullyVisible + " offset " + previousOffsetX + "," + previousOffsetY + " -> " + m_offsetX + "," + m_offsetY);
 				m_lastViewportWidth = info.Width;
 				m_lastViewportHeight = info.Height;
 				ReportZoomInfo();
@@ -1043,7 +1040,6 @@ namespace Bitmute.UI
 
 		public void SetPanOffsetX(float offsetX)
 		{
-			Bitmute.Log.Info("SetPanOffsetX " + m_offsetX + " -> " + offsetX);
 			m_offsetX = offsetX;
 			InvalidateSurface();
 			NotifyChrome();
@@ -1051,7 +1047,6 @@ namespace Bitmute.UI
 
 		public void SetPanOffsetY(float offsetY)
 		{
-			Bitmute.Log.Info("SetPanOffsetY " + m_offsetY + " -> " + offsetY);
 			m_offsetY = offsetY;
 			InvalidateSurface();
 			NotifyChrome();
