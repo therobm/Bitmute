@@ -211,6 +211,18 @@ namespace Bitmute.UI
 			m_backgroundSwatch.Color = ToMaui(state.Background());
 		}
 
+		private Border BuildToolbarBreak()
+		{
+			Border line = new Border();
+			line.HeightRequest = 1.0;
+			line.StrokeThickness = 0.0;
+			line.HorizontalOptions = LayoutOptions.Fill;
+			line.VerticalOptions = LayoutOptions.Center;
+			line.Margin = new Thickness(2.0, 3.0, 2.0, 3.0);
+			line.ThemeBg(UiConstants.DividerLight, UiConstants.DividerDark);
+			return line;
+		}
+
 		private Border BuildCell(int groupIndex)
 		{
 			int active = m_groupActive[groupIndex];
@@ -557,19 +569,45 @@ namespace Bitmute.UI
 			grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 
-			int rowCount = (m_groupTools.Length + 1) / 2;
+			bool[] breakAfterCell = new bool[m_groupTools.Length];
+			breakAfterCell[3] = true;
+			breakAfterCell[5] = true;
+			breakAfterCell[11] = true;
+			breakAfterCell[13] = true;
+
+			int breakCount = 0;
+			for (int index = 0; index < breakAfterCell.Length; index++)
+			{
+				if (breakAfterCell[index])
+				{
+					breakCount = breakCount + 1;
+				}
+			}
+
+			int rowCount = ((m_groupTools.Length + 1) / 2) + breakCount;
 			for (int row = 0; row < rowCount; row++)
 			{
 				grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
 			}
 
+			int breaksSoFar = 0;
 			for (int index = 0; index < m_groupTools.Length; index++)
 			{
 				Border button = BuildCell(index);
 				m_cellButtons[index] = button;
-				Grid.SetRow(button, index / 2);
+				int placedRow = (index / 2) + breaksSoFar;
+				Grid.SetRow(button, placedRow);
 				Grid.SetColumn(button, index % 2);
 				grid.Add(button);
+				if (breakAfterCell[index])
+				{
+					Border divider = BuildToolbarBreak();
+					Grid.SetRow(divider, placedRow + 1);
+					Grid.SetColumn(divider, 0);
+					Grid.SetColumnSpan(divider, 2);
+					grid.Add(divider);
+					breaksSoFar = breaksSoFar + 1;
+				}
 			}
 
 			VerticalStackLayout container = new VerticalStackLayout();
