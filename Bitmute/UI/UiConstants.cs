@@ -31,6 +31,8 @@ namespace Bitmute.UI
 
 		public static readonly Color WorkspaceBackdropDark = Color.FromArgb("#444444");
 		public static readonly Color WorkspaceBackdropLight = Color.FromArgb("#8C8C8C");
+		public static readonly Color ChromeMenubarDark = Color.FromArgb("#111111");
+		public static readonly Color ChromeMenubarLight = Color.FromArgb("#efefef");
 		public static readonly Color ChromeDark = Color.FromArgb("#1a1a1a");
 		public static readonly Color ChromeLight = Color.FromArgb("#dadada");
 		public static readonly Color ChromeRaisedDark = Color.FromArgb("#444444");
@@ -53,8 +55,8 @@ namespace Bitmute.UI
 		public static readonly Color PanelSurfaceLight = Color.FromArgb("#eaeaea");
 		public static readonly Color TitleBarDark = Color.FromArgb("#2F2F2F");
 		public static readonly Color TitleBarLight = Color.FromArgb("#DDDDDD");
-		public static readonly Color AppTitleBarDark = Color.FromArgb("#111111");
-		public static readonly Color AppTitleBarLight = Color.FromArgb("#D2D2D2");
+		public static readonly Color AppTitleBarDark = Color.FromArgb("#3D5A80");
+		public static readonly Color AppTitleBarLight = Color.FromArgb("#B9CDE8");
 		public static readonly Color AppTitleBarTextDark = Color.FromArgb("#E4E4E4");
 		public static readonly Color AppTitleBarTextLight = Color.FromArgb("#1E1E1E");
 		public static readonly Color AppTitleBarHoverDark = Color.FromArgb("#2A2A2A");

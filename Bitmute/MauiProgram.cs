@@ -4,6 +4,9 @@ using Microsoft.Maui.Controls.Hosting;
 using Microsoft.Maui.Hosting;
 using Microsoft.Maui.LifecycleEvents;
 using SkiaSharp.Views.Maui.Controls.Hosting;
+using Microsoft.Maui.Platform;
+using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Controls;
 
 namespace Bitmute
 {

@@ -477,7 +477,7 @@ namespace Bitmute.UI
 
 			Border button = new Border();
 			button.Padding = new Thickness(10.0, 0.0, 10.0, 0.0);
-			button.ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
+			button.ThemeBg(UiConstants.ChromeMenubarLight, UiConstants.ChromeMenubarDark);
 			button.StrokeThickness = 0.0;
 			button.Content = label;
 
@@ -534,7 +534,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			m_menuButtons[index].ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
+			m_menuButtons[index].ThemeBg(UiConstants.ChromeMenubarLight, UiConstants.ChromeMenubarDark);
 		}
 
 		private View BuildMenuBar()
