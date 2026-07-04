@@ -46,6 +46,14 @@ namespace Bitmute.Imaging
 		private string m_sourcePath;
 		private Guides m_guides;
 		private DocumentStateCommand m_pendingDocEdit;
+		private bool m_floatActive;
+		private SKBitmap m_floatBitmap;
+		private int m_floatDeltaX;
+		private int m_floatDeltaY;
+		private int m_floatLayerIndex;
+		private SKBitmap m_floatOriginalBitmap;
+		private byte[] m_floatSourceMask;
+		private SKRectI m_floatSourceBounds;
 
 		public static Document OpenImage(string title, SKBitmap source)
 		{
@@ -81,6 +89,280 @@ namespace Bitmute.Imaging
 			m_sourcePath = null;
 			m_guides = new Guides();
 			m_pendingDocEdit = null;
+			m_floatActive = false;
+			m_floatBitmap = null;
+			m_floatDeltaX = 0;
+			m_floatDeltaY = 0;
+			m_floatLayerIndex = 0;
+			m_floatOriginalBitmap = null;
+			m_floatSourceMask = null;
+			m_floatSourceBounds = SKRectI.Empty;
+		}
+
+		private SKBitmap ExtractSelected(Layer layer, Selection selection)
+		{
+			SKBitmap source = layer.Bitmap();
+			int offsetX = layer.OffsetX();
+			int offsetY = layer.OffsetY();
+			int width = source.Width;
+			int height = source.Height;
+			SKBitmap moving = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			moving.Erase(SKColors.Transparent);
+			SKRectI bounds = selection.Bounds();
+			for (int y = bounds.Top; y < bounds.Bottom; y++)
+			{
+				for (int x = bounds.Left; x < bounds.Right; x++)
+				{
+					if (!selection.IsSelected(x, y))
+					{
+						continue;
+					}
+					int bitmapX = x - offsetX;
+					int bitmapY = y - offsetY;
+					if (bitmapX < 0 || bitmapY < 0 || bitmapX >= width || bitmapY >= height)
+					{
+						continue;
+					}
+					moving.SetPixel(bitmapX, bitmapY, source.GetPixel(bitmapX, bitmapY));
+				}
+			}
+			return moving;
+		}
+
+		private SKBitmap CloneWithSelectionCleared(Layer layer, Selection selection)
+		{
+			SKBitmap remainder = layer.Bitmap().Copy();
+			int offsetX = layer.OffsetX();
+			int offsetY = layer.OffsetY();
+			int width = remainder.Width;
+			int height = remainder.Height;
+			SKRectI bounds = selection.Bounds();
+			for (int y = bounds.Top; y < bounds.Bottom; y++)
+			{
+				for (int x = bounds.Left; x < bounds.Right; x++)
+				{
+					if (!selection.IsSelected(x, y))
+					{
+						continue;
+					}
+					int bitmapX = x - offsetX;
+					int bitmapY = y - offsetY;
+					if (bitmapX < 0 || bitmapY < 0 || bitmapX >= width || bitmapY >= height)
+					{
+						continue;
+					}
+					remainder.SetPixel(bitmapX, bitmapY, SKColors.Transparent);
+				}
+			}
+			return remainder;
+		}
+
+		private unsafe SKBitmap ComposeFloatOntoLayer(Layer layer)
+		{
+			SKBitmap holed = layer.Bitmap();
+			int width = holed.Width;
+			int height = holed.Height;
+			SKBitmap result = holed.Copy();
+			byte* floatBase = (byte*)m_floatBitmap.GetPixels().ToPointer();
+			int floatRowBytes = m_floatBitmap.RowBytes;
+			int floatWidth = m_floatBitmap.Width;
+			int floatHeight = m_floatBitmap.Height;
+			byte* resultBase = (byte*)result.GetPixels().ToPointer();
+			int resultRowBytes = result.RowBytes;
+			for (int floatY = 0; floatY < floatHeight; floatY++)
+			{
+				int destinationY = floatY + m_floatDeltaY;
+				if (destinationY < 0 || destinationY >= height)
+				{
+					continue;
+				}
+				byte* floatRow = floatBase + (floatY * floatRowBytes);
+				byte* resultRow = resultBase + (destinationY * resultRowBytes);
+				for (int floatX = 0; floatX < floatWidth; floatX++)
+				{
+					byte* floatPixel = floatRow + (floatX * 4);
+					int floatAlpha = floatPixel[3];
+					if (floatAlpha == 0)
+					{
+						continue;
+					}
+					int destinationX = floatX + m_floatDeltaX;
+					if (destinationX < 0 || destinationX >= width)
+					{
+						continue;
+					}
+					byte* resultPixel = resultRow + (destinationX * 4);
+					if (floatAlpha == 255)
+					{
+						resultPixel[0] = floatPixel[0];
+						resultPixel[1] = floatPixel[1];
+						resultPixel[2] = floatPixel[2];
+						resultPixel[3] = 255;
+						continue;
+					}
+					int inverseAlpha = 255 - floatAlpha;
+					int baseAlpha = resultPixel[3];
+					int outAlpha = floatAlpha + (((baseAlpha * inverseAlpha) + 127) / 255);
+					if (outAlpha <= 0)
+					{
+						resultPixel[0] = 0;
+						resultPixel[1] = 0;
+						resultPixel[2] = 0;
+						resultPixel[3] = 0;
+						continue;
+					}
+					int baseRed = resultPixel[0];
+					int baseGreen = resultPixel[1];
+					int baseBlue = resultPixel[2];
+					int outRed = (((floatPixel[0] * floatAlpha) + (((baseRed * baseAlpha) * inverseAlpha) / 255)) + (outAlpha / 2)) / outAlpha;
+					int outGreen = (((floatPixel[1] * floatAlpha) + (((baseGreen * baseAlpha) * inverseAlpha) / 255)) + (outAlpha / 2)) / outAlpha;
+					int outBlue = (((floatPixel[2] * floatAlpha) + (((baseBlue * baseAlpha) * inverseAlpha) / 255)) + (outAlpha / 2)) / outAlpha;
+					if (outRed > 255)
+					{
+						outRed = 255;
+					}
+					if (outGreen > 255)
+					{
+						outGreen = 255;
+					}
+					if (outBlue > 255)
+					{
+						outBlue = 255;
+					}
+					resultPixel[0] = (byte)outRed;
+					resultPixel[1] = (byte)outGreen;
+					resultPixel[2] = (byte)outBlue;
+					resultPixel[3] = (byte)outAlpha;
+				}
+			}
+			return result;
+		}
+
+		public bool HasFloatingSelection()
+		{
+			return m_floatActive;
+		}
+
+		public SKBitmap FloatBitmap()
+		{
+			return m_floatBitmap;
+		}
+
+		public int FloatDeltaX()
+		{
+			return m_floatDeltaX;
+		}
+
+		public int FloatDeltaY()
+		{
+			return m_floatDeltaY;
+		}
+
+		public int FloatLayerIndex()
+		{
+			return m_floatLayerIndex;
+		}
+
+		public void LiftFloatingSelection()
+		{
+			if (m_floatActive)
+			{
+				return;
+			}
+			Selection selection = m_selection;
+			if (!selection.IsActive())
+			{
+				return;
+			}
+			Layer layer = ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			int index = m_activeLayerIndex;
+			m_floatOriginalBitmap = layer.Bitmap().Copy();
+			m_floatBitmap = ExtractSelected(layer, selection);
+			SKBitmap holed = CloneWithSelectionCleared(layer, selection);
+			SKBitmap previous = layer.Bitmap();
+			layer.SetBitmap(holed);
+			previous.Dispose();
+			m_floatSourceMask = selection.MaskCopy();
+			m_floatSourceBounds = selection.Bounds();
+			m_floatDeltaX = 0;
+			m_floatDeltaY = 0;
+			m_floatLayerIndex = index;
+			m_floatActive = true;
+			MarkComposeDirtyAll();
+		}
+
+		public void SetFloatingSelectionDelta(int totalDeltaX, int totalDeltaY)
+		{
+			if (!m_floatActive)
+			{
+				return;
+			}
+			m_floatDeltaX = totalDeltaX;
+			m_floatDeltaY = totalDeltaY;
+			m_selection.SetShifted(m_floatSourceMask, m_floatSourceBounds, m_floatDeltaX, m_floatDeltaY);
+		}
+
+		public void CommitFloatingSelection()
+		{
+			if (!m_floatActive)
+			{
+				return;
+			}
+			if (m_floatLayerIndex < 0 || m_floatLayerIndex >= m_layers.Count)
+			{
+				m_floatBitmap.Dispose();
+				m_floatBitmap = null;
+				m_floatOriginalBitmap = null;
+				m_floatSourceMask = null;
+				m_floatSourceBounds = SKRectI.Empty;
+				m_floatActive = false;
+				MarkComposeDirtyAll();
+				return;
+			}
+			Layer layer = m_layers[m_floatLayerIndex];
+			SKBitmap holed = layer.Bitmap();
+			SKBitmap committed = ComposeFloatOntoLayer(layer);
+			PushCommand(new MoveLayerCommand(m_floatLayerIndex, m_floatOriginalBitmap, layer.OffsetX(), layer.OffsetY(), committed, layer.OffsetX(), layer.OffsetY()));
+			layer.SetBitmap(committed);
+			holed.Dispose();
+			m_floatBitmap.Dispose();
+			m_floatBitmap = null;
+			m_floatOriginalBitmap = null;
+			m_floatSourceMask = null;
+			m_floatSourceBounds = SKRectI.Empty;
+			m_floatActive = false;
+			MarkComposeDirtyAll();
+		}
+
+		public void CancelFloatingSelection()
+		{
+			if (!m_floatActive)
+			{
+				return;
+			}
+			if (m_floatLayerIndex >= 0 && m_floatLayerIndex < m_layers.Count)
+			{
+				Layer layer = m_layers[m_floatLayerIndex];
+				SKBitmap holed = layer.Bitmap();
+				layer.SetBitmap(m_floatOriginalBitmap);
+				holed.Dispose();
+			}
+			else
+			{
+				m_floatOriginalBitmap.Dispose();
+			}
+			m_selection.SelectMask(m_floatSourceMask, m_floatSourceBounds);
+			m_floatBitmap.Dispose();
+			m_floatBitmap = null;
+			m_floatOriginalBitmap = null;
+			m_floatSourceMask = null;
+			m_floatSourceBounds = SKRectI.Empty;
+			m_floatActive = false;
+			MarkComposeDirtyAll();
 		}
 
 		public string SourcePath()
@@ -207,6 +489,10 @@ namespace Bitmute.Imaging
 
 		public void ResetSelection()
 		{
+			if (m_floatActive)
+			{
+				CommitFloatingSelection();
+			}
 			m_selection = new Selection(m_width, m_height);
 		}
 
@@ -444,6 +730,10 @@ namespace Bitmute.Imaging
 
 		public void BeginCanvasEdit(string label)
 		{
+			if (m_floatActive)
+			{
+				CommitFloatingSelection();
+			}
 			if (m_pendingDocEdit != null)
 			{
 				return;
@@ -465,6 +755,11 @@ namespace Bitmute.Imaging
 
 		public bool Undo()
 		{
+			if (m_floatActive)
+			{
+				CancelFloatingSelection();
+				return true;
+			}
 			if (m_undoStack.Count == 0)
 			{
 				return false;

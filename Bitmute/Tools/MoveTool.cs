@@ -8,10 +8,9 @@ namespace Bitmute.Tools
 	{
 		private bool m_offsetMode;
 		private bool m_textMode;
-		private SKBitmap m_moving;
-		private SKBitmap m_static;
-		private byte[] m_selectionMask;
-		private SKRectI m_selectionBounds;
+		private bool m_floatMode;
+		private int m_floatBaseDeltaX;
+		private int m_floatBaseDeltaY;
 		private int m_startX;
 		private int m_startY;
 		private int m_oldOffsetX;
@@ -275,97 +274,8 @@ namespace Bitmute.Tools
 			deltaY = deltaY + BestAxisDelta(top, centerY, bottom, ys, tolerance, gridSize);
 		}
 
-		private SKBitmap ExtractSelected(Layer layer, Selection selection)
-		{
-			SKBitmap source = layer.Bitmap();
-			int offsetX = layer.OffsetX();
-			int offsetY = layer.OffsetY();
-			int width = source.Width;
-			int height = source.Height;
-			SKBitmap moving = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-			moving.Erase(SKColors.Transparent);
-			SKRectI bounds = selection.Bounds();
-			for (int y = bounds.Top; y < bounds.Bottom; y++)
-			{
-				for (int x = bounds.Left; x < bounds.Right; x++)
-				{
-					if (!selection.IsSelected(x, y))
-					{
-						continue;
-					}
-					int bitmapX = x - offsetX;
-					int bitmapY = y - offsetY;
-					if (bitmapX < 0 || bitmapY < 0 || bitmapX >= width || bitmapY >= height)
-					{
-						continue;
-					}
-					moving.SetPixel(bitmapX, bitmapY, source.GetPixel(bitmapX, bitmapY));
-				}
-			}
-			return moving;
-		}
-
-		private SKBitmap CloneWithSelectionCleared(Layer layer, Selection selection)
-		{
-			SKBitmap remainder = layer.Bitmap().Copy();
-			int offsetX = layer.OffsetX();
-			int offsetY = layer.OffsetY();
-			int width = remainder.Width;
-			int height = remainder.Height;
-			SKRectI bounds = selection.Bounds();
-			for (int y = bounds.Top; y < bounds.Bottom; y++)
-			{
-				for (int x = bounds.Left; x < bounds.Right; x++)
-				{
-					if (!selection.IsSelected(x, y))
-					{
-						continue;
-					}
-					int bitmapX = x - offsetX;
-					int bitmapY = y - offsetY;
-					if (bitmapX < 0 || bitmapY < 0 || bitmapX >= width || bitmapY >= height)
-					{
-						continue;
-					}
-					remainder.SetPixel(bitmapX, bitmapY, SKColors.Transparent);
-				}
-			}
-			return remainder;
-		}
-
-		private void Rebuild(Layer layer, int deltaX, int deltaY)
-		{
-			SKBitmap bitmap = layer.Bitmap();
-			bitmap.Erase(SKColors.Transparent);
-			SKCanvas canvas = new SKCanvas(bitmap);
-			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
-			SKPaint paint = new SKPaint();
-			if (m_static != null)
-			{
-				SKImage staticImage = SKImage.FromBitmap(m_static);
-				canvas.DrawImage(staticImage, 0.0f, 0.0f, sampling, paint);
-				staticImage.Dispose();
-			}
-			SKImage movingImage = SKImage.FromBitmap(m_moving);
-			canvas.DrawImage(movingImage, deltaX, deltaY, sampling, paint);
-			movingImage.Dispose();
-			paint.Dispose();
-			canvas.Dispose();
-		}
-
 		private void ReleaseBuffers()
 		{
-			if (m_moving != null)
-			{
-				m_moving.Dispose();
-				m_moving = null;
-			}
-			if (m_static != null)
-			{
-				m_static.Dispose();
-				m_static = null;
-			}
-			m_selectionMask = null;
 			m_moveContentValid = false;
 		}
 
@@ -380,20 +290,23 @@ namespace Bitmute.Tools
 			m_startX = x;
 			m_startY = y;
 			Selection selection = document.Selection();
-			if (selection.IsActive())
+			if (selection.IsActive() || document.HasFloatingSelection())
 			{
 				m_offsetMode = false;
 				m_textMode = false;
-				m_moving = ExtractSelected(layer, selection);
-				m_static = CloneWithSelectionCleared(layer, selection);
-				m_selectionMask = selection.MaskCopy();
-				m_selectionBounds = selection.Bounds();
-				CacheMoveContentBounds(layer, m_selectionBounds);
+				m_floatMode = true;
+				if (!document.HasFloatingSelection())
+				{
+					document.LiftFloatingSelection();
+				}
+				m_floatBaseDeltaX = document.FloatDeltaX();
+				m_floatBaseDeltaY = document.FloatDeltaY();
 			}
 			else if (layer.IsText())
 			{
 				m_textMode = true;
 				m_offsetMode = false;
+				m_floatMode = false;
 				m_oldTextX = layer.TextX();
 				m_oldTextY = layer.TextY();
 				CacheMoveContentBounds(layer, CanvasContentBounds(layer));
@@ -402,6 +315,7 @@ namespace Bitmute.Tools
 			{
 				m_textMode = false;
 				m_offsetMode = true;
+				m_floatMode = false;
 				m_oldOffsetX = layer.OffsetX();
 				m_oldOffsetY = layer.OffsetY();
 				CacheMoveContentBounds(layer, CanvasContentBounds(layer));
@@ -438,21 +352,29 @@ namespace Bitmute.Tools
 				MarkMoveDirty(document, deltaX, deltaY);
 				return true;
 			}
-			if (m_moving == null)
+			if (!m_floatMode)
 			{
 				return false;
 			}
-			Rebuild(layer, deltaX, deltaY);
-			if (m_selectionMask != null)
+			if (!document.HasFloatingSelection())
 			{
-				document.Selection().SetShifted(m_selectionMask, m_selectionBounds, deltaX, deltaY);
+				return false;
 			}
-			MarkMoveDirty(document, deltaX, deltaY);
+			int totalX = m_floatBaseDeltaX + deltaX;
+			int totalY = m_floatBaseDeltaY + deltaY;
+			document.SetFloatingSelectionDelta(totalX, totalY);
 			return true;
 		}
 
 		public override void OnReleased(Document document, int x, int y, ToolState state)
 		{
+			if (m_floatMode)
+			{
+				m_floatMode = false;
+				ReleaseBuffers();
+				m_hasLast = false;
+				return;
+			}
 			if (m_textMode)
 			{
 				m_textMode = false;

@@ -270,9 +270,45 @@ namespace Bitmute.UI
 				GridOverlay.Draw(canvas, m_offsetX, m_offsetY, m_zoom, m_document.Width(), m_document.Height(), GridCellSize, true);
 			}
 
+			DrawFloatingOverlay(canvas);
 			DrawGuides(canvas, info.Width, info.Height);
 			DrawSelection(canvas);
 			DrawToolOverlay(canvas);
+		}
+
+		private void DrawFloatingOverlay(SKCanvas canvas)
+		{
+			if (!m_document.HasFloatingSelection())
+			{
+				return;
+			}
+			SKBitmap floatBitmap = m_document.FloatBitmap();
+			if (floatBitmap == null || floatBitmap.Width <= 0 || floatBitmap.Height <= 0)
+			{
+				return;
+			}
+			int layerIndex = m_document.FloatLayerIndex();
+			System.Collections.Generic.List<Bitmute.Imaging.Layer> layers = m_document.Layers();
+			if (layerIndex < 0 || layerIndex >= layers.Count)
+			{
+				return;
+			}
+			Bitmute.Imaging.Layer sourceLayer = layers[layerIndex];
+			float canvasLeft = sourceLayer.OffsetX() + m_document.FloatDeltaX();
+			float canvasTop = sourceLayer.OffsetY() + m_document.FloatDeltaY();
+			float screenLeft = m_offsetX + (canvasLeft * m_zoom);
+			float screenTop = m_offsetY + (canvasTop * m_zoom);
+			float screenRight = m_offsetX + ((canvasLeft + floatBitmap.Width) * m_zoom);
+			float screenBottom = m_offsetY + ((canvasTop + floatBitmap.Height) * m_zoom);
+			SKRect destination = new SKRect(screenLeft, screenTop, screenRight, screenBottom);
+			SKPixmap pixmap = floatBitmap.PeekPixels();
+			SKImage image = SKImage.FromPixels(pixmap);
+			SKPaint paint = new SKPaint();
+			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
+			canvas.DrawImage(image, destination, sampling, paint);
+			paint.Dispose();
+			image.Dispose();
+			pixmap.Dispose();
 		}
 
 		private void DrawGuides(SKCanvas canvas, float viewWidth, float viewHeight)
@@ -1741,6 +1777,11 @@ namespace Bitmute.UI
 			int preEventHeight = m_document.Height();
 			if (eventArgs.ActionType == SKTouchAction.Pressed)
 			{
+				bool pressSelectionTool = tool is RectangleSelectTool || tool is EllipseSelectTool || tool is LassoTool || tool is FreehandLassoTool || tool is MagneticLassoTool || tool is MagicWandTool;
+				if (pressSelectionTool && m_document.HasFloatingSelection())
+				{
+					m_document.CommitFloatingSelection();
+				}
 				m_toolStrokeActive = true;
 				if (tool.IsDestructive())
 				{

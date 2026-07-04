@@ -1576,7 +1576,9 @@ namespace Bitmute.UI
 				return;
 			}
 			Document document = canvas.CurrentDocument();
+			document.CommitFloatingSelection();
 			document.Selection().SelectRect(new SkiaSharp.SKRectI(0, 0, document.Width(), document.Height()));
+			canvas.MarkComposeDirty();
 			canvas.Redraw();
 		}
 
@@ -1587,7 +1589,10 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			canvas.CurrentDocument().Selection().Clear();
+			Document document = canvas.CurrentDocument();
+			document.CommitFloatingSelection();
+			document.Selection().Clear();
+			canvas.MarkComposeDirty();
 			canvas.Redraw();
 		}
 
@@ -1598,7 +1603,10 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			canvas.CurrentDocument().Selection().Invert();
+			Document document = canvas.CurrentDocument();
+			document.CommitFloatingSelection();
+			document.Selection().Invert();
+			canvas.MarkComposeDirty();
 			canvas.Redraw();
 		}
 
@@ -4216,6 +4224,7 @@ namespace Bitmute.UI
 				SetStatusMessage("No document to export");
 				return;
 			}
+			model.CommitFloatingSelection();
 			try
 			{
 				string path = await FileDialogs.PickSaveTypedAsync(model.Title(), ExportLabel(format), ExportExtension(format));
@@ -4270,6 +4279,7 @@ namespace Bitmute.UI
 
 		private async System.Threading.Tasks.Task<bool> SaveDocumentAsync(Document model)
 		{
+			model.CommitFloatingSelection();
 			try
 			{
 				string sourcePath = model.SourcePath();

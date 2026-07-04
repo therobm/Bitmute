@@ -40,6 +40,7 @@ namespace Bitmute.Tests
 			TestFillSelection();
 			TestFillLayer();
 			TestSelectionMoveLayer();
+			TestFloatingSelection();
 			TestCustomBlends();
 			TestCustomBlendOpacity();
 			TestCustomBlendTransparentBase();
@@ -1175,16 +1176,112 @@ namespace Bitmute.Tests
 			move.OnPressed(doc, 20, 20, state);
 			move.OnDragged(doc, 40, 20, state);
 			move.OnReleased(doc, 40, 20, state);
-			SKColor moved = content.GetPixelCanvas(40, 20);
-			Check(moved.Red == 255 && moved.Alpha == 255, "selection move on a layer keeps moved pixels (40,20)");
-			SKColor movedEdge = content.GetPixelCanvas(44, 20);
-			Check(movedEdge.Red == 255 && movedEdge.Alpha == 255, "selection move on a layer keeps moved pixels at far edge (44,20)");
+			Check(doc.HasFloatingSelection(), "selection move floats the selection");
 			SKColor vacated = content.GetPixelCanvas(20, 20);
 			Check(vacated.Alpha == 0, "selection move on a layer vacates the origin (20,20)");
 			SKColor unselected = content.GetPixelCanvas(12, 20);
 			Check(unselected.Red == 255 && unselected.Alpha == 255, "selection move on a layer leaves unselected pixels (12,20)");
 			Check(doc.Selection().IsSelected(40, 20), "selection mask follows the move (40,20 selected)");
 			Check(!doc.Selection().IsSelected(20, 20), "selection mask leaves the origin (20,20 unselected)");
+			doc.CommitFloatingSelection();
+			SKColor moved = content.GetPixelCanvas(40, 20);
+			Check(moved.Red == 255 && moved.Alpha == 255, "commit bakes moved pixels (40,20)");
+			SKColor movedEdge = content.GetPixelCanvas(44, 20);
+			Check(movedEdge.Red == 255 && movedEdge.Alpha == 255, "commit bakes moved pixels at far edge (44,20)");
+		}
+
+		private static void TestFloatingSelection()
+		{
+			Document doc = new Document("t", 80, 48);
+			Layer content = doc.AddLayer("c");
+			content.SetOffset(20, 0);
+			SKColor red = new SKColor(255, 0, 0, 255);
+			for (int y = 10; y < 30; y++)
+			{
+				for (int x = 30; x < 50; x++)
+				{
+					content.SetPixelCanvas(x, y, red);
+				}
+			}
+			doc.Selection().SelectRect(new SKRectI(34, 14, 44, 24));
+
+			doc.LiftFloatingSelection();
+			Check(doc.HasFloatingSelection(), "lift makes float active");
+			SKColor hole = content.GetPixelCanvas(36, 16);
+			Check(hole.Alpha == 0, "lift leaves a transparent hole at the selection (36,16)");
+			SKColor keptUnselected = content.GetPixelCanvas(30, 16);
+			Check(keptUnselected.Red == 255 && keptUnselected.Alpha == 255, "lift keeps unselected layer pixels (30,16)");
+			SKBitmap floatBitmap = doc.FloatBitmap();
+			SKColor floatPixel = floatBitmap.GetPixel(36 - content.OffsetX(), 16 - content.OffsetY());
+			Check(floatPixel.Red == 255 && floatPixel.Alpha == 255, "float bitmap holds the lifted block pixels");
+
+			doc.SetFloatingSelectionDelta(5, 3);
+			doc.SetFloatingSelectionDelta(10, 6);
+			SKColor frozen = floatBitmap.GetPixel(36 - content.OffsetX(), 16 - content.OffsetY());
+			Check(frozen.Red == 255 && frozen.Alpha == 255, "float bitmap stays frozen after moves");
+			SKRectI shifted = doc.Selection().Bounds();
+			Check(shifted.Left == 44 && shifted.Top == 20, "selection bounds shift by the total delta");
+			Check(doc.Selection().IsSelected(44, 20), "marquee follows the float (44,20 selected)");
+			Check(!doc.Selection().IsSelected(34, 14), "marquee vacates the origin (34,14 unselected)");
+
+			doc.CommitFloatingSelection();
+			Check(!doc.HasFloatingSelection(), "commit clears the float");
+			SKColor movedTo = content.GetPixelCanvas(52, 22);
+			Check(movedTo.Red == 255 && movedTo.Alpha == 255, "commit places moved pixels at the shifted position (52,22)");
+			SKColor origin = content.GetPixelCanvas(36, 16);
+			Check(origin.Alpha == 0, "commit keeps the origin cleared (36,16)");
+
+			bool undone = doc.Undo();
+			Check(undone, "commit is undoable");
+			SKColor home = content.GetPixelCanvas(36, 16);
+			Check(home.Red == 255 && home.Alpha == 255, "undo restores pixels home (36,16)");
+			SKColor movedGone = content.GetPixelCanvas(52, 22);
+			Check(movedGone.Alpha == 0, "undo clears the moved position (52,22)");
+			bool redone = doc.Redo();
+			Check(redone, "commit is redoable");
+			SKColor redoMoved = content.GetPixelCanvas(52, 22);
+			Check(redoMoved.Red == 255 && redoMoved.Alpha == 255, "redo re-applies the move (52,22)");
+
+			Document cancelDoc = new Document("t", 80, 48);
+			Layer cancelContent = cancelDoc.AddLayer("c");
+			cancelContent.SetOffset(20, 0);
+			for (int y = 10; y < 30; y++)
+			{
+				for (int x = 30; x < 50; x++)
+				{
+					cancelContent.SetPixelCanvas(x, y, red);
+				}
+			}
+			cancelDoc.Selection().SelectRect(new SKRectI(34, 14, 44, 24));
+			cancelDoc.LiftFloatingSelection();
+			cancelDoc.SetFloatingSelectionDelta(10, 6);
+			cancelDoc.CancelFloatingSelection();
+			Check(!cancelDoc.HasFloatingSelection(), "cancel clears the float");
+			SKColor cancelHome = cancelContent.GetPixelCanvas(36, 16);
+			Check(cancelHome.Red == 255 && cancelHome.Alpha == 255, "cancel restores the layer pixels home (36,16)");
+			SKRectI cancelBounds = cancelDoc.Selection().Bounds();
+			Check(cancelBounds.Left == 34 && cancelBounds.Top == 14, "cancel restores the original selection bounds");
+
+			Document undoCancelDoc = new Document("t", 80, 48);
+			Layer undoContent = undoCancelDoc.AddLayer("c");
+			undoContent.SetOffset(20, 0);
+			for (int y = 10; y < 30; y++)
+			{
+				for (int x = 30; x < 50; x++)
+				{
+					undoContent.SetPixelCanvas(x, y, red);
+				}
+			}
+			undoCancelDoc.Selection().SelectRect(new SKRectI(34, 14, 44, 24));
+			undoCancelDoc.LiftFloatingSelection();
+			undoCancelDoc.SetFloatingSelectionDelta(10, 6);
+			bool undoCancelled = undoCancelDoc.Undo();
+			Check(undoCancelled, "undo returns true while floating");
+			Check(!undoCancelDoc.HasFloatingSelection(), "undo cancels the float");
+			SKColor undoHome = undoContent.GetPixelCanvas(36, 16);
+			Check(undoHome.Red == 255 && undoHome.Alpha == 255, "undo-cancel restores pixels home (36,16)");
+			SKColor undoMovedGone = undoContent.GetPixelCanvas(52, 22);
+			Check(undoMovedGone.Alpha == 0, "undo-cancel drops the moved position (52,22)");
 		}
 
 		private static void TestFillLayer()
