@@ -234,6 +234,9 @@ namespace Bitmute.UI
 			PanGestureRecognizer pan = new PanGestureRecognizer();
 			pan.PanUpdated += OnRowPan;
 			row.GestureRecognizers.Add(pan);
+			PointerGestureRecognizer pointer = new PointerGestureRecognizer();
+			pointer.PointerPressed += OnRowPointerPressed;
+			row.GestureRecognizers.Add(pointer);
 			m_rowBorders.Add(row);
 			m_rowLayers.Add(layerIndex);
 
@@ -361,6 +364,79 @@ namespace Bitmute.UI
 				}
 			}
 			return -1;
+		}
+
+		private static double PageCoordinate(VisualElement element, bool horizontal)
+		{
+			double total = 0.0;
+			Element current = element;
+			for (int guard = 0; guard < 100; guard++)
+			{
+				VisualElement visual = current as VisualElement;
+				if (visual == null)
+				{
+					break;
+				}
+				if (horizontal)
+				{
+					total = total + visual.X;
+				}
+				else
+				{
+					total = total + visual.Y;
+				}
+				Element parent = current.Parent;
+				if (parent == null)
+				{
+					break;
+				}
+				current = parent;
+			}
+			return total;
+		}
+
+		private void OnRowPointerPressed(object sender, PointerEventArgs eventArgs)
+		{
+			Microsoft.Maui.Controls.PlatformPointerEventArgs platformArgs = eventArgs.PlatformArgs;
+			if (platformArgs == null)
+			{
+				return;
+			}
+			Microsoft.UI.Xaml.Input.PointerRoutedEventArgs routed = platformArgs.PointerRoutedEventArgs;
+			if (routed == null)
+			{
+				return;
+			}
+			Microsoft.UI.Input.PointerPoint point = routed.GetCurrentPoint(null);
+			if (!point.Properties.IsRightButtonPressed)
+			{
+				return;
+			}
+			int layerIndex = LayerIndexForRow(sender);
+			if (layerIndex < 0)
+			{
+				return;
+			}
+			Document document = Doc();
+			if (document == null)
+			{
+				return;
+			}
+			document.SetActiveLayerIndex(layerIndex);
+			Refresh();
+			MainView main = MainView.Self;
+			if (main == null)
+			{
+				return;
+			}
+			VisualElement rowElement = sender as VisualElement;
+			if (rowElement == null)
+			{
+				return;
+			}
+			double anchorX = PageCoordinate(rowElement, true);
+			double anchorY = PageCoordinate(rowElement, false);
+			main.ShowLayerContextMenu(layerIndex, anchorX, anchorY);
 		}
 
 		private void OnRowPan(object sender, PanUpdatedEventArgs eventArgs)

@@ -151,6 +151,22 @@ namespace Bitmute.UI
 			ApplyColor(color, foreground);
 		}
 
+		private void OnSwatchDoubleTapped(object sender, TappedEventArgs eventArgs)
+		{
+			int index = SwatchIndexForCell(sender);
+			if (index < 0)
+			{
+				return;
+			}
+			MainView main = MainView.Self;
+			if (main == null)
+			{
+				return;
+			}
+			m_selectedIndex = index;
+			main.OpenSwatchColorPicker(index, m_swatchCellColors[index]);
+		}
+
 		private void OnRecentTapped(object sender, TappedEventArgs eventArgs)
 		{
 			int index = RecentIndexForCell(sender);
@@ -291,6 +307,17 @@ namespace Bitmute.UI
 			Refresh();
 		}
 
+		public void SetSwatchColor(int index, SKColor color)
+		{
+			if (index < 0 || index >= m_swatches.Count)
+			{
+				return;
+			}
+			m_swatches[index] = color;
+			m_selectedIndex = index;
+			Refresh();
+		}
+
 		public void AddRecent(SKColor color)
 		{
 			for (int i = 0; i < m_recent.Count; i++)
@@ -331,6 +358,10 @@ namespace Bitmute.UI
 			{
 				Border cell = BuildCell(m_swatches[i], OnSwatchTapped);
 				cell.Margin = new Thickness(0.0, 0.0, 2.0, 2.0);
+				TapGestureRecognizer editTap = new TapGestureRecognizer();
+				editTap.NumberOfTapsRequired = 2;
+				editTap.Tapped += OnSwatchDoubleTapped;
+				cell.GestureRecognizers.Add(editTap);
 				m_swatchHost.Add(cell);
 				m_swatchCells.Add(cell);
 				m_swatchCellColors.Add(m_swatches[i]);

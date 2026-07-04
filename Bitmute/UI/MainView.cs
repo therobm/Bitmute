@@ -215,6 +215,7 @@ namespace Bitmute.UI
 		private bool m_snapTargetLayerBounds;
 		private int m_channelViewMode;
 		private bool[] m_channelVisible = new bool[] { true, true, true, true };
+		private int m_editingSwatchIndex = -1;
 		private double m_openDropdownX;
 		private List<Border> m_submenuParentRows;
 		private List<string> m_submenuParentNames;
@@ -3701,6 +3702,95 @@ namespace Bitmute.UI
 			RefreshLayerThumbnails();
 		}
 
+		public void DuplicateActiveLayer()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			document.DuplicateLayer(document.ActiveLayerIndex());
+			FinishLayerStructureChange(canvas);
+		}
+
+		public void DeleteActiveLayer()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			document.DeleteLayer(document.ActiveLayerIndex());
+			FinishLayerStructureChange(canvas);
+		}
+
+		private Border BuildContextMenuRow(string text, EventHandler<TappedEventArgs> handler)
+		{
+			Label label = new Label();
+			label.Text = text;
+			label.FontSize = 12.0;
+			label.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			label.VerticalOptions = LayoutOptions.Center;
+
+			Border row = new Border();
+			row.HeightRequest = MenuItemHeight;
+			row.Padding = new Thickness(12.0, 0.0, 12.0, 0.0);
+			row.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
+			row.StrokeThickness = 0.0;
+			row.Content = label;
+			TapGestureRecognizer tap = new TapGestureRecognizer();
+			tap.Tapped += handler;
+			row.GestureRecognizers.Add(tap);
+			return row;
+		}
+
+		public void ShowLayerContextMenu(int layerIndex, double anchorX, double anchorY)
+		{
+			VerticalStackLayout menu = new VerticalStackLayout();
+			menu.Spacing = 0.0;
+			menu.Padding = new Thickness(0.0, 4.0, 0.0, 4.0);
+			menu.Add(BuildContextMenuRow("Layer Style…", OnContextLayerStyle));
+			menu.Add(BuildContextMenuRow("Duplicate Layer", OnContextDuplicateLayer));
+			menu.Add(BuildContextMenuRow("Merge Down", OnContextMergeDown));
+			menu.Add(BuildContextMenuRow("Rasterize Text", OnContextRasterizeText));
+			menu.Add(BuildMenuSeparator());
+			menu.Add(BuildContextMenuRow("Delete Layer", OnContextDeleteLayer));
+			double height = (5.0 * MenuItemHeight) + MenuSeparatorHeight + 8.0;
+			ShowPulldown(menu, anchorX, anchorY, DropdownWidth, height);
+		}
+
+		private void OnContextLayerStyle(object sender, TappedEventArgs eventArgs)
+		{
+			ClosePulldown();
+			OpenLayerStyleDialog();
+		}
+
+		private void OnContextDuplicateLayer(object sender, TappedEventArgs eventArgs)
+		{
+			ClosePulldown();
+			DuplicateActiveLayer();
+		}
+
+		private void OnContextMergeDown(object sender, TappedEventArgs eventArgs)
+		{
+			ClosePulldown();
+			DoMergeDown();
+		}
+
+		private void OnContextRasterizeText(object sender, TappedEventArgs eventArgs)
+		{
+			ClosePulldown();
+			DoRasterizeText();
+		}
+
+		private void OnContextDeleteLayer(object sender, TappedEventArgs eventArgs)
+		{
+			ClosePulldown();
+			DeleteActiveLayer();
+		}
+
 		private void OnAcceleratorRulers(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
 			ToggleRulers();
@@ -4420,6 +4510,7 @@ namespace Bitmute.UI
 
 		public void CloseModal()
 		{
+			m_editingSwatchIndex = -1;
 			if (m_modalBackdrop != null)
 			{
 				m_workspace.Remove(m_modalBackdrop);
@@ -4434,12 +4525,20 @@ namespace Bitmute.UI
 
 		public void OpenColorPicker(bool foreground)
 		{
+			m_editingSwatchIndex = -1;
 			SKColor initial = m_toolState.Background();
 			if (foreground)
 			{
 				initial = m_toolState.Foreground();
 			}
 			ColorPicker picker = new ColorPicker(initial, foreground);
+			ShowModal(picker, 380.0, 360.0);
+		}
+
+		public void OpenSwatchColorPicker(int index, SKColor current)
+		{
+			m_editingSwatchIndex = index;
+			ColorPicker picker = new ColorPicker(current, true);
 			ShowModal(picker, 380.0, 360.0);
 		}
 
@@ -4458,6 +4557,16 @@ namespace Bitmute.UI
 
 		public void ApplyPickedColor(SKColor color, bool foreground)
 		{
+			if (m_editingSwatchIndex >= 0)
+			{
+				int target = m_editingSwatchIndex;
+				m_editingSwatchIndex = -1;
+				if (m_swatchesPanel != null)
+				{
+					m_swatchesPanel.SetSwatchColor(target, color);
+				}
+				return;
+			}
 			if (foreground)
 			{
 				m_toolState.SetForeground(color);
