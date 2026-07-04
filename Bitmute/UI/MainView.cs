@@ -18,9 +18,6 @@ namespace Bitmute.UI
 
 		private static SkiaSharp.SKBitmap s_clipboardBitmap;
 
-		public const string MenuBreak = "__break__";
-		public const string MenuNone = "(none yet)";
-
 		private class ModalEntry
 		{
 			public View m_content;
@@ -82,66 +79,98 @@ namespace Bitmute.UI
 		private int m_editingSwatchIndex = -1;
 		private LayerStyle m_layerStyleSnapshot;
 		private int m_layerStyleTargetIndex;
-		private List<string> m_recentMenuPaths;
 
-		private static string RecentMenuLabel(int index, string path)
+		public List<MenuBarItem> GetSubmenuItems(eMenuAction parent)
 		{
-			return System.IO.Path.GetFileName(path);
-		}
-
-		private static string PanelMenuLabel(string name, bool visible)
-		{
-			if (visible)
+			List<MenuBarItem> items = new List<MenuBarItem>();
+			if (parent == eMenuAction.OpenRecentMenu)
 			{
-				return "✓ " + name;
-			}
-			return name;
-		}
-
-		public string[] GetSubmenuItems(string title, string item)
-		{
-			if (title == "File" && item == "Open Recent")
-			{
-				List<string> items = new List<string>();
-				for (int index = 0; index < m_recentMenuPaths.Count; index++)
+				List<string> recent = RecentFiles.List();
+				int recentCount = recent.Count;
+				if (recentCount > 12)
 				{
-					items.Add(RecentMenuLabel(index, m_recentMenuPaths[index]));
+					recentCount = 12;
 				}
-				return items.ToArray();
-			}
-			if (title == "Edit" && item == "Transform")
-			{
-				return new string[] { "Free Transform", "Scale", "Rotate", "Skew", "Distort", "Perspective", "Flip Horizontal (Layer)", "Flip Vertical (Layer)" };
-			}
-			if (title == "View" && item == "Snap To")
-			{
-				return new string[] { PanelMenuLabel("Snap Guides", m_snapTargetGuides), PanelMenuLabel("Snap Grid", m_snapTargetGrid), PanelMenuLabel("Snap Edges", m_snapTargetEdges), PanelMenuLabel("Snap Layers", m_snapTargetLayerBounds) };
-			}
-			if (title == "Image" && item == "Adjustments")
-			{
-				return new string[] { "Brightness/Contrast…", "Hue/Saturation…", MenuBreak, "Desaturate", "Invert Colors", MenuBreak, "Posterize…", "Threshold…" };
-			}
-			if (title == "Filter")
-			{
-				if (item == "Blur")
+				for (int index = 0; index < recentCount; index++)
 				{
-					return new string[] { "Gaussian Blur…" };
+					MenuBarItem recentItem = new MenuBarItem(System.IO.Path.GetFileName(recent[index]), eMenuAction.OpenRecent);
+					recentItem.m_argument = recent[index];
+					items.Add(recentItem);
 				}
-				if (item == "Sharpen")
-				{
-					return new string[] { "Unsharp Mask…" };
-				}
-				if (item == "Noise")
-				{
-					return new string[] { "Add Noise…" };
-				}
-				if (item == "Pixelate")
-				{
-					return new string[] { "Pixelate…" };
-				}
-				return new string[] { MenuNone };
+				return items;
 			}
-			return new string[] { };
+			if (parent == eMenuAction.TransformMenu)
+			{
+				items.Add(new MenuBarItem("Free Transform", eMenuAction.FreeTransform, "Ctrl+T"));
+				items.Add(new MenuBarItem("Scale", eMenuAction.TransformScale));
+				items.Add(new MenuBarItem("Rotate", eMenuAction.TransformRotate));
+				items.Add(new MenuBarItem("Skew", eMenuAction.TransformSkew));
+				items.Add(new MenuBarItem("Distort", eMenuAction.TransformDistort));
+				items.Add(new MenuBarItem("Perspective", eMenuAction.TransformPerspective));
+				items.Add(new MenuBarItem("Flip Horizontal (Layer)", eMenuAction.FlipLayerHorizontal));
+				items.Add(new MenuBarItem("Flip Vertical (Layer)", eMenuAction.FlipLayerVertical));
+				return items;
+			}
+			if (parent == eMenuAction.SnapToMenu)
+			{
+				MenuBarItem snapGuides = new MenuBarItem("Snap Guides", eMenuAction.ToggleSnapGuides);
+				snapGuides.m_checked = m_snapTargetGuides;
+				items.Add(snapGuides);
+				MenuBarItem snapGrid = new MenuBarItem("Snap Grid", eMenuAction.ToggleSnapGrid);
+				snapGrid.m_checked = m_snapTargetGrid;
+				items.Add(snapGrid);
+				MenuBarItem snapEdges = new MenuBarItem("Snap Edges", eMenuAction.ToggleSnapEdges);
+				snapEdges.m_checked = m_snapTargetEdges;
+				items.Add(snapEdges);
+				MenuBarItem snapLayers = new MenuBarItem("Snap Layers", eMenuAction.ToggleSnapLayers);
+				snapLayers.m_checked = m_snapTargetLayerBounds;
+				items.Add(snapLayers);
+				return items;
+			}
+			if (parent == eMenuAction.AdjustmentsMenu)
+			{
+				items.Add(new MenuBarItem("Brightness/Contrast…", eMenuAction.BrightnessContrast));
+				items.Add(new MenuBarItem("Hue/Saturation…", eMenuAction.HueSaturation));
+				MenuBarItem adjustSeparatorOne = new MenuBarItem("", eMenuAction.None);
+				adjustSeparatorOne.m_separator = true;
+				items.Add(adjustSeparatorOne);
+				items.Add(new MenuBarItem("Desaturate", eMenuAction.Desaturate));
+				items.Add(new MenuBarItem("Invert Colors", eMenuAction.InvertColors, "Ctrl+I"));
+				MenuBarItem adjustSeparatorTwo = new MenuBarItem("", eMenuAction.None);
+				adjustSeparatorTwo.m_separator = true;
+				items.Add(adjustSeparatorTwo);
+				items.Add(new MenuBarItem("Posterize…", eMenuAction.Posterize));
+				items.Add(new MenuBarItem("Threshold…", eMenuAction.Threshold));
+				return items;
+			}
+			if (parent == eMenuAction.FilterBlurMenu)
+			{
+				items.Add(new MenuBarItem("Gaussian Blur…", eMenuAction.GaussianBlur));
+				return items;
+			}
+			if (parent == eMenuAction.FilterSharpenMenu)
+			{
+				items.Add(new MenuBarItem("Unsharp Mask…", eMenuAction.UnsharpMask));
+				return items;
+			}
+			if (parent == eMenuAction.FilterNoiseMenu)
+			{
+				items.Add(new MenuBarItem("Add Noise…", eMenuAction.AddNoise));
+				return items;
+			}
+			if (parent == eMenuAction.FilterPixelateMenu)
+			{
+				items.Add(new MenuBarItem("Pixelate…", eMenuAction.Pixelate));
+				return items;
+			}
+			if (parent == eMenuAction.FilterArtisticMenu || parent == eMenuAction.FilterBrushStrokesMenu || parent == eMenuAction.FilterDistortMenu || parent == eMenuAction.FilterRenderMenu)
+			{
+				MenuBarItem placeholder = new MenuBarItem("(none yet)", eMenuAction.None);
+				placeholder.m_enabled = false;
+				items.Add(placeholder);
+				return items;
+			}
+			return items;
 		}
 
 		private bool GuidesLocked()
@@ -154,134 +183,171 @@ namespace Bitmute.UI
 			return document.Guides().IsLocked();
 		}
 
-		public string[] GetMenuItems(string title)
+		public List<MenuBarItem> GetMenuItems(string title)
 		{
+			List<MenuBarItem> items = new List<MenuBarItem>();
 			if (title == "File")
 			{
-				List<string> fileItems = new List<string>();
-				fileItems.Add("New");
-				fileItems.Add("Open…");
-				fileItems.Add("Save");
-				fileItems.Add("Save As…");
-				fileItems.Add("Export As…");
-				m_recentMenuPaths.Clear();
-				List<string> recent = RecentFiles.List();
-				int recentCount = recent.Count;
-				if (recentCount > 12)
+				items.Add(new MenuBarItem("New", eMenuAction.NewDocument, "Ctrl+N"));
+				items.Add(new MenuBarItem("Open…", eMenuAction.OpenFile, "Ctrl+O"));
+				items.Add(new MenuBarItem("Save", eMenuAction.Save, "Ctrl+S"));
+				items.Add(new MenuBarItem("Save As…", eMenuAction.SaveAs, "Ctrl+Shift+S"));
+				items.Add(new MenuBarItem("Export As…", eMenuAction.ExportAs, "Ctrl+Alt+Shift+S"));
+				if (RecentFiles.List().Count > 0)
 				{
-					recentCount = 12;
+					MenuBarItem openRecent = new MenuBarItem("Open Recent", eMenuAction.OpenRecentMenu);
+					openRecent.m_submenu = true;
+					items.Add(openRecent);
 				}
-				for (int index = 0; index < recentCount; index++)
-				{
-					m_recentMenuPaths.Add(recent[index]);
-				}
-				if (recentCount > 0)
-				{
-					fileItems.Add("Open Recent");
-				}
-				fileItems.Add("Exit");
-				return fileItems.ToArray();
+				items.Add(new MenuBarItem("Exit", eMenuAction.Exit));
+				return items;
 			}
 			if (title == "Edit")
 			{
-				return new string[] { "Undo", "Redo", "Cut", "Copy", "Paste", "Transform", "Stroke…", "Preferences…" };
+				items.Add(new MenuBarItem("Undo", eMenuAction.Undo, "Ctrl+Z"));
+				items.Add(new MenuBarItem("Redo", eMenuAction.Redo, "Ctrl+Y"));
+				items.Add(new MenuBarItem("Cut", eMenuAction.Cut, "Ctrl+X"));
+				items.Add(new MenuBarItem("Copy", eMenuAction.Copy, "Ctrl+C"));
+				items.Add(new MenuBarItem("Paste", eMenuAction.Paste, "Ctrl+V"));
+				MenuBarItem transform = new MenuBarItem("Transform", eMenuAction.TransformMenu);
+				transform.m_submenu = true;
+				items.Add(transform);
+				items.Add(new MenuBarItem("Stroke…", eMenuAction.StrokeDialog));
+				items.Add(new MenuBarItem("Preferences…", eMenuAction.Preferences));
+				return items;
 			}
 			if (title == "Image")
 			{
-				return new string[] { "Adjustments", MenuBreak, "Image Size…", "Canvas Size…", "Flip Horizontal", "Flip Vertical", "Rotate 90° CW", "Rotate 180°", "Rotate 90° CCW", "Rotate Arbitrary…", "Crop to Selection", "Trim" };
+				MenuBarItem adjustments = new MenuBarItem("Adjustments", eMenuAction.AdjustmentsMenu);
+				adjustments.m_submenu = true;
+				items.Add(adjustments);
+				MenuBarItem imageSeparator = new MenuBarItem("", eMenuAction.None);
+				imageSeparator.m_separator = true;
+				items.Add(imageSeparator);
+				items.Add(new MenuBarItem("Image Size…", eMenuAction.ImageSize, "Ctrl+Alt+I"));
+				items.Add(new MenuBarItem("Canvas Size…", eMenuAction.CanvasSize));
+				items.Add(new MenuBarItem("Flip Horizontal", eMenuAction.FlipHorizontal));
+				items.Add(new MenuBarItem("Flip Vertical", eMenuAction.FlipVertical));
+				items.Add(new MenuBarItem("Rotate 90° CW", eMenuAction.Rotate90Clockwise));
+				items.Add(new MenuBarItem("Rotate 180°", eMenuAction.Rotate180));
+				items.Add(new MenuBarItem("Rotate 90° CCW", eMenuAction.Rotate90CounterClockwise));
+				items.Add(new MenuBarItem("Rotate Arbitrary…", eMenuAction.RotateArbitrary));
+				items.Add(new MenuBarItem("Crop to Selection", eMenuAction.CropToSelection));
+				items.Add(new MenuBarItem("Trim", eMenuAction.Trim));
+				return items;
 			}
 			if (title == "Layer")
 			{
-				return new string[] { "New Layer", "Delete Layer", MenuBreak, "Merge Down", "Merge Visible", "Flatten Image", MenuBreak, "Layer Style…", "Layer Properties…", "Rasterize Text" };
+				Document layerDocument = ActiveDocument();
+				bool hasDocument = layerDocument != null;
+				bool hasActiveLayer = false;
+				if (hasDocument)
+				{
+					hasActiveLayer = layerDocument.ActiveLayer() != null;
+				}
+				MenuBarItem newLayer = new MenuBarItem("New Layer", eMenuAction.NewLayer);
+				newLayer.m_enabled = hasDocument;
+				items.Add(newLayer);
+				MenuBarItem deleteLayer = new MenuBarItem("Delete Layer", eMenuAction.DeleteLayer);
+				deleteLayer.m_enabled = hasDocument;
+				items.Add(deleteLayer);
+				MenuBarItem layerSeparatorOne = new MenuBarItem("", eMenuAction.None);
+				layerSeparatorOne.m_separator = true;
+				items.Add(layerSeparatorOne);
+				MenuBarItem mergeDown = new MenuBarItem("Merge Down", eMenuAction.MergeDown, "Ctrl+E");
+				mergeDown.m_enabled = CanMergeDown();
+				items.Add(mergeDown);
+				items.Add(new MenuBarItem("Merge Visible", eMenuAction.MergeVisible, "Ctrl+Shift+E"));
+				items.Add(new MenuBarItem("Flatten Image", eMenuAction.FlattenImage));
+				MenuBarItem layerSeparatorTwo = new MenuBarItem("", eMenuAction.None);
+				layerSeparatorTwo.m_separator = true;
+				items.Add(layerSeparatorTwo);
+				MenuBarItem layerStyle = new MenuBarItem("Layer Style…", eMenuAction.LayerStyle);
+				layerStyle.m_enabled = hasActiveLayer;
+				items.Add(layerStyle);
+				MenuBarItem layerProperties = new MenuBarItem("Layer Properties…", eMenuAction.LayerProperties);
+				layerProperties.m_enabled = hasActiveLayer;
+				items.Add(layerProperties);
+				MenuBarItem rasterizeText = new MenuBarItem("Rasterize Text", eMenuAction.RasterizeText);
+				rasterizeText.m_enabled = ActiveLayerIsText();
+				items.Add(rasterizeText);
+				return items;
 			}
 			if (title == "Select")
 			{
-				return new string[] { "All", "Deselect", "Invert" };
+				items.Add(new MenuBarItem("All", eMenuAction.SelectAll, "Ctrl+A"));
+				items.Add(new MenuBarItem("Deselect", eMenuAction.Deselect, "Ctrl+D"));
+				items.Add(new MenuBarItem("Invert", eMenuAction.InvertSelection, "Ctrl+Shift+I"));
+				return items;
 			}
 			if (title == "Filter")
 			{
-				return new string[] { "Artistic", "Blur", "Brush Strokes", "Distort", "Noise", "Pixelate", "Render", "Sharpen" };
+				MenuBarItem artistic = new MenuBarItem("Artistic", eMenuAction.FilterArtisticMenu);
+				artistic.m_submenu = true;
+				items.Add(artistic);
+				MenuBarItem blur = new MenuBarItem("Blur", eMenuAction.FilterBlurMenu);
+				blur.m_submenu = true;
+				items.Add(blur);
+				MenuBarItem brushStrokes = new MenuBarItem("Brush Strokes", eMenuAction.FilterBrushStrokesMenu);
+				brushStrokes.m_submenu = true;
+				items.Add(brushStrokes);
+				MenuBarItem distort = new MenuBarItem("Distort", eMenuAction.FilterDistortMenu);
+				distort.m_submenu = true;
+				items.Add(distort);
+				MenuBarItem noise = new MenuBarItem("Noise", eMenuAction.FilterNoiseMenu);
+				noise.m_submenu = true;
+				items.Add(noise);
+				MenuBarItem pixelate = new MenuBarItem("Pixelate", eMenuAction.FilterPixelateMenu);
+				pixelate.m_submenu = true;
+				items.Add(pixelate);
+				MenuBarItem render = new MenuBarItem("Render", eMenuAction.FilterRenderMenu);
+				render.m_submenu = true;
+				items.Add(render);
+				MenuBarItem sharpen = new MenuBarItem("Sharpen", eMenuAction.FilterSharpenMenu);
+				sharpen.m_submenu = true;
+				items.Add(sharpen);
+				return items;
 			}
 			if (title == "View")
 			{
-				return new string[] { "Zoom In", "Zoom Out", "Fit on Screen", PanelMenuLabel("Rulers", m_rulersEnabled), PanelMenuLabel("Grid", m_gridEnabled), PanelMenuLabel("Snap", m_snapEnabled), "Snap To", PanelMenuLabel("Lock Guides", GuidesLocked()), "Clear Guides" };
+				items.Add(new MenuBarItem("Zoom In", eMenuAction.ZoomIn, "Ctrl++"));
+				items.Add(new MenuBarItem("Zoom Out", eMenuAction.ZoomOut, "Ctrl+-"));
+				items.Add(new MenuBarItem("Fit on Screen", eMenuAction.FitOnScreen, "Ctrl+0"));
+				MenuBarItem rulers = new MenuBarItem("Rulers", eMenuAction.ToggleRulers, "Ctrl+R");
+				rulers.m_checked = m_rulersEnabled;
+				items.Add(rulers);
+				MenuBarItem grid = new MenuBarItem("Grid", eMenuAction.ToggleGrid);
+				grid.m_checked = m_gridEnabled;
+				items.Add(grid);
+				MenuBarItem snap = new MenuBarItem("Snap", eMenuAction.ToggleSnap);
+				snap.m_checked = m_snapEnabled;
+				items.Add(snap);
+				MenuBarItem snapTo = new MenuBarItem("Snap To", eMenuAction.SnapToMenu);
+				snapTo.m_submenu = true;
+				items.Add(snapTo);
+				MenuBarItem lockGuides = new MenuBarItem("Lock Guides", eMenuAction.ToggleLockGuides);
+				lockGuides.m_checked = GuidesLocked();
+				items.Add(lockGuides);
+				items.Add(new MenuBarItem("Clear Guides", eMenuAction.ClearGuides));
+				return items;
 			}
 			if (title == "Window")
 			{
-				return new string[] { "Cascade", "Tile", PanelMenuLabel("Navigator", m_navigatorPanelVisible), PanelMenuLabel("Swatches", m_swatchesPanelVisible), PanelMenuLabel("Layers", m_layersPanelVisible) };
+				items.Add(new MenuBarItem("Cascade", eMenuAction.CascadeWindows));
+				items.Add(new MenuBarItem("Tile", eMenuAction.TileWindows));
+				MenuBarItem navigator = new MenuBarItem("Navigator", eMenuAction.ToggleNavigatorPanel);
+				navigator.m_checked = m_navigatorPanelVisible;
+				items.Add(navigator);
+				MenuBarItem swatches = new MenuBarItem("Swatches", eMenuAction.ToggleSwatchesPanel);
+				swatches.m_checked = m_swatchesPanelVisible;
+				items.Add(swatches);
+				MenuBarItem layersPanel = new MenuBarItem("Layers", eMenuAction.ToggleLayersPanel);
+				layersPanel.m_checked = m_layersPanelVisible;
+				items.Add(layersPanel);
+				return items;
 			}
-			return new string[] { "About Bitmute" };
-		}
-
-		public bool IsItemEnabled(string title, string item)
-		{
-			if (item == MenuBreak)
-			{
-				return false;
-			}
-			if (item == MenuNone)
-			{
-				return false;
-			}
-			if (title == "File")
-			{
-				return true;
-			}
-			if (title == "Edit")
-			{
-				return true;
-			}
-			if (title == "Layer")
-			{
-				if (item == "Rasterize Text")
-				{
-					return ActiveLayerIsText();
-				}
-				if (item == "Merge Down")
-				{
-					return CanMergeDown();
-				}
-				if (item == "Layer Style…" || item == "Layer Properties…")
-				{
-					Document styleDocument = ActiveDocument();
-					if (styleDocument == null)
-					{
-						return false;
-					}
-					return styleDocument.ActiveLayer() != null;
-				}
-				if (item == "New Layer" || item == "Delete Layer")
-				{
-					Document layerDocument = ActiveDocument();
-					return layerDocument != null;
-				}
-				return true;
-			}
-			if (title == "Select")
-			{
-				return true;
-			}
-			if (title == "Filter")
-			{
-				return true;
-			}
-			if (title == "Image")
-			{
-				return true;
-			}
-			if (title == "Window")
-			{
-				return true;
-			}
-			if (title == "View")
-			{
-				return true;
-			}
-			if (item == "About Bitmute")
-			{
-				return true;
-			}
-			return false;
+			items.Add(new MenuBarItem("About Bitmute", eMenuAction.AboutBitmute));
+			return items;
 		}
 
 		private bool CanMergeDown()
@@ -309,114 +375,124 @@ namespace Bitmute.UI
 			return layer.IsText();
 		}
 
-		public void InvokeMenuAction(string action)
+		public void InvokeMenuAction(MenuBarItem item)
 		{
-			if (action == "New")
+			if (item == null)
+			{
+				return;
+			}
+			eMenuAction action = item.m_action;
+			if (action == eMenuAction.NewDocument)
 			{
 				ShowNewDocumentDialog();
 				return;
 			}
-			if (action == "Undo")
+			if (action == eMenuAction.Undo)
 			{
 				DoUndo();
 				return;
 			}
-			if (action == "Redo")
+			if (action == eMenuAction.Redo)
 			{
 				DoRedo();
 				return;
 			}
-			if (action == "Cut")
+			if (action == eMenuAction.Cut)
 			{
 				DoCut();
 				return;
 			}
-			if (action == "Copy")
+			if (action == eMenuAction.Copy)
 			{
 				DoCopy();
 				return;
 			}
-			if (action == "Paste")
+			if (action == eMenuAction.Paste)
 			{
 				DoPaste();
 				return;
 			}
-			if (action == "Open…")
+			if (action == eMenuAction.OpenFile)
 			{
 				OpenImageFlow();
 				return;
 			}
-			if (action == "Save")
+			if (action == eMenuAction.Save)
 			{
 				SaveImageFlow();
 				return;
 			}
-			if (action == "Save As…")
+			if (action == eMenuAction.SaveAs)
 			{
 				SaveAsFlow();
 				return;
 			}
-			if (action == "Exit")
+			if (action == eMenuAction.OpenRecent)
+			{
+				OpenRecentFile(item.m_argument);
+				return;
+			}
+			if (action == eMenuAction.Exit)
 			{
 				DoExit();
 				return;
 			}
-			if (action == "Zoom In")
+			if (action == eMenuAction.ZoomIn)
 			{
 				DoZoomIn();
 				return;
 			}
-			if (action == "Zoom Out")
+			if (action == eMenuAction.ZoomOut)
 			{
 				DoZoomOut();
 				return;
 			}
-			if (action == "Fit on Screen")
+			if (action == eMenuAction.FitOnScreen)
 			{
 				DoFit();
 				return;
 			}
-			if (action == "Rulers" || action == "✓ Rulers")
+			if (action == eMenuAction.ToggleRulers)
 			{
 				ToggleRulers();
 				return;
 			}
-			if (action == "Grid" || action == "✓ Grid")
+			if (action == eMenuAction.ToggleGrid)
 			{
 				ToggleGrid();
 				return;
 			}
-			if (action == "Snap" || action == "✓ Snap")
+			if (action == eMenuAction.ToggleSnap)
 			{
 				m_snapEnabled = !m_snapEnabled;
 				Microsoft.Maui.Storage.Preferences.Default.Set("snap_enabled", m_snapEnabled);
 				return;
 			}
-			if (action == "Snap Guides" || action == "✓ Snap Guides")
+			if (action == eMenuAction.ToggleSnapGuides)
 			{
 				m_snapTargetGuides = !m_snapTargetGuides;
 				Microsoft.Maui.Storage.Preferences.Default.Set("snap_target_guides", m_snapTargetGuides);
 				return;
 			}
-			if (action == "Snap Grid" || action == "✓ Snap Grid")
+			if (action == eMenuAction.ToggleSnapGrid)
 			{
 				m_snapTargetGrid = !m_snapTargetGrid;
 				Microsoft.Maui.Storage.Preferences.Default.Set("snap_target_grid", m_snapTargetGrid);
 				return;
 			}
-			if (action == "Snap Edges" || action == "✓ Snap Edges")
+			if (action == eMenuAction.ToggleSnapEdges)
 			{
 				m_snapTargetEdges = !m_snapTargetEdges;
 				Microsoft.Maui.Storage.Preferences.Default.Set("snap_target_edges", m_snapTargetEdges);
 				return;
 			}
-			if (action == "Snap Layers" || action == "✓ Snap Layers")
+			if (action == eMenuAction.ToggleSnapLayers)
 			{
 				m_snapTargetLayerBounds = !m_snapTargetLayerBounds;
 				Microsoft.Maui.Storage.Preferences.Default.Set("snap_target_layer_bounds", m_snapTargetLayerBounds);
 				return;
 			}
-			if (action == "Lock Guides" || action == "✓ Lock Guides")
+			if (action == eMenuAction.ToggleLockGuides)
 			{
 				Document guideDoc = ActiveDocument();
 				if (guideDoc != null)
@@ -425,7 +501,7 @@ namespace Bitmute.UI
 				}
 				return;
 			}
-			if (action == "Clear Guides")
+			if (action == eMenuAction.ClearGuides)
 			{
 				Document clearDoc = ActiveDocument();
 				if (clearDoc != null)
@@ -439,248 +515,244 @@ namespace Bitmute.UI
 				}
 				return;
 			}
-			if (action == "Free Transform")
+			if (action == eMenuAction.FreeTransform)
 			{
 				BeginTransform(0);
 				return;
 			}
-			if (action == "Scale")
+			if (action == eMenuAction.TransformScale)
 			{
 				BeginTransform(1);
 				return;
 			}
-			if (action == "Rotate")
+			if (action == eMenuAction.TransformRotate)
 			{
 				BeginTransform(2);
 				return;
 			}
-			if (action == "Skew")
+			if (action == eMenuAction.TransformSkew)
 			{
 				BeginTransform(3);
 				return;
 			}
-			if (action == "Distort")
+			if (action == eMenuAction.TransformDistort)
 			{
 				BeginTransform(4);
 				return;
 			}
-			if (action == "Perspective")
+			if (action == eMenuAction.TransformPerspective)
 			{
 				BeginTransform(5);
 				return;
 			}
-			if (action == "Flip Horizontal (Layer)")
+			if (action == eMenuAction.FlipLayerHorizontal)
 			{
 				BeginTransform(6);
 				return;
 			}
-			if (action == "Flip Vertical (Layer)")
+			if (action == eMenuAction.FlipLayerVertical)
 			{
 				BeginTransform(7);
 				return;
 			}
-			if (action == "Rotate Arbitrary…")
+			if (action == eMenuAction.RotateArbitrary)
 			{
 				OpenAdjustment("rotate");
 				return;
 			}
-			if (action == "Stroke…")
+			if (action == eMenuAction.StrokeDialog)
 			{
 				OpenStrokeDialog();
 				return;
 			}
-			for (int recentIndex = 0; recentIndex < m_recentMenuPaths.Count; recentIndex++)
-			{
-				if (action == RecentMenuLabel(recentIndex, m_recentMenuPaths[recentIndex]))
-				{
-					OpenRecentFile(m_recentMenuPaths[recentIndex]);
-					return;
-				}
-			}
-			if (action == "All")
+			if (action == eMenuAction.SelectAll)
 			{
 				DoSelectAll();
 				return;
 			}
-			if (action == "Deselect")
+			if (action == eMenuAction.Deselect)
 			{
 				DoDeselect();
 				return;
 			}
-			if (action == "Invert")
+			if (action == eMenuAction.InvertSelection)
 			{
 				DoInvertSelection();
 				return;
 			}
-			if (action == "Invert Colors")
+			if (action == eMenuAction.InvertColors)
 			{
 				DoInvert();
 				return;
 			}
-			if (action == "Desaturate")
+			if (action == eMenuAction.Desaturate)
 			{
 				DoDesaturate();
 				return;
 			}
-			if (action == "Brightness/Contrast…")
+			if (action == eMenuAction.BrightnessContrast)
 			{
 				OpenAdjustment("bc");
 				return;
 			}
-			if (action == "Hue/Saturation…")
+			if (action == eMenuAction.HueSaturation)
 			{
 				OpenAdjustment("hsl");
 				return;
 			}
-			if (action == "Posterize…")
+			if (action == eMenuAction.Posterize)
 			{
 				OpenAdjustment("posterize");
 				return;
 			}
-			if (action == "Threshold…")
+			if (action == eMenuAction.Threshold)
 			{
 				OpenAdjustment("threshold");
 				return;
 			}
-			if (action == "Gaussian Blur…")
+			if (action == eMenuAction.GaussianBlur)
 			{
 				OpenAdjustment("gblur");
 				return;
 			}
-			if (action == "Unsharp Mask…")
+			if (action == eMenuAction.UnsharpMask)
 			{
 				OpenAdjustment("unsharp");
 				return;
 			}
-			if (action == "Add Noise…")
+			if (action == eMenuAction.AddNoise)
 			{
 				OpenAdjustment("noise");
 				return;
 			}
-			if (action == "Pixelate…")
+			if (action == eMenuAction.Pixelate)
 			{
 				OpenAdjustment("pixelate");
 				return;
 			}
-			if (action == "Flip Horizontal")
+			if (action == eMenuAction.FlipHorizontal)
 			{
 				DoCanvasOp("fliph");
 				return;
 			}
-			if (action == "Flip Vertical")
+			if (action == eMenuAction.FlipVertical)
 			{
 				DoCanvasOp("flipv");
 				return;
 			}
-			if (action == "Rotate 90° CW")
+			if (action == eMenuAction.Rotate90Clockwise)
 			{
 				DoCanvasOp("rot90");
 				return;
 			}
-			if (action == "Rotate 180°")
+			if (action == eMenuAction.Rotate180)
 			{
 				DoCanvasOp("rot180");
 				return;
 			}
-			if (action == "Rotate 90° CCW")
+			if (action == eMenuAction.Rotate90CounterClockwise)
 			{
 				DoCanvasOp("rot270");
 				return;
 			}
-			if (action == "Crop to Selection")
+			if (action == eMenuAction.CropToSelection)
 			{
 				DoCanvasOp("crop");
 				return;
 			}
-			if (action == "Trim")
+			if (action == eMenuAction.Trim)
 			{
 				DoCanvasOp("trim");
 				return;
 			}
-			if (action == "Cascade")
+			if (action == eMenuAction.CascadeWindows)
 			{
 				DoCascadeWindows();
 				return;
 			}
-			if (action == "Tile")
+			if (action == eMenuAction.TileWindows)
 			{
 				DoTileWindows();
 				return;
 			}
-			string panelAction = action;
-			if (panelAction.StartsWith("✓ "))
+			if (action == eMenuAction.ToggleNavigatorPanel)
 			{
-				panelAction = panelAction.Substring(2);
-			}
-			if (panelAction == "Navigator" || panelAction == "Swatches" || panelAction == "Layers" || panelAction == "Info")
-			{
-				ToggleDockPanel(panelAction);
+				ToggleDockPanel("Navigator");
 				return;
 			}
-			if (action == "New Layer")
+			if (action == eMenuAction.ToggleSwatchesPanel)
+			{
+				ToggleDockPanel("Swatches");
+				return;
+			}
+			if (action == eMenuAction.ToggleLayersPanel)
+			{
+				ToggleDockPanel("Layers");
+				return;
+			}
+			if (action == eMenuAction.NewLayer)
 			{
 				AddNewLayer();
 				return;
 			}
-			if (action == "Delete Layer")
+			if (action == eMenuAction.DeleteLayer)
 			{
 				RequestDeleteActiveLayer();
 				return;
 			}
-			if (action == "Rasterize Text")
+			if (action == eMenuAction.RasterizeText)
 			{
 				DoRasterizeText();
 				return;
 			}
-			if (action == "Layer Style…")
+			if (action == eMenuAction.LayerStyle)
 			{
 				OpenLayerStyleDialog();
 				return;
 			}
-			if (action == "Layer Properties…")
+			if (action == eMenuAction.LayerProperties)
 			{
 				OpenLayerPropertiesDialog();
 				return;
 			}
-			if (action == "Merge Down")
+			if (action == eMenuAction.MergeDown)
 			{
 				DoMergeDown();
 				return;
 			}
-			if (action == "Merge Visible")
+			if (action == eMenuAction.MergeVisible)
 			{
 				DoMergeVisible();
 				return;
 			}
-			if (action == "Flatten Image")
+			if (action == eMenuAction.FlattenImage)
 			{
 				DoFlattenImage();
 				return;
 			}
-			if (action == "Export As…")
+			if (action == eMenuAction.ExportAs)
 			{
 				OpenExportDialog();
 				return;
 			}
-			if (action == "Preferences…")
+			if (action == eMenuAction.Preferences)
 			{
 				ShowModal(new PreferencesDialog(), 340.0, 260.0);
 				return;
 			}
-			if (action == "About Bitmute")
+			if (action == eMenuAction.AboutBitmute)
 			{
 				ShowModal(new AboutDialog(), 380.0, 300.0);
 				return;
 			}
-			if (action == "Canvas Size…")
+			if (action == eMenuAction.CanvasSize)
 			{
 				OpenSizeDialog(true);
 				return;
 			}
-			if (action == "Image Size…")
+			if (action == eMenuAction.ImageSize)
 			{
 				OpenSizeDialog(false);
-				return;
 			}
 		}
 
@@ -1997,8 +2069,6 @@ namespace Bitmute.UI
 			m_snapTargetGrid = Microsoft.Maui.Storage.Preferences.Default.Get("snap_target_grid", true);
 			m_snapTargetEdges = Microsoft.Maui.Storage.Preferences.Default.Get("snap_target_edges", true);
 			m_snapTargetLayerBounds = Microsoft.Maui.Storage.Preferences.Default.Get("snap_target_layer_bounds", true);
-			m_recentMenuPaths = new List<string>();
-
 			m_menuTitles = new string[] { "File", "Edit", "Image", "Layer", "Select", "Filter", "View", "Window", "Help" };
 			m_overlay = new AbsoluteLayout();
 			m_overlay.InputTransparent = true;

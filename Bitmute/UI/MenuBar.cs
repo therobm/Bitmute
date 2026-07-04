@@ -18,91 +18,14 @@ namespace Bitmute.UI
 		private string[] m_titles;
 		private Border[] m_menuButtons;
 		private List<Border> m_openItemButtons;
-		private List<string> m_openItemActions;
+		private List<MenuBarItem> m_openItems;
 		private int m_openMenuIndex;
 		private double m_openDropdownX;
 		private List<Border> m_submenuParentRows;
-		private List<string> m_submenuParentNames;
-		private List<int> m_submenuParentIndices;
+		private List<MenuBarItem> m_submenuParentItems;
 		private List<Border> m_submenuChildRows;
 		private Border m_submenuBorder;
 		private View m_root;
-
-		private static string AcceleratorForItem(string title, string item)
-		{
-			if (title == "File")
-			{
-				if (item == "New") return "Ctrl+N";
-				if (item == "Open…") return "Ctrl+O";
-				if (item == "Save") return "Ctrl+S";
-				if (item == "Save As…") return "Ctrl+Shift+S";
-				if (item == "Export As…") return "Ctrl+Alt+Shift+S";
-			}
-			if (title == "Edit")
-			{
-				if (item == "Undo") return "Ctrl+Z";
-				if (item == "Redo") return "Ctrl+Y";
-				if (item == "Cut") return "Ctrl+X";
-				if (item == "Copy") return "Ctrl+C";
-				if (item == "Paste") return "Ctrl+V";
-			}
-			if (title == "Image")
-			{
-				if (item == "Image Size…") return "Ctrl+Alt+I";
-				if (item == "Invert Colors") return "Ctrl+I";
-			}
-			if (title == "Select")
-			{
-				if (item == "All") return "Ctrl+A";
-				if (item == "Deselect") return "Ctrl+D";
-				if (item == "Invert") return "Ctrl+Shift+I";
-			}
-			if (title == "View")
-			{
-				if (item == "Zoom In") return "Ctrl++";
-				if (item == "Zoom Out") return "Ctrl+-";
-				if (item == "Fit on Screen") return "Ctrl+0";
-				if (item == "Rulers" || item == "✓ Rulers") return "Ctrl+R";
-			}
-			if (title == "Edit")
-			{
-				if (item == "Free Transform") return "Ctrl+T";
-			}
-			if (title == "Layer")
-			{
-				if (item == "Merge Down") return "Ctrl+E";
-				if (item == "Merge Visible") return "Ctrl+Shift+E";
-			}
-			return "";
-		}
-
-		private static bool IsSubmenu(string title, string item)
-		{
-			if (title == "File" && item == "Open Recent")
-			{
-				return true;
-			}
-			if (title == "Edit" && item == "Transform")
-			{
-				return true;
-			}
-			if (title == "View" && item == "Snap To")
-			{
-				return true;
-			}
-			if (title == "Image" && item == "Adjustments")
-			{
-				return true;
-			}
-			if (title == "Filter")
-			{
-				if (item == "Artistic" || item == "Blur" || item == "Brush Strokes" || item == "Distort" || item == "Noise" || item == "Pixelate" || item == "Render" || item == "Sharpen")
-				{
-					return true;
-				}
-			}
-			return false;
-		}
 
 		public static Border BuildMenuSeparator()
 		{
@@ -122,12 +45,12 @@ namespace Bitmute.UI
 			return separatorRow;
 		}
 
-		private static double MenuListHeight(string[] items)
+		private static double MenuListHeight(List<MenuBarItem> items)
 		{
 			double total = 8.0;
-			for (int index = 0; index < items.Length; index++)
+			for (int index = 0; index < items.Count; index++)
 			{
-				if (items[index] == MainView.MenuBreak)
+				if (items[index].m_separator)
 				{
 					total = total + MenuSeparatorHeight;
 				}
@@ -231,12 +154,11 @@ namespace Bitmute.UI
 			m_openMenuIndex = index;
 			m_menuButtons[index].ThemeBg(UiConstants.MenuOpenLight, UiConstants.MenuOpenDark);
 			m_submenuParentRows.Clear();
-			m_submenuParentNames.Clear();
-			m_submenuParentIndices.Clear();
+			m_submenuParentItems.Clear();
 			m_submenuBorder = null;
 
 			string title = m_titles[index];
-			string[] items = m_main.GetMenuItems(title);
+			List<MenuBarItem> items = m_main.GetMenuItems(title);
 
 			double dropdownX = m_menuButtons[index].Bounds.X;
 			double overlayWidth = m_overlay.Width;
@@ -254,9 +176,9 @@ namespace Bitmute.UI
 			list.Spacing = 0.0;
 			list.Padding = new Thickness(0.0, 4.0, 0.0, 4.0);
 
-			for (int itemIndex = 0; itemIndex < items.Length; itemIndex++)
+			for (int itemIndex = 0; itemIndex < items.Count; itemIndex++)
 			{
-				list.Add(BuildMenuItem(title, items[itemIndex], itemIndex));
+				list.Add(BuildMenuItem(items[itemIndex]));
 			}
 
 			Border dropdown = new Border();
@@ -281,11 +203,11 @@ namespace Bitmute.UI
 			m_overlay.Add(dropdown);
 		}
 
-		private void OpenSubmenu(string parentItem, int parentIndex)
+		private void OpenSubmenu(MenuBarItem parentItem, Border parentRow)
 		{
 			CloseSubmenu();
-			string[] children = m_main.GetSubmenuItems(m_titles[m_openMenuIndex], parentItem);
-			if (children.Length == 0)
+			List<MenuBarItem> children = m_main.GetSubmenuItems(parentItem.m_action);
+			if (children.Count == 0)
 			{
 				return;
 			}
@@ -293,9 +215,9 @@ namespace Bitmute.UI
 			list.Spacing = 0.0;
 			list.Padding = new Thickness(0.0, 4.0, 0.0, 4.0);
 			m_submenuChildRows.Clear();
-			for (int index = 0; index < children.Length; index++)
+			for (int index = 0; index < children.Count; index++)
 			{
-				Border childRow = BuildMenuItem(m_titles[m_openMenuIndex], children[index], -1);
+				Border childRow = BuildMenuItem(children[index]);
 				m_submenuChildRows.Add(childRow);
 				list.Add(childRow);
 			}
@@ -315,7 +237,7 @@ namespace Bitmute.UI
 			{
 				submenuX = 0.0;
 			}
-			double submenuY = UiConstants.MenuBarHeight + 4.0 + (parentIndex * MenuItemHeight);
+			double submenuY = UiConstants.MenuBarHeight + parentRow.Y;
 			double submenuHeight = MenuListHeight(children);
 			AbsoluteLayout.SetLayoutFlags(submenu, AbsoluteLayoutFlags.None);
 			AbsoluteLayout.SetLayoutBounds(submenu, new Rect(submenuX, submenuY, DropdownWidth, submenuHeight));
@@ -344,7 +266,7 @@ namespace Bitmute.UI
 			{
 				if (ReferenceEquals(m_submenuParentRows[index], sender))
 				{
-					OpenSubmenu(m_submenuParentNames[index], m_submenuParentIndices[index]);
+					OpenSubmenu(m_submenuParentItems[index], m_submenuParentRows[index]);
 					return;
 				}
 			}
@@ -356,25 +278,31 @@ namespace Bitmute.UI
 			{
 				if (ReferenceEquals(m_submenuParentRows[index], sender))
 				{
-					OpenSubmenu(m_submenuParentNames[index], m_submenuParentIndices[index]);
+					OpenSubmenu(m_submenuParentItems[index], m_submenuParentRows[index]);
 					return;
 				}
 			}
 		}
 
-		private Border BuildMenuItem(string title, string item, int itemIndex)
+		private Border BuildMenuItem(MenuBarItem item)
 		{
-			if (item == MainView.MenuBreak)
+			if (item.m_separator)
 			{
 				return BuildMenuSeparator();
 			}
-			bool enabled = m_main.IsItemEnabled(title, item);
-			bool submenu = IsSubmenu(title, item);
+			bool enabled = item.m_enabled;
+			bool submenu = item.m_submenu;
 
-			string accelerator = AcceleratorForItem(title, item);
+			string accelerator = item.m_accelerator;
 			if (submenu)
 			{
 				accelerator = "▸";
+			}
+
+			string text = item.m_label;
+			if (item.m_checked)
+			{
+				text = "✓ " + item.m_label;
 			}
 
 			Grid rowContent = new Grid();
@@ -382,7 +310,7 @@ namespace Bitmute.UI
 			rowContent.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 
 			Label label = new Label();
-			label.Text = item;
+			label.Text = text;
 			label.FontSize = 12.0;
 			label.VerticalOptions = LayoutOptions.Center;
 			label.LineBreakMode = LineBreakMode.TailTruncation;
@@ -433,8 +361,7 @@ namespace Bitmute.UI
 				submenuPointer.PointerExited += OnMenuItemPointerExited;
 				row.GestureRecognizers.Add(submenuPointer);
 				m_submenuParentRows.Add(row);
-				m_submenuParentNames.Add(item);
-				m_submenuParentIndices.Add(itemIndex);
+				m_submenuParentItems.Add(item);
 			}
 			else if (enabled)
 			{
@@ -446,7 +373,7 @@ namespace Bitmute.UI
 				pointer.PointerExited += OnMenuItemPointerExited;
 				row.GestureRecognizers.Add(pointer);
 				m_openItemButtons.Add(row);
-				m_openItemActions.Add(item);
+				m_openItems.Add(item);
 			}
 
 			return row;
@@ -489,9 +416,9 @@ namespace Bitmute.UI
 			{
 				if (ReferenceEquals(m_openItemButtons[index], sender))
 				{
-					string action = m_openItemActions[index];
+					MenuBarItem item = m_openItems[index];
 					CloseOpenMenu();
-					m_main.InvokeMenuAction(action);
+					m_main.InvokeMenuAction(item);
 					return;
 				}
 			}
@@ -509,12 +436,11 @@ namespace Bitmute.UI
 			m_overlay = overlay;
 			m_menuButtons = new Border[titles.Length];
 			m_openItemButtons = new List<Border>();
-			m_openItemActions = new List<string>();
+			m_openItems = new List<MenuBarItem>();
 			m_openMenuIndex = -1;
 			m_openDropdownX = 0.0;
 			m_submenuParentRows = new List<Border>();
-			m_submenuParentNames = new List<string>();
-			m_submenuParentIndices = new List<int>();
+			m_submenuParentItems = new List<MenuBarItem>();
 			m_submenuChildRows = new List<Border>();
 			m_submenuBorder = null;
 
@@ -543,10 +469,9 @@ namespace Bitmute.UI
 		{
 			m_overlay.Clear();
 			m_openItemButtons.Clear();
-			m_openItemActions.Clear();
+			m_openItems.Clear();
 			m_submenuParentRows.Clear();
-			m_submenuParentNames.Clear();
-			m_submenuParentIndices.Clear();
+			m_submenuParentItems.Clear();
 			m_submenuChildRows.Clear();
 			m_submenuBorder = null;
 			if (m_openMenuIndex >= 0)
