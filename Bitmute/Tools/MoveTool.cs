@@ -306,6 +306,11 @@ namespace Bitmute.Tools
 				}
 				m_floatBaseDeltaX = document.FloatDeltaX();
 				m_floatBaseDeltaY = document.FloatDeltaY();
+				SKRectI floatBounds = document.Selection().Bounds();
+				if (floatBounds.Width > 0 && floatBounds.Height > 0)
+				{
+					CacheMoveContentBounds(layer, floatBounds);
+				}
 			}
 			else if (layer.IsText())
 			{

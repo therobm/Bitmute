@@ -51,6 +51,7 @@ namespace Bitmute.Tests
 			TestGuideStickyCenter();
 			TestMoveSnapToGuides();
 			TestMoveSnapTargets();
+			TestFloatMoveSnapToGuides();
 			TestMovePerfRegion();
 			TestSpongeMath();
 			TestColorReplaceMath();
@@ -859,6 +860,34 @@ namespace Bitmute.Tests
 			edgeMove.OnPressed(edgeDoc, 30, 20, edgeState);
 			edgeMove.OnDragged(edgeDoc, 23, 20, edgeState);
 			Check(edgeContent.OffsetX() == -5, "move snaps left edge to canvas edge (offset -5)");
+		}
+
+		private static void TestFloatMoveSnapToGuides()
+		{
+			SKColor red = new SKColor(255, 0, 0, 255);
+			Document doc = new Document("t", 64, 48);
+			doc.Guides().AddVertical(50);
+			Layer content = doc.AddLayer("c");
+			for (int y = 10; y < 20; y++)
+			{
+				for (int x = 10; x < 20; x++)
+				{
+					content.Bitmap().SetPixel(x, y, red);
+				}
+			}
+			doc.Selection().SelectRect(new SKRectI(10, 10, 20, 20));
+			ToolState state = new ToolState();
+			state.SetSnapToGuides(true);
+			state.SetSnapTolerance(6);
+			MoveTool move = new MoveTool();
+			move.OnPressed(doc, 15, 15, state);
+			move.OnDragged(doc, 53, 15, state);
+			move.OnReleased(doc, 53, 15, state);
+			Check(doc.HasFloatingSelection(), "float snap: move floats the selection");
+			Check(doc.FloatDeltaX() == 40, "float snap: delta snaps left edge to guide (delta 40)");
+			Check(doc.FloatDeltaY() == 0, "float snap: no vertical snap without horizontal guide");
+			Check(doc.Selection().Bounds().Left == 50, "float snap: selection left edge lands on guide (50)");
+			doc.CancelFloatingSelection();
 		}
 
 		private static void FillPositionGradient(Layer layer)
