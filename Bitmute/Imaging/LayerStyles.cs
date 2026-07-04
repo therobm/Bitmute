@@ -272,7 +272,63 @@ namespace Bitmute.Imaging
 			}
 		}
 
+		private static void DilateAlpha(byte[] alpha, int width, int height, int radius)
+		{
+			if (radius <= 0)
+			{
+				return;
+			}
+			byte[] state = new byte[alpha.Length];
+			for (int index = 0; index < state.Length; index++)
+			{
+				if (alpha[index] >= 128)
+				{
+					state[index] = 1;
+				}
+				else
+				{
+					state[index] = 0;
+				}
+			}
+			int[] distance = new int[alpha.Length];
+			ComputeDistance(state, width, height, distance);
+			for (int index = 0; index < alpha.Length; index++)
+			{
+				if (state[index] != 0)
+				{
+					alpha[index] = 255;
+				}
+				else if (distance[index] <= radius)
+				{
+					alpha[index] = 255;
+				}
+				else
+				{
+					alpha[index] = 0;
+				}
+			}
+		}
+
+		private static int SpreadPixels(int size, int spread)
+		{
+			int clamped = spread;
+			if (clamped < 0)
+			{
+				clamped = 0;
+			}
+			if (clamped > 100)
+			{
+				clamped = 100;
+			}
+			return (size * clamped) / 100;
+		}
+
 		public static unsafe SKBitmap RenderDropShadow(SKBitmap source, SKColor color, int offsetX, int offsetY, int blurRadius, byte opacity, out int placeX, out int placeY)
+		{
+			return RenderDropShadow(source, color, offsetX, offsetY, blurRadius, 0, opacity, out placeX, out placeY);
+		}
+
+		public static unsafe SKBitmap RenderDropShadow(SKBitmap source, SKColor color, int offsetX, int offsetY, int blurRadius, int spread, byte opacity, out int placeX, out int placeY)
 		{
 			int sourceWidth = source.Width;
 			int sourceHeight = source.Height;
@@ -309,12 +365,19 @@ namespace Bitmute.Imaging
 			SKBitmap result = CreateResult(resultWidth, resultHeight);
 			byte[] alpha = new byte[resultWidth * resultHeight];
 			StampAlpha(source, alpha, resultWidth, resultHeight, offsetX - left, offsetY - top);
-			BlurAlpha(alpha, resultWidth, resultHeight, blurRadius);
+			int spreadRadius = SpreadPixels(blurRadius, spread);
+			DilateAlpha(alpha, resultWidth, resultHeight, spreadRadius);
+			BlurAlpha(alpha, resultWidth, resultHeight, blurRadius - spreadRadius);
 			WriteColoredAlpha(result, alpha, color, opacity);
 			return result;
 		}
 
 		public static unsafe SKBitmap RenderOuterGlow(SKBitmap source, SKColor color, int size, byte opacity, out int placeX, out int placeY)
+		{
+			return RenderOuterGlow(source, color, size, 0, opacity, out placeX, out placeY);
+		}
+
+		public static unsafe SKBitmap RenderOuterGlow(SKBitmap source, SKColor color, int size, int spread, byte opacity, out int placeX, out int placeY)
 		{
 			int sourceWidth = source.Width;
 			int sourceHeight = source.Height;
@@ -325,12 +388,197 @@ namespace Bitmute.Imaging
 			SKBitmap result = CreateResult(resultWidth, resultHeight);
 			byte[] alpha = new byte[resultWidth * resultHeight];
 			StampAlpha(source, alpha, resultWidth, resultHeight, size, size);
-			BlurAlpha(alpha, resultWidth, resultHeight, size);
+			int spreadRadius = SpreadPixels(size, spread);
+			DilateAlpha(alpha, resultWidth, resultHeight, spreadRadius);
+			BlurAlpha(alpha, resultWidth, resultHeight, size - spreadRadius);
 			WriteColoredAlpha(result, alpha, color, opacity);
 			return result;
 		}
 
+		public static unsafe SKBitmap RenderInnerGlow(SKBitmap source, SKColor color, int size, int spread, byte opacity, out int placeX, out int placeY)
+		{
+			int width = source.Width;
+			int height = source.Height;
+			placeX = 0;
+			placeY = 0;
+			SKBitmap result = CreateResult(width, height);
+			int count = width * height;
+			byte[] body = new byte[count];
+			StampAlpha(source, body, width, height, 0, 0);
+			byte[] state = new byte[count];
+			for (int index = 0; index < count; index++)
+			{
+				if (body[index] >= 128)
+				{
+					state[index] = 1;
+				}
+				else
+				{
+					state[index] = 0;
+				}
+			}
+			int[] distance = new int[count];
+			ComputeDistance(state, width, height, distance);
+			int spreadRadius = SpreadPixels(size, spread);
+			byte[] halo = new byte[count];
+			for (int index = 0; index < count; index++)
+			{
+				if (state[index] == 0)
+				{
+					halo[index] = 255;
+				}
+				else if (distance[index] <= spreadRadius)
+				{
+					halo[index] = 255;
+				}
+				else
+				{
+					halo[index] = 0;
+				}
+			}
+			BlurAlpha(halo, width, height, size - spreadRadius);
+			for (int index = 0; index < count; index++)
+			{
+				halo[index] = (byte)((halo[index] * body[index]) / 255);
+			}
+			WriteColoredAlpha(result, halo, color, opacity);
+			return result;
+		}
+
+		public static unsafe SKBitmap RenderBevel(SKBitmap source, int depth, int size, int angle, SKColor highlightColor, byte highlightOpacity, SKColor shadowColor, byte shadowOpacity, out int placeX, out int placeY)
+		{
+			int width = source.Width;
+			int height = source.Height;
+			placeX = 0;
+			placeY = 0;
+			SKBitmap result = CreateResult(width, height);
+			int count = width * height;
+			byte[] body = new byte[count];
+			StampAlpha(source, body, width, height, 0, 0);
+			byte[] state = new byte[count];
+			for (int index = 0; index < count; index++)
+			{
+				if (body[index] >= 128)
+				{
+					state[index] = 1;
+				}
+				else
+				{
+					state[index] = 0;
+				}
+			}
+			int[] distance = new int[count];
+			ComputeDistance(state, width, height, distance);
+			int rampSize = size;
+			if (rampSize < 1)
+			{
+				rampSize = 1;
+			}
+			byte[] heightField = new byte[count];
+			for (int index = 0; index < count; index++)
+			{
+				if (state[index] == 0)
+				{
+					heightField[index] = 0;
+				}
+				else
+				{
+					int ramp = distance[index];
+					if (ramp > rampSize)
+					{
+						ramp = rampSize;
+					}
+					heightField[index] = (byte)((ramp * 255) / rampSize);
+				}
+			}
+			BlurAlpha(heightField, width, height, rampSize / 4);
+			double radians = angle * Math.PI / 180.0;
+			double lightX = Math.Cos(radians);
+			double lightY = Math.Sin(radians);
+			double depthScale = depth / 100.0;
+			int rowBytes = result.RowBytes;
+			byte* basePixels = (byte*)result.GetPixels().ToPointer();
+			for (int y = 0; y < height; y++)
+			{
+				byte* row = basePixels + (y * rowBytes);
+				int fieldRow = y * width;
+				for (int x = 0; x < width; x++)
+				{
+					int index = fieldRow + x;
+					if (body[index] == 0)
+					{
+						continue;
+					}
+					int leftX = x - 1;
+					if (leftX < 0)
+					{
+						leftX = 0;
+					}
+					int rightX = x + 1;
+					if (rightX >= width)
+					{
+						rightX = width - 1;
+					}
+					int upY = y - 1;
+					if (upY < 0)
+					{
+						upY = 0;
+					}
+					int downY = y + 1;
+					if (downY >= height)
+					{
+						downY = height - 1;
+					}
+					double gradX = (heightField[fieldRow + rightX] - heightField[fieldRow + leftX]) * rampSize / 510.0;
+					double gradY = (heightField[(downY * width) + x] - heightField[(upY * width) + x]) * rampSize / 510.0;
+					double intensity = ((gradX * lightX) + (gradY * lightY)) * depthScale;
+					if (intensity > 1.0)
+					{
+						intensity = 1.0;
+					}
+					if (intensity < -1.0)
+					{
+						intensity = -1.0;
+					}
+					double bodyScale = body[index] / 255.0;
+					byte outRed;
+					byte outGreen;
+					byte outBlue;
+					byte outAlpha;
+					if (intensity >= 0.0)
+					{
+						outRed = highlightColor.Red;
+						outGreen = highlightColor.Green;
+						outBlue = highlightColor.Blue;
+						outAlpha = ClampToByte(intensity * highlightOpacity * bodyScale);
+					}
+					else
+					{
+						outRed = shadowColor.Red;
+						outGreen = shadowColor.Green;
+						outBlue = shadowColor.Blue;
+						outAlpha = ClampToByte(-intensity * shadowOpacity * bodyScale);
+					}
+					if (outAlpha == 0)
+					{
+						continue;
+					}
+					byte* pixel = row + (x * 4);
+					pixel[0] = outRed;
+					pixel[1] = outGreen;
+					pixel[2] = outBlue;
+					pixel[3] = outAlpha;
+				}
+			}
+			return result;
+		}
+
 		public static unsafe SKBitmap RenderStroke(SKBitmap source, int size, int position, SKColor color, out int placeX, out int placeY)
+		{
+			return RenderStroke(source, size, position, color, 255, out placeX, out placeY);
+		}
+
+		public static unsafe SKBitmap RenderStroke(SKBitmap source, int size, int position, SKColor color, byte opacity, out int placeX, out int placeY)
 		{
 			int sourceWidth = source.Width;
 			int sourceHeight = source.Height;
@@ -405,7 +653,7 @@ namespace Bitmute.Imaging
 					pixel[0] = colorRed;
 					pixel[1] = colorGreen;
 					pixel[2] = colorBlue;
-					pixel[3] = 255;
+					pixel[3] = opacity;
 				}
 			}
 			return result;

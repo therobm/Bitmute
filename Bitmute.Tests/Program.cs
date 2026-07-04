@@ -90,6 +90,9 @@ namespace Bitmute.Tests
 			TestSelectionFeather();
 			TestEllipseAntiAlias();
 			TestIsSelectedThreshold();
+			TestInnerGlowInsideOnly();
+			TestSpreadDilatesBeforeBlur();
+			TestBevelOppositeSides();
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");
@@ -1767,6 +1770,114 @@ namespace Bitmute.Tests
 			Check(sel.Coverage(0, 0) == 127, "coverage accessor exact value");
 			Check(sel.Coverage(-1, 0) == 0, "coverage out of bounds x is zero");
 			Check(sel.Coverage(0, 9) == 0, "coverage out of bounds y is zero");
+		}
+
+		private static void TestInnerGlowInsideOnly()
+		{
+			SKBitmap source = new SKBitmap(16, 16, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			source.Erase(SKColors.Transparent);
+			SKColor opaque = new SKColor(200, 40, 40, 255);
+			for (int y = 4; y < 12; y++)
+			{
+				for (int x = 4; x < 12; x++)
+				{
+					source.SetPixel(x, y, opaque);
+				}
+			}
+			int placeX;
+			int placeY;
+			SKColor green = new SKColor(0, 255, 0, 255);
+			SKBitmap innerGlow = LayerStyles.RenderInnerGlow(source, green, 3, 0, 255, out placeX, out placeY);
+			Check(placeX == 0 && placeY == 0, "inner glow placement is the source origin");
+			Check(innerGlow.Width == 16 && innerGlow.Height == 16, "inner glow result matches source size");
+			bool outsideClear = true;
+			for (int y = 0; y < 16; y++)
+			{
+				for (int x = 0; x < 16; x++)
+				{
+					bool insideBody = x >= 4 && x < 12 && y >= 4 && y < 12;
+					if (insideBody)
+					{
+						continue;
+					}
+					if (innerGlow.GetPixel(x, y).Alpha != 0)
+					{
+						outsideClear = false;
+					}
+				}
+			}
+			Check(outsideClear, "inner glow writes no pixels outside the body alpha");
+			SKColor edgePixel = innerGlow.GetPixel(4, 8);
+			Check(edgePixel.Alpha > 0 && edgePixel.Green == 255, "inner glow halo present just inside the edge");
+			SKColor centerPixel = innerGlow.GetPixel(8, 8);
+			Check(centerPixel.Alpha < edgePixel.Alpha, "inner glow fades toward the body center");
+			innerGlow.Dispose();
+			source.Dispose();
+		}
+
+		private static void TestSpreadDilatesBeforeBlur()
+		{
+			SKBitmap source = new SKBitmap(16, 16, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			source.Erase(SKColors.Transparent);
+			SKColor opaque = new SKColor(200, 40, 40, 255);
+			for (int y = 4; y < 12; y++)
+			{
+				for (int x = 4; x < 12; x++)
+				{
+					source.SetPixel(x, y, opaque);
+				}
+			}
+			int hardPlaceX;
+			int hardPlaceY;
+			SKColor yellow = new SKColor(255, 255, 0, 255);
+			SKBitmap hard = LayerStyles.RenderOuterGlow(source, yellow, 4, 100, 255, out hardPlaceX, out hardPlaceY);
+			SKColor dilatedBand = hard.GetPixel(4, 12);
+			Check(dilatedBand.Alpha == 255, "spread 100 dilates the silhouette to a hard opaque band");
+			SKColor beyondBand = hard.GetPixel(3, 12);
+			Check(beyondBand.Alpha == 0, "spread 100 has a hard edge with no blur beyond the dilation");
+			hard.Dispose();
+			int softPlaceX;
+			int softPlaceY;
+			SKBitmap soft = LayerStyles.RenderOuterGlow(source, yellow, 4, 0, 255, out softPlaceX, out softPlaceY);
+			SKColor softBand = soft.GetPixel(4, 12);
+			Check(softBand.Alpha > 0 && softBand.Alpha < 255, "spread 0 keeps the soft blurred falloff");
+			int legacyPlaceX;
+			int legacyPlaceY;
+			SKBitmap legacy = LayerStyles.RenderOuterGlow(source, yellow, 4, 255, out legacyPlaceX, out legacyPlaceY);
+			Check(legacy.GetPixel(4, 12).Alpha == soft.GetPixel(4, 12).Alpha, "spread 0 output matches the legacy glow output");
+			legacy.Dispose();
+			soft.Dispose();
+			source.Dispose();
+		}
+
+		private static void TestBevelOppositeSides()
+		{
+			SKBitmap source = new SKBitmap(20, 20, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			source.Erase(SKColors.Transparent);
+			SKColor opaque = new SKColor(40, 40, 200, 255);
+			for (int y = 4; y < 16; y++)
+			{
+				for (int x = 4; x < 16; x++)
+				{
+					source.SetPixel(x, y, opaque);
+				}
+			}
+			int placeX;
+			int placeY;
+			SKColor white = new SKColor(255, 255, 255, 255);
+			SKColor black = new SKColor(0, 0, 0, 255);
+			SKBitmap bevel = LayerStyles.RenderBevel(source, 100, 3, 0, white, 255, black, 255, out placeX, out placeY);
+			Check(placeX == 0 && placeY == 0, "bevel placement is the source origin");
+			SKColor leftBand = bevel.GetPixel(5, 10);
+			Check(leftBand.Alpha > 0 && leftBand.Red == 255 && leftBand.Green == 255 && leftBand.Blue == 255, "bevel angle 0 lights the left edge with the highlight color");
+			SKColor rightBand = bevel.GetPixel(14, 10);
+			Check(rightBand.Alpha > 0 && rightBand.Red == 0 && rightBand.Green == 0 && rightBand.Blue == 0, "bevel angle 0 shades the right edge with the shadow color");
+			SKColor outside = bevel.GetPixel(2, 10);
+			Check(outside.Alpha == 0, "bevel writes nothing outside the body alpha");
+			SKColor center = bevel.GetPixel(10, 10);
+			Check(center.Alpha == 0, "bevel leaves the flat body center untouched");
+			bevel.Dispose();
+			source.Dispose();
 		}
 	}
 }

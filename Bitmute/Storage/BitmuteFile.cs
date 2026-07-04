@@ -144,6 +144,16 @@ namespace Bitmute.Storage
 			return fallback;
 		}
 
+		private static eBlendMode ReadBlendMode(JsonElement parent, string name)
+		{
+			int value = ReadInt(parent, name, 0);
+			if (value < (int)eBlendMode.Normal || value > (int)eBlendMode.Luminosity)
+			{
+				return eBlendMode.Normal;
+			}
+			return (eBlendMode)value;
+		}
+
 		private static SKRectI ComputeMaskBounds(byte[] mask, int width, int height)
 		{
 			int minX = width;
@@ -260,6 +270,9 @@ namespace Bitmute.Storage
 				SKColor strokeColor = layerStyle.m_strokeColor;
 				SKColor shadowColor = layerStyle.m_shadowColor;
 				SKColor glowColor = layerStyle.m_glowColor;
+				SKColor innerGlowColor = layerStyle.m_innerGlowColor;
+				SKColor bevelHighlightColor = layerStyle.m_bevelHighlightColor;
+				SKColor bevelShadowColor = layerStyle.m_bevelShadowColor;
 				writer.WriteStartObject("layerStyle");
 				writer.WriteBoolean("hasStroke", layerStyle.m_hasStroke);
 				writer.WriteNumber("strokeSize", layerStyle.m_strokeSize);
@@ -268,6 +281,8 @@ namespace Bitmute.Storage
 				writer.WriteNumber("strokeColorGreen", (int)strokeColor.Green);
 				writer.WriteNumber("strokeColorBlue", (int)strokeColor.Blue);
 				writer.WriteNumber("strokeColorAlpha", (int)strokeColor.Alpha);
+				writer.WriteNumber("strokeOpacity", layerStyle.m_strokeOpacity);
+				writer.WriteNumber("strokeBlendMode", (int)layerStyle.m_strokeBlendMode);
 				writer.WriteBoolean("hasDropShadow", layerStyle.m_hasDropShadow);
 				writer.WriteNumber("shadowColorRed", (int)shadowColor.Red);
 				writer.WriteNumber("shadowColorGreen", (int)shadowColor.Green);
@@ -277,6 +292,8 @@ namespace Bitmute.Storage
 				writer.WriteNumber("shadowAngle", layerStyle.m_shadowAngle);
 				writer.WriteNumber("shadowDistance", layerStyle.m_shadowDistance);
 				writer.WriteNumber("shadowSize", layerStyle.m_shadowSize);
+				writer.WriteNumber("shadowSpread", layerStyle.m_shadowSpread);
+				writer.WriteNumber("shadowBlendMode", (int)layerStyle.m_shadowBlendMode);
 				writer.WriteBoolean("hasOuterGlow", layerStyle.m_hasOuterGlow);
 				writer.WriteNumber("glowColorRed", (int)glowColor.Red);
 				writer.WriteNumber("glowColorGreen", (int)glowColor.Green);
@@ -284,6 +301,32 @@ namespace Bitmute.Storage
 				writer.WriteNumber("glowColorAlpha", (int)glowColor.Alpha);
 				writer.WriteNumber("glowOpacity", layerStyle.m_glowOpacity);
 				writer.WriteNumber("glowSize", layerStyle.m_glowSize);
+				writer.WriteNumber("glowSpread", layerStyle.m_glowSpread);
+				writer.WriteNumber("glowBlendMode", (int)layerStyle.m_glowBlendMode);
+				writer.WriteBoolean("hasInnerGlow", layerStyle.m_hasInnerGlow);
+				writer.WriteNumber("innerGlowColorRed", (int)innerGlowColor.Red);
+				writer.WriteNumber("innerGlowColorGreen", (int)innerGlowColor.Green);
+				writer.WriteNumber("innerGlowColorBlue", (int)innerGlowColor.Blue);
+				writer.WriteNumber("innerGlowColorAlpha", (int)innerGlowColor.Alpha);
+				writer.WriteNumber("innerGlowOpacity", layerStyle.m_innerGlowOpacity);
+				writer.WriteNumber("innerGlowSize", layerStyle.m_innerGlowSize);
+				writer.WriteNumber("innerGlowSpread", layerStyle.m_innerGlowSpread);
+				writer.WriteNumber("innerGlowBlendMode", (int)layerStyle.m_innerGlowBlendMode);
+				writer.WriteBoolean("hasBevel", layerStyle.m_hasBevel);
+				writer.WriteNumber("bevelDepth", layerStyle.m_bevelDepth);
+				writer.WriteNumber("bevelSize", layerStyle.m_bevelSize);
+				writer.WriteNumber("bevelAngle", layerStyle.m_bevelAngle);
+				writer.WriteNumber("bevelHighlightColorRed", (int)bevelHighlightColor.Red);
+				writer.WriteNumber("bevelHighlightColorGreen", (int)bevelHighlightColor.Green);
+				writer.WriteNumber("bevelHighlightColorBlue", (int)bevelHighlightColor.Blue);
+				writer.WriteNumber("bevelHighlightColorAlpha", (int)bevelHighlightColor.Alpha);
+				writer.WriteNumber("bevelHighlightOpacity", layerStyle.m_bevelHighlightOpacity);
+				writer.WriteNumber("bevelShadowColorRed", (int)bevelShadowColor.Red);
+				writer.WriteNumber("bevelShadowColorGreen", (int)bevelShadowColor.Green);
+				writer.WriteNumber("bevelShadowColorBlue", (int)bevelShadowColor.Blue);
+				writer.WriteNumber("bevelShadowColorAlpha", (int)bevelShadowColor.Alpha);
+				writer.WriteNumber("bevelShadowOpacity", layerStyle.m_bevelShadowOpacity);
+				writer.WriteNumber("bevelBlendMode", (int)layerStyle.m_bevelBlendMode);
 				writer.WriteEndObject();
 				writer.WriteEndObject();
 			}
@@ -500,6 +543,27 @@ namespace Bitmute.Storage
 				style.m_glowColor = new SKColor(ClampByte(ReadInt(styleElement, "glowColorRed", 255)), ClampByte(ReadInt(styleElement, "glowColorGreen", 255)), ClampByte(ReadInt(styleElement, "glowColorBlue", 190)), ClampByte(ReadInt(styleElement, "glowColorAlpha", 255)));
 				style.m_glowOpacity = ReadInt(styleElement, "glowOpacity", 75);
 				style.m_glowSize = ReadInt(styleElement, "glowSize", 5);
+				style.m_strokeOpacity = ReadInt(styleElement, "strokeOpacity", 100);
+				style.m_strokeBlendMode = ReadBlendMode(styleElement, "strokeBlendMode");
+				style.m_shadowSpread = ReadInt(styleElement, "shadowSpread", 0);
+				style.m_shadowBlendMode = ReadBlendMode(styleElement, "shadowBlendMode");
+				style.m_glowSpread = ReadInt(styleElement, "glowSpread", 0);
+				style.m_glowBlendMode = ReadBlendMode(styleElement, "glowBlendMode");
+				style.m_hasInnerGlow = ReadBool(styleElement, "hasInnerGlow", false);
+				style.m_innerGlowColor = new SKColor(ClampByte(ReadInt(styleElement, "innerGlowColorRed", 255)), ClampByte(ReadInt(styleElement, "innerGlowColorGreen", 255)), ClampByte(ReadInt(styleElement, "innerGlowColorBlue", 190)), ClampByte(ReadInt(styleElement, "innerGlowColorAlpha", 255)));
+				style.m_innerGlowOpacity = ReadInt(styleElement, "innerGlowOpacity", 75);
+				style.m_innerGlowSize = ReadInt(styleElement, "innerGlowSize", 5);
+				style.m_innerGlowSpread = ReadInt(styleElement, "innerGlowSpread", 0);
+				style.m_innerGlowBlendMode = ReadBlendMode(styleElement, "innerGlowBlendMode");
+				style.m_hasBevel = ReadBool(styleElement, "hasBevel", false);
+				style.m_bevelDepth = ReadInt(styleElement, "bevelDepth", 100);
+				style.m_bevelSize = ReadInt(styleElement, "bevelSize", 5);
+				style.m_bevelAngle = ReadInt(styleElement, "bevelAngle", 120);
+				style.m_bevelHighlightColor = new SKColor(ClampByte(ReadInt(styleElement, "bevelHighlightColorRed", 255)), ClampByte(ReadInt(styleElement, "bevelHighlightColorGreen", 255)), ClampByte(ReadInt(styleElement, "bevelHighlightColorBlue", 255)), ClampByte(ReadInt(styleElement, "bevelHighlightColorAlpha", 255)));
+				style.m_bevelHighlightOpacity = ReadInt(styleElement, "bevelHighlightOpacity", 75);
+				style.m_bevelShadowColor = new SKColor(ClampByte(ReadInt(styleElement, "bevelShadowColorRed", 0)), ClampByte(ReadInt(styleElement, "bevelShadowColorGreen", 0)), ClampByte(ReadInt(styleElement, "bevelShadowColorBlue", 0)), ClampByte(ReadInt(styleElement, "bevelShadowColorAlpha", 255)));
+				style.m_bevelShadowOpacity = ReadInt(styleElement, "bevelShadowOpacity", 75);
+				style.m_bevelBlendMode = ReadBlendMode(styleElement, "bevelBlendMode");
 				layer.SetLayerStyle(style);
 			}
 			return layer;

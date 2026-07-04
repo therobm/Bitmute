@@ -79,6 +79,7 @@ namespace Bitmute.UI
 		private int m_editingSwatchIndex = -1;
 		private LayerStyle m_layerStyleSnapshot;
 		private int m_layerStyleTargetIndex;
+		private LayerStyle m_copiedLayerStyle;
 
 		public List<MenuBarItem> GetSubmenuItems(eMenuAction parent)
 		{
@@ -1460,7 +1461,7 @@ namespace Bitmute.UI
 			}
 			m_layerStyleSnapshot = layer.LayerStyle().Clone();
 			m_layerStyleTargetIndex = document.ActiveLayerIndex();
-			ShowModal(new LayerStyleDialog(layer.LayerStyle().Clone()), 620.0, 340.0);
+			ShowModal(new LayerStyleDialog(layer.LayerStyle().Clone()), 620.0, 460.0);
 		}
 
 		public void OpenLayerPropertiesDialog()
@@ -2795,13 +2796,15 @@ namespace Bitmute.UI
 			menu.Spacing = 0.0;
 			menu.Padding = new Thickness(0.0, 4.0, 0.0, 4.0);
 			menu.Add(BuildContextMenuRow("Layer Style…", OnContextLayerStyle));
+			menu.Add(BuildContextMenuRow("Copy Layer Style", OnContextCopyLayerStyle));
+			menu.Add(BuildContextMenuRow("Paste Layer Style", OnContextPasteLayerStyle));
 			menu.Add(BuildContextMenuRow("Layer Properties…", OnContextLayerProperties));
 			menu.Add(BuildContextMenuRow("Duplicate Layer", OnContextDuplicateLayer));
 			menu.Add(BuildContextMenuRow("Merge Down", OnContextMergeDown));
 			menu.Add(BuildContextMenuRow("Rasterize Text", OnContextRasterizeText));
 			menu.Add(MenuBar.BuildMenuSeparator());
 			menu.Add(BuildContextMenuRow("Delete Layer", OnContextDeleteLayer));
-			double height = (6.0 * MenuBar.MenuItemHeight) + MenuBar.MenuSeparatorHeight + 8.0;
+			double height = (8.0 * MenuBar.MenuItemHeight) + MenuBar.MenuSeparatorHeight + 8.0;
 			ShowPulldown(menu, anchorX, anchorY, MenuBar.DropdownWidth, height);
 		}
 
@@ -2809,6 +2812,51 @@ namespace Bitmute.UI
 		{
 			ClosePulldown();
 			OpenLayerStyleDialog();
+		}
+
+		private void OnContextCopyLayerStyle(object sender, TappedEventArgs eventArgs)
+		{
+			ClosePulldown();
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			m_copiedLayerStyle = layer.LayerStyle().Clone();
+		}
+
+		private void OnContextPasteLayerStyle(object sender, TappedEventArgs eventArgs)
+		{
+			ClosePulldown();
+			if (m_copiedLayerStyle == null)
+			{
+				return;
+			}
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			document.BeginCanvasEdit("Paste Layer Style");
+			layer.SetLayerStyle(m_copiedLayerStyle.Clone());
+			document.EndCanvasEdit();
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.MarkComposeDirty();
+				canvas.InvalidateSurface();
+			}
+			RefreshPanels();
 		}
 
 		private void OnContextLayerProperties(object sender, TappedEventArgs eventArgs)
