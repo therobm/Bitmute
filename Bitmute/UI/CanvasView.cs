@@ -29,6 +29,7 @@ namespace Bitmute.UI
 		private static readonly SKColor s_checkerDark = new SKColor(0xC8, 0xC8, 0xC8);
 		private static readonly SKColor s_border = new SKColor(0x10, 0x10, 0x10);
 		private const int CheckerSquare = 8;
+		private const int GridCellSize = 16;
 		private const float AntLength = 6.0f;
 		private const float AntStrokeWidth = 1.0f;
 
@@ -254,7 +255,7 @@ namespace Bitmute.UI
 			MainView gridMain = MainView.Self;
 			if (gridMain != null && gridMain.GridEnabled())
 			{
-				GridOverlay.Draw(canvas, m_offsetX, m_offsetY, m_zoom, m_document.Width(), m_document.Height(), 16, true);
+				GridOverlay.Draw(canvas, m_offsetX, m_offsetY, m_zoom, m_document.Width(), m_document.Height(), GridCellSize, true);
 			}
 
 			DrawGuides(canvas, info.Width, info.Height);
@@ -1629,11 +1630,22 @@ namespace Bitmute.UI
 				{
 					snapTolerance = 3;
 				}
-				Bitmute.Imaging.Guides snapGuides = m_document.Guides();
-				pixelX = snapGuides.SnapX(pixelX, snapTolerance);
-				pixelY = snapGuides.SnapY(pixelY, snapTolerance);
-				pixelX = SnapToEdge(pixelX, m_document.Width(), snapTolerance);
-				pixelY = SnapToEdge(pixelY, m_document.Height(), snapTolerance);
+				if (main.SnapTargetGuides())
+				{
+					Bitmute.Imaging.Guides snapGuides = m_document.Guides();
+					pixelX = snapGuides.SnapX(pixelX, snapTolerance);
+					pixelY = snapGuides.SnapY(pixelY, snapTolerance);
+				}
+				if (main.SnapTargetGrid())
+				{
+					pixelX = SnapToGrid(pixelX, snapTolerance);
+					pixelY = SnapToGrid(pixelY, snapTolerance);
+				}
+				if (main.SnapTargetEdges())
+				{
+					pixelX = SnapToEdge(pixelX, m_document.Width(), snapTolerance);
+					pixelY = SnapToEdge(pixelY, m_document.Height(), snapTolerance);
+				}
 			}
 
 			if (tool is TextTool)
@@ -1751,7 +1763,12 @@ namespace Bitmute.UI
 			{
 				guideSnapTolerance = 3;
 			}
-			state.SetSnapToGuides(main.SnapEnabled());
+			bool snapMaster = main.SnapEnabled();
+			state.SetSnapToGuides(snapMaster && main.SnapTargetGuides());
+			state.SetSnapGrid(snapMaster && main.SnapTargetGrid());
+			state.SetSnapEdges(snapMaster && main.SnapTargetEdges());
+			state.SetSnapLayerBounds(snapMaster && main.SnapTargetLayerBounds());
+			state.SetSnapGridSize(GridCellSize);
 			state.SetSnapTolerance(guideSnapTolerance);
 
 			bool changed = false;
@@ -1909,6 +1926,32 @@ namespace Bitmute.UI
 			if (highDelta <= tolerance)
 			{
 				return extent;
+			}
+			return value;
+		}
+
+		private static int SnapToGrid(int value, int tolerance)
+		{
+			int half = GridCellSize / 2;
+			int shifted;
+			if (value >= 0)
+			{
+				shifted = value + half;
+			}
+			else
+			{
+				shifted = value - half;
+			}
+			int nearest = (shifted / GridCellSize) * GridCellSize;
+			int delta = nearest - value;
+			int magnitude = delta;
+			if (magnitude < 0)
+			{
+				magnitude = -magnitude;
+			}
+			if (magnitude <= tolerance)
+			{
+				return nearest;
 			}
 			return value;
 		}

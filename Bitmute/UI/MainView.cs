@@ -206,6 +206,10 @@ namespace Bitmute.UI
 		private CanvasView m_guideCreateCanvas;
 		private bool m_gridEnabled;
 		private bool m_snapEnabled;
+		private bool m_snapTargetGuides;
+		private bool m_snapTargetGrid;
+		private bool m_snapTargetEdges;
+		private bool m_snapTargetLayerBounds;
 		private int m_channelViewMode;
 		private double m_openDropdownX;
 		private List<Border> m_submenuParentRows;
@@ -281,6 +285,10 @@ namespace Bitmute.UI
 			{
 				return true;
 			}
+			if (title == "View" && item == "Snap To")
+			{
+				return true;
+			}
 			return false;
 		}
 
@@ -298,6 +306,10 @@ namespace Bitmute.UI
 			if (title == "Edit" && item == "Transform")
 			{
 				return new string[] { "Free Transform", "Scale", "Rotate", "Skew", "Distort", "Perspective", "Flip Horizontal (Layer)", "Flip Vertical (Layer)" };
+			}
+			if (title == "View" && item == "Snap To")
+			{
+				return new string[] { PanelMenuLabel("Snap Guides", m_snapTargetGuides), PanelMenuLabel("Snap Grid", m_snapTargetGrid), PanelMenuLabel("Snap Edges", m_snapTargetEdges), PanelMenuLabel("Snap Layers", m_snapTargetLayerBounds) };
 			}
 			return new string[] { };
 		}
@@ -362,7 +374,7 @@ namespace Bitmute.UI
 			}
 			if (title == "View")
 			{
-				return new string[] { "Zoom In", "Zoom Out", "Fit on Screen", "Rulers", "Grid", PanelMenuLabel("Snap to Guides", m_snapEnabled), PanelMenuLabel("Lock Guides", GuidesLocked()), "Clear Guides" };
+				return new string[] { "Zoom In", "Zoom Out", "Fit on Screen", "Rulers", "Grid", PanelMenuLabel("Snap", m_snapEnabled), "Snap To", PanelMenuLabel("Lock Guides", GuidesLocked()), "Clear Guides" };
 			}
 			if (title == "Window")
 			{
@@ -919,10 +931,34 @@ namespace Bitmute.UI
 				ToggleGrid();
 				return;
 			}
-			if (action == "Snap to Guides" || action == "✓ Snap to Guides")
+			if (action == "Snap" || action == "✓ Snap")
 			{
 				m_snapEnabled = !m_snapEnabled;
 				Microsoft.Maui.Storage.Preferences.Default.Set("snap_enabled", m_snapEnabled);
+				return;
+			}
+			if (action == "Snap Guides" || action == "✓ Snap Guides")
+			{
+				m_snapTargetGuides = !m_snapTargetGuides;
+				Microsoft.Maui.Storage.Preferences.Default.Set("snap_target_guides", m_snapTargetGuides);
+				return;
+			}
+			if (action == "Snap Grid" || action == "✓ Snap Grid")
+			{
+				m_snapTargetGrid = !m_snapTargetGrid;
+				Microsoft.Maui.Storage.Preferences.Default.Set("snap_target_grid", m_snapTargetGrid);
+				return;
+			}
+			if (action == "Snap Edges" || action == "✓ Snap Edges")
+			{
+				m_snapTargetEdges = !m_snapTargetEdges;
+				Microsoft.Maui.Storage.Preferences.Default.Set("snap_target_edges", m_snapTargetEdges);
+				return;
+			}
+			if (action == "Snap Layers" || action == "✓ Snap Layers")
+			{
+				m_snapTargetLayerBounds = !m_snapTargetLayerBounds;
+				Microsoft.Maui.Storage.Preferences.Default.Set("snap_target_layer_bounds", m_snapTargetLayerBounds);
 				return;
 			}
 			if (action == "Lock Guides" || action == "✓ Lock Guides")
@@ -2891,6 +2927,10 @@ namespace Bitmute.UI
 			m_gridEnabled = false;
 			m_channelViewMode = -1;
 			m_snapEnabled = Microsoft.Maui.Storage.Preferences.Default.Get("snap_enabled", true);
+			m_snapTargetGuides = Microsoft.Maui.Storage.Preferences.Default.Get("snap_target_guides", true);
+			m_snapTargetGrid = Microsoft.Maui.Storage.Preferences.Default.Get("snap_target_grid", true);
+			m_snapTargetEdges = Microsoft.Maui.Storage.Preferences.Default.Get("snap_target_edges", true);
+			m_snapTargetLayerBounds = Microsoft.Maui.Storage.Preferences.Default.Get("snap_target_layer_bounds", true);
 			m_submenuParentRows = new List<Border>();
 			m_submenuParentNames = new List<string>();
 			m_submenuParentIndices = new List<int>();
@@ -6007,6 +6047,26 @@ namespace Bitmute.UI
 		public bool SnapEnabled()
 		{
 			return m_snapEnabled;
+		}
+
+		public bool SnapTargetGuides()
+		{
+			return m_snapTargetGuides;
+		}
+
+		public bool SnapTargetGrid()
+		{
+			return m_snapTargetGrid;
+		}
+
+		public bool SnapTargetEdges()
+		{
+			return m_snapTargetEdges;
+		}
+
+		public bool SnapTargetLayerBounds()
+		{
+			return m_snapTargetLayerBounds;
 		}
 
 		public void BeginTransform(int mode)

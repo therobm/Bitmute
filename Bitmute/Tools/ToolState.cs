@@ -27,6 +27,10 @@ namespace Bitmute.Tools
 		private bool m_gradientReverse;
 		private bool m_gradientToTransparent;
 		private bool m_snapToGuides;
+		private bool m_snapGrid;
+		private bool m_snapEdges;
+		private bool m_snapLayerBounds;
+		private int m_snapGridSize;
 		private int m_snapTolerance;
 		private bool m_airbrush;
 		private bool m_cloneAligned;
@@ -78,6 +82,10 @@ namespace Bitmute.Tools
 			m_gradientReverse = false;
 			m_gradientToTransparent = false;
 			m_snapToGuides = false;
+			m_snapGrid = false;
+			m_snapEdges = false;
+			m_snapLayerBounds = false;
+			m_snapGridSize = 16;
 			m_snapTolerance = 6;
 			m_airbrush = false;
 			m_cloneAligned = true;
@@ -652,6 +660,46 @@ namespace Bitmute.Tools
 		public void SetSnapTolerance(int tolerance)
 		{
 			m_snapTolerance = tolerance;
+		}
+
+		public bool SnapGrid()
+		{
+			return m_snapGrid;
+		}
+
+		public void SetSnapGrid(bool snap)
+		{
+			m_snapGrid = snap;
+		}
+
+		public bool SnapEdges()
+		{
+			return m_snapEdges;
+		}
+
+		public void SetSnapEdges(bool snap)
+		{
+			m_snapEdges = snap;
+		}
+
+		public bool SnapLayerBounds()
+		{
+			return m_snapLayerBounds;
+		}
+
+		public void SetSnapLayerBounds(bool snap)
+		{
+			m_snapLayerBounds = snap;
+		}
+
+		public int SnapGridSize()
+		{
+			return m_snapGridSize;
+		}
+
+		public void SetSnapGridSize(int size)
+		{
+			m_snapGridSize = size;
 		}
 
 		public bool Airbrush()

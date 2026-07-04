@@ -44,6 +44,7 @@ namespace Bitmute.Tests
 			TestCompositeRangeInto();
 			TestGuideStickyCenter();
 			TestMoveSnapToGuides();
+			TestMoveSnapTargets();
 			TestMovePerfRegion();
 			TestSpongeMath();
 			TestColorReplaceMath();
@@ -768,6 +769,44 @@ namespace Bitmute.Tests
 			moveOff.OnPressed(docOff, 30, 20, stateOff);
 			moveOff.OnDragged(docOff, 33, 20, stateOff);
 			Check(contentOff.OffsetX() == 3, "no snap keeps raw delta (offset 3)");
+		}
+
+		private static Layer AddMarkedContent(Document doc)
+		{
+			SKColor mark = new SKColor(255, 0, 0, 255);
+			Layer content = doc.AddLayer("c");
+			for (int y = 4; y < 14; y++)
+			{
+				for (int x = 5; x < 15; x++)
+				{
+					content.Bitmap().SetPixel(x, y, mark);
+				}
+			}
+			return content;
+		}
+
+		private static void TestMoveSnapTargets()
+		{
+			Document gridDoc = new Document("t", 64, 48);
+			Layer gridContent = AddMarkedContent(gridDoc);
+			ToolState gridState = new ToolState();
+			gridState.SetSnapGrid(true);
+			gridState.SetSnapGridSize(16);
+			gridState.SetSnapTolerance(6);
+			MoveTool gridMove = new MoveTool();
+			gridMove.OnPressed(gridDoc, 30, 20, gridState);
+			gridMove.OnDragged(gridDoc, 33, 20, gridState);
+			Check(gridContent.OffsetX() == 1, "move snaps right edge to grid line (offset 1)");
+
+			Document edgeDoc = new Document("t", 64, 48);
+			Layer edgeContent = AddMarkedContent(edgeDoc);
+			ToolState edgeState = new ToolState();
+			edgeState.SetSnapEdges(true);
+			edgeState.SetSnapTolerance(6);
+			MoveTool edgeMove = new MoveTool();
+			edgeMove.OnPressed(edgeDoc, 30, 20, edgeState);
+			edgeMove.OnDragged(edgeDoc, 23, 20, edgeState);
+			Check(edgeContent.OffsetX() == -5, "move snaps left edge to canvas edge (offset -5)");
 		}
 
 		private static void FillPositionGradient(Layer layer)

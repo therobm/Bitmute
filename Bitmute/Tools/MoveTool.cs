@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Bitmute.Imaging;
 using SkiaSharp;
 
@@ -21,6 +22,8 @@ namespace Bitmute.Tools
 		private bool m_moveContentValid;
 		private int m_prevDeltaX;
 		private int m_prevDeltaY;
+		private List<int> m_snapLayerXs;
+		private List<int> m_snapLayerYs;
 
 		private static SKRectI OffsetRectI(SKRectI rect, int deltaX, int deltaY)
 		{
@@ -111,53 +114,112 @@ namespace Bitmute.Tools
 			return OffsetRectI(local, layer.OffsetX(), layer.OffsetY());
 		}
 
-		private static int NearestGuideDelta(Guides guides, int edgeLow, int edgeMid, int edgeHigh, int tolerance, bool vertical)
+		private static int NearestMultiple(int value, int gridSize)
+		{
+			int half = gridSize / 2;
+			int shifted;
+			if (value >= 0)
+			{
+				shifted = value + half;
+			}
+			else
+			{
+				shifted = value - half;
+			}
+			return (shifted / gridSize) * gridSize;
+		}
+
+		private static int BestAxisDelta(int edgeLow, int edgeMid, int edgeHigh, List<int> candidates, int tolerance, int gridSize)
 		{
 			int bestDelta = 0;
 			int bestDistance = tolerance + 1;
 			int[] edges = new int[] { edgeLow, edgeMid, edgeHigh };
 			for (int index = 0; index < 3; index++)
 			{
-				int hit;
-				if (vertical)
+				for (int candidate = 0; candidate < candidates.Count; candidate++)
 				{
-					hit = guides.HitVertical(edges[index], tolerance);
+					int delta = candidates[candidate] - edges[index];
+					int magnitude = delta;
+					if (magnitude < 0)
+					{
+						magnitude = -magnitude;
+					}
+					if (magnitude > tolerance)
+					{
+						continue;
+					}
+					if (magnitude < bestDistance)
+					{
+						bestDistance = magnitude;
+						bestDelta = delta;
+					}
 				}
-				else
+				if (gridSize > 0)
 				{
-					hit = guides.HitHorizontal(edges[index], tolerance);
-				}
-				if (hit < 0)
-				{
-					continue;
-				}
-				int guidePos;
-				if (vertical)
-				{
-					guidePos = guides.VerticalGuides()[hit];
-				}
-				else
-				{
-					guidePos = guides.HorizontalGuides()[hit];
-				}
-				int distance = guidePos - edges[index];
-				int magnitude = distance;
-				if (magnitude < 0)
-				{
-					magnitude = -magnitude;
-				}
-				if (magnitude < bestDistance)
-				{
-					bestDistance = magnitude;
-					bestDelta = distance;
+					int nearest = NearestMultiple(edges[index], gridSize);
+					int delta = nearest - edges[index];
+					int magnitude = delta;
+					if (magnitude < 0)
+					{
+						magnitude = -magnitude;
+					}
+					if (magnitude <= tolerance && magnitude < bestDistance)
+					{
+						bestDistance = magnitude;
+						bestDelta = delta;
+					}
 				}
 			}
 			return bestDelta;
 		}
 
-		private void SnapDeltaToGuides(Document document, ToolState state, ref int deltaX, ref int deltaY)
+		private void AddGuideCandidates(Guides guides, List<int> xs, List<int> ys)
 		{
-			if (!state.SnapToGuides())
+			List<int> verticals = guides.VerticalGuides();
+			for (int index = 0; index < verticals.Count; index++)
+			{
+				xs.Add(verticals[index]);
+			}
+			List<int> horizontals = guides.HorizontalGuides();
+			for (int index = 0; index < horizontals.Count; index++)
+			{
+				ys.Add(horizontals[index]);
+			}
+		}
+
+		private void CacheLayerBoundsCandidates(Document document)
+		{
+			m_snapLayerXs = new List<int>();
+			m_snapLayerYs = new List<int>();
+			int activeIndex = document.ActiveLayerIndex();
+			List<Layer> layers = document.Layers();
+			for (int index = 0; index < layers.Count; index++)
+			{
+				if (index == activeIndex)
+				{
+					continue;
+				}
+				Layer other = layers[index];
+				if (!other.IsVisible())
+				{
+					continue;
+				}
+				SKRectI box = CanvasContentBounds(other);
+				if (box.Width <= 0 || box.Height <= 0)
+				{
+					continue;
+				}
+				m_snapLayerXs.Add(box.Left);
+				m_snapLayerXs.Add(box.Right);
+				m_snapLayerYs.Add(box.Top);
+				m_snapLayerYs.Add(box.Bottom);
+			}
+		}
+
+		private void SnapDelta(Document document, ToolState state, ref int deltaX, ref int deltaY)
+		{
+			bool anyTarget = state.SnapToGuides() || state.SnapGrid() || state.SnapEdges() || state.SnapLayerBounds();
+			if (!anyTarget)
 			{
 				return;
 			}
@@ -165,16 +227,44 @@ namespace Bitmute.Tools
 			{
 				return;
 			}
-			Guides guides = document.Guides();
 			int tolerance = state.SnapTolerance();
+			List<int> xs = new List<int>();
+			List<int> ys = new List<int>();
+			if (state.SnapToGuides())
+			{
+				AddGuideCandidates(document.Guides(), xs, ys);
+			}
+			if (state.SnapEdges())
+			{
+				xs.Add(0);
+				xs.Add(document.Width());
+				ys.Add(0);
+				ys.Add(document.Height());
+			}
+			if (state.SnapLayerBounds() && m_snapLayerXs != null)
+			{
+				for (int index = 0; index < m_snapLayerXs.Count; index++)
+				{
+					xs.Add(m_snapLayerXs[index]);
+				}
+				for (int index = 0; index < m_snapLayerYs.Count; index++)
+				{
+					ys.Add(m_snapLayerYs[index]);
+				}
+			}
 			int left = m_moveContentBounds.Left + deltaX;
 			int right = m_moveContentBounds.Right + deltaX;
-			int centerX = (m_moveContentBounds.Left + m_moveContentBounds.Right) / 2 + deltaX;
+			int centerX = ((m_moveContentBounds.Left + m_moveContentBounds.Right) / 2) + deltaX;
 			int top = m_moveContentBounds.Top + deltaY;
 			int bottom = m_moveContentBounds.Bottom + deltaY;
-			int centerY = (m_moveContentBounds.Top + m_moveContentBounds.Bottom) / 2 + deltaY;
-			deltaX = deltaX + NearestGuideDelta(guides, left, centerX, right, tolerance, true);
-			deltaY = deltaY + NearestGuideDelta(guides, top, centerY, bottom, tolerance, false);
+			int centerY = ((m_moveContentBounds.Top + m_moveContentBounds.Bottom) / 2) + deltaY;
+			int gridSize = 0;
+			if (state.SnapGrid())
+			{
+				gridSize = state.SnapGridSize();
+			}
+			deltaX = deltaX + BestAxisDelta(left, centerX, right, xs, tolerance, gridSize);
+			deltaY = deltaY + BestAxisDelta(top, centerY, bottom, ys, tolerance, gridSize);
 		}
 
 		private SKBitmap ExtractSelected(Layer layer, Selection selection)
@@ -308,6 +398,12 @@ namespace Bitmute.Tools
 				m_oldOffsetY = layer.OffsetY();
 				CacheMoveContentBounds(layer, CanvasContentBounds(layer));
 			}
+			m_snapLayerXs = null;
+			m_snapLayerYs = null;
+			if (state.SnapLayerBounds())
+			{
+				CacheLayerBoundsCandidates(document);
+			}
 			return false;
 		}
 
@@ -320,7 +416,7 @@ namespace Bitmute.Tools
 			}
 			int deltaX = x - m_startX;
 			int deltaY = y - m_startY;
-			SnapDeltaToGuides(document, state, ref deltaX, ref deltaY);
+			SnapDelta(document, state, ref deltaX, ref deltaY);
 			if (m_textMode)
 			{
 				layer.SetTextPosition(m_oldTextX + deltaX, m_oldTextY + deltaY);
