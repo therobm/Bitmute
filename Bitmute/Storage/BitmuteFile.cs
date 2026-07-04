@@ -274,6 +274,20 @@ namespace Bitmute.Storage
 			}
 			writer.WriteEndArray();
 			writer.WriteEndObject();
+			writer.WriteStartArray("slices");
+			Slices slices = document.Slices();
+			for (int index = 0; index < slices.Count(); index++)
+			{
+				SkiaSharp.SKRectI sliceRect = slices.RectAt(index);
+				writer.WriteStartObject();
+				writer.WriteString("name", slices.NameAt(index));
+				writer.WriteNumber("left", sliceRect.Left);
+				writer.WriteNumber("top", sliceRect.Top);
+				writer.WriteNumber("right", sliceRect.Right);
+				writer.WriteNumber("bottom", sliceRect.Bottom);
+				writer.WriteEndObject();
+			}
+			writer.WriteEndArray();
 			writer.WriteEndObject();
 			writer.Flush();
 			writer.Dispose();
@@ -576,6 +590,25 @@ namespace Bitmute.Storage
 					{
 						guides.SetLocked(true);
 					}
+				}
+			}
+			System.Text.Json.JsonElement slicesElement;
+			if (root.TryGetProperty("slices", out slicesElement))
+			{
+				Slices slices = document.Slices();
+				foreach (System.Text.Json.JsonElement sliceEntry in slicesElement.EnumerateArray())
+				{
+					string sliceName = "";
+					System.Text.Json.JsonElement nameElement;
+					if (sliceEntry.TryGetProperty("name", out nameElement))
+					{
+						sliceName = nameElement.GetString();
+					}
+					int sliceLeft = ReadInt(sliceEntry, "left", 0);
+					int sliceTop = ReadInt(sliceEntry, "top", 0);
+					int sliceRight = ReadInt(sliceEntry, "right", 0);
+					int sliceBottom = ReadInt(sliceEntry, "bottom", 0);
+					slices.Add(sliceName, new SkiaSharp.SKRectI(sliceLeft, sliceTop, sliceRight, sliceBottom));
 				}
 			}
 			manifest.Dispose();

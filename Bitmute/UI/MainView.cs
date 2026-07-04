@@ -175,6 +175,8 @@ namespace Bitmute.UI
 		private ColorReplacementTool m_colorReplacementTool;
 		private SharpenTool m_sharpenTool;
 		private CloneTool m_cloneTool;
+		private HealTool m_healTool;
+		private SliceTool m_sliceTool;
 		private SmudgeTool m_smudgeTool;
 		private EyedropperTool m_eyedropperTool;
 		private FillTool m_fillTool;
@@ -2780,6 +2782,8 @@ namespace Bitmute.UI
 			m_colorReplacementTool = new ColorReplacementTool();
 			m_sharpenTool = new SharpenTool();
 			m_cloneTool = new CloneTool();
+			m_healTool = new HealTool();
+			m_sliceTool = new SliceTool();
 			m_smudgeTool = new SmudgeTool();
 			m_eyedropperTool = new EyedropperTool();
 			m_fillTool = new FillTool();
@@ -4175,7 +4179,7 @@ namespace Bitmute.UI
 			}
 			bool isSponge = tool == eTool.Sponge;
 			bool isColorReplace = tool == eTool.ColorReplacement;
-			bool isBrushFamily = tool == eTool.Brush || tool == eTool.Eraser || tool == eTool.Clone || tool == eTool.Blur || tool == eTool.Sharpen || tool == eTool.Smudge || tool == eTool.DodgeBurn || isSponge || isColorReplace;
+			bool isBrushFamily = tool == eTool.Brush || tool == eTool.Eraser || tool == eTool.Clone || tool == eTool.Heal || tool == eTool.Blur || tool == eTool.Sharpen || tool == eTool.Smudge || tool == eTool.DodgeBurn || isSponge || isColorReplace;
 			bool showsBlendMode = isBrushFamily && !isSponge && !isColorReplace;
 			bool usesSize = isBrushFamily || tool == eTool.Pencil || tool == eTool.Line;
 			if (m_brushSizeLabel != null)
@@ -4239,6 +4243,10 @@ namespace Bitmute.UI
 			if (m_cropTool != null)
 			{
 				m_cropTool.Reset();
+			}
+			if (m_sliceTool != null)
+			{
+				m_sliceTool.Reset();
 			}
 			if (m_freeTransformTool != null)
 			{
@@ -5782,6 +5790,14 @@ namespace Bitmute.UI
 			if (tool == eTool.Clone)
 			{
 				return m_cloneTool;
+			}
+			if (tool == eTool.Heal)
+			{
+				return m_healTool;
+			}
+			if (tool == eTool.Slice)
+			{
+				return m_sliceTool;
 			}
 			if (tool == eTool.Smudge)
 			{

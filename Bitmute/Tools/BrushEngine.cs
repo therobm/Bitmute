@@ -533,6 +533,33 @@ namespace Bitmute.Tools
 						destinationPixel[3] = (byte)((cloneOutAlpha * 255.0) + 0.5);
 						continue;
 					}
+					if (m_op == eBrushOp.Heal)
+					{
+						int healSourceX = bitmapX - m_cloneOffsetX;
+						int healSourceY = bitmapY - m_cloneOffsetY;
+						if (healSourceX < 0 || healSourceY < 0 || healSourceX >= m_width || healSourceY >= m_height)
+						{
+							continue;
+						}
+						byte* healSourcePixel = originalPixels + (healSourceY * originalRowBytes) + (healSourceX * 4);
+						double sourceAvgR;
+						double sourceAvgG;
+						double sourceAvgB;
+						BoxAverage(originalPixels, originalRowBytes, healSourceX, healSourceY, out sourceAvgR, out sourceAvgG, out sourceAvgB);
+						double destAvgR;
+						double destAvgG;
+						double destAvgB;
+						BoxAverage(originalPixels, originalRowBytes, bitmapX, bitmapY, out destAvgR, out destAvgG, out destAvgB);
+						byte healR;
+						byte healG;
+						byte healB;
+						HealMath.Apply(healSourcePixel[0], healSourcePixel[1], healSourcePixel[2], sourceAvgR, sourceAvgG, sourceAvgB, destAvgR, destAvgG, destAvgB, finalAlpha, originalPixel[0], originalPixel[1], originalPixel[2], out healR, out healG, out healB);
+						destinationPixel[0] = healR;
+						destinationPixel[1] = healG;
+						destinationPixel[2] = healB;
+						destinationPixel[3] = originalPixel[3];
+						continue;
+					}
 					double sourceRed = m_red;
 					double sourceGreen = m_green;
 					double sourceBlue = m_blue;

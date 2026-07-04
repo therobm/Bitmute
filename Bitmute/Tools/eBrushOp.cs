@@ -11,6 +11,7 @@ namespace Bitmute.Tools
 		Dodge,
 		Burn,
 		Sponge,
-		ColorReplace
+		ColorReplace,
+		Heal
 	}
 }

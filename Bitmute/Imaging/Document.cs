@@ -44,6 +44,7 @@ namespace Bitmute.Imaging
 		private bool m_dirty;
 		private string m_sourcePath;
 		private Guides m_guides;
+		private Slices m_slices;
 		private DocumentStateCommand m_pendingDocEdit;
 
 		public static Document OpenImage(string title, SKBitmap source)
@@ -77,6 +78,7 @@ namespace Bitmute.Imaging
 			m_dirty = false;
 			m_sourcePath = null;
 			m_guides = new Guides();
+			m_slices = new Slices();
 			m_pendingDocEdit = null;
 		}
 
@@ -377,6 +379,11 @@ namespace Bitmute.Imaging
 		public Guides Guides()
 		{
 			return m_guides;
+		}
+
+		public Slices Slices()
+		{
+			return m_slices;
 		}
 
 		public List<Layer> CloneLayers()

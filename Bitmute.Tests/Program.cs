@@ -48,6 +48,8 @@ namespace Bitmute.Tests
 			TestSpongeMath();
 			TestColorReplaceMath();
 			TestGradientFill();
+			TestHealMath();
+			TestSlices();
 			TestChannelRender();
 			TestWandContiguous();
 			TestWandNonContiguous();
@@ -323,6 +325,7 @@ namespace Bitmute.Tests
 			doc.Selection().SelectRect(new SKRectI(2, 2, 12, 8));
 			doc.Guides().AddVertical(7);
 			doc.Guides().AddHorizontal(15);
+			doc.Slices().Add("Slice 1", new SKRectI(3, 4, 12, 10));
 			bool wrote = BitmuteFile.Write(path, doc);
 			Check(wrote, "bitmute write");
 			Document back = BitmuteFile.Read(path);
@@ -351,6 +354,9 @@ namespace Bitmute.Tests
 			Check(!back.Selection().IsSelected(20, 20), "bitmute selection outside");
 			Check(back.Guides().VerticalGuides().Count == 1 && back.Guides().VerticalGuides()[0] == 7, "bitmute guide vertical round-trip");
 			Check(back.Guides().HorizontalGuides().Count == 1 && back.Guides().HorizontalGuides()[0] == 15, "bitmute guide horizontal round-trip");
+			Check(back.Slices().Count() == 1 && back.Slices().NameAt(0) == "Slice 1", "bitmute slice name round-trip");
+			SKRectI backSlice = back.Slices().RectAt(0);
+			Check(backSlice.Left == 3 && backSlice.Top == 4 && backSlice.Right == 12 && backSlice.Bottom == 10, "bitmute slice rect round-trip");
 		}
 
 		private static void TestCropToRect()
@@ -607,6 +613,36 @@ namespace Bitmute.Tests
 			ColorReplaceMath.Apply(200, 200, 200, 255, 0, 0, 3, 1.0, out rl, out gl, out bl);
 			Check(rl == gl && gl == bl, "color replace luminosity stays gray");
 			Check(rl < 200, "color replace luminosity uses fg luma");
+		}
+
+		private static void TestHealMath()
+		{
+			byte r;
+			byte g;
+			byte b;
+			HealMath.Apply(200, 200, 200, 180.0, 180.0, 180.0, 100.0, 100.0, 100.0, 1.0, 100, 100, 100, out r, out g, out b);
+			Check(r == 120 && g == 120 && b == 120, "heal transfers source detail onto dest color");
+			byte r0;
+			byte g0;
+			byte b0;
+			HealMath.Apply(200, 200, 200, 180.0, 180.0, 180.0, 100.0, 100.0, 100.0, 0.0, 100, 100, 100, out r0, out g0, out b0);
+			Check(r0 == 100 && g0 == 100 && b0 == 100, "heal zero strength keeps destination");
+		}
+
+		private static void TestSlices()
+		{
+			Slices slices = new Slices();
+			slices.Add("A", new SKRectI(2, 2, 10, 10));
+			slices.Add("B", new SKRectI(20, 20, 30, 30));
+			slices.Add("bad", new SKRectI(5, 5, 5, 5));
+			Check(slices.Count() == 2, "slices ignores zero-area rect");
+			Check(slices.NameAt(1) == "B", "slices name at index");
+			Check(slices.HitTest(25, 25) == 1, "slices hit test topmost");
+			Check(slices.HitTest(50, 50) == -1, "slices hit test miss");
+			int generationBefore = slices.Generation();
+			slices.RemoveAt(0);
+			Check(slices.Count() == 1 && slices.NameAt(0) == "B", "slices remove");
+			Check(slices.Generation() > generationBefore, "slices generation bumps");
 		}
 
 		private static void TestGradientFill()

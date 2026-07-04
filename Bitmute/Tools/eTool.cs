@@ -32,6 +32,8 @@ namespace Bitmute.Tools
 		Crop,
 		FreeTransform,
 		Sponge,
-		ColorReplacement
+		ColorReplacement,
+		Heal,
+		Slice
 	}
 }
