@@ -883,78 +883,45 @@ namespace Bitmute.UI
 			FinishCanvasOp(canvas, document);
 		}
 
-		private void OpenAdjustment(string id)
+		public static bool IsAdjustmentPreviewable(string id)
 		{
-			if (id == "rotate")
-			{
-				ShowModal(new AdjustmentDialog("Rotate Arbitrary", "rotate", new string[] { "Angle" }, new int[] { -180 }, new int[] { 180 }, new int[] { 0 }), 360.0, 170.0);
-				return;
-			}
 			if (id == "bc")
 			{
-				ShowModal(new AdjustmentDialog("Brightness/Contrast", "bc", new string[] { "Brightness", "Contrast" }, new int[] { -100, -100 }, new int[] { 100, 100 }, new int[] { 0, 0 }), 360.0, 200.0);
-				return;
+				return true;
 			}
 			if (id == "hsl")
 			{
-				ShowModal(new AdjustmentDialog("Hue/Saturation", "hsl", new string[] { "Hue", "Saturation", "Lightness" }, new int[] { -180, -100, -100 }, new int[] { 180, 100, 100 }, new int[] { 0, 0, 0 }), 360.0, 230.0);
-				return;
+				return true;
 			}
 			if (id == "posterize")
 			{
-				ShowModal(new AdjustmentDialog("Posterize", "posterize", new string[] { "Levels" }, new int[] { 2 }, new int[] { 64 }, new int[] { 8 }), 360.0, 170.0);
-				return;
+				return true;
 			}
 			if (id == "threshold")
 			{
-				ShowModal(new AdjustmentDialog("Threshold", "threshold", new string[] { "Level" }, new int[] { 0 }, new int[] { 255 }, new int[] { 128 }), 360.0, 170.0);
-				return;
+				return true;
 			}
 			if (id == "gblur")
 			{
-				ShowModal(new AdjustmentDialog("Gaussian Blur", "gblur", new string[] { "Radius" }, new int[] { 1 }, new int[] { 30 }, new int[] { 5 }), 360.0, 170.0);
-				return;
+				return true;
 			}
 			if (id == "unsharp")
 			{
-				ShowModal(new AdjustmentDialog("Unsharp Mask", "unsharp", new string[] { "Amount", "Radius" }, new int[] { 0, 1 }, new int[] { 300, 30 }, new int[] { 100, 3 }), 360.0, 200.0);
-				return;
+				return true;
 			}
 			if (id == "noise")
 			{
-				ShowModal(new AdjustmentDialog("Add Noise", "noise", new string[] { "Amount" }, new int[] { 0 }, new int[] { 100 }, new int[] { 20 }), 360.0, 170.0);
-				return;
+				return true;
 			}
 			if (id == "pixelate")
 			{
-				ShowModal(new AdjustmentDialog("Pixelate", "pixelate", new string[] { "Cell Size" }, new int[] { 2 }, new int[] { 64 }, new int[] { 8 }), 360.0, 170.0);
-				return;
+				return true;
 			}
+			return false;
 		}
 
-		public void ApplyAdjustment(string id, int first, int second, int third)
+		private void RunAdjustmentMath(string id, SkiaSharp.SKBitmap bitmap, int first, int second, int third)
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
-			{
-				return;
-			}
-			Document document = canvas.CurrentDocument();
-			if (id == "rotate")
-			{
-				document.BeginCanvasEdit("Rotate");
-				document.RotateArbitrary(first, 2);
-				document.EndCanvasEdit();
-				FinishCanvasOp(canvas, document);
-				return;
-			}
-			Layer activeLayer = document.ActiveLayer();
-			if (activeLayer == null)
-			{
-				return;
-			}
-			SkiaSharp.SKBitmap bitmap = activeLayer.Bitmap();
-			document.BeginStroke();
 			if (id == "bc")
 			{
 				Adjustments.BrightnessContrast(bitmap, first, second);
@@ -987,6 +954,184 @@ namespace Bitmute.UI
 			{
 				Adjustments.Pixelate(bitmap, first);
 			}
+		}
+
+		private void BeginAdjustmentPreview(string id)
+		{
+			if (!IsAdjustmentPreviewable(id))
+			{
+				return;
+			}
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			Layer activeLayer = document.ActiveLayer();
+			if (activeLayer == null)
+			{
+				return;
+			}
+			document.BeginStroke();
+		}
+
+		private void OpenAdjustment(string id)
+		{
+			BeginAdjustmentPreview(id);
+			if (id == "rotate")
+			{
+				ShowModal(new AdjustmentDialog("Rotate Arbitrary", "rotate", new string[] { "Angle" }, new int[] { -180 }, new int[] { 180 }, new int[] { 0 }), 360.0, 170.0);
+				return;
+			}
+			if (id == "bc")
+			{
+				ShowModal(new AdjustmentDialog("Brightness/Contrast", "bc", new string[] { "Brightness", "Contrast" }, new int[] { -100, -100 }, new int[] { 100, 100 }, new int[] { 0, 0 }), 360.0, 230.0);
+				return;
+			}
+			if (id == "hsl")
+			{
+				ShowModal(new AdjustmentDialog("Hue/Saturation", "hsl", new string[] { "Hue", "Saturation", "Lightness" }, new int[] { -180, -100, -100 }, new int[] { 180, 100, 100 }, new int[] { 0, 0, 0 }), 360.0, 260.0);
+				return;
+			}
+			if (id == "posterize")
+			{
+				ShowModal(new AdjustmentDialog("Posterize", "posterize", new string[] { "Levels" }, new int[] { 2 }, new int[] { 64 }, new int[] { 8 }), 360.0, 200.0);
+				return;
+			}
+			if (id == "threshold")
+			{
+				ShowModal(new AdjustmentDialog("Threshold", "threshold", new string[] { "Level" }, new int[] { 0 }, new int[] { 255 }, new int[] { 128 }), 360.0, 200.0);
+				return;
+			}
+			if (id == "gblur")
+			{
+				ShowModal(new AdjustmentDialog("Gaussian Blur", "gblur", new string[] { "Radius" }, new int[] { 1 }, new int[] { 30 }, new int[] { 5 }), 360.0, 200.0);
+				return;
+			}
+			if (id == "unsharp")
+			{
+				ShowModal(new AdjustmentDialog("Unsharp Mask", "unsharp", new string[] { "Amount", "Radius" }, new int[] { 0, 1 }, new int[] { 300, 30 }, new int[] { 100, 3 }), 360.0, 230.0);
+				return;
+			}
+			if (id == "noise")
+			{
+				ShowModal(new AdjustmentDialog("Add Noise", "noise", new string[] { "Amount" }, new int[] { 0 }, new int[] { 100 }, new int[] { 20 }), 360.0, 200.0);
+				return;
+			}
+			if (id == "pixelate")
+			{
+				ShowModal(new AdjustmentDialog("Pixelate", "pixelate", new string[] { "Cell Size" }, new int[] { 2 }, new int[] { 64 }, new int[] { 8 }), 360.0, 200.0);
+				return;
+			}
+		}
+
+		public void ApplyAdjustment(string id, int first, int second, int third)
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			if (id == "rotate")
+			{
+				document.BeginCanvasEdit("Rotate");
+				document.RotateArbitrary(first, 2);
+				document.EndCanvasEdit();
+				FinishCanvasOp(canvas, document);
+				return;
+			}
+			Layer activeLayer = document.ActiveLayer();
+			if (activeLayer == null)
+			{
+				return;
+			}
+			SkiaSharp.SKBitmap bitmap = activeLayer.Bitmap();
+			document.BeginStroke();
+			RunAdjustmentMath(id, bitmap, first, second, third);
+			document.EndStroke();
+			canvas.MarkComposeDirty();
+		}
+
+		public void PreviewAdjustment(string id, int first, int second, int third)
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			if (document.StrokeSnapshot() == null)
+			{
+				return;
+			}
+			Layer activeLayer = document.ActiveLayer();
+			if (activeLayer == null)
+			{
+				return;
+			}
+			document.RestoreStrokeSnapshot();
+			RunAdjustmentMath(id, activeLayer.Bitmap(), first, second, third);
+			canvas.MarkComposeDirty();
+		}
+
+		public void RestoreAdjustmentPreview()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			if (document.StrokeSnapshot() == null)
+			{
+				return;
+			}
+			document.RestoreStrokeSnapshot();
+			canvas.MarkComposeDirty();
+		}
+
+		public void CommitAdjustment(string id, int first, int second, int third)
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			if (document.StrokeSnapshot() == null)
+			{
+				ApplyAdjustment(id, first, second, third);
+				RefreshLayerThumbnails();
+				return;
+			}
+			Layer activeLayer = document.ActiveLayer();
+			if (activeLayer == null)
+			{
+				document.EndStroke();
+				return;
+			}
+			document.RestoreStrokeSnapshot();
+			RunAdjustmentMath(id, activeLayer.Bitmap(), first, second, third);
+			document.EndStroke();
+			canvas.MarkComposeDirty();
+			RefreshLayerThumbnails();
+		}
+
+		public void CancelAdjustment()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			if (document.StrokeSnapshot() == null)
+			{
+				return;
+			}
+			document.RestoreStrokeSnapshot();
 			document.EndStroke();
 			canvas.MarkComposeDirty();
 		}
@@ -3633,6 +3778,11 @@ namespace Bitmute.UI
 			if (cancelledPicker != null)
 			{
 				cancelledPicker.RevertLivePreview();
+			}
+			AdjustmentDialog adjustmentDialog = entry.m_content as AdjustmentDialog;
+			if (adjustmentDialog != null)
+			{
+				adjustmentDialog.CancelPreview();
 			}
 			if (entry.m_content is LayerStyleDialog && m_layerStyleSnapshot != null)
 			{

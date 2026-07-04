@@ -649,6 +649,38 @@ namespace Bitmute.Imaging
 			m_strokeDirtyValid = false;
 		}
 
+		public unsafe void RestoreStrokeSnapshot()
+		{
+			if (m_strokeSnapshot == null)
+			{
+				return;
+			}
+			if (m_strokeLayerIndex < 0 || m_strokeLayerIndex >= m_layers.Count)
+			{
+				return;
+			}
+			SKBitmap current = m_layers[m_strokeLayerIndex].Bitmap();
+			if (current.Width != m_strokeSnapshot.Width || current.Height != m_strokeSnapshot.Height)
+			{
+				return;
+			}
+			byte* sourceBase = (byte*)m_strokeSnapshot.GetPixels().ToPointer();
+			int sourceRowBytes = m_strokeSnapshot.RowBytes;
+			byte* targetBase = (byte*)current.GetPixels().ToPointer();
+			int targetRowBytes = current.RowBytes;
+			int rowLength = current.Width * 4;
+			int height = current.Height;
+			for (int y = 0; y < height; y++)
+			{
+				byte* sourceRow = sourceBase + (y * sourceRowBytes);
+				byte* targetRow = targetBase + (y * targetRowBytes);
+				for (int index = 0; index < rowLength; index++)
+				{
+					targetRow[index] = sourceRow[index];
+				}
+			}
+		}
+
 		public void EndStroke()
 		{
 			if (m_strokeSnapshot == null)

@@ -10,6 +10,46 @@ namespace Bitmute.UI
 		private string m_filterId;
 		private Slider[] m_sliders;
 		private Label[] m_values;
+		private CheckBox m_previewCheck;
+		private bool m_previewable;
+		private bool m_applied;
+
+		private int SliderValue(int index)
+		{
+			if (index < m_sliders.Length)
+			{
+				return (int)m_sliders[index].Value;
+			}
+			return 0;
+		}
+
+		private void RunPreview()
+		{
+			MainView main = MainView.Self;
+			if (main == null)
+			{
+				return;
+			}
+			main.PreviewAdjustment(m_filterId, SliderValue(0), SliderValue(1), SliderValue(2));
+		}
+
+		public void CancelPreview()
+		{
+			if (m_applied)
+			{
+				return;
+			}
+			if (!m_previewable)
+			{
+				return;
+			}
+			MainView main = MainView.Self;
+			if (main == null)
+			{
+				return;
+			}
+			main.CancelAdjustment();
+		}
 
 		private void OnCancelClicked(object sender, EventArgs eventArgs)
 		{
@@ -23,22 +63,18 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			int first = 0;
-			int second = 0;
-			int third = 0;
-			if (m_sliders.Length > 0)
+			int first = SliderValue(0);
+			int second = SliderValue(1);
+			int third = SliderValue(2);
+			if (m_previewable)
 			{
-				first = (int)m_sliders[0].Value;
+				m_applied = true;
+				main.CommitAdjustment(m_filterId, first, second, third);
 			}
-			if (m_sliders.Length > 1)
+			else
 			{
-				second = (int)m_sliders[1].Value;
+				main.ApplyAdjustment(m_filterId, first, second, third);
 			}
-			if (m_sliders.Length > 2)
-			{
-				third = (int)m_sliders[2].Value;
-			}
-			main.ApplyAdjustment(m_filterId, first, second, third);
 			CloseModal();
 		}
 
@@ -49,9 +85,41 @@ namespace Bitmute.UI
 				if (ReferenceEquals(m_sliders[index], sender))
 				{
 					m_values[index].Text = ((int)m_sliders[index].Value).ToString();
-					return;
+					break;
 				}
 			}
+			if (!m_previewable)
+			{
+				return;
+			}
+			if (m_previewCheck == null)
+			{
+				return;
+			}
+			if (!m_previewCheck.IsChecked)
+			{
+				return;
+			}
+			RunPreview();
+		}
+
+		private void OnPreviewCheckChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (!m_previewable)
+			{
+				return;
+			}
+			if (eventArgs.Value)
+			{
+				RunPreview();
+				return;
+			}
+			MainView main = MainView.Self;
+			if (main == null)
+			{
+				return;
+			}
+			main.RestoreAdjustmentPreview();
 		}
 
 		private Grid BuildSliderRow(int index, string label, int minimum, int maximum, int initial)
@@ -95,9 +163,37 @@ namespace Bitmute.UI
 			return row;
 		}
 
+		private Grid BuildPreviewRow()
+		{
+			m_previewCheck = new CheckBox();
+			m_previewCheck.IsChecked = true;
+			m_previewCheck.HorizontalOptions = LayoutOptions.Start;
+			m_previewCheck.VerticalOptions = LayoutOptions.Center;
+			m_previewCheck.SetAppThemeColor(CheckBox.ColorProperty, UiConstants.AccentLight, UiConstants.AccentDark);
+			m_previewCheck.CheckedChanged += OnPreviewCheckChanged;
+
+			Label caption = new Label();
+			caption.Text = "Preview";
+			caption.FontSize = 12.0;
+			caption.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			caption.VerticalOptions = LayoutOptions.Center;
+
+			Grid row = new Grid();
+			row.ColumnSpacing = 8.0;
+			row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+			Grid.SetColumn(m_previewCheck, 0);
+			Grid.SetColumn(caption, 1);
+			row.Add(m_previewCheck);
+			row.Add(caption);
+			return row;
+		}
+
 		public AdjustmentDialog(string title, string filterId, string[] labels, int[] minimums, int[] maximums, int[] defaults)
 		{
 			m_filterId = filterId;
+			m_previewable = MainView.IsAdjustmentPreviewable(filterId);
+			m_applied = false;
 			m_sliders = new Slider[labels.Length];
 			m_values = new Label[labels.Length];
 
@@ -106,6 +202,10 @@ namespace Bitmute.UI
 			for (int index = 0; index < labels.Length; index++)
 			{
 				body.Add(BuildSliderRow(index, labels[index], minimums[index], maximums[index], defaults[index]));
+			}
+			if (m_previewable)
+			{
+				body.Add(BuildPreviewRow());
 			}
 
 			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
