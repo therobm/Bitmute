@@ -43,6 +43,8 @@ namespace Bitmute.Imaging
 		private bool m_strokeDirtyValid;
 		private bool m_dirty;
 		private string m_sourcePath;
+		private Guides m_guides;
+		private DocumentStateCommand m_pendingDocEdit;
 
 		public static Document OpenImage(string title, SKBitmap source)
 		{
@@ -74,6 +76,8 @@ namespace Bitmute.Imaging
 			m_strokeDirtyValid = false;
 			m_dirty = false;
 			m_sourcePath = null;
+			m_guides = new Guides();
+			m_pendingDocEdit = null;
 		}
 
 		public string SourcePath()
@@ -368,6 +372,72 @@ namespace Bitmute.Imaging
 				m_undoStack.RemoveAt(0);
 			}
 			m_dirty = true;
+		}
+
+		public Guides Guides()
+		{
+			return m_guides;
+		}
+
+		public List<Layer> CloneLayers()
+		{
+			List<Layer> copy = new List<Layer>();
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				copy.Add(m_layers[index].Clone());
+			}
+			return copy;
+		}
+
+		public void ReplaceLayers(List<Layer> layers, int width, int height, int activeIndex)
+		{
+			m_layers = new List<Layer>();
+			for (int index = 0; index < layers.Count; index++)
+			{
+				m_layers.Add(layers[index].Clone());
+			}
+			m_width = width;
+			m_height = height;
+			if (activeIndex < 0)
+			{
+				activeIndex = 0;
+			}
+			if (activeIndex >= m_layers.Count)
+			{
+				activeIndex = m_layers.Count - 1;
+			}
+			m_activeLayerIndex = activeIndex;
+			MarkComposeDirtyAll();
+		}
+
+		public void RestoreSelection(byte[] mask, SKRectI bounds, bool active)
+		{
+			m_selection = new Selection(m_width, m_height);
+			if (active && mask != null && mask.Length == m_width * m_height)
+			{
+				m_selection.SelectMask(mask, bounds);
+			}
+		}
+
+		public void BeginCanvasEdit(string label)
+		{
+			if (m_pendingDocEdit != null)
+			{
+				return;
+			}
+			m_pendingDocEdit = new DocumentStateCommand(label);
+			m_pendingDocEdit.CaptureBefore(this);
+		}
+
+		public void EndCanvasEdit()
+		{
+			if (m_pendingDocEdit == null)
+			{
+				return;
+			}
+			m_pendingDocEdit.CaptureAfter(this);
+			PushCommand(m_pendingDocEdit);
+			m_pendingDocEdit = null;
 		}
 
 		public bool Undo()
@@ -1049,7 +1119,66 @@ namespace Bitmute.Imaging
 			return baked;
 		}
 
-		public void FlipHorizontal()
+		private static unsafe SKBitmap RotateFlipBitmap(SKBitmap source, int kind)
+		{
+			int sourceWidth = source.Width;
+			int sourceHeight = source.Height;
+			int destinationWidth = sourceWidth;
+			int destinationHeight = sourceHeight;
+			if (kind == 3 || kind == 4)
+			{
+				destinationWidth = sourceHeight;
+				destinationHeight = sourceWidth;
+			}
+			SKBitmap destination = new SKBitmap(destinationWidth, destinationHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			byte* sourceBase = (byte*)source.GetPixels().ToPointer();
+			int sourceRowBytes = source.RowBytes;
+			byte* destinationBase = (byte*)destination.GetPixels().ToPointer();
+			int destinationRowBytes = destination.RowBytes;
+			for (int y = 0; y < destinationHeight; y++)
+			{
+				byte* destinationRow = destinationBase + (y * destinationRowBytes);
+				for (int x = 0; x < destinationWidth; x++)
+				{
+					int sourceX;
+					int sourceY;
+					if (kind == 0)
+					{
+						sourceX = sourceWidth - 1 - x;
+						sourceY = y;
+					}
+					else if (kind == 1)
+					{
+						sourceX = x;
+						sourceY = sourceHeight - 1 - y;
+					}
+					else if (kind == 2)
+					{
+						sourceX = sourceWidth - 1 - x;
+						sourceY = sourceHeight - 1 - y;
+					}
+					else if (kind == 3)
+					{
+						sourceX = y;
+						sourceY = sourceHeight - 1 - x;
+					}
+					else
+					{
+						sourceX = sourceWidth - 1 - y;
+						sourceY = x;
+					}
+					byte* sourcePixel = sourceBase + (sourceY * sourceRowBytes) + (sourceX * 4);
+					byte* destinationPixel = destinationRow + (x * 4);
+					destinationPixel[0] = sourcePixel[0];
+					destinationPixel[1] = sourcePixel[1];
+					destinationPixel[2] = sourcePixel[2];
+					destinationPixel[3] = sourcePixel[3];
+				}
+			}
+			return destination;
+		}
+
+		private void ApplyRotateFlip(int kind, bool swapDimensions)
 		{
 			if (m_layers.Count == 0)
 			{
@@ -1059,126 +1188,43 @@ namespace Bitmute.Imaging
 			{
 				Layer layer = m_layers[index];
 				SKBitmap baked = BakeLayerToCanvas(layer);
-				SKBitmap destination = new SKBitmap(m_width, m_height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-				for (int y = 0; y < m_height; y++)
-				{
-					for (int x = 0; x < m_width; x++)
-					{
-						destination.SetPixel(x, y, baked.GetPixel(m_width - 1 - x, y));
-					}
-				}
+				SKBitmap destination = RotateFlipBitmap(baked, kind);
+				baked.Dispose();
 				layer.SetBitmap(destination);
 				layer.SetOffset(0, 0);
 			}
+			if (swapDimensions)
+			{
+				int temp = m_width;
+				m_width = m_height;
+				m_height = temp;
+			}
 			m_dirty = true;
+		}
+
+		public void FlipHorizontal()
+		{
+			ApplyRotateFlip(0, false);
 		}
 
 		public void FlipVertical()
 		{
-			if (m_layers.Count == 0)
-			{
-				return;
-			}
-			for (int index = 0; index < m_layers.Count; index++)
-			{
-				Layer layer = m_layers[index];
-				SKBitmap baked = BakeLayerToCanvas(layer);
-				SKBitmap destination = new SKBitmap(m_width, m_height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-				for (int y = 0; y < m_height; y++)
-				{
-					for (int x = 0; x < m_width; x++)
-					{
-						destination.SetPixel(x, y, baked.GetPixel(x, m_height - 1 - y));
-					}
-				}
-				layer.SetBitmap(destination);
-				layer.SetOffset(0, 0);
-			}
-			m_dirty = true;
+			ApplyRotateFlip(1, false);
 		}
 
 		public void Rotate180()
 		{
-			if (m_layers.Count == 0)
-			{
-				return;
-			}
-			for (int index = 0; index < m_layers.Count; index++)
-			{
-				Layer layer = m_layers[index];
-				SKBitmap baked = BakeLayerToCanvas(layer);
-				SKBitmap destination = new SKBitmap(m_width, m_height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-				for (int y = 0; y < m_height; y++)
-				{
-					for (int x = 0; x < m_width; x++)
-					{
-						destination.SetPixel(x, y, baked.GetPixel(m_width - 1 - x, m_height - 1 - y));
-					}
-				}
-				layer.SetBitmap(destination);
-				layer.SetOffset(0, 0);
-			}
-			m_dirty = true;
+			ApplyRotateFlip(2, false);
 		}
 
 		public void Rotate90()
 		{
-			if (m_layers.Count == 0)
-			{
-				return;
-			}
-			int sourceWidth = m_width;
-			int sourceHeight = m_height;
-			int destinationWidth = sourceHeight;
-			int destinationHeight = sourceWidth;
-			for (int index = 0; index < m_layers.Count; index++)
-			{
-				Layer layer = m_layers[index];
-				SKBitmap baked = BakeLayerToCanvas(layer);
-				SKBitmap destination = new SKBitmap(destinationWidth, destinationHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-				for (int y = 0; y < destinationHeight; y++)
-				{
-					for (int x = 0; x < destinationWidth; x++)
-					{
-						destination.SetPixel(x, y, baked.GetPixel(y, (sourceHeight - 1) - x));
-					}
-				}
-				layer.SetBitmap(destination);
-				layer.SetOffset(0, 0);
-			}
-			m_width = destinationWidth;
-			m_height = destinationHeight;
-			m_dirty = true;
+			ApplyRotateFlip(3, true);
 		}
 
 		public void Rotate270()
 		{
-			if (m_layers.Count == 0)
-			{
-				return;
-			}
-			int sourceWidth = m_width;
-			int sourceHeight = m_height;
-			int destinationWidth = sourceHeight;
-			int destinationHeight = sourceWidth;
-			for (int index = 0; index < m_layers.Count; index++)
-			{
-				Layer layer = m_layers[index];
-				SKBitmap baked = BakeLayerToCanvas(layer);
-				SKBitmap destination = new SKBitmap(destinationWidth, destinationHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-				for (int y = 0; y < destinationHeight; y++)
-				{
-					for (int x = 0; x < destinationWidth; x++)
-					{
-						destination.SetPixel(x, y, baked.GetPixel((sourceWidth - 1) - y, x));
-					}
-				}
-				layer.SetBitmap(destination);
-				layer.SetOffset(0, 0);
-			}
-			m_width = destinationWidth;
-			m_height = destinationHeight;
-			m_dirty = true;
+			ApplyRotateFlip(4, true);
 		}
 
 		public void CropToSelection()

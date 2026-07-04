@@ -61,6 +61,15 @@ namespace Bitmute.UI
 		{
 		}
 
+		private void OnClearRecentClicked(object sender, EventArgs eventArgs)
+		{
+			MainView main = MainView.Self;
+			if (main != null)
+			{
+				main.ClearRecentFiles();
+			}
+		}
+
 		private void OnSystemChecked(object sender, CheckedChangedEventArgs eventArgs)
 		{
 			if (eventArgs.Value)
@@ -152,8 +161,13 @@ namespace Bitmute.UI
 			body.Spacing = 8.0;
 			body.WidthRequest = 320.0;
 			body.MinimumHeightRequest = 150.0;
+			Button clearRecentButton = SecondaryButton("Clear Recent Files", OnClearRecentClicked);
+			clearRecentButton.WidthRequest = 150.0;
+			clearRecentButton.HorizontalOptions = LayoutOptions.Start;
+
 			body.Add(BuildSectionHeader("General"));
 			body.Add(BuildFieldRow("Undo depth", m_undoDepthField));
+			body.Add(BuildFieldRow("Recent files", clearRecentButton));
 			body.Add(BuildSectionHeader("Interface"));
 			body.Add(BuildFieldRow("Theme", themeRow));
 

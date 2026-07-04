@@ -256,6 +256,24 @@ namespace Bitmute.Storage
 			}
 			writer.WriteEndArray();
 			writer.WriteBoolean("hasSelection", document.Selection().IsActive());
+			Guides guides = document.Guides();
+			writer.WriteStartObject("guides");
+			writer.WriteBoolean("locked", guides.IsLocked());
+			writer.WriteStartArray("horizontal");
+			List<int> horizontalGuides = guides.HorizontalGuides();
+			for (int index = 0; index < horizontalGuides.Count; index++)
+			{
+				writer.WriteNumberValue(horizontalGuides[index]);
+			}
+			writer.WriteEndArray();
+			writer.WriteStartArray("vertical");
+			List<int> verticalGuides = guides.VerticalGuides();
+			for (int index = 0; index < verticalGuides.Count; index++)
+			{
+				writer.WriteNumberValue(verticalGuides[index]);
+			}
+			writer.WriteEndArray();
+			writer.WriteEndObject();
 			writer.WriteEndObject();
 			writer.Flush();
 			writer.Dispose();
@@ -531,6 +549,35 @@ namespace Bitmute.Storage
 			document.SetActiveLayerIndex(document.Layers().Count - 1);
 			document.SetActiveLayerIndex(ReadInt(root, "activeLayerIndex", 0));
 			bool hasSelection = ReadBool(root, "hasSelection", false);
+			System.Text.Json.JsonElement guidesElement;
+			if (root.TryGetProperty("guides", out guidesElement))
+			{
+				Guides guides = document.Guides();
+				System.Text.Json.JsonElement horizontalElement;
+				if (guidesElement.TryGetProperty("horizontal", out horizontalElement))
+				{
+					foreach (System.Text.Json.JsonElement value in horizontalElement.EnumerateArray())
+					{
+						guides.AddHorizontal(value.GetInt32());
+					}
+				}
+				System.Text.Json.JsonElement verticalElement;
+				if (guidesElement.TryGetProperty("vertical", out verticalElement))
+				{
+					foreach (System.Text.Json.JsonElement value in verticalElement.EnumerateArray())
+					{
+						guides.AddVertical(value.GetInt32());
+					}
+				}
+				System.Text.Json.JsonElement lockedElement;
+				if (guidesElement.TryGetProperty("locked", out lockedElement))
+				{
+					if (lockedElement.GetBoolean())
+					{
+						guides.SetLocked(true);
+					}
+				}
+			}
 			manifest.Dispose();
 			if (hasSelection)
 			{

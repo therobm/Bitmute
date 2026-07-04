@@ -17,6 +17,26 @@ namespace Bitmute.UI
 			m_canvas = canvas;
 			m_horizontal = horizontal;
 			PaintSurface += OnPaintSurface;
+			EnableTouchEvents = true;
+			Touch += OnTouch;
+		}
+
+		private void OnTouch(object sender, SKTouchEventArgs eventArgs)
+		{
+			if (eventArgs.ActionType == SKTouchAction.Pressed)
+			{
+				int orientation = 2;
+				if (m_horizontal)
+				{
+					orientation = 1;
+				}
+				MainView main = MainView.Self;
+				if (main != null)
+				{
+					main.BeginGuideCreation(orientation, m_canvas);
+				}
+			}
+			eventArgs.Handled = true;
 		}
 
 		private static int NiceStep(float zoom)

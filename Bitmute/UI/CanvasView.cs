@@ -60,6 +60,13 @@ namespace Bitmute.UI
 		private float m_zoomDragStartY;
 		private float m_zoomDragCurrentX;
 		private float m_zoomDragCurrentY;
+		private int m_pendingGuideKind;
+		private int m_pendingGuidePos;
+		private int m_guideDragKind;
+		private int m_guideDragIndex;
+		private bool m_hasCursorShape;
+		private Microsoft.UI.Input.InputSystemCursorShape m_currentCursorShape;
+		private static System.Reflection.PropertyInfo s_protectedCursorProp = typeof(Microsoft.UI.Xaml.UIElement).GetProperty("ProtectedCursor", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
 		private static SKBitmap CheckerTile()
 		{
@@ -225,8 +232,216 @@ namespace Bitmute.UI
 				GridOverlay.Draw(canvas, m_offsetX, m_offsetY, m_zoom, m_document.Width(), m_document.Height(), 16, true);
 			}
 
+			DrawGuides(canvas, info.Width, info.Height);
 			DrawSelection(canvas);
 			DrawToolOverlay(canvas);
+		}
+
+		private void DrawGuides(SKCanvas canvas, float viewWidth, float viewHeight)
+		{
+			Bitmute.Imaging.Guides guides = m_document.Guides();
+			SKPaint paint = new SKPaint();
+			paint.Style = SKPaintStyle.Stroke;
+			paint.StrokeWidth = 1.0f;
+			paint.Color = new SKColor(0, 170, 255, 220);
+			paint.IsAntialias = false;
+			System.Collections.Generic.List<int> verticals = guides.VerticalGuides();
+			for (int index = 0; index < verticals.Count; index++)
+			{
+				float sx = (float)System.Math.Floor(m_offsetX + (verticals[index] * m_zoom)) + 0.5f;
+				canvas.DrawLine(sx, 0.0f, sx, viewHeight, paint);
+			}
+			System.Collections.Generic.List<int> horizontals = guides.HorizontalGuides();
+			for (int index = 0; index < horizontals.Count; index++)
+			{
+				float sy = (float)System.Math.Floor(m_offsetY + (horizontals[index] * m_zoom)) + 0.5f;
+				canvas.DrawLine(0.0f, sy, viewWidth, sy, paint);
+			}
+			if (m_pendingGuideKind != 0)
+			{
+				SKPaint pendingPaint = new SKPaint();
+				pendingPaint.Style = SKPaintStyle.Stroke;
+				pendingPaint.StrokeWidth = 1.0f;
+				pendingPaint.Color = new SKColor(0, 170, 255, 140);
+				pendingPaint.IsAntialias = false;
+				if (m_pendingGuideKind == 2)
+				{
+					float sx = (float)System.Math.Floor(m_offsetX + (m_pendingGuidePos * m_zoom)) + 0.5f;
+					canvas.DrawLine(sx, 0.0f, sx, viewHeight, pendingPaint);
+				}
+				else
+				{
+					float sy = (float)System.Math.Floor(m_offsetY + (m_pendingGuidePos * m_zoom)) + 0.5f;
+					canvas.DrawLine(0.0f, sy, viewWidth, sy, pendingPaint);
+				}
+				pendingPaint.Dispose();
+			}
+			paint.Dispose();
+		}
+
+		public void SetPendingGuide(int kind, int pos)
+		{
+			m_pendingGuideKind = kind;
+			m_pendingGuidePos = pos;
+			InvalidateSurface();
+		}
+
+		public void CommitPendingGuide()
+		{
+			if (m_pendingGuideKind == 0)
+			{
+				return;
+			}
+			int kind = m_pendingGuideKind;
+			int pos = m_pendingGuidePos;
+			m_pendingGuideKind = 0;
+			Bitmute.Imaging.Guides guides = m_document.Guides();
+			if (kind == 2)
+			{
+				if (pos >= 0 && pos <= m_document.Width())
+				{
+					guides.AddVertical(pos);
+				}
+			}
+			else
+			{
+				if (pos >= 0 && pos <= m_document.Height())
+				{
+					guides.AddHorizontal(pos);
+				}
+			}
+			InvalidateSurface();
+		}
+
+		public void CancelPendingGuide()
+		{
+			m_pendingGuideKind = 0;
+			InvalidateSurface();
+		}
+
+		public void UpdatePendingGuideFromDip(int orientation, double dipX, double dipY)
+		{
+			double scaleX = 1.0;
+			double scaleY = 1.0;
+			if (Width > 0.0)
+			{
+				scaleX = CanvasSize.Width / Width;
+			}
+			if (Height > 0.0)
+			{
+				scaleY = CanvasSize.Height / Height;
+			}
+			float deviceX = (float)(dipX * scaleX);
+			float deviceY = (float)(dipY * scaleY);
+			int docX = (int)System.Math.Round((deviceX - m_offsetX) / m_zoom);
+			int docY = (int)System.Math.Round((deviceY - m_offsetY) / m_zoom);
+			if (orientation == 1)
+			{
+				SetPendingGuide(1, docY);
+			}
+			else
+			{
+				SetPendingGuide(2, docX);
+			}
+		}
+
+		private void ApplyCursorShape(Microsoft.UI.Input.InputSystemCursorShape shape)
+		{
+			if (m_hasCursorShape && m_currentCursorShape == shape)
+			{
+				return;
+			}
+			m_currentCursorShape = shape;
+			m_hasCursorShape = true;
+			if (s_protectedCursorProp == null)
+			{
+				return;
+			}
+			if (Handler == null)
+			{
+				return;
+			}
+			Microsoft.UI.Xaml.UIElement element = Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			try
+			{
+				s_protectedCursorProp.SetValue(element, Microsoft.UI.Input.InputSystemCursor.Create(shape));
+			}
+			catch (System.Exception)
+			{
+			}
+		}
+
+		private static Microsoft.UI.Input.InputSystemCursorShape TransformCursorShape(int kind)
+		{
+			if (kind == 1)
+			{
+				return Microsoft.UI.Input.InputSystemCursorShape.SizeNorthwestSoutheast;
+			}
+			if (kind == 2)
+			{
+				return Microsoft.UI.Input.InputSystemCursorShape.SizeNortheastSouthwest;
+			}
+			if (kind == 3)
+			{
+				return Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast;
+			}
+			if (kind == 4)
+			{
+				return Microsoft.UI.Input.InputSystemCursorShape.SizeNorthSouth;
+			}
+			if (kind == 5)
+			{
+				return Microsoft.UI.Input.InputSystemCursorShape.Cross;
+			}
+			if (kind == 6)
+			{
+				return Microsoft.UI.Input.InputSystemCursorShape.SizeAll;
+			}
+			return Microsoft.UI.Input.InputSystemCursorShape.Arrow;
+		}
+
+		private void UpdateHoverCursor(Tool tool, int pixelX, int pixelY)
+		{
+			Microsoft.UI.Input.InputSystemCursorShape desired = Microsoft.UI.Input.InputSystemCursorShape.Arrow;
+			Bitmute.Imaging.Guides guides = m_document.Guides();
+			if (!guides.IsLocked())
+			{
+				int tolerance = (int)System.Math.Ceiling(6.0 / m_zoom);
+				if (tolerance < 4)
+				{
+					tolerance = 4;
+				}
+				if (guides.HitVertical(pixelX, tolerance) >= 0)
+				{
+					desired = Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast;
+				}
+				else if (guides.HitHorizontal(pixelY, tolerance) >= 0)
+				{
+					desired = Microsoft.UI.Input.InputSystemCursorShape.SizeNorthSouth;
+				}
+			}
+			if (desired == Microsoft.UI.Input.InputSystemCursorShape.Arrow && tool is FreeTransformTool)
+			{
+				int kind = ((FreeTransformTool)tool).HitTestKind(pixelX, pixelY);
+				desired = TransformCursorShape(kind);
+			}
+			ApplyCursorShape(desired);
+		}
+
+		public void SyncDocumentSize()
+		{
+			if (m_composite == null)
+			{
+				return;
+			}
+			if (m_composite.Width != m_document.Width() || m_composite.Height != m_document.Height())
+			{
+				ResetView();
+			}
 		}
 
 		private void DrawToolOverlay(SKCanvas canvas)
@@ -265,6 +480,11 @@ namespace Bitmute.UI
 			if (tool is CropTool)
 			{
 				DrawCropPreview(canvas, (CropTool)tool);
+				return;
+			}
+			if (tool is FreeTransformTool)
+			{
+				DrawTransformPreview(canvas, (FreeTransformTool)tool);
 				return;
 			}
 			if (tool is RulerTool)
@@ -689,6 +909,95 @@ namespace Bitmute.UI
 			builder.Dispose();
 		}
 
+		private void DrawTransformPreview(SKCanvas canvas, FreeTransformTool transform)
+		{
+			if (!transform.HasPreview())
+			{
+				return;
+			}
+			float x0 = m_offsetX + (float)(transform.CornerX(0) * m_zoom);
+			float y0 = m_offsetY + (float)(transform.CornerY(0) * m_zoom);
+			float x1 = m_offsetX + (float)(transform.CornerX(1) * m_zoom);
+			float y1 = m_offsetY + (float)(transform.CornerY(1) * m_zoom);
+			float x2 = m_offsetX + (float)(transform.CornerX(2) * m_zoom);
+			float y2 = m_offsetY + (float)(transform.CornerY(2) * m_zoom);
+			float x3 = m_offsetX + (float)(transform.CornerX(3) * m_zoom);
+			float y3 = m_offsetY + (float)(transform.CornerY(3) * m_zoom);
+			SKBitmap previewBitmap = transform.PreviewBitmap();
+			if (previewBitmap != null && previewBitmap.Width > 0 && previewBitmap.Height > 0)
+			{
+				SKPoint[] screenQuad = new SKPoint[4];
+				screenQuad[0] = new SKPoint(x0, y0);
+				screenQuad[1] = new SKPoint(x1, y1);
+				screenQuad[2] = new SKPoint(x2, y2);
+				screenQuad[3] = new SKPoint(x3, y3);
+				SKMatrix quadMatrix;
+				if (Bitmute.Imaging.TransformMath.QuadMatrix(screenQuad, previewBitmap.Width, previewBitmap.Height, out quadMatrix))
+				{
+					SKPixmap previewPixmap = previewBitmap.PeekPixels();
+					SKImage previewImage = SKImage.FromPixels(previewPixmap);
+					SKPaint previewPaint = new SKPaint();
+					SKSamplingOptions previewSampling = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None);
+					canvas.Save();
+					canvas.SetMatrix(quadMatrix);
+					canvas.DrawImage(previewImage, 0.0f, 0.0f, previewSampling, previewPaint);
+					canvas.Restore();
+					previewPaint.Dispose();
+					previewImage.Dispose();
+					previewPixmap.Dispose();
+				}
+			}
+			SKPathBuilder builder = new SKPathBuilder();
+			builder.MoveTo(x0, y0);
+			builder.LineTo(x1, y1);
+			builder.LineTo(x2, y2);
+			builder.LineTo(x3, y3);
+			builder.Close();
+			SKPath path = builder.Snapshot();
+			SKPaint underlay = new SKPaint();
+			underlay.Style = SKPaintStyle.Stroke;
+			underlay.StrokeWidth = 3.0f;
+			underlay.Color = SKColors.Black;
+			underlay.IsAntialias = true;
+			canvas.DrawPath(path, underlay);
+			underlay.Dispose();
+			SKPaint overlay = new SKPaint();
+			overlay.Style = SKPaintStyle.Stroke;
+			overlay.StrokeWidth = 1.0f;
+			overlay.Color = SKColors.White;
+			overlay.IsAntialias = true;
+			canvas.DrawPath(path, overlay);
+			path.Dispose();
+			builder.Dispose();
+			SKPaint handleFill = new SKPaint();
+			handleFill.Style = SKPaintStyle.Fill;
+			handleFill.Color = SKColors.White;
+			handleFill.IsAntialias = true;
+			SKPaint handleBorder = new SKPaint();
+			handleBorder.Style = SKPaintStyle.Stroke;
+			handleBorder.StrokeWidth = 1.0f;
+			handleBorder.Color = SKColors.Black;
+			handleBorder.IsAntialias = true;
+			float handleSize = 3.5f;
+			DrawTransformHandle(canvas, x0, y0, handleSize, handleFill, handleBorder);
+			DrawTransformHandle(canvas, x1, y1, handleSize, handleFill, handleBorder);
+			DrawTransformHandle(canvas, x2, y2, handleSize, handleFill, handleBorder);
+			DrawTransformHandle(canvas, x3, y3, handleSize, handleFill, handleBorder);
+			DrawTransformHandle(canvas, (x0 + x1) / 2.0f, (y0 + y1) / 2.0f, handleSize, handleFill, handleBorder);
+			DrawTransformHandle(canvas, (x1 + x2) / 2.0f, (y1 + y2) / 2.0f, handleSize, handleFill, handleBorder);
+			DrawTransformHandle(canvas, (x2 + x3) / 2.0f, (y2 + y3) / 2.0f, handleSize, handleFill, handleBorder);
+			DrawTransformHandle(canvas, (x3 + x0) / 2.0f, (y3 + y0) / 2.0f, handleSize, handleFill, handleBorder);
+			handleFill.Dispose();
+			handleBorder.Dispose();
+		}
+
+		private void DrawTransformHandle(SKCanvas canvas, float cx, float cy, float size, SKPaint fill, SKPaint border)
+		{
+			SKRect rect = new SKRect(cx - size, cy - size, cx + size, cy + size);
+			canvas.DrawRect(rect, fill);
+			canvas.DrawRect(rect, border);
+		}
+
 		private void DrawRulerPreview(SKCanvas canvas, RulerTool ruler)
 		{
 			if (!ruler.HasPreview())
@@ -1001,6 +1310,7 @@ namespace Bitmute.UI
 			if (eventArgs.ActionType == SKTouchAction.Exited || eventArgs.ActionType == SKTouchAction.Cancelled)
 			{
 				m_cursorInside = false;
+				ApplyCursorShape(Microsoft.UI.Input.InputSystemCursorShape.Arrow);
 				InvalidateSurface();
 			}
 			else
@@ -1057,6 +1367,38 @@ namespace Bitmute.UI
 			{
 				eventArgs.Handled = true;
 				return;
+			}
+
+			if (tool is FreeTransformTool)
+			{
+				int pickRadius = (int)System.Math.Ceiling(9.0 / m_zoom);
+				if (pickRadius < 3)
+				{
+					pickRadius = 3;
+				}
+				((FreeTransformTool)tool).SetPickRadius(pickRadius);
+			}
+
+			UpdateHoverCursor(tool, pixelX, pixelY);
+
+			if (HandleGuideDrag(eventArgs, pixelX, pixelY))
+			{
+				eventArgs.Handled = true;
+				return;
+			}
+
+			if (main.SnapEnabled() && IsSnapTool(tool))
+			{
+				int snapTolerance = (int)System.Math.Ceiling(6.0 / m_zoom);
+				if (snapTolerance < 3)
+				{
+					snapTolerance = 3;
+				}
+				Bitmute.Imaging.Guides snapGuides = m_document.Guides();
+				pixelX = snapGuides.SnapX(pixelX, snapTolerance);
+				pixelY = snapGuides.SnapY(pixelY, snapTolerance);
+				pixelX = SnapToEdge(pixelX, m_document.Width(), snapTolerance);
+				pixelY = SnapToEdge(pixelY, m_document.Height(), snapTolerance);
 			}
 
 			if (tool is TextTool)
@@ -1222,6 +1564,18 @@ namespace Bitmute.UI
 					InvalidateSurface();
 				}
 			}
+			if (tool is FreeTransformTool)
+			{
+				bool transformActed = eventArgs.ActionType == SKTouchAction.Pressed || eventArgs.ActionType == SKTouchAction.Released || (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact);
+				if (transformActed)
+				{
+					InvalidateSurface();
+				}
+				if (!((FreeTransformTool)tool).HasPreview())
+				{
+					main.EndTransformMode();
+				}
+			}
 			if (m_document.Width() != preEventWidth || m_document.Height() != preEventHeight)
 			{
 				m_document.ResetSelection();
@@ -1230,6 +1584,124 @@ namespace Bitmute.UI
 				main.RefreshLayerThumbnails();
 			}
 			eventArgs.Handled = true;
+		}
+
+		private static bool IsSnapTool(Tool tool)
+		{
+			if (tool is MoveTool)
+			{
+				return true;
+			}
+			if (tool is RectangleSelectTool)
+			{
+				return true;
+			}
+			if (tool is EllipseSelectTool)
+			{
+				return true;
+			}
+			if (tool is CropTool)
+			{
+				return true;
+			}
+			if (tool is FreeTransformTool)
+			{
+				return true;
+			}
+			return false;
+		}
+
+		private static int SnapToEdge(int value, int extent, int tolerance)
+		{
+			int lowDelta = value;
+			if (lowDelta < 0)
+			{
+				lowDelta = -lowDelta;
+			}
+			if (lowDelta <= tolerance)
+			{
+				return 0;
+			}
+			int highDelta = value - extent;
+			if (highDelta < 0)
+			{
+				highDelta = -highDelta;
+			}
+			if (highDelta <= tolerance)
+			{
+				return extent;
+			}
+			return value;
+		}
+
+		private bool HandleGuideDrag(SKTouchEventArgs eventArgs, int pixelX, int pixelY)
+		{
+			Bitmute.Imaging.Guides guides = m_document.Guides();
+			if (guides.IsLocked())
+			{
+				return false;
+			}
+			int tolerance = (int)System.Math.Ceiling(8.0 / m_zoom);
+			if (tolerance < 4)
+			{
+				tolerance = 4;
+			}
+			if (eventArgs.ActionType == SKTouchAction.Pressed)
+			{
+				int verticalIndex = guides.HitVertical(pixelX, tolerance);
+				if (verticalIndex >= 0)
+				{
+					m_guideDragKind = 2;
+					m_guideDragIndex = verticalIndex;
+					return true;
+				}
+				int horizontalIndex = guides.HitHorizontal(pixelY, tolerance);
+				if (horizontalIndex >= 0)
+				{
+					m_guideDragKind = 1;
+					m_guideDragIndex = horizontalIndex;
+					return true;
+				}
+				return false;
+			}
+			if (m_guideDragKind == 0)
+			{
+				return false;
+			}
+			if (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact)
+			{
+				if (m_guideDragKind == 2)
+				{
+					guides.MoveVertical(m_guideDragIndex, pixelX);
+				}
+				else
+				{
+					guides.MoveHorizontal(m_guideDragIndex, pixelY);
+				}
+				InvalidateSurface();
+				return true;
+			}
+			if (eventArgs.ActionType == SKTouchAction.Released || (eventArgs.ActionType == SKTouchAction.Moved && !eventArgs.InContact))
+			{
+				if (m_guideDragKind == 2)
+				{
+					if (pixelX < 0 || pixelX > m_document.Width())
+					{
+						guides.RemoveVertical(m_guideDragIndex);
+					}
+				}
+				else
+				{
+					if (pixelY < 0 || pixelY > m_document.Height())
+					{
+						guides.RemoveHorizontal(m_guideDragIndex);
+					}
+				}
+				m_guideDragKind = 0;
+				InvalidateSurface();
+				return true;
+			}
+			return true;
 		}
 
 		private int ZoomPercent()
@@ -1379,6 +1851,11 @@ namespace Bitmute.UI
 		public void SetOwnerWindow(DocumentWindow window)
 		{
 			m_ownerWindow = window;
+		}
+
+		public DocumentWindow OwnerWindow()
+		{
+			return m_ownerWindow;
 		}
 
 		public float Zoom()

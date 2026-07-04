@@ -171,12 +171,23 @@ namespace Bitmute.UI
 		private ZoomTool m_zoomTool;
 		private RulerTool m_rulerTool;
 		private CropTool m_cropTool;
+		private FreeTransformTool m_freeTransformTool;
+		private eTool m_previousTool;
+		private int m_guideCreateOrientation;
+		private CanvasView m_guideCreateCanvas;
 		private bool m_gridEnabled;
+		private bool m_snapEnabled;
+		private double m_openDropdownX;
+		private List<Border> m_submenuParentRows;
+		private List<string> m_submenuParentNames;
+		private List<int> m_submenuParentIndices;
+		private List<Border> m_submenuChildRows;
+		private Border m_submenuBorder;
 		private List<string> m_recentMenuPaths;
 
 		private static string RecentMenuLabel(int index, string path)
 		{
-			return (index + 1) + "  " + System.IO.Path.GetFileName(path);
+			return System.IO.Path.GetFileName(path);
 		}
 
 		private static string PanelMenuLabel(string name, bool visible)
@@ -223,7 +234,52 @@ namespace Bitmute.UI
 				if (item == "Fit on Screen") return "Ctrl+0";
 				if (item == "Rulers") return "Ctrl+R";
 			}
+			if (title == "Edit")
+			{
+				if (item == "Free Transform") return "Ctrl+T";
+			}
 			return "";
+		}
+
+		private static bool IsSubmenu(string title, string item)
+		{
+			if (title == "File" && item == "Open Recent")
+			{
+				return true;
+			}
+			if (title == "Edit" && item == "Transform")
+			{
+				return true;
+			}
+			return false;
+		}
+
+		private string[] GetSubmenuItems(string title, string item)
+		{
+			if (title == "File" && item == "Open Recent")
+			{
+				List<string> items = new List<string>();
+				for (int index = 0; index < m_recentMenuPaths.Count; index++)
+				{
+					items.Add(RecentMenuLabel(index, m_recentMenuPaths[index]));
+				}
+				return items.ToArray();
+			}
+			if (title == "Edit" && item == "Transform")
+			{
+				return new string[] { "Free Transform", "Scale", "Rotate", "Skew", "Distort", "Perspective", "Flip Horizontal (Layer)", "Flip Vertical (Layer)" };
+			}
+			return new string[] { };
+		}
+
+		private bool GuidesLocked()
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return false;
+			}
+			return document.Guides().IsLocked();
 		}
 
 		private string[] GetMenuItems(string title)
@@ -239,25 +295,24 @@ namespace Bitmute.UI
 				m_recentMenuPaths.Clear();
 				List<string> recent = RecentFiles.List();
 				int recentCount = recent.Count;
-				if (recentCount > 8)
+				if (recentCount > 12)
 				{
-					recentCount = 8;
+					recentCount = 12;
 				}
 				for (int index = 0; index < recentCount; index++)
 				{
 					m_recentMenuPaths.Add(recent[index]);
-					fileItems.Add(RecentMenuLabel(index, recent[index]));
 				}
 				if (recentCount > 0)
 				{
-					fileItems.Add("Clear Recent");
+					fileItems.Add("Open Recent");
 				}
 				fileItems.Add("Exit");
 				return fileItems.ToArray();
 			}
 			if (title == "Edit")
 			{
-				return new string[] { "Undo", "Redo", "Cut", "Copy", "Paste", "Stroke…", "Preferences…" };
+				return new string[] { "Undo", "Redo", "Cut", "Copy", "Paste", "Transform", "Stroke…", "Preferences…" };
 			}
 			if (title == "Image")
 			{
@@ -277,7 +332,7 @@ namespace Bitmute.UI
 			}
 			if (title == "View")
 			{
-				return new string[] { "Zoom In", "Zoom Out", "Fit on Screen", "Rulers", "Grid" };
+				return new string[] { "Zoom In", "Zoom Out", "Fit on Screen", "Rulers", "Grid", PanelMenuLabel("Snap to Guides", m_snapEnabled), PanelMenuLabel("Lock Guides", GuidesLocked()), "Clear Guides" };
 			}
 			if (title == "Window")
 			{
@@ -300,9 +355,13 @@ namespace Bitmute.UI
 			{
 				if (item == "Rasterize Text")
 				{
-					return true;
+					return ActiveLayerIsText();
 				}
-				return false;
+				if (item == "Merge Down")
+				{
+					return CanMergeDown();
+				}
+				return true;
 			}
 			if (title == "Select")
 			{
@@ -322,33 +381,38 @@ namespace Bitmute.UI
 			}
 			if (title == "View")
 			{
-				if (item == "Zoom In")
-				{
-					return true;
-				}
-				if (item == "Zoom Out")
-				{
-					return true;
-				}
-				if (item == "Fit on Screen")
-				{
-					return true;
-				}
-				if (item == "Rulers")
-				{
-					return true;
-				}
-				if (item == "Grid")
-				{
-					return true;
-				}
-				return false;
+				return true;
 			}
 			if (item == "About Bitmute")
 			{
 				return true;
 			}
 			return false;
+		}
+
+		private bool CanMergeDown()
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return false;
+			}
+			return document.ActiveLayerIndex() > 0;
+		}
+
+		private bool ActiveLayerIsText()
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return false;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return false;
+			}
+			return layer.IsText();
 		}
 
 		private Border BuildMenuButton(int index)
@@ -463,9 +527,25 @@ namespace Bitmute.UI
 			CloseMenu();
 			m_openMenuIndex = index;
 			m_menuButtons[index].ThemeBg(UiConstants.MenuOpenLight, UiConstants.MenuOpenDark);
+			m_submenuParentRows.Clear();
+			m_submenuParentNames.Clear();
+			m_submenuParentIndices.Clear();
+			m_submenuBorder = null;
 
 			string title = m_menuTitles[index];
 			string[] items = GetMenuItems(title);
+
+			double dropdownX = m_menuButtons[index].Bounds.X;
+			double overlayWidth = m_overlay.Width;
+			if (overlayWidth > 0.0 && dropdownX + DropdownWidth > overlayWidth)
+			{
+				dropdownX = overlayWidth - DropdownWidth;
+			}
+			if (dropdownX < 0.0)
+			{
+				dropdownX = 0.0;
+			}
+			m_openDropdownX = dropdownX;
 
 			VerticalStackLayout list = new VerticalStackLayout();
 			list.Spacing = 0.0;
@@ -473,7 +553,7 @@ namespace Bitmute.UI
 
 			for (int itemIndex = 0; itemIndex < items.Length; itemIndex++)
 			{
-				list.Add(BuildMenuItem(title, items[itemIndex]));
+				list.Add(BuildMenuItem(title, items[itemIndex], itemIndex));
 			}
 
 			Border dropdown = new Border();
@@ -492,27 +572,103 @@ namespace Bitmute.UI
 			AbsoluteLayout.SetLayoutBounds(catcher, new Rect(0.0, UiConstants.MenuBarHeight, 1.0, 1.0));
 			m_overlay.Add(catcher);
 
-			double dropdownX = m_menuButtons[index].Bounds.X;
-			double overlayWidth = m_overlay.Width;
-			if (overlayWidth > 0.0 && dropdownX + DropdownWidth > overlayWidth)
-			{
-				dropdownX = overlayWidth - DropdownWidth;
-			}
-			if (dropdownX < 0.0)
-			{
-				dropdownX = 0.0;
-			}
 			double dropdownHeight = (items.Length * MenuItemHeight) + 8.0;
 			AbsoluteLayout.SetLayoutFlags(dropdown, AbsoluteLayoutFlags.None);
 			AbsoluteLayout.SetLayoutBounds(dropdown, new Rect(dropdownX, UiConstants.MenuBarHeight, DropdownWidth, dropdownHeight));
 			m_overlay.Add(dropdown);
 		}
 
-		private Border BuildMenuItem(string title, string item)
+		private void OpenSubmenu(string parentItem, int parentIndex)
+		{
+			CloseSubmenu();
+			string[] children = GetSubmenuItems(m_menuTitles[m_openMenuIndex], parentItem);
+			if (children.Length == 0)
+			{
+				return;
+			}
+			VerticalStackLayout list = new VerticalStackLayout();
+			list.Spacing = 0.0;
+			list.Padding = new Thickness(0.0, 4.0, 0.0, 4.0);
+			m_submenuChildRows.Clear();
+			for (int index = 0; index < children.Length; index++)
+			{
+				Border childRow = BuildMenuItem(m_menuTitles[m_openMenuIndex], children[index], -1);
+				m_submenuChildRows.Add(childRow);
+				list.Add(childRow);
+			}
+			Border submenu = new Border();
+			submenu.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
+			submenu.ThemeStroke(UiConstants.DividerLight, UiConstants.DividerDark);
+			submenu.StrokeThickness = 1.0;
+			submenu.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(3.0) };
+			submenu.Content = list;
+			double submenuX = m_openDropdownX + DropdownWidth - 2.0;
+			double overlayWidth = m_overlay.Width;
+			if (overlayWidth > 0.0 && submenuX + DropdownWidth > overlayWidth)
+			{
+				submenuX = m_openDropdownX - DropdownWidth + 2.0;
+			}
+			if (submenuX < 0.0)
+			{
+				submenuX = 0.0;
+			}
+			double submenuY = UiConstants.MenuBarHeight + 4.0 + (parentIndex * MenuItemHeight);
+			double submenuHeight = (children.Length * MenuItemHeight) + 8.0;
+			AbsoluteLayout.SetLayoutFlags(submenu, AbsoluteLayoutFlags.None);
+			AbsoluteLayout.SetLayoutBounds(submenu, new Rect(submenuX, submenuY, DropdownWidth, submenuHeight));
+			m_overlay.Add(submenu);
+			m_submenuBorder = submenu;
+		}
+
+		private void CloseSubmenu()
+		{
+			if (m_submenuBorder != null)
+			{
+				m_overlay.Remove(m_submenuBorder);
+				m_submenuBorder = null;
+			}
+		}
+
+		private void OnSubmenuParentEntered(object sender, PointerEventArgs eventArgs)
+		{
+			Border row = sender as Border;
+			if (row == null)
+			{
+				return;
+			}
+			row.ThemeBg(UiConstants.AccentLight, UiConstants.AccentDark);
+			for (int index = 0; index < m_submenuParentRows.Count; index++)
+			{
+				if (ReferenceEquals(m_submenuParentRows[index], sender))
+				{
+					OpenSubmenu(m_submenuParentNames[index], m_submenuParentIndices[index]);
+					return;
+				}
+			}
+		}
+
+		private void OnSubmenuParentTapped(object sender, TappedEventArgs eventArgs)
+		{
+			for (int index = 0; index < m_submenuParentRows.Count; index++)
+			{
+				if (ReferenceEquals(m_submenuParentRows[index], sender))
+				{
+					OpenSubmenu(m_submenuParentNames[index], m_submenuParentIndices[index]);
+					return;
+				}
+			}
+		}
+
+		private Border BuildMenuItem(string title, string item, int itemIndex)
 		{
 			bool enabled = IsItemEnabled(title, item);
+			bool submenu = IsSubmenu(title, item);
 
 			string accelerator = AcceleratorForItem(title, item);
+			if (submenu)
+			{
+				accelerator = "▸";
+			}
 
 			Grid rowContent = new Grid();
 			rowContent.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
@@ -522,6 +678,8 @@ namespace Bitmute.UI
 			label.Text = item;
 			label.FontSize = 12.0;
 			label.VerticalOptions = LayoutOptions.Center;
+			label.LineBreakMode = LineBreakMode.TailTruncation;
+			label.MaxLines = 1;
 			if (enabled)
 			{
 				label.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
@@ -558,7 +716,20 @@ namespace Bitmute.UI
 			row.StrokeThickness = 0.0;
 			row.Content = rowContent;
 
-			if (enabled)
+			if (submenu)
+			{
+				TapGestureRecognizer submenuTap = new TapGestureRecognizer();
+				submenuTap.Tapped += OnSubmenuParentTapped;
+				row.GestureRecognizers.Add(submenuTap);
+				PointerGestureRecognizer submenuPointer = new PointerGestureRecognizer();
+				submenuPointer.PointerEntered += OnSubmenuParentEntered;
+				submenuPointer.PointerExited += OnMenuItemPointerExited;
+				row.GestureRecognizers.Add(submenuPointer);
+				m_submenuParentRows.Add(row);
+				m_submenuParentNames.Add(item);
+				m_submenuParentIndices.Add(itemIndex);
+			}
+			else if (enabled)
 			{
 				TapGestureRecognizer tap = new TapGestureRecognizer();
 				tap.Tapped += OnMenuItemTapped;
@@ -580,6 +751,19 @@ namespace Bitmute.UI
 			if (row != null)
 			{
 				row.ThemeBg(UiConstants.AccentLight, UiConstants.AccentDark);
+			}
+			bool isSubmenuChild = false;
+			for (int index = 0; index < m_submenuChildRows.Count; index++)
+			{
+				if (ReferenceEquals(m_submenuChildRows[index], sender))
+				{
+					isSubmenuChild = true;
+					break;
+				}
+			}
+			if (!isSubmenuChild)
+			{
+				CloseSubmenu();
 			}
 		}
 
@@ -616,6 +800,11 @@ namespace Bitmute.UI
 			m_overlay.Clear();
 			m_openItemButtons.Clear();
 			m_openItemActions.Clear();
+			m_submenuParentRows.Clear();
+			m_submenuParentNames.Clear();
+			m_submenuParentIndices.Clear();
+			m_submenuChildRows.Clear();
+			m_submenuBorder = null;
 			if (m_openMenuIndex >= 0)
 			{
 				m_menuButtons[m_openMenuIndex].ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
@@ -700,6 +889,75 @@ namespace Bitmute.UI
 				ToggleGrid();
 				return;
 			}
+			if (action == "Snap to Guides" || action == "✓ Snap to Guides")
+			{
+				m_snapEnabled = !m_snapEnabled;
+				Microsoft.Maui.Storage.Preferences.Default.Set("snap_enabled", m_snapEnabled);
+				return;
+			}
+			if (action == "Lock Guides" || action == "✓ Lock Guides")
+			{
+				Document guideDoc = ActiveDocument();
+				if (guideDoc != null)
+				{
+					guideDoc.Guides().SetLocked(!guideDoc.Guides().IsLocked());
+				}
+				return;
+			}
+			if (action == "Clear Guides")
+			{
+				Document clearDoc = ActiveDocument();
+				if (clearDoc != null)
+				{
+					clearDoc.Guides().Clear();
+					CanvasView guideCanvas = ActiveCanvas();
+					if (guideCanvas != null)
+					{
+						guideCanvas.InvalidateSurface();
+					}
+				}
+				return;
+			}
+			if (action == "Free Transform")
+			{
+				BeginTransform(0);
+				return;
+			}
+			if (action == "Scale")
+			{
+				BeginTransform(1);
+				return;
+			}
+			if (action == "Rotate")
+			{
+				BeginTransform(2);
+				return;
+			}
+			if (action == "Skew")
+			{
+				BeginTransform(3);
+				return;
+			}
+			if (action == "Distort")
+			{
+				BeginTransform(4);
+				return;
+			}
+			if (action == "Perspective")
+			{
+				BeginTransform(5);
+				return;
+			}
+			if (action == "Flip Horizontal (Layer)")
+			{
+				BeginTransform(6);
+				return;
+			}
+			if (action == "Flip Vertical (Layer)")
+			{
+				BeginTransform(7);
+				return;
+			}
 			if (action == "Rotate Arbitrary…")
 			{
 				OpenAdjustment("rotate");
@@ -708,11 +966,6 @@ namespace Bitmute.UI
 			if (action == "Stroke…")
 			{
 				OpenStrokeDialog();
-				return;
-			}
-			if (action == "Clear Recent")
-			{
-				RecentFiles.Clear();
 				return;
 			}
 			for (int recentIndex = 0; recentIndex < m_recentMenuPaths.Count; recentIndex++)
@@ -907,6 +1160,7 @@ namespace Bitmute.UI
 				return;
 			}
 			Document document = canvas.CurrentDocument();
+			document.BeginCanvasEdit(CanvasOpLabel(op));
 			if (op == "fliph")
 			{
 				document.FlipHorizontal();
@@ -935,7 +1189,41 @@ namespace Bitmute.UI
 			{
 				document.Trim();
 			}
+			document.EndCanvasEdit();
 			FinishCanvasOp(canvas, document);
+		}
+
+		private static string CanvasOpLabel(string op)
+		{
+			if (op == "fliph")
+			{
+				return "Flip Horizontal";
+			}
+			if (op == "flipv")
+			{
+				return "Flip Vertical";
+			}
+			if (op == "rot90")
+			{
+				return "Rotate 90 CW";
+			}
+			if (op == "rot180")
+			{
+				return "Rotate 180";
+			}
+			if (op == "rot270")
+			{
+				return "Rotate 90 CCW";
+			}
+			if (op == "crop")
+			{
+				return "Crop";
+			}
+			if (op == "trim")
+			{
+				return "Trim";
+			}
+			return "Canvas Edit";
 		}
 
 		public void ApplyCanvasSize(int width, int height, int anchorX, int anchorY)
@@ -946,7 +1234,9 @@ namespace Bitmute.UI
 				return;
 			}
 			Document document = canvas.CurrentDocument();
+			document.BeginCanvasEdit("Canvas Size");
 			document.ResizeCanvas(width, height, anchorX, anchorY);
+			document.EndCanvasEdit();
 			FinishCanvasOp(canvas, document);
 		}
 
@@ -958,7 +1248,9 @@ namespace Bitmute.UI
 				return;
 			}
 			Document document = canvas.CurrentDocument();
+			document.BeginCanvasEdit("Image Size");
 			document.ScaleImage(width, height, interpolation);
+			document.EndCanvasEdit();
 			FinishCanvasOp(canvas, document);
 		}
 
@@ -1021,7 +1313,9 @@ namespace Bitmute.UI
 			Document document = canvas.CurrentDocument();
 			if (id == "rotate")
 			{
+				document.BeginCanvasEdit("Rotate");
 				document.RotateArbitrary(first, 2);
+				document.EndCanvasEdit();
 				FinishCanvasOp(canvas, document);
 				return;
 			}
@@ -1130,6 +1424,7 @@ namespace Bitmute.UI
 			}
 			if (canvas.CurrentDocument().Undo())
 			{
+				canvas.SyncDocumentSize();
 				canvas.MarkComposeDirty();
 				RefreshPanels();
 			}
@@ -1144,6 +1439,7 @@ namespace Bitmute.UI
 			}
 			if (canvas.CurrentDocument().Redo())
 			{
+				canvas.SyncDocumentSize();
 				canvas.MarkComposeDirty();
 				RefreshPanels();
 			}
@@ -2347,7 +2643,17 @@ namespace Bitmute.UI
 			m_zoomTool = new ZoomTool();
 			m_rulerTool = new RulerTool();
 			m_cropTool = new CropTool();
+			m_freeTransformTool = new FreeTransformTool();
+			m_previousTool = eTool.Brush;
+			m_guideCreateOrientation = 0;
+			m_guideCreateCanvas = null;
 			m_gridEnabled = false;
+			m_snapEnabled = Microsoft.Maui.Storage.Preferences.Default.Get("snap_enabled", false);
+			m_submenuParentRows = new List<Border>();
+			m_submenuParentNames = new List<string>();
+			m_submenuParentIndices = new List<int>();
+			m_submenuChildRows = new List<Border>();
+			m_submenuBorder = null;
 			m_recentMenuPaths = new List<string>();
 
 			View menuBar = BuildMenuBar();
@@ -2435,12 +2741,17 @@ namespace Bitmute.UI
 			AddCtrlAltAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorImageSize);
 			AddAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorInvertSelection);
 			AddAccelerator(element, Windows.System.VirtualKey.R, OnAcceleratorRulers);
+			AddAccelerator(element, Windows.System.VirtualKey.T, OnAcceleratorTransform);
+			AddBareAccelerator(element, Windows.System.VirtualKey.Enter, OnAcceleratorCommitTransform);
+			AddBareAccelerator(element, Windows.System.VirtualKey.Escape, OnAcceleratorCancelTransform);
 			AddBareAccelerator(element, Windows.System.VirtualKey.X, OnAcceleratorSwapColors);
 			AddBareAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDelete);
 			AddAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDeleteBackground);
 			AddAltAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDeleteForeground);
 			element.KeyboardAcceleratorPlacementMode = Microsoft.UI.Xaml.Input.KeyboardAcceleratorPlacementMode.Hidden;
 			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerPressedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGlobalPointerPressed), true);
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerMovedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGlobalPointerMoved), true);
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerReleasedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGlobalPointerReleased), true);
 			element.AllowDrop = true;
 			element.DragOver += OnElementDragOver;
 			element.Drop += OnElementDrop;
@@ -2469,6 +2780,56 @@ namespace Bitmute.UI
 			}
 			m_pulldownDismissTick = System.Environment.TickCount64;
 			ClosePulldown();
+		}
+
+		public void BeginGuideCreation(int orientation, CanvasView canvas)
+		{
+			if (canvas == null)
+			{
+				return;
+			}
+			if (canvas.CurrentDocument().Guides().IsLocked())
+			{
+				return;
+			}
+			ActivateDocumentWindow(canvas.OwnerWindow());
+			m_guideCreateOrientation = orientation;
+			m_guideCreateCanvas = canvas;
+		}
+
+		private void OnGlobalPointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs args)
+		{
+			if (m_guideCreateOrientation == 0)
+			{
+				return;
+			}
+			CanvasView canvas = m_guideCreateCanvas;
+			if (canvas == null)
+			{
+				return;
+			}
+			Microsoft.UI.Xaml.UIElement canvasElement = canvas.Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (canvasElement == null)
+			{
+				return;
+			}
+			Windows.Foundation.Point position = args.GetCurrentPoint(canvasElement).Position;
+			canvas.UpdatePendingGuideFromDip(m_guideCreateOrientation, position.X, position.Y);
+		}
+
+		private void OnGlobalPointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs args)
+		{
+			if (m_guideCreateOrientation == 0)
+			{
+				return;
+			}
+			CanvasView canvas = m_guideCreateCanvas;
+			m_guideCreateOrientation = 0;
+			m_guideCreateCanvas = null;
+			if (canvas != null)
+			{
+				canvas.CommitPendingGuide();
+			}
 		}
 
 		private void OnElementDragOver(object sender, Microsoft.UI.Xaml.DragEventArgs args)
@@ -2772,6 +3133,72 @@ namespace Bitmute.UI
 		private void OnAcceleratorRulers(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
 			ToggleRulers();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorTransform(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			if (m_textEditActive)
+			{
+				return;
+			}
+			BeginTransform(0);
+			args.Handled = true;
+		}
+
+		private bool TransformActive()
+		{
+			if (m_toolState == null || m_freeTransformTool == null)
+			{
+				return false;
+			}
+			return m_toolState.Tool() == eTool.FreeTransform && m_freeTransformTool.HasPreview();
+		}
+
+		private void RefreshTransformCanvas()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.MarkComposeDirty();
+				canvas.InvalidateSurface();
+			}
+			RefreshLayerThumbnails();
+		}
+
+		private void OnAcceleratorCommitTransform(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			if (m_textEditActive)
+			{
+				return;
+			}
+			if (!TransformActive())
+			{
+				return;
+			}
+			Document document = ActiveDocument();
+			if (document != null)
+			{
+				m_freeTransformTool.Commit(document);
+			}
+			EndTransformMode();
+			RefreshTransformCanvas();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorCancelTransform(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			if (m_textEditActive)
+			{
+				return;
+			}
+			if (!TransformActive())
+			{
+				return;
+			}
+			m_freeTransformTool.Cancel();
+			EndTransformMode();
+			RefreshTransformCanvas();
 			args.Handled = true;
 		}
 
@@ -3138,6 +3565,12 @@ namespace Bitmute.UI
 			{
 				SetStatusMessage("Export failed: " + error.Message);
 			}
+		}
+
+		public void ClearRecentFiles()
+		{
+			RecentFiles.Clear();
+			SetStatusMessage("Recent files cleared");
 		}
 
 		public int CurrentUndoDepth()
@@ -3628,6 +4061,10 @@ namespace Bitmute.UI
 			if (m_cropTool != null)
 			{
 				m_cropTool.Reset();
+			}
+			if (m_freeTransformTool != null)
+			{
+				m_freeTransformTool.Reset();
 			}
 		}
 
@@ -5002,7 +5439,58 @@ namespace Bitmute.UI
 			{
 				return m_cropTool;
 			}
+			if (tool == eTool.FreeTransform)
+			{
+				return m_freeTransformTool;
+			}
 			return null;
+		}
+
+		public bool SnapEnabled()
+		{
+			return m_snapEnabled;
+		}
+
+		public void BeginTransform(int mode)
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null || layer.IsText())
+			{
+				SetStatusMessage("Select a raster layer to transform");
+				return;
+			}
+			if (m_toolState.Tool() != eTool.FreeTransform)
+			{
+				m_previousTool = m_toolState.Tool();
+			}
+			OnToolSelected(eTool.FreeTransform);
+			bool armed = m_freeTransformTool.Begin(document, mode, m_toolState.Background());
+			if (!armed)
+			{
+				SetStatusMessage("Cannot transform this layer");
+				OnToolSelected(m_previousTool);
+				return;
+			}
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.MarkComposeDirty();
+				canvas.InvalidateSurface();
+			}
+		}
+
+		public void EndTransformMode()
+		{
+			if (m_toolState.Tool() != eTool.FreeTransform)
+			{
+				return;
+			}
+			OnToolSelected(m_previousTool);
 		}
 
 		private void OnSystemThemeChanged(object sender, Microsoft.Maui.Controls.AppThemeChangedEventArgs eventArgs)
