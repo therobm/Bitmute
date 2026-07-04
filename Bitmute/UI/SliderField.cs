@@ -30,8 +30,7 @@ namespace Bitmute.UI
 			m_valueEntry = new Entry();
 			m_valueEntry.FontSize = 12.0;
 			m_valueEntry.WidthRequest = 52.0;
-			m_valueEntry.HeightRequest = 18.0;
-			m_valueEntry.MinimumHeightRequest = 18.0;
+			m_valueEntry.HeightRequest = 22.0;
 			m_valueEntry.Margin = new Thickness(0.0);
 			m_valueEntry.Keyboard = Keyboard.Numeric;
 			m_valueEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
@@ -46,8 +45,7 @@ namespace Bitmute.UI
 			arrow.FontSize = 10.0;
 			arrow.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			arrow.WidthRequest = 22.0;
-			arrow.HeightRequest = 18.0;
-			arrow.MinimumHeightRequest = 18.0;
+			arrow.HeightRequest = 22.0;
 			arrow.HorizontalTextAlignment = TextAlignment.Center;
 			arrow.VerticalTextAlignment = TextAlignment.Center;
 			arrow.VerticalOptions = LayoutOptions.Fill;
