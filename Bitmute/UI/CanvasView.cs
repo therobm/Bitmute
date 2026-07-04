@@ -1820,6 +1820,10 @@ namespace Bitmute.UI
 						m_document.EndStroke();
 						main.RefreshLayerThumbnails();
 					}
+					else if (tool is MoveTool)
+					{
+						main.RefreshLayerThumbnails();
+					}
 				}
 				m_toolStrokeActive = false;
 				StopAirbrush();

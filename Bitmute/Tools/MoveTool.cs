@@ -279,6 +279,11 @@ namespace Bitmute.Tools
 			m_moveContentValid = false;
 		}
 
+		public override bool IsDestructive()
+		{
+			return false;
+		}
+
 		public override bool OnPressed(Document document, int x, int y, ToolState state)
 		{
 			Layer layer = document.ActiveLayer();

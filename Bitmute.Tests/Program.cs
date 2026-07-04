@@ -41,6 +41,7 @@ namespace Bitmute.Tests
 			TestFillLayer();
 			TestSelectionMoveLayer();
 			TestFloatingSelection();
+			TestFloatingSelectionMultiGrab();
 			TestCustomBlends();
 			TestCustomBlendOpacity();
 			TestCustomBlendTransparentBase();
@@ -1282,6 +1283,70 @@ namespace Bitmute.Tests
 			Check(undoHome.Red == 255 && undoHome.Alpha == 255, "undo-cancel restores pixels home (36,16)");
 			SKColor undoMovedGone = undoContent.GetPixelCanvas(52, 22);
 			Check(undoMovedGone.Alpha == 0, "undo-cancel drops the moved position (52,22)");
+		}
+
+		private static void MoveGrab(MoveTool move, Document doc, int fromX, int fromY, int toX, int toY, ToolState state)
+		{
+			bool destructive = move.IsDestructive();
+			if (destructive)
+			{
+				doc.BeginStroke();
+			}
+			move.OnPressed(doc, fromX, fromY, state);
+			move.OnDragged(doc, toX, toY, state);
+			move.OnReleased(doc, toX, toY, state);
+			if (destructive)
+			{
+				doc.EndStroke();
+			}
+		}
+
+		private static void TestFloatingSelectionMultiGrab()
+		{
+			Document doc = new Document("t", 80, 48);
+			Layer content = doc.AddLayer("c");
+			content.SetOffset(20, 0);
+			SKColor red = new SKColor(255, 0, 0, 255);
+			for (int y = 10; y < 30; y++)
+			{
+				for (int x = 30; x < 50; x++)
+				{
+					content.SetPixelCanvas(x, y, red);
+				}
+			}
+			doc.Selection().SelectRect(new SKRectI(34, 14, 44, 24));
+
+			ToolState state = new ToolState();
+			MoveTool move = new MoveTool();
+
+			MoveGrab(move, doc, 38, 18, 44, 24, state);
+			Check(doc.HasFloatingSelection(), "multi-grab: float active after grab 1");
+			Check(doc.FloatDeltaX() == 6 && doc.FloatDeltaY() == 6, "multi-grab: grab 1 moves float by (6,6)");
+
+			MoveGrab(move, doc, 44, 24, 48, 27, state);
+			Check(doc.HasFloatingSelection(), "multi-grab: float active after grab 2");
+			Check(doc.FloatDeltaX() == 10 && doc.FloatDeltaY() == 9, "multi-grab: grab 2 accumulates float to (10,9)");
+
+			doc.ResetSelection();
+			Check(!doc.HasFloatingSelection(), "multi-grab: deselect commits and clears the float");
+
+			SKColor movedTo = content.GetPixelCanvas(46, 25);
+			Check(movedTo.Red == 255 && movedTo.Alpha == 255, "multi-grab: commit places moved pixels at final position (46,25)");
+			SKColor movedEdge = content.GetPixelCanvas(53, 32);
+			Check(movedEdge.Red == 255 && movedEdge.Alpha == 255, "multi-grab: commit keeps far corner of moved block (53,32)");
+			SKColor origin = content.GetPixelCanvas(36, 16);
+			Check(origin.Alpha == 0, "multi-grab: commit keeps the origin cleared (36,16)");
+			SKColor initialMove = content.GetPixelCanvas(42, 22);
+			Check(initialMove.Alpha == 0, "multi-grab: commit does not leave content at the first-grab position (42,22)");
+
+			bool undone = doc.Undo();
+			Check(undone, "multi-grab: commit is undoable");
+			SKColor home = content.GetPixelCanvas(36, 16);
+			Check(home.Red == 255 && home.Alpha == 255, "multi-grab: one undo restores pixels home (36,16)");
+			SKColor undoMovedGone = content.GetPixelCanvas(52, 31);
+			Check(undoMovedGone.Alpha == 0, "multi-grab: one undo clears the moved position (52,31)");
+			bool secondUndo = doc.Undo();
+			Check(!secondUndo, "multi-grab: commit pushes exactly one undo entry (no stray stroke command)");
 		}
 
 		private static void TestFillLayer()
