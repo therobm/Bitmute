@@ -562,10 +562,10 @@ namespace Bitmute.Imaging
 			return m_layers[m_activeLayerIndex];
 		}
 
-		public bool ActiveLayerGuideCenter(out int centerX, out int centerY)
+		public bool ActiveLayerContentBox(out SKRectI box, out bool isBackground)
 		{
-			centerX = 0;
-			centerY = 0;
+			box = SKRectI.Empty;
+			isBackground = false;
 			Layer layer = ActiveLayer();
 			if (layer == null)
 			{
@@ -573,8 +573,8 @@ namespace Bitmute.Imaging
 			}
 			if (layer.IsBackground())
 			{
-				centerX = m_width / 2;
-				centerY = m_height / 2;
+				box = new SKRectI(0, 0, m_width, m_height);
+				isBackground = true;
 				return true;
 			}
 			SKRectI bounds = PixelRegion.ComputeContentBounds(layer.Bitmap());
@@ -582,8 +582,7 @@ namespace Bitmute.Imaging
 			{
 				return false;
 			}
-			centerX = layer.OffsetX() + ((bounds.Left + bounds.Right) / 2);
-			centerY = layer.OffsetY() + ((bounds.Top + bounds.Bottom) / 2);
+			box = new SKRectI(bounds.Left + layer.OffsetX(), bounds.Top + layer.OffsetY(), bounds.Right + layer.OffsetX(), bounds.Bottom + layer.OffsetY());
 			return true;
 		}
 

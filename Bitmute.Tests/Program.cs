@@ -610,11 +610,12 @@ namespace Bitmute.Tests
 		private static void TestGuideStickyCenter()
 		{
 			Document doc = new Document("t", 40, 20);
-			int backgroundX;
-			int backgroundY;
-			bool backgroundValid = doc.ActiveLayerGuideCenter(out backgroundX, out backgroundY);
-			Check(backgroundValid, "sticky center valid on background");
-			Check(backgroundX == 20 && backgroundY == 10, "sticky center is canvas center on background");
+			SKRectI backgroundBox;
+			bool backgroundIsBg;
+			bool backgroundValid = doc.ActiveLayerContentBox(out backgroundBox, out backgroundIsBg);
+			Check(backgroundValid, "sticky box valid on background");
+			Check(backgroundIsBg, "background flagged as background");
+			Check(backgroundBox.Left == 0 && backgroundBox.Top == 0 && backgroundBox.Right == 40 && backgroundBox.Bottom == 20, "background box is full canvas");
 			Layer content = doc.AddLayer("content");
 			SKColor mark = new SKColor(255, 0, 0, 255);
 			for (int y = 4; y < 12; y++)
@@ -624,16 +625,17 @@ namespace Bitmute.Tests
 					content.Bitmap().SetPixel(x, y, mark);
 				}
 			}
-			int contentX;
-			int contentY;
-			bool contentValid = doc.ActiveLayerGuideCenter(out contentX, out contentY);
-			Check(contentValid, "sticky center valid on written content");
-			Check(contentX == 15 && contentY == 8, "sticky center is content-bounds center");
+			SKRectI contentBox;
+			bool contentIsBg;
+			bool contentValid = doc.ActiveLayerContentBox(out contentBox, out contentIsBg);
+			Check(contentValid, "sticky box valid on written content");
+			Check(!contentIsBg, "content layer not flagged background");
+			Check(contentBox.Left == 10 && contentBox.Top == 4 && contentBox.Right == 20 && contentBox.Bottom == 12, "content box is written-pixel AABB");
 			Layer empty = doc.AddLayer("empty");
-			int emptyX;
-			int emptyY;
-			bool emptyValid = doc.ActiveLayerGuideCenter(out emptyX, out emptyY);
-			Check(!emptyValid, "sticky center absent on empty layer");
+			SKRectI emptyBox;
+			bool emptyIsBg;
+			bool emptyValid = doc.ActiveLayerContentBox(out emptyBox, out emptyIsBg);
+			Check(!emptyValid, "sticky box absent on empty layer");
 		}
 
 		private static void TestCompositeRangeInto()
