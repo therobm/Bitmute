@@ -42,6 +42,7 @@ namespace Bitmute.Tests
 			TestSelectionMoveLayer();
 			TestFloatingSelection();
 			TestFloatingSelectionMultiGrab();
+			TestFloatCommitBeyondSmallLayerBitmap();
 			TestMoveTextLayerUndo();
 			TestCustomBlends();
 			TestCustomBlendOpacity();
@@ -1377,6 +1378,66 @@ namespace Bitmute.Tests
 			Check(undoMovedGone.Alpha == 0, "multi-grab: one undo clears the moved position (52,31)");
 			bool secondUndo = doc.Undo();
 			Check(!secondUndo, "multi-grab: commit pushes exactly one undo entry (no stray stroke command)");
+		}
+
+		private static void TestFloatCommitBeyondSmallLayerBitmap()
+		{
+			Document doc = new Document("t", 64, 64);
+			Layer pasted = doc.AddLayer("p");
+			SKBitmap small = new SKBitmap(12, 12, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			SKColor green = new SKColor(0, 200, 0, 255);
+			small.Erase(green);
+			pasted.SetBitmap(small);
+			pasted.SetOffset(10, 10);
+			doc.Selection().SelectRect(new SKRectI(10, 10, 22, 22));
+			doc.LiftFloatingSelection();
+			doc.SetFloatingSelectionDelta(30, 25);
+			doc.CommitFloatingSelection();
+			Check(!doc.HasFloatingSelection(), "small-layer float: commit clears the float");
+			SKColor topLeft = pasted.GetPixelCanvas(40, 35);
+			Check(topLeft.Green == 200 && topLeft.Alpha == 255, "small-layer float: commit keeps top-left at the new position (40,35)");
+			SKColor topRight = pasted.GetPixelCanvas(51, 35);
+			Check(topRight.Green == 200 && topRight.Alpha == 255, "small-layer float: commit keeps top-right at the new position (51,35)");
+			SKColor center = pasted.GetPixelCanvas(46, 41);
+			Check(center.Green == 200 && center.Alpha == 255, "small-layer float: commit keeps the center at the new position (46,41)");
+			SKColor bottomLeft = pasted.GetPixelCanvas(40, 46);
+			Check(bottomLeft.Green == 200 && bottomLeft.Alpha == 255, "small-layer float: commit keeps bottom-left at the new position (40,46)");
+			SKColor bottomRight = pasted.GetPixelCanvas(51, 46);
+			Check(bottomRight.Green == 200 && bottomRight.Alpha == 255, "small-layer float: commit keeps bottom-right at the new position (51,46)");
+			SKColor vacatedTopLeft = pasted.GetPixelCanvas(10, 10);
+			Check(vacatedTopLeft.Alpha == 0, "small-layer float: commit vacates the original position (10,10)");
+			SKColor vacatedBottomRight = pasted.GetPixelCanvas(21, 21);
+			Check(vacatedBottomRight.Alpha == 0, "small-layer float: commit vacates the original position (21,21)");
+			bool undone = doc.Undo();
+			Check(undone, "small-layer float: commit is undoable");
+			Check(pasted.Bitmap().Width == 12 && pasted.Bitmap().Height == 12, "small-layer float: undo restores the original 12x12 bitmap");
+			Check(pasted.OffsetX() == 10 && pasted.OffsetY() == 10, "small-layer float: undo restores the original offset");
+			SKColor undoHome = pasted.GetPixelCanvas(10, 10);
+			Check(undoHome.Green == 200 && undoHome.Alpha == 255, "small-layer float: undo restores pixels home (10,10)");
+			SKColor undoMovedGone = pasted.GetPixelCanvas(46, 41);
+			Check(undoMovedGone.Alpha == 0, "small-layer float: undo clears the moved position (46,41)");
+			bool redone = doc.Redo();
+			Check(redone, "small-layer float: commit is redoable");
+			SKColor redoMoved = pasted.GetPixelCanvas(46, 41);
+			Check(redoMoved.Green == 200 && redoMoved.Alpha == 255, "small-layer float: redo re-applies the move (46,41)");
+
+			Document cancelDoc = new Document("t", 64, 64);
+			Layer cancelPasted = cancelDoc.AddLayer("p");
+			SKBitmap cancelSmall = new SKBitmap(12, 12, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			cancelSmall.Erase(green);
+			cancelPasted.SetBitmap(cancelSmall);
+			cancelPasted.SetOffset(10, 10);
+			cancelDoc.Selection().SelectRect(new SKRectI(10, 10, 22, 22));
+			cancelDoc.LiftFloatingSelection();
+			cancelDoc.SetFloatingSelectionDelta(30, 25);
+			cancelDoc.CancelFloatingSelection();
+			Check(!cancelDoc.HasFloatingSelection(), "small-layer float: cancel clears the float");
+			Check(cancelPasted.Bitmap().Width == 12 && cancelPasted.Bitmap().Height == 12, "small-layer float: cancel restores the original 12x12 bitmap");
+			Check(cancelPasted.OffsetX() == 10 && cancelPasted.OffsetY() == 10, "small-layer float: cancel restores the original offset");
+			SKColor cancelHome = cancelPasted.GetPixelCanvas(15, 15);
+			Check(cancelHome.Green == 200 && cancelHome.Alpha == 255, "small-layer float: cancel restores pixels home (15,15)");
+			SKRectI cancelBounds = cancelDoc.Selection().Bounds();
+			Check(cancelBounds.Left == 10 && cancelBounds.Top == 10, "small-layer float: cancel restores the original selection bounds");
 		}
 
 		private static int CountOpaquePixels(SKBitmap bitmap)

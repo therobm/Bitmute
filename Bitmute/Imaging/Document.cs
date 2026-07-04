@@ -52,6 +52,8 @@ namespace Bitmute.Imaging
 		private int m_floatDeltaY;
 		private int m_floatLayerIndex;
 		private SKBitmap m_floatOriginalBitmap;
+		private int m_floatOriginalOffsetX;
+		private int m_floatOriginalOffsetY;
 		private byte[] m_floatSourceMask;
 		private SKRectI m_floatSourceBounds;
 
@@ -95,6 +97,8 @@ namespace Bitmute.Imaging
 			m_floatDeltaY = 0;
 			m_floatLayerIndex = 0;
 			m_floatOriginalBitmap = null;
+			m_floatOriginalOffsetX = 0;
+			m_floatOriginalOffsetY = 0;
 			m_floatSourceMask = null;
 			m_floatSourceBounds = SKRectI.Empty;
 		}
@@ -280,7 +284,18 @@ namespace Bitmute.Imaging
 				return;
 			}
 			int index = m_activeLayerIndex;
-			m_floatOriginalBitmap = layer.Bitmap().Copy();
+			m_floatOriginalOffsetX = layer.OffsetX();
+			m_floatOriginalOffsetY = layer.OffsetY();
+			SKBitmap preExpand = layer.Bitmap();
+			layer.ExpandToCover(m_width, m_height);
+			if (ReferenceEquals(layer.Bitmap(), preExpand))
+			{
+				m_floatOriginalBitmap = preExpand.Copy();
+			}
+			else
+			{
+				m_floatOriginalBitmap = preExpand;
+			}
 			m_floatBitmap = ExtractSelected(layer, selection);
 			SKBitmap holed = CloneWithSelectionCleared(layer, selection);
 			SKBitmap previous = layer.Bitmap();
@@ -326,7 +341,7 @@ namespace Bitmute.Imaging
 			Layer layer = m_layers[m_floatLayerIndex];
 			SKBitmap holed = layer.Bitmap();
 			SKBitmap committed = ComposeFloatOntoLayer(layer);
-			PushCommand(new MoveLayerCommand(m_floatLayerIndex, m_floatOriginalBitmap, layer.OffsetX(), layer.OffsetY(), committed, layer.OffsetX(), layer.OffsetY()));
+			PushCommand(new MoveLayerCommand(m_floatLayerIndex, m_floatOriginalBitmap, m_floatOriginalOffsetX, m_floatOriginalOffsetY, committed, layer.OffsetX(), layer.OffsetY()));
 			layer.SetBitmap(committed);
 			holed.Dispose();
 			m_floatBitmap.Dispose();
@@ -349,6 +364,7 @@ namespace Bitmute.Imaging
 				Layer layer = m_layers[m_floatLayerIndex];
 				SKBitmap holed = layer.Bitmap();
 				layer.SetBitmap(m_floatOriginalBitmap);
+				layer.SetOffset(m_floatOriginalOffsetX, m_floatOriginalOffsetY);
 				holed.Dispose();
 			}
 			else
