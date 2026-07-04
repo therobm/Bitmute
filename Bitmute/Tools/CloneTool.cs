@@ -8,6 +8,9 @@ namespace Bitmute.Tools
 		private int m_sourceX;
 		private int m_sourceY;
 		private bool m_hasSource;
+		private int m_offsetX;
+		private int m_offsetY;
+		private bool m_hasOffset;
 
 		protected override void BeginStroke(Document document, Layer layer, ToolState state)
 		{
@@ -23,6 +26,7 @@ namespace Bitmute.Tools
 				m_sourceX = x;
 				m_sourceY = y;
 				m_hasSource = true;
+				m_hasOffset = false;
 				return false;
 			}
 			if (!m_hasSource)
@@ -34,8 +38,23 @@ namespace Bitmute.Tools
 			{
 				return false;
 			}
+			int offsetX;
+			int offsetY;
+			if (state.CloneAligned() && m_hasOffset)
+			{
+				offsetX = m_offsetX;
+				offsetY = m_offsetY;
+			}
+			else
+			{
+				offsetX = x - m_sourceX;
+				offsetY = y - m_sourceY;
+				m_offsetX = offsetX;
+				m_offsetY = offsetY;
+				m_hasOffset = true;
+			}
 			BeginStroke(document, layer, state);
-			m_engine.SetCloneOffset(x - m_sourceX, y - m_sourceY);
+			m_engine.SetCloneOffset(offsetX, offsetY);
 			m_engine.StampFirst(document, layer, x, y, document.Selection());
 			m_lastX = x;
 			m_lastY = y;

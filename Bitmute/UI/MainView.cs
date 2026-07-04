@@ -72,6 +72,8 @@ namespace Bitmute.UI
 		private Picker m_brushModePicker;
 		private Label m_brushAirbrushLabel;
 		private CheckBox m_brushAirbrushCheck;
+		private Label m_cloneAlignedLabel;
+		private CheckBox m_cloneAlignedCheck;
 		private Label m_spongeModeLabel;
 		private Picker m_spongeModePicker;
 		private Label m_colorReplaceModeLabel;
@@ -2019,6 +2021,19 @@ namespace Bitmute.UI
 			m_brushAirbrushCheck.IsChecked = m_toolState.Airbrush();
 			m_brushAirbrushCheck.CheckedChanged += OnBrushAirbrushChanged;
 
+			m_cloneAlignedLabel = new Label();
+			m_cloneAlignedLabel.Text = "Aligned";
+			m_cloneAlignedLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_cloneAlignedLabel.FontSize = 12.0;
+			m_cloneAlignedLabel.VerticalOptions = LayoutOptions.Center;
+			m_cloneAlignedLabel.IsVisible = false;
+
+			m_cloneAlignedCheck = new CheckBox();
+			m_cloneAlignedCheck.VerticalOptions = LayoutOptions.Center;
+			m_cloneAlignedCheck.IsVisible = false;
+			m_cloneAlignedCheck.IsChecked = m_toolState.CloneAligned();
+			m_cloneAlignedCheck.CheckedChanged += OnCloneAlignedChanged;
+
 			m_spongeModeLabel = new Label();
 			m_spongeModeLabel.Text = "Mode";
 			m_spongeModeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
@@ -2329,6 +2344,8 @@ namespace Bitmute.UI
 			options.Add(m_brushModePicker);
 			options.Add(m_brushAirbrushLabel);
 			options.Add(m_brushAirbrushCheck);
+			options.Add(m_cloneAlignedLabel);
+			options.Add(m_cloneAlignedCheck);
 			options.Add(m_spongeModeLabel);
 			options.Add(m_spongeModePicker);
 			options.Add(m_colorReplaceModeLabel);
@@ -4240,6 +4257,9 @@ namespace Bitmute.UI
 				m_brushAirbrushLabel.IsVisible = isBrushFamily;
 				m_brushAirbrushCheck.IsVisible = isBrushFamily;
 				m_brushSettingsButton.IsVisible = isBrushFamily;
+				bool isCloneOrHeal = tool == eTool.Clone || tool == eTool.Heal;
+				m_cloneAlignedLabel.IsVisible = isCloneOrHeal;
+				m_cloneAlignedCheck.IsVisible = isCloneOrHeal;
 			}
 			if (m_spongeModeLabel != null)
 			{
@@ -4594,6 +4614,15 @@ namespace Bitmute.UI
 				return;
 			}
 			m_toolState.SetAirbrush(m_brushAirbrushCheck.IsChecked);
+		}
+
+		private void OnCloneAlignedChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetCloneAligned(m_cloneAlignedCheck.IsChecked);
 		}
 
 		private void OnBrushSettingsClicked(object sender, System.EventArgs eventArgs)

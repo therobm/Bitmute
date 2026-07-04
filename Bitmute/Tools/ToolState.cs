@@ -26,6 +26,7 @@ namespace Bitmute.Tools
 		private bool m_snapToGuides;
 		private int m_snapTolerance;
 		private bool m_airbrush;
+		private bool m_cloneAligned;
 		private bool m_wandContiguous;
 		private bool m_wandSampleAll;
 		private bool m_wandAntiAlias;
@@ -73,6 +74,7 @@ namespace Bitmute.Tools
 			m_snapToGuides = false;
 			m_snapTolerance = 6;
 			m_airbrush = false;
+			m_cloneAligned = true;
 			m_wandContiguous = true;
 			m_wandSampleAll = false;
 			m_wandAntiAlias = true;
@@ -600,6 +602,16 @@ namespace Bitmute.Tools
 		public void SetAirbrush(bool airbrush)
 		{
 			m_airbrush = airbrush;
+		}
+
+		public bool CloneAligned()
+		{
+			return m_cloneAligned;
+		}
+
+		public void SetCloneAligned(bool aligned)
+		{
+			m_cloneAligned = aligned;
 		}
 
 		public void SwapColors()

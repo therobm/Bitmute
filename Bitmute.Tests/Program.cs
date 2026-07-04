@@ -49,6 +49,7 @@ namespace Bitmute.Tests
 			TestColorReplaceMath();
 			TestGradientFill();
 			TestHealMath();
+			TestCloneAligned();
 			TestSlices();
 			TestChannelRender();
 			TestWandContiguous();
@@ -765,6 +766,57 @@ namespace Bitmute.Tests
 			moveOff.OnPressed(docOff, 30, 20, stateOff);
 			moveOff.OnDragged(docOff, 33, 20, stateOff);
 			Check(contentOff.OffsetX() == 3, "no snap keeps raw delta (offset 3)");
+		}
+
+		private static void FillPositionGradient(Layer layer)
+		{
+			SKBitmap bitmap = layer.Bitmap();
+			for (int y = 0; y < bitmap.Height; y++)
+			{
+				for (int x = 0; x < bitmap.Width; x++)
+				{
+					bitmap.SetPixel(x, y, new SKColor((byte)x, 0, 0, 255));
+				}
+			}
+		}
+
+		private static void CloneStroke(CloneTool clone, Document doc, int x, int y, ToolState state)
+		{
+			doc.BeginStroke();
+			clone.OnPressed(doc, x, y, state);
+			clone.OnReleased(doc, x, y, state);
+			doc.EndStroke();
+		}
+
+		private static void TestCloneAligned()
+		{
+			Document doc = new Document("t", 64, 64);
+			FillPositionGradient(doc.ActiveLayer());
+			ToolState state = new ToolState();
+			state.SetBrushSize(1);
+			state.SetCloneAligned(true);
+			CloneTool clone = new CloneTool();
+			state.SetAltHeld(true);
+			clone.OnPressed(doc, 10, 10, state);
+			state.SetAltHeld(false);
+			CloneStroke(clone, doc, 30, 10, state);
+			CloneStroke(clone, doc, 40, 10, state);
+			SKColor aligned = doc.ActiveLayer().GetPixelCanvas(40, 10);
+			CheckNear(aligned.Red, 20, 1, "clone aligned stroke 2 samples shifted source");
+
+			Document doc2 = new Document("t", 64, 64);
+			FillPositionGradient(doc2.ActiveLayer());
+			ToolState state2 = new ToolState();
+			state2.SetBrushSize(1);
+			state2.SetCloneAligned(false);
+			CloneTool clone2 = new CloneTool();
+			state2.SetAltHeld(true);
+			clone2.OnPressed(doc2, 10, 10, state2);
+			state2.SetAltHeld(false);
+			CloneStroke(clone2, doc2, 30, 10, state2);
+			CloneStroke(clone2, doc2, 40, 10, state2);
+			SKColor unaligned = doc2.ActiveLayer().GetPixelCanvas(40, 10);
+			CheckNear(unaligned.Red, 10, 1, "clone non-aligned stroke 2 re-anchors to source");
 		}
 
 		private static void TestGuideStickyCenter()
