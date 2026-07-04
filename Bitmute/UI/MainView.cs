@@ -414,7 +414,7 @@ namespace Bitmute.UI
 			}
 			if (title == "Layer")
 			{
-				return new string[] { "New Layer", "Delete Layer", MenuBreak, "Merge Down", "Merge Visible", "Flatten Image", MenuBreak, "Layer Style…", "Rasterize Text" };
+				return new string[] { "New Layer", "Delete Layer", MenuBreak, "Merge Down", "Merge Visible", "Flatten Image", MenuBreak, "Layer Style…", "Layer Properties…", "Rasterize Text" };
 			}
 			if (title == "Select")
 			{
@@ -463,7 +463,7 @@ namespace Bitmute.UI
 				{
 					return CanMergeDown();
 				}
-				if (item == "Layer Style…")
+				if (item == "Layer Style…" || item == "Layer Properties…")
 				{
 					Document styleDocument = ActiveDocument();
 					if (styleDocument == null)
@@ -1280,6 +1280,11 @@ namespace Bitmute.UI
 				OpenLayerStyleDialog();
 				return;
 			}
+			if (action == "Layer Properties…")
+			{
+				OpenLayerPropertiesDialog();
+				return;
+			}
 			if (action == "Merge Down")
 			{
 				DoMergeDown();
@@ -2012,6 +2017,43 @@ namespace Bitmute.UI
 			m_layerStyleSnapshot = layer.LayerStyle().Clone();
 			m_layerStyleTargetIndex = document.ActiveLayerIndex();
 			ShowModal(new LayerStyleDialog(layer.LayerStyle().Clone()), 620.0, 340.0);
+		}
+
+		public void OpenLayerPropertiesDialog()
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			ShowModal(new LayerPropertiesDialog(layer.Name()), 320.0, 160.0);
+		}
+
+		public void RenameActiveLayer(string name)
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			if (name == layer.Name())
+			{
+				return;
+			}
+			document.BeginCanvasEdit("Layer Properties");
+			layer.SetName(name);
+			document.EndCanvasEdit();
+			RefreshPanels();
 		}
 
 		private Layer LayerStyleTargetLayer()
@@ -3862,12 +3904,13 @@ namespace Bitmute.UI
 			menu.Spacing = 0.0;
 			menu.Padding = new Thickness(0.0, 4.0, 0.0, 4.0);
 			menu.Add(BuildContextMenuRow("Layer Style…", OnContextLayerStyle));
+			menu.Add(BuildContextMenuRow("Layer Properties…", OnContextLayerProperties));
 			menu.Add(BuildContextMenuRow("Duplicate Layer", OnContextDuplicateLayer));
 			menu.Add(BuildContextMenuRow("Merge Down", OnContextMergeDown));
 			menu.Add(BuildContextMenuRow("Rasterize Text", OnContextRasterizeText));
 			menu.Add(BuildMenuSeparator());
 			menu.Add(BuildContextMenuRow("Delete Layer", OnContextDeleteLayer));
-			double height = (5.0 * MenuItemHeight) + MenuSeparatorHeight + 8.0;
+			double height = (6.0 * MenuItemHeight) + MenuSeparatorHeight + 8.0;
 			ShowPulldown(menu, anchorX, anchorY, DropdownWidth, height);
 		}
 
@@ -3875,6 +3918,12 @@ namespace Bitmute.UI
 		{
 			ClosePulldown();
 			OpenLayerStyleDialog();
+		}
+
+		private void OnContextLayerProperties(object sender, TappedEventArgs eventArgs)
+		{
+			ClosePulldown();
+			OpenLayerPropertiesDialog();
 		}
 
 		private void OnContextDuplicateLayer(object sender, TappedEventArgs eventArgs)
