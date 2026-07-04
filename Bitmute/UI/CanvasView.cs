@@ -1671,6 +1671,13 @@ namespace Bitmute.UI
 			Windows.UI.Core.CoreVirtualKeyStates altState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Menu);
 			bool altHeld = (altState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
 			state.SetAltHeld(altHeld);
+			int guideSnapTolerance = (int)System.Math.Ceiling(6.0 / m_zoom);
+			if (guideSnapTolerance < 3)
+			{
+				guideSnapTolerance = 3;
+			}
+			state.SetSnapToGuides(main.SnapEnabled());
+			state.SetSnapTolerance(guideSnapTolerance);
 
 			bool changed = false;
 			int preEventWidth = m_document.Width();
@@ -1770,10 +1777,6 @@ namespace Bitmute.UI
 
 		private static bool IsSnapTool(Tool tool)
 		{
-			if (tool is MoveTool)
-			{
-				return true;
-			}
 			if (tool is RectangleSelectTool)
 			{
 				return true;

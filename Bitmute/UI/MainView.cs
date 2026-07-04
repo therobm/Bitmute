@@ -27,6 +27,7 @@ namespace Bitmute.UI
 		private DocumentWindow m_activeDocumentWindow;
 		private ToolPalette m_toolPalette;
 		private LayersPanel m_layersPanel;
+		private ChannelsPanel m_channelsPanel;
 		private NavigatorPanel m_navigatorPanel;
 		private InfoPanel m_infoPanel;
 		private SwatchesPanel m_swatchesPanel;
@@ -76,7 +77,9 @@ namespace Bitmute.UI
 		private Label m_colorReplaceToleranceLabel;
 		private SliderField m_colorReplaceToleranceField;
 		private Label m_gradientTypeLabel;
-		private Picker m_gradientTypePicker;
+		private Button m_gradientTypeButton;
+		private string[] m_gradientTypeNames;
+		private List<View> m_gradientTypeRows;
 		private Label m_gradientReverseLabel;
 		private CheckBox m_gradientReverseCheck;
 		private Label m_gradientTransparentLabel;
@@ -266,10 +269,6 @@ namespace Bitmute.UI
 			{
 				return true;
 			}
-			if (title == "View" && item == "Channels")
-			{
-				return true;
-			}
 			return false;
 		}
 
@@ -287,10 +286,6 @@ namespace Bitmute.UI
 			if (title == "Edit" && item == "Transform")
 			{
 				return new string[] { "Free Transform", "Scale", "Rotate", "Skew", "Distort", "Perspective", "Flip Horizontal (Layer)", "Flip Vertical (Layer)" };
-			}
-			if (title == "View" && item == "Channels")
-			{
-				return new string[] { PanelMenuLabel("Composite", m_channelViewMode < 0), PanelMenuLabel("Red", m_channelViewMode == 0), PanelMenuLabel("Green", m_channelViewMode == 1), PanelMenuLabel("Blue", m_channelViewMode == 2), PanelMenuLabel("Alpha", m_channelViewMode == 3) };
 			}
 			return new string[] { };
 		}
@@ -355,7 +350,7 @@ namespace Bitmute.UI
 			}
 			if (title == "View")
 			{
-				return new string[] { "Zoom In", "Zoom Out", "Fit on Screen", "Rulers", "Grid", "Channels", PanelMenuLabel("Snap to Guides", m_snapEnabled), PanelMenuLabel("Lock Guides", GuidesLocked()), "Clear Guides" };
+				return new string[] { "Zoom In", "Zoom Out", "Fit on Screen", "Rulers", "Grid", PanelMenuLabel("Snap to Guides", m_snapEnabled), PanelMenuLabel("Lock Guides", GuidesLocked()), "Clear Guides" };
 			}
 			if (title == "Window")
 			{
@@ -910,31 +905,6 @@ namespace Bitmute.UI
 			if (action == "Grid")
 			{
 				ToggleGrid();
-				return;
-			}
-			if (action == "Composite" || action == "✓ Composite")
-			{
-				SetChannelView(-1);
-				return;
-			}
-			if (action == "Red" || action == "✓ Red")
-			{
-				SetChannelView(0);
-				return;
-			}
-			if (action == "Green" || action == "✓ Green")
-			{
-				SetChannelView(1);
-				return;
-			}
-			if (action == "Blue" || action == "✓ Blue")
-			{
-				SetChannelView(2);
-				return;
-			}
-			if (action == "Alpha" || action == "✓ Alpha")
-			{
-				SetChannelView(3);
 				return;
 			}
 			if (action == "Snap to Guides" || action == "✓ Snap to Guides")
@@ -1752,6 +1722,30 @@ namespace Bitmute.UI
 			int offsetX = (document.Width() - pasted.Width) / 2;
 			int offsetY = (document.Height() - pasted.Height) / 2;
 			layer.SetOffset(offsetX, offsetY);
+			int selLeft = offsetX;
+			int selTop = offsetY;
+			int selRight = offsetX + pasted.Width;
+			int selBottom = offsetY + pasted.Height;
+			if (selLeft < 0)
+			{
+				selLeft = 0;
+			}
+			if (selTop < 0)
+			{
+				selTop = 0;
+			}
+			if (selRight > document.Width())
+			{
+				selRight = document.Width();
+			}
+			if (selBottom > document.Height())
+			{
+				selBottom = document.Height();
+			}
+			if (selRight > selLeft && selBottom > selTop)
+			{
+				document.Selection().SelectRect(new SkiaSharp.SKRectI(selLeft, selTop, selRight, selBottom));
+			}
 			CanvasView canvas = ActiveCanvas();
 			if (canvas != null)
 			{
@@ -2064,19 +2058,16 @@ namespace Bitmute.UI
 			m_gradientTypeLabel.VerticalOptions = LayoutOptions.Center;
 			m_gradientTypeLabel.IsVisible = false;
 
-			m_gradientTypePicker = new Picker();
-			m_gradientTypePicker.FontSize = 12.0;
-			m_gradientTypePicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
-			m_gradientTypePicker.WidthRequest = 110.0;
-			m_gradientTypePicker.VerticalOptions = LayoutOptions.Center;
-			m_gradientTypePicker.IsVisible = false;
-			m_gradientTypePicker.Items.Add("Linear");
-			m_gradientTypePicker.Items.Add("Radial");
-			m_gradientTypePicker.Items.Add("Angle");
-			m_gradientTypePicker.Items.Add("Reflected");
-			m_gradientTypePicker.Items.Add("Diamond");
-			m_gradientTypePicker.SelectedIndex = m_toolState.GradientType();
-			m_gradientTypePicker.SelectedIndexChanged += OnGradientTypeChanged;
+			m_gradientTypeNames = new string[] { "Linear", "Radial", "Angle", "Reflected", "Diamond" };
+			m_gradientTypeButton = new Button();
+			m_gradientTypeButton.FontSize = 12.0;
+			m_gradientTypeButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
+			m_gradientTypeButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			m_gradientTypeButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_gradientTypeButton.WidthRequest = 110.0;
+			m_gradientTypeButton.VerticalOptions = LayoutOptions.Center;
+			m_gradientTypeButton.IsVisible = false;
+			m_gradientTypeButton.Clicked += OnGradientTypeButtonClicked;
 
 			m_gradientReverseLabel = new Label();
 			m_gradientReverseLabel.Text = "Reverse";
@@ -2326,7 +2317,7 @@ namespace Bitmute.UI
 			options.Add(m_colorReplaceToleranceLabel);
 			options.Add(m_colorReplaceToleranceField);
 			options.Add(m_gradientTypeLabel);
-			options.Add(m_gradientTypePicker);
+			options.Add(m_gradientTypeButton);
 			options.Add(m_gradientReverseLabel);
 			options.Add(m_gradientReverseCheck);
 			options.Add(m_gradientTransparentLabel);
@@ -2405,7 +2396,8 @@ namespace Bitmute.UI
 			m_swatchesGroup = new PaletteGroup(new string[] { "Swatches" }, m_swatchesPanel);
 
 			m_layersPanel = new LayersPanel();
-			m_layersGroup = new PaletteGroup(new string[] { "Layers", "Channels" }, m_layersPanel);
+			m_channelsPanel = new ChannelsPanel();
+			m_layersGroup = new PaletteGroup(new string[] { "Layers", "Channels" }, new View[] { m_layersPanel, m_channelsPanel });
 
 			m_infoPanel = new InfoPanel();
 			m_infoGroup = new PaletteGroup(new string[] { "Info" }, m_infoPanel);
@@ -2807,7 +2799,7 @@ namespace Bitmute.UI
 			m_guideCreateCanvas = null;
 			m_gridEnabled = false;
 			m_channelViewMode = -1;
-			m_snapEnabled = Microsoft.Maui.Storage.Preferences.Default.Get("snap_enabled", false);
+			m_snapEnabled = Microsoft.Maui.Storage.Preferences.Default.Get("snap_enabled", true);
 			m_submenuParentRows = new List<Border>();
 			m_submenuParentNames = new List<string>();
 			m_submenuParentIndices = new List<int>();
@@ -4218,7 +4210,11 @@ namespace Bitmute.UI
 			if (m_gradientTypeLabel != null)
 			{
 				m_gradientTypeLabel.IsVisible = isGradient;
-				m_gradientTypePicker.IsVisible = isGradient;
+				m_gradientTypeButton.IsVisible = isGradient;
+				if (isGradient)
+				{
+					UpdateGradientTypeButtonText();
+				}
 				m_gradientReverseLabel.IsVisible = isGradient;
 				m_gradientReverseCheck.IsVisible = isGradient;
 				m_gradientTransparentLabel.IsVisible = isGradient;
@@ -4260,6 +4256,11 @@ namespace Bitmute.UI
 			return m_channelViewMode;
 		}
 
+		public void SelectChannelView(int mode)
+		{
+			SetChannelView(mode);
+		}
+
 		private void SetChannelView(int mode)
 		{
 			m_channelViewMode = mode;
@@ -4267,6 +4268,10 @@ namespace Bitmute.UI
 			if (canvas != null)
 			{
 				canvas.MarkComposeDirty();
+			}
+			if (m_channelsPanel != null)
+			{
+				m_channelsPanel.Refresh();
 			}
 		}
 
@@ -4406,18 +4411,108 @@ namespace Bitmute.UI
 			m_toolState.SetColorReplaceTolerance(tolerance);
 		}
 
-		private void OnGradientTypeChanged(object sender, System.EventArgs eventArgs)
+		private void UpdateGradientTypeButtonText()
 		{
-			if (m_toolState == null)
+			if (m_gradientTypeButton == null || m_toolState == null)
 			{
 				return;
 			}
-			int index = m_gradientTypePicker.SelectedIndex;
-			if (index < 0)
+			int index = m_toolState.GradientType();
+			if (index < 0 || index >= m_gradientTypeNames.Length)
 			{
 				index = 0;
 			}
-			m_toolState.SetGradientType(index);
+			m_gradientTypeButton.Text = m_gradientTypeNames[index];
+		}
+
+		private Microsoft.Maui.Controls.ImageSource RenderGradientSwatch(int type)
+		{
+			int width = 120;
+			int height = 16;
+			SkiaSharp.SKBitmap swatch = new SkiaSharp.SKBitmap(width, height, SkiaSharp.SKColorType.Rgba8888, SkiaSharp.SKAlphaType.Unpremul);
+			Bitmute.Imaging.eGradientType gradientType = (Bitmute.Imaging.eGradientType)type;
+			float startX = 0.0f;
+			float startY = height / 2.0f;
+			float endX = width;
+			float endY = height / 2.0f;
+			if (gradientType == Bitmute.Imaging.eGradientType.Reflected)
+			{
+				endX = width / 2.0f;
+			}
+			else if (gradientType != Bitmute.Imaging.eGradientType.Linear)
+			{
+				startX = width / 2.0f;
+			}
+			Bitmute.Imaging.GradientFill.Fill(swatch, gradientType, startX, startY, endX, endY, new SkiaSharp.SKColor(0, 0, 0, 255), new SkiaSharp.SKColor(255, 255, 255, 255), false);
+			SkiaSharp.Views.Maui.Controls.SKBitmapImageSource source = new SkiaSharp.Views.Maui.Controls.SKBitmapImageSource();
+			source.Bitmap = swatch;
+			return source;
+		}
+
+		private void OnGradientTypeButtonClicked(object sender, System.EventArgs eventArgs)
+		{
+			if (m_pulldownPanel != null || PulldownJustDismissed())
+			{
+				ClosePulldown();
+				return;
+			}
+			double anchorX = 0.0;
+			if (m_optionsRow != null && m_gradientTypeButton != null)
+			{
+				anchorX = m_optionsRow.X + m_gradientTypeButton.X;
+			}
+			double anchorY = UiConstants.MenuBarHeight + 1.0 + UiConstants.OptionsBarHeight + 1.0;
+			ShowPulldown(BuildGradientTypePulldownContent(), anchorX, anchorY, 190.0, 130.0);
+		}
+
+		private View BuildGradientTypePulldownContent()
+		{
+			m_gradientTypeRows = new List<View>();
+			VerticalStackLayout list = new VerticalStackLayout();
+			list.Spacing = 2.0;
+			list.Padding = new Thickness(4.0);
+			for (int index = 0; index < m_gradientTypeNames.Length; index++)
+			{
+				HorizontalStackLayout row = new HorizontalStackLayout();
+				row.Spacing = 6.0;
+				row.Padding = new Thickness(6.0, 3.0, 6.0, 3.0);
+				Image swatch = new Image();
+				swatch.Source = RenderGradientSwatch(index);
+				swatch.WidthRequest = 120.0;
+				swatch.HeightRequest = 16.0;
+				swatch.VerticalOptions = LayoutOptions.Center;
+				Label name = new Label();
+				name.Text = m_gradientTypeNames[index];
+				name.FontSize = 12.0;
+				name.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+				name.VerticalOptions = LayoutOptions.Center;
+				row.Add(swatch);
+				row.Add(name);
+				TapGestureRecognizer tap = new TapGestureRecognizer();
+				tap.Tapped += OnGradientTypeRowTapped;
+				row.GestureRecognizers.Add(tap);
+				m_gradientTypeRows.Add(row);
+				list.Add(row);
+			}
+			return list;
+		}
+
+		private void OnGradientTypeRowTapped(object sender, TappedEventArgs eventArgs)
+		{
+			if (m_toolState == null || m_gradientTypeRows == null)
+			{
+				return;
+			}
+			for (int index = 0; index < m_gradientTypeRows.Count; index++)
+			{
+				if (ReferenceEquals(m_gradientTypeRows[index], sender))
+				{
+					m_toolState.SetGradientType(index);
+					UpdateGradientTypeButtonText();
+					ClosePulldown();
+					return;
+				}
+			}
 		}
 
 		private void OnGradientReverseChanged(object sender, CheckedChangedEventArgs eventArgs)

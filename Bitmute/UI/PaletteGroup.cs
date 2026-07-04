@@ -11,6 +11,7 @@ namespace Bitmute.UI
 		private string[] m_tabNames;
 		private Border[] m_tabButtons;
 		private Label[] m_tabLabels;
+		private View[] m_contents;
 		private Label m_placeholder;
 		private int m_activeIndex;
 		private Grid m_body;
@@ -75,10 +76,17 @@ namespace Bitmute.UI
 			{
 				m_placeholder.Text = m_tabNames[activeIndex];
 			}
+			if (m_contents != null)
+			{
+				for (int index = 0; index < m_contents.Length; index++)
+				{
+					m_contents[index].IsVisible = index == activeIndex;
+				}
+			}
 		}
 
 		public PaletteGroup(string[] tabNames)
-			: this(tabNames, null)
+			: this(tabNames, (View)null)
 		{
 		}
 
@@ -180,9 +188,25 @@ namespace Bitmute.UI
 
 		public PaletteGroup(string[] tabNames, View content)
 		{
+			View[] contents = null;
+			if (content != null)
+			{
+				contents = new View[] { content };
+			}
+			Initialize(tabNames, contents);
+		}
+
+		public PaletteGroup(string[] tabNames, View[] contents)
+		{
+			Initialize(tabNames, contents);
+		}
+
+		private void Initialize(string[] tabNames, View[] contents)
+		{
 			m_tabNames = tabNames;
 			m_tabButtons = new Border[tabNames.Length];
 			m_tabLabels = new Label[tabNames.Length];
+			m_contents = contents;
 			m_activeIndex = 0;
 			m_collapsed = false;
 
@@ -218,9 +242,13 @@ namespace Bitmute.UI
 
 			m_body = new Grid();
 			m_body.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
-			if (content != null)
+			if (contents != null && contents.Length > 0)
 			{
-				m_body.Add(content);
+				for (int index = 0; index < contents.Length; index++)
+				{
+					contents[index].IsVisible = index == 0;
+					m_body.Add(contents[index]);
+				}
 			}
 			else
 			{

@@ -111,6 +111,72 @@ namespace Bitmute.Tools
 			return OffsetRectI(local, layer.OffsetX(), layer.OffsetY());
 		}
 
+		private static int NearestGuideDelta(Guides guides, int edgeLow, int edgeMid, int edgeHigh, int tolerance, bool vertical)
+		{
+			int bestDelta = 0;
+			int bestDistance = tolerance + 1;
+			int[] edges = new int[] { edgeLow, edgeMid, edgeHigh };
+			for (int index = 0; index < 3; index++)
+			{
+				int hit;
+				if (vertical)
+				{
+					hit = guides.HitVertical(edges[index], tolerance);
+				}
+				else
+				{
+					hit = guides.HitHorizontal(edges[index], tolerance);
+				}
+				if (hit < 0)
+				{
+					continue;
+				}
+				int guidePos;
+				if (vertical)
+				{
+					guidePos = guides.VerticalGuides()[hit];
+				}
+				else
+				{
+					guidePos = guides.HorizontalGuides()[hit];
+				}
+				int distance = guidePos - edges[index];
+				int magnitude = distance;
+				if (magnitude < 0)
+				{
+					magnitude = -magnitude;
+				}
+				if (magnitude < bestDistance)
+				{
+					bestDistance = magnitude;
+					bestDelta = distance;
+				}
+			}
+			return bestDelta;
+		}
+
+		private void SnapDeltaToGuides(Document document, ToolState state, ref int deltaX, ref int deltaY)
+		{
+			if (!state.SnapToGuides())
+			{
+				return;
+			}
+			if (!m_moveContentValid)
+			{
+				return;
+			}
+			Guides guides = document.Guides();
+			int tolerance = state.SnapTolerance();
+			int left = m_moveContentBounds.Left + deltaX;
+			int right = m_moveContentBounds.Right + deltaX;
+			int centerX = (m_moveContentBounds.Left + m_moveContentBounds.Right) / 2 + deltaX;
+			int top = m_moveContentBounds.Top + deltaY;
+			int bottom = m_moveContentBounds.Bottom + deltaY;
+			int centerY = (m_moveContentBounds.Top + m_moveContentBounds.Bottom) / 2 + deltaY;
+			deltaX = deltaX + NearestGuideDelta(guides, left, centerX, right, tolerance, true);
+			deltaY = deltaY + NearestGuideDelta(guides, top, centerY, bottom, tolerance, false);
+		}
+
 		private SKBitmap ExtractSelected(Layer layer, Selection selection)
 		{
 			SKBitmap source = layer.Bitmap();
@@ -254,6 +320,7 @@ namespace Bitmute.Tools
 			}
 			int deltaX = x - m_startX;
 			int deltaY = y - m_startY;
+			SnapDeltaToGuides(document, state, ref deltaX, ref deltaY);
 			if (m_textMode)
 			{
 				layer.SetTextPosition(m_oldTextX + deltaX, m_oldTextY + deltaY);

@@ -43,6 +43,7 @@ namespace Bitmute.Tests
 			TestMixedComposite();
 			TestCompositeRangeInto();
 			TestGuideStickyCenter();
+			TestMoveSnapToGuides();
 			TestMovePerfRegion();
 			TestSpongeMath();
 			TestColorReplaceMath();
@@ -685,6 +686,45 @@ namespace Bitmute.Tests
 			before.Dispose();
 			full.Dispose();
 			region.Dispose();
+		}
+
+		private static void TestMoveSnapToGuides()
+		{
+			SKColor mark = new SKColor(255, 0, 0, 255);
+			Document doc = new Document("t", 64, 48);
+			doc.Guides().AddVertical(20);
+			Layer content = doc.AddLayer("c");
+			for (int y = 4; y < 14; y++)
+			{
+				for (int x = 5; x < 15; x++)
+				{
+					content.Bitmap().SetPixel(x, y, mark);
+				}
+			}
+			ToolState state = new ToolState();
+			state.SetSnapToGuides(true);
+			state.SetSnapTolerance(6);
+			MoveTool move = new MoveTool();
+			move.OnPressed(doc, 30, 20, state);
+			move.OnDragged(doc, 33, 20, state);
+			Check(content.OffsetX() == 5, "move snaps content right edge to guide (offset 5)");
+			Check(content.OffsetY() == 0, "move no vertical snap without horizontal guide");
+			Document docOff = new Document("t", 64, 48);
+			docOff.Guides().AddVertical(20);
+			Layer contentOff = docOff.AddLayer("c");
+			for (int y = 4; y < 14; y++)
+			{
+				for (int x = 5; x < 15; x++)
+				{
+					contentOff.Bitmap().SetPixel(x, y, mark);
+				}
+			}
+			ToolState stateOff = new ToolState();
+			stateOff.SetSnapToGuides(false);
+			MoveTool moveOff = new MoveTool();
+			moveOff.OnPressed(docOff, 30, 20, stateOff);
+			moveOff.OnDragged(docOff, 33, 20, stateOff);
+			Check(contentOff.OffsetX() == 3, "no snap keeps raw delta (offset 3)");
 		}
 
 		private static void TestGuideStickyCenter()

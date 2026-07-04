@@ -23,6 +23,8 @@ namespace Bitmute.Tools
 		private int m_gradientType;
 		private bool m_gradientReverse;
 		private bool m_gradientToTransparent;
+		private bool m_snapToGuides;
+		private int m_snapTolerance;
 		private bool m_wandContiguous;
 		private bool m_wandSampleAll;
 		private bool m_wandAntiAlias;
@@ -67,6 +69,8 @@ namespace Bitmute.Tools
 			m_gradientType = 0;
 			m_gradientReverse = false;
 			m_gradientToTransparent = false;
+			m_snapToGuides = false;
+			m_snapTolerance = 6;
 			m_wandContiguous = true;
 			m_wandSampleAll = false;
 			m_wandAntiAlias = true;
@@ -564,6 +568,26 @@ namespace Bitmute.Tools
 		public void SetGradientToTransparent(bool toTransparent)
 		{
 			m_gradientToTransparent = toTransparent;
+		}
+
+		public bool SnapToGuides()
+		{
+			return m_snapToGuides;
+		}
+
+		public void SetSnapToGuides(bool snap)
+		{
+			m_snapToGuides = snap;
+		}
+
+		public int SnapTolerance()
+		{
+			return m_snapTolerance;
+		}
+
+		public void SetSnapTolerance(int tolerance)
+		{
+			m_snapTolerance = tolerance;
 		}
 
 		public void SwapColors()
