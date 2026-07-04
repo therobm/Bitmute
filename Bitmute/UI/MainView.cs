@@ -245,7 +245,7 @@ namespace Bitmute.UI
 				if (item == "Open…") return "Ctrl+O";
 				if (item == "Save") return "Ctrl+S";
 				if (item == "Save As…") return "Ctrl+Shift+S";
-				if (item == "Export As…") return "Ctrl+E";
+				if (item == "Export As…") return "Ctrl+Alt+Shift+S";
 			}
 			if (title == "Edit")
 			{
@@ -276,6 +276,11 @@ namespace Bitmute.UI
 			if (title == "Edit")
 			{
 				if (item == "Free Transform") return "Ctrl+T";
+			}
+			if (title == "Layer")
+			{
+				if (item == "Merge Down") return "Ctrl+E";
+				if (item == "Merge Visible") return "Ctrl+Shift+E";
 			}
 			return "";
 		}
@@ -402,7 +407,7 @@ namespace Bitmute.UI
 			}
 			if (title == "Layer")
 			{
-				return new string[] { "New Layer", "Delete Layer", "Merge Down", "Layer Style…", "Rasterize Text" };
+				return new string[] { "New Layer", "Delete Layer", MenuBreak, "Merge Down", "Merge Visible", "Flatten Image", MenuBreak, "Layer Style…", "Rasterize Text" };
 			}
 			if (title == "Select")
 			{
@@ -1266,6 +1271,21 @@ namespace Bitmute.UI
 			if (action == "Layer Style…")
 			{
 				OpenLayerStyleDialog();
+				return;
+			}
+			if (action == "Merge Down")
+			{
+				DoMergeDown();
+				return;
+			}
+			if (action == "Merge Visible")
+			{
+				DoMergeVisible();
+				return;
+			}
+			if (action == "Flatten Image")
+			{
+				DoFlattenImage();
 				return;
 			}
 			if (action == "Export As…")
@@ -3162,7 +3182,9 @@ namespace Bitmute.UI
 			AddAccelerator(element, (Windows.System.VirtualKey)187, OnAcceleratorZoomIn);
 			AddAccelerator(element, (Windows.System.VirtualKey)189, OnAcceleratorZoomOut);
 			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorSaveAs);
-			AddAccelerator(element, Windows.System.VirtualKey.E, OnAcceleratorExport);
+			AddAccelerator(element, Windows.System.VirtualKey.E, OnAcceleratorMergeSelected);
+			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.E, OnAcceleratorMergeVisible);
+			AddCtrlAltShiftAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorExport);
 			AddCtrlAltAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorImageSize);
 			AddAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorInvertColors);
 			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorInvertSelection);
@@ -3325,6 +3347,15 @@ namespace Bitmute.UI
 			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
 			accelerator.Key = key;
 			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.Control | Windows.System.VirtualKeyModifiers.Menu;
+			accelerator.Invoked += handler;
+			element.KeyboardAccelerators.Add(accelerator);
+		}
+
+		private void AddCtrlAltShiftAccelerator(Microsoft.UI.Xaml.UIElement element, Windows.System.VirtualKey key, Windows.Foundation.TypedEventHandler<Microsoft.UI.Xaml.Input.KeyboardAccelerator, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs> handler)
+		{
+			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
+			accelerator.Key = key;
+			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.Control | Windows.System.VirtualKeyModifiers.Menu | Windows.System.VirtualKeyModifiers.Shift;
 			accelerator.Invoked += handler;
 			element.KeyboardAccelerators.Add(accelerator);
 		}
@@ -3578,6 +3609,101 @@ namespace Bitmute.UI
 			}
 			DoInvert();
 			args.Handled = true;
+		}
+
+		private void OnAcceleratorMergeSelected(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			if (m_textEditActive)
+			{
+				return;
+			}
+			MergeSelectedLayers();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorMergeVisible(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			if (m_textEditActive)
+			{
+				return;
+			}
+			DoMergeVisible();
+			args.Handled = true;
+		}
+
+		public void MergeSelectedLayers()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			List<int> selected = document.SelectedLayerIndices();
+			if (selected.Count >= 2)
+			{
+				document.BeginCanvasEdit("Merge Layers");
+				document.MergeLayers(selected);
+				document.EndCanvasEdit();
+				FinishLayerStructureChange(canvas);
+			}
+			else
+			{
+				DoMergeDown();
+			}
+		}
+
+		private void DoMergeDown()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			if (document.ActiveLayerIndex() <= 0)
+			{
+				return;
+			}
+			document.BeginCanvasEdit("Merge Down");
+			document.MergeDown(document.ActiveLayerIndex());
+			document.EndCanvasEdit();
+			FinishLayerStructureChange(canvas);
+		}
+
+		private void DoMergeVisible()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			document.BeginCanvasEdit("Merge Visible");
+			document.MergeVisible();
+			document.EndCanvasEdit();
+			FinishLayerStructureChange(canvas);
+		}
+
+		private void DoFlattenImage()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			document.BeginCanvasEdit("Flatten Image");
+			document.FlattenImage();
+			document.EndCanvasEdit();
+			FinishLayerStructureChange(canvas);
+		}
+
+		private void FinishLayerStructureChange(CanvasView canvas)
+		{
+			canvas.MarkComposeDirty();
+			RefreshPanels();
+			RefreshLayerThumbnails();
 		}
 
 		private void OnAcceleratorRulers(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)

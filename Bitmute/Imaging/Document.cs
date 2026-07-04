@@ -31,6 +31,7 @@ namespace Bitmute.Imaging
 		private string m_title;
 		private List<Layer> m_layers;
 		private int m_activeLayerIndex;
+		private List<int> m_selectedLayerIndices;
 		private List<EditCommand> m_undoStack;
 		private List<EditCommand> m_redoStack;
 		private SKBitmap m_strokeSnapshot;
@@ -65,6 +66,8 @@ namespace Bitmute.Imaging
 			background.SetIsBackground(true);
 			m_layers.Add(background);
 			m_activeLayerIndex = 0;
+			m_selectedLayerIndices = new List<int>();
+			m_selectedLayerIndices.Add(0);
 			m_undoStack = new List<EditCommand>();
 			m_redoStack = new List<EditCommand>();
 			m_strokeSnapshot = null;
@@ -574,6 +577,130 @@ namespace Bitmute.Imaging
 				return;
 			}
 			m_activeLayerIndex = index;
+			ResetLayerSelectionToActive();
+		}
+
+		private void ResetLayerSelectionToActive()
+		{
+			m_selectedLayerIndices.Clear();
+			if (m_activeLayerIndex >= 0 && m_activeLayerIndex < m_layers.Count)
+			{
+				m_selectedLayerIndices.Add(m_activeLayerIndex);
+			}
+		}
+
+		public List<int> SelectedLayerIndices()
+		{
+			List<int> result = new List<int>();
+			for (int scan = 0; scan < m_selectedLayerIndices.Count; scan++)
+			{
+				int layerIndex = m_selectedLayerIndices[scan];
+				if (layerIndex < 0 || layerIndex >= m_layers.Count)
+				{
+					continue;
+				}
+				bool exists = false;
+				for (int check = 0; check < result.Count; check++)
+				{
+					if (result[check] == layerIndex)
+					{
+						exists = true;
+						break;
+					}
+				}
+				if (!exists)
+				{
+					result.Add(layerIndex);
+				}
+			}
+			bool hasActive = false;
+			for (int check = 0; check < result.Count; check++)
+			{
+				if (result[check] == m_activeLayerIndex)
+				{
+					hasActive = true;
+					break;
+				}
+			}
+			if (!hasActive && m_activeLayerIndex >= 0 && m_activeLayerIndex < m_layers.Count)
+			{
+				result.Add(m_activeLayerIndex);
+			}
+			return result;
+		}
+
+		public bool IsLayerSelected(int index)
+		{
+			for (int scan = 0; scan < m_selectedLayerIndices.Count; scan++)
+			{
+				if (m_selectedLayerIndices[scan] == index)
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+
+		public void ToggleLayerSelection(int index)
+		{
+			if (index < 0 || index >= m_layers.Count)
+			{
+				return;
+			}
+			int existing = -1;
+			for (int scan = 0; scan < m_selectedLayerIndices.Count; scan++)
+			{
+				if (m_selectedLayerIndices[scan] == index)
+				{
+					existing = scan;
+					break;
+				}
+			}
+			if (existing >= 0)
+			{
+				m_selectedLayerIndices.RemoveAt(existing);
+				if (m_selectedLayerIndices.Count == 0)
+				{
+					m_selectedLayerIndices.Add(index);
+					m_activeLayerIndex = index;
+				}
+				else
+				{
+					m_activeLayerIndex = m_selectedLayerIndices[m_selectedLayerIndices.Count - 1];
+				}
+			}
+			else
+			{
+				m_selectedLayerIndices.Add(index);
+				m_activeLayerIndex = index;
+			}
+		}
+
+		public void SelectLayerRange(int index)
+		{
+			if (index < 0 || index >= m_layers.Count)
+			{
+				return;
+			}
+			int anchor = m_activeLayerIndex;
+			if (anchor < 0 || anchor >= m_layers.Count)
+			{
+				anchor = index;
+			}
+			int low = anchor;
+			int high = index;
+			if (high < low)
+			{
+				int swap = low;
+				low = high;
+				high = swap;
+			}
+			m_selectedLayerIndices.Clear();
+			for (int layerIndex = low; layerIndex <= high; layerIndex++)
+			{
+				m_selectedLayerIndices.Add(layerIndex);
+			}
+			m_activeLayerIndex = index;
 		}
 
 		public Layer ActiveLayer()
@@ -755,6 +882,165 @@ namespace Bitmute.Imaging
 			{
 				m_activeLayerIndex = index - 1;
 			}
+			m_dirty = true;
+		}
+
+		public void MergeLayers(List<int> indices)
+		{
+			List<int> sorted = new List<int>();
+			for (int scan = 0; scan < indices.Count; scan++)
+			{
+				int candidate = indices[scan];
+				if (candidate < 0 || candidate >= m_layers.Count)
+				{
+					continue;
+				}
+				bool exists = false;
+				for (int check = 0; check < sorted.Count; check++)
+				{
+					if (sorted[check] == candidate)
+					{
+						exists = true;
+						break;
+					}
+				}
+				if (!exists)
+				{
+					sorted.Add(candidate);
+				}
+			}
+			sorted.Sort();
+			if (sorted.Count < 2)
+			{
+				return;
+			}
+			int lowest = sorted[0];
+			SKBitmap merged = new SKBitmap(m_width, m_height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			merged.Erase(SKColors.Transparent);
+			SKCanvas canvas = new SKCanvas(merged);
+			SKPaint paint = new SKPaint();
+			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
+			for (int order = 0; order < sorted.Count; order++)
+			{
+				DrawStyledLayer(canvas, m_layers[sorted[order]], sampling, paint);
+			}
+			paint.Dispose();
+			canvas.Dispose();
+			Layer result = new Layer(m_layers[lowest].Name(), m_width, m_height);
+			result.SetBitmap(merged);
+			result.SetOffset(0, 0);
+			List<Layer> rebuilt = new List<Layer>();
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				bool selected = false;
+				for (int check = 0; check < sorted.Count; check++)
+				{
+					if (sorted[check] == index)
+					{
+						selected = true;
+						break;
+					}
+				}
+				if (selected)
+				{
+					if (index == lowest)
+					{
+						rebuilt.Add(result);
+					}
+				}
+				else
+				{
+					rebuilt.Add(m_layers[index]);
+				}
+			}
+			m_layers = rebuilt;
+			m_activeLayerIndex = rebuilt.IndexOf(result);
+			ResetLayerSelectionToActive();
+			m_dirty = true;
+		}
+
+		public void MergeVisible()
+		{
+			int visibleCount = 0;
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				if (m_layers[index].IsVisible())
+				{
+					visibleCount = visibleCount + 1;
+				}
+			}
+			if (visibleCount < 2)
+			{
+				return;
+			}
+			SKBitmap merged = new SKBitmap(m_width, m_height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			merged.Erase(SKColors.Transparent);
+			SKCanvas canvas = new SKCanvas(merged);
+			SKPaint paint = new SKPaint();
+			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				if (!layer.IsVisible())
+				{
+					continue;
+				}
+				DrawStyledLayer(canvas, layer, sampling, paint);
+			}
+			paint.Dispose();
+			canvas.Dispose();
+			Layer result = new Layer("Merged", m_width, m_height);
+			result.SetBitmap(merged);
+			result.SetOffset(0, 0);
+			List<Layer> rebuilt = new List<Layer>();
+			bool inserted = false;
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				if (layer.IsVisible())
+				{
+					if (!inserted)
+					{
+						rebuilt.Add(result);
+						inserted = true;
+					}
+				}
+				else
+				{
+					rebuilt.Add(layer);
+				}
+			}
+			m_layers = rebuilt;
+			m_activeLayerIndex = rebuilt.IndexOf(result);
+			ResetLayerSelectionToActive();
+			m_dirty = true;
+		}
+
+		public void FlattenImage()
+		{
+			SKBitmap merged = new SKBitmap(m_width, m_height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			merged.Erase(SKColors.Transparent);
+			SKCanvas canvas = new SKCanvas(merged);
+			SKPaint paint = new SKPaint();
+			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				if (!layer.IsVisible())
+				{
+					continue;
+				}
+				DrawStyledLayer(canvas, layer, sampling, paint);
+			}
+			paint.Dispose();
+			canvas.Dispose();
+			Layer result = new Layer("Background", m_width, m_height);
+			result.SetBitmap(merged);
+			result.SetOffset(0, 0);
+			m_layers = new List<Layer>();
+			m_layers.Add(result);
+			m_activeLayerIndex = 0;
+			ResetLayerSelectionToActive();
 			m_dirty = true;
 		}
 

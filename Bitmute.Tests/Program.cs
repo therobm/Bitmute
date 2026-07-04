@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using SkiaSharp;
 using Bitmute.Imaging;
@@ -56,6 +57,7 @@ namespace Bitmute.Tests
 			TestBlurStrength();
 			TestBrushHardnessSmall();
 			TestGaussianBlur();
+			TestLayerMerging();
 			TestDodgeBurnRange();
 			TestSlices();
 			TestChannelRender();
@@ -972,6 +974,43 @@ namespace Bitmute.Tests
 			CheckNear(flat.Blue, 200, 2, "gaussian blur leaves a flat field unchanged (blue)");
 			Check(flat.Alpha == 255, "gaussian blur flat field keeps alpha");
 			uniform.Dispose();
+		}
+
+		private static void TestLayerMerging()
+		{
+			Document mergeVisibleDoc = new Document("t", 8, 8);
+			mergeVisibleDoc.ActiveLayer().Bitmap().Erase(new SKColor(200, 0, 0, 255));
+			Layer visibleMid = mergeVisibleDoc.AddLayer("mid");
+			visibleMid.Bitmap().Erase(SKColors.Transparent);
+			visibleMid.Bitmap().SetPixel(2, 2, new SKColor(0, 200, 0, 255));
+			Layer visibleTop = mergeVisibleDoc.AddLayer("top");
+			visibleTop.Bitmap().Erase(SKColors.Transparent);
+			visibleTop.Bitmap().SetPixel(4, 4, new SKColor(0, 0, 200, 255));
+			mergeVisibleDoc.MergeVisible();
+			Check(mergeVisibleDoc.Layers().Count == 1, "merge visible collapses to one layer");
+			Layer flattened = mergeVisibleDoc.ActiveLayer();
+			Check(flattened.GetPixelCanvas(0, 0).Red > 180, "merge visible keeps background where nothing overlays");
+			Check(flattened.GetPixelCanvas(2, 2).Green > 180, "merge visible keeps green from the middle layer");
+			Check(flattened.GetPixelCanvas(4, 4).Blue > 180, "merge visible keeps blue from the top layer");
+
+			Document mergeSelectedDoc = new Document("t", 8, 8);
+			mergeSelectedDoc.ActiveLayer().Bitmap().Erase(new SKColor(200, 0, 0, 255));
+			Layer selectedA = mergeSelectedDoc.AddLayer("a");
+			selectedA.Bitmap().Erase(SKColors.Transparent);
+			selectedA.Bitmap().SetPixel(1, 1, new SKColor(0, 200, 0, 255));
+			Layer selectedB = mergeSelectedDoc.AddLayer("b");
+			selectedB.Bitmap().Erase(SKColors.Transparent);
+			selectedB.Bitmap().SetPixel(2, 2, new SKColor(0, 0, 200, 255));
+			List<int> selection = new List<int>();
+			selection.Add(1);
+			selection.Add(2);
+			mergeSelectedDoc.MergeLayers(selection);
+			Check(mergeSelectedDoc.Layers().Count == 2, "merge selected combines two layers, keeps the background");
+			Check(mergeSelectedDoc.Layers()[0].GetPixelCanvas(0, 0).Red > 180, "merge selected leaves the background layer untouched");
+			Layer selectedMerged = mergeSelectedDoc.Layers()[1];
+			Check(selectedMerged.GetPixelCanvas(1, 1).Green > 180, "merge selected holds green from layer a");
+			Check(selectedMerged.GetPixelCanvas(2, 2).Blue > 180, "merge selected holds blue from layer b");
+			Check(selectedMerged.GetPixelCanvas(0, 0).Alpha == 0, "merge selected stays transparent where neither layer had pixels");
 		}
 
 		private static int BurnCenterRed(int startValue, int range, int exposure)

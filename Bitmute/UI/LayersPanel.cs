@@ -214,6 +214,10 @@ namespace Bitmute.UI
 			{
 				row.ThemeBg(UiConstants.ToolSelectedLight, UiConstants.ToolSelectedDark);
 			}
+			else if (document.IsLayerSelected(layerIndex))
+			{
+				row.ThemeBg(UiConstants.MenuOpenLight, UiConstants.MenuOpenDark);
+			}
 			else
 			{
 				row.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
@@ -256,6 +260,18 @@ namespace Bitmute.UI
 			}
 		}
 
+		private static bool ControlHeld()
+		{
+			Windows.UI.Core.CoreVirtualKeyStates state = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control);
+			return (state & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
+		}
+
+		private static bool ShiftHeld()
+		{
+			Windows.UI.Core.CoreVirtualKeyStates state = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift);
+			return (state & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
+		}
+
 		private void OnRowTapped(object sender, TappedEventArgs eventArgs)
 		{
 			Document document = Doc();
@@ -267,7 +283,19 @@ namespace Bitmute.UI
 			{
 				if (ReferenceEquals(m_rowBorders[index], sender))
 				{
-					document.SetActiveLayerIndex(m_rowLayers[index]);
+					int layerIndex = m_rowLayers[index];
+					if (ControlHeld())
+					{
+						document.ToggleLayerSelection(layerIndex);
+					}
+					else if (ShiftHeld())
+					{
+						document.SelectLayerRange(layerIndex);
+					}
+					else
+					{
+						document.SetActiveLayerIndex(layerIndex);
+					}
 					Refresh();
 					return;
 				}
@@ -447,9 +475,11 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			document.MergeDown(document.ActiveLayerIndex());
-			RecompositeActive();
-			Refresh();
+			MainView main = MainView.Self;
+			if (main != null)
+			{
+				main.MergeSelectedLayers();
+			}
 		}
 
 		private void OnOpacityValue(int opacity)
