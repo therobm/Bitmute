@@ -38,6 +38,7 @@ namespace Bitmute.Tests
 		{
 			TestFillSelection();
 			TestFillLayer();
+			TestSelectionMoveLayer();
 			TestCustomBlends();
 			TestCustomBlendOpacity();
 			TestCustomBlendTransparentBase();
@@ -981,6 +982,36 @@ namespace Bitmute.Tests
 			Check(glowHalo.Alpha > 0 && glowHalo.Red == 255 && glowHalo.Green == 255 && glowHalo.Blue == 0, "outer glow halo present in glow color");
 			glow.Dispose();
 			source.Dispose();
+		}
+
+		private static void TestSelectionMoveLayer()
+		{
+			Document doc = new Document("t", 64, 48);
+			Layer content = doc.AddLayer("c");
+			SKColor red = new SKColor(255, 0, 0, 255);
+			for (int y = 10; y < 30; y++)
+			{
+				for (int x = 10; x < 30; x++)
+				{
+					content.Bitmap().SetPixel(x, y, red);
+				}
+			}
+			doc.Selection().SelectRect(new SKRectI(15, 15, 25, 25));
+			ToolState state = new ToolState();
+			MoveTool move = new MoveTool();
+			move.OnPressed(doc, 20, 20, state);
+			move.OnDragged(doc, 40, 20, state);
+			move.OnReleased(doc, 40, 20, state);
+			SKColor moved = content.GetPixelCanvas(40, 20);
+			Check(moved.Red == 255 && moved.Alpha == 255, "selection move on a layer keeps moved pixels (40,20)");
+			SKColor movedEdge = content.GetPixelCanvas(44, 20);
+			Check(movedEdge.Red == 255 && movedEdge.Alpha == 255, "selection move on a layer keeps moved pixels at far edge (44,20)");
+			SKColor vacated = content.GetPixelCanvas(20, 20);
+			Check(vacated.Alpha == 0, "selection move on a layer vacates the origin (20,20)");
+			SKColor unselected = content.GetPixelCanvas(12, 20);
+			Check(unselected.Red == 255 && unselected.Alpha == 255, "selection move on a layer leaves unselected pixels (12,20)");
+			Check(doc.Selection().IsSelected(40, 20), "selection mask follows the move (40,20 selected)");
+			Check(!doc.Selection().IsSelected(20, 20), "selection mask leaves the origin (20,20 unselected)");
 		}
 
 		private static void TestFillLayer()
