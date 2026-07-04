@@ -17,6 +17,7 @@ namespace Bitmute.Tools
 		private double m_hardness;
 		private double m_opacity;
 		private double m_flow;
+		private double m_strength;
 		private bool m_square;
 		private eBrushOp m_op;
 		private int m_cloneOffsetX;
@@ -55,6 +56,11 @@ namespace Bitmute.Tools
 			m_cloneOffsetY = offsetY;
 		}
 
+		public void SetStrength(double strength)
+		{
+			m_strength = strength;
+		}
+
 		public void SetSpongeSaturate(bool saturate)
 		{
 			m_spongeSaturate = saturate;
@@ -87,6 +93,7 @@ namespace Bitmute.Tools
 			m_hardness = hardness;
 			m_opacity = opacity;
 			m_flow = flow;
+			m_strength = 1.0;
 			m_square = square;
 			m_op = op;
 			m_cloneOffsetX = 0;
@@ -451,9 +458,10 @@ namespace Bitmute.Tools
 							targetGreen = originalPixel[1] + (originalPixel[1] - avgGreen);
 							targetBlue = originalPixel[2] + (originalPixel[2] - avgBlue);
 						}
-						destinationPixel[0] = ClampByte(originalPixel[0] + ((targetRed - originalPixel[0]) * finalAlpha));
-						destinationPixel[1] = ClampByte(originalPixel[1] + ((targetGreen - originalPixel[1]) * finalAlpha));
-						destinationPixel[2] = ClampByte(originalPixel[2] + ((targetBlue - originalPixel[2]) * finalAlpha));
+						double blurEffect = finalAlpha * m_strength;
+						destinationPixel[0] = ClampByte(originalPixel[0] + ((targetRed - originalPixel[0]) * blurEffect));
+						destinationPixel[1] = ClampByte(originalPixel[1] + ((targetGreen - originalPixel[1]) * blurEffect));
+						destinationPixel[2] = ClampByte(originalPixel[2] + ((targetBlue - originalPixel[2]) * blurEffect));
 						destinationPixel[3] = originalPixel[3];
 						continue;
 					}
@@ -669,7 +677,7 @@ namespace Bitmute.Tools
 				m_smudgeStarted = true;
 			}
 
-			double strength = m_opacity;
+			double strength = m_strength;
 			if (strength > 1.0)
 			{
 				strength = 1.0;

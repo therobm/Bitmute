@@ -10,6 +10,7 @@ namespace Bitmute.Tools
 			int radius = state.BrushSize() / 2;
 			SKColor unused = new SKColor(0, 0, 0, 255);
 			m_engine.Begin(layer, document.StrokeSnapshot(), radius, state.BrushHardness() / 100.0, state.BrushOpacity() / 100.0, state.BrushFlow() / 100.0, state.BrushSquareTip(), state.BrushSpacing() / 100.0, state.BrushSmoothing() / 100.0, eBrushOp.Smudge, eBlendMode.Normal, unused);
+			m_engine.SetStrength(state.BrushStrength() / 100.0);
 		}
 	}
 }

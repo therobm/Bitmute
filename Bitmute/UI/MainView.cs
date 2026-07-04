@@ -61,6 +61,8 @@ namespace Bitmute.UI
 		private SliderField m_brushFlowField;
 		private Label m_brushSmoothingLabel;
 		private SliderField m_brushSmoothingField;
+		private Label m_brushStrengthLabel;
+		private SliderField m_brushStrengthField;
 		private Button m_brushSettingsButton;
 		private HorizontalStackLayout m_optionsRow;
 		private View m_pulldownPanel;
@@ -1977,6 +1979,17 @@ namespace Bitmute.UI
 			m_brushSmoothingField.VerticalOptions = LayoutOptions.Center;
 			m_brushSmoothingField.IsVisible = false;
 
+			m_brushStrengthLabel = new Label();
+			m_brushStrengthLabel.Text = "Strength";
+			m_brushStrengthLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_brushStrengthLabel.FontSize = 12.0;
+			m_brushStrengthLabel.VerticalOptions = LayoutOptions.Center;
+			m_brushStrengthLabel.IsVisible = false;
+
+			m_brushStrengthField = new SliderField(1, 100, m_toolState.BrushStrength(), "%", OnBrushStrengthValue);
+			m_brushStrengthField.VerticalOptions = LayoutOptions.Center;
+			m_brushStrengthField.IsVisible = false;
+
 			m_brushModeLabel = new Label();
 			m_brushModeLabel.Text = "Mode";
 			m_brushModeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
@@ -2338,6 +2351,8 @@ namespace Bitmute.UI
 			options.Add(m_brushOpacityField);
 			options.Add(m_brushFlowLabel);
 			options.Add(m_brushFlowField);
+			options.Add(m_brushStrengthLabel);
+			options.Add(m_brushStrengthField);
 			options.Add(m_brushSmoothingLabel);
 			options.Add(m_brushSmoothingField);
 			options.Add(m_brushModeLabel);
@@ -4234,8 +4249,9 @@ namespace Bitmute.UI
 			}
 			bool isSponge = tool == eTool.Sponge;
 			bool isColorReplace = tool == eTool.ColorReplacement;
+			bool isStrengthTool = tool == eTool.Blur || tool == eTool.Sharpen || tool == eTool.Smudge;
 			bool isBrushFamily = tool == eTool.Brush || tool == eTool.Eraser || tool == eTool.Clone || tool == eTool.Heal || tool == eTool.Blur || tool == eTool.Sharpen || tool == eTool.Smudge || tool == eTool.DodgeBurn || isSponge || isColorReplace;
-			bool showsBlendMode = isBrushFamily && !isSponge && !isColorReplace;
+			bool showsBlendMode = isBrushFamily && !isSponge && !isColorReplace && !isStrengthTool;
 			bool usesSize = isBrushFamily || tool == eTool.Pencil || tool == eTool.Line;
 			if (m_brushSizeLabel != null)
 			{
@@ -4246,10 +4262,13 @@ namespace Bitmute.UI
 			{
 				m_brushHardnessLabel.IsVisible = isBrushFamily;
 				m_brushHardnessField.IsVisible = isBrushFamily;
-				m_brushOpacityLabel.IsVisible = isBrushFamily;
-				m_brushOpacityField.IsVisible = isBrushFamily;
-				m_brushFlowLabel.IsVisible = isBrushFamily;
-				m_brushFlowField.IsVisible = isBrushFamily;
+				bool showsOpacityFlow = isBrushFamily && !isStrengthTool;
+				m_brushOpacityLabel.IsVisible = showsOpacityFlow;
+				m_brushOpacityField.IsVisible = showsOpacityFlow;
+				m_brushFlowLabel.IsVisible = showsOpacityFlow;
+				m_brushFlowField.IsVisible = showsOpacityFlow;
+				m_brushStrengthLabel.IsVisible = isStrengthTool;
+				m_brushStrengthField.IsVisible = isStrengthTool;
 				m_brushSmoothingLabel.IsVisible = isBrushFamily;
 				m_brushSmoothingField.IsVisible = isBrushFamily;
 				m_brushModeLabel.IsVisible = showsBlendMode;
@@ -4431,6 +4450,15 @@ namespace Bitmute.UI
 				return;
 			}
 			m_toolState.SetBrushSmoothing(smoothing);
+		}
+
+		private void OnBrushStrengthValue(int strength)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetBrushStrength(strength);
 		}
 
 		private void OnBrushModeChanged(object sender, System.EventArgs eventArgs)

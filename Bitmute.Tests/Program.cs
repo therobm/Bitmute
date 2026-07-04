@@ -50,6 +50,7 @@ namespace Bitmute.Tests
 			TestGradientFill();
 			TestHealMath();
 			TestCloneAligned();
+			TestBlurStrength();
 			TestSlices();
 			TestChannelRender();
 			TestWandContiguous();
@@ -817,6 +818,31 @@ namespace Bitmute.Tests
 			CloneStroke(clone2, doc2, 40, 10, state2);
 			SKColor unaligned = doc2.ActiveLayer().GetPixelCanvas(40, 10);
 			CheckNear(unaligned.Red, 10, 1, "clone non-aligned stroke 2 re-anchors to source");
+		}
+
+		private static int BlurCenterRed(int strength)
+		{
+			Document doc = new Document("t", 32, 32);
+			Layer layer = doc.ActiveLayer();
+			layer.Bitmap().Erase(new SKColor(255, 255, 255, 255));
+			layer.Bitmap().SetPixel(16, 16, new SKColor(0, 0, 0, 255));
+			ToolState state = new ToolState();
+			state.SetBrushSize(12);
+			state.SetBrushStrength(strength);
+			BlurTool blur = new BlurTool();
+			doc.BeginStroke();
+			blur.OnPressed(doc, 16, 16, state);
+			blur.OnReleased(doc, 16, 16, state);
+			doc.EndStroke();
+			return layer.GetPixelCanvas(16, 16).Red;
+		}
+
+		private static void TestBlurStrength()
+		{
+			int full = BlurCenterRed(100);
+			int half = BlurCenterRed(50);
+			CheckNear(full, 245, 4, "blur strength 100 lerps center fully to neighborhood average");
+			CheckNear(half, 122, 4, "blur strength 50 lerps center halfway to neighborhood average");
 		}
 
 		private static void TestGuideStickyCenter()

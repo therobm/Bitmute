@@ -15,6 +15,7 @@ namespace Bitmute.Tools
 		private int m_brushSpacing;
 		private bool m_brushSquareTip;
 		private int m_brushSmoothing;
+		private int m_brushStrength;
 		private eBlendMode m_brushMode;
 		private int m_fillTolerance;
 		private bool m_spongeSaturate;
@@ -63,6 +64,7 @@ namespace Bitmute.Tools
 			m_brushSpacing = 25;
 			m_brushSquareTip = false;
 			m_brushSmoothing = 0;
+			m_brushStrength = 50;
 			m_brushMode = eBlendMode.Normal;
 			m_fillTolerance = 0;
 			m_spongeSaturate = false;
@@ -492,6 +494,24 @@ namespace Bitmute.Tools
 				smoothing = 100;
 			}
 			m_brushSmoothing = smoothing;
+		}
+
+		public int BrushStrength()
+		{
+			return m_brushStrength;
+		}
+
+		public void SetBrushStrength(int strength)
+		{
+			if (strength < 1)
+			{
+				strength = 1;
+			}
+			if (strength > 100)
+			{
+				strength = 100;
+			}
+			m_brushStrength = strength;
 		}
 
 		public eBlendMode BrushMode()
