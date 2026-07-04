@@ -3878,6 +3878,18 @@ namespace Bitmute.UI
 			{
 				m_navigatorPanel.RefreshView();
 			}
+			if (m_channelsPanel != null)
+			{
+				m_channelsPanel.Refresh();
+			}
+		}
+
+		public void OnPaletteTabChanged()
+		{
+			if (m_channelsPanel != null)
+			{
+				m_channelsPanel.Refresh();
+			}
 		}
 
 		public void OnCanvasInteracted()
@@ -4070,6 +4082,10 @@ namespace Bitmute.UI
 			if (m_navigatorPanel != null)
 			{
 				m_navigatorPanel.RefreshView();
+			}
+			if (m_channelsPanel != null)
+			{
+				m_channelsPanel.Refresh();
 			}
 		}
 
@@ -4451,7 +4467,13 @@ namespace Bitmute.UI
 			{
 				startX = width / 2.0f;
 			}
-			Bitmute.Imaging.GradientFill.Fill(swatch, gradientType, startX, startY, endX, endY, new SkiaSharp.SKColor(0, 0, 0, 255), new SkiaSharp.SKColor(255, 255, 255, 255), false);
+			SkiaSharp.SKColor startColor = m_toolState.Foreground();
+			SkiaSharp.SKColor endColor = m_toolState.Background();
+			if (m_toolState.GradientToTransparent())
+			{
+				endColor = new SkiaSharp.SKColor(startColor.Red, startColor.Green, startColor.Blue, 0);
+			}
+			Bitmute.Imaging.GradientFill.Fill(swatch, gradientType, startX, startY, endX, endY, startColor, endColor, m_toolState.GradientReverse());
 			SkiaSharp.Views.Maui.Controls.SKBitmapImageSource source = new SkiaSharp.Views.Maui.Controls.SKBitmapImageSource();
 			source.Bitmap = swatch;
 			return source;
