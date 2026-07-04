@@ -24,6 +24,18 @@ namespace Bitmute.UI
 		private const string MenuBreak = "__break__";
 		private const string MenuNone = "(none yet)";
 
+		private class ModalEntry
+		{
+			public View m_content;
+			public BoxView m_backdrop;
+			public double m_x;
+			public double m_y;
+			public double m_width;
+			public double m_height;
+			public double m_dragOriginX;
+			public double m_dragOriginY;
+		}
+
 		private AbsoluteLayout m_workspace;
 		private AbsoluteLayout m_overlay;
 		private List<FloatingPanel> m_documents;
@@ -44,14 +56,7 @@ namespace Bitmute.UI
 		private bool m_layersPanelVisible = true;
 		private bool m_infoPanelVisible = true;
 		private bool m_rulersEnabled = true;
-		private BoxView m_modalBackdrop;
-		private View m_modalContent;
-		private double m_modalX;
-		private double m_modalY;
-		private double m_modalWidth;
-		private double m_modalHeight;
-		private double m_modalDragOriginX;
-		private double m_modalDragOriginY;
+		private System.Collections.Generic.List<ModalEntry> m_modalStack;
 		private FloatingPanel m_pendingClosePanel;
 		private Label m_optionsToolLabel;
 		private Label m_brushSizeLabel;
@@ -3049,6 +3054,7 @@ namespace Bitmute.UI
 			this.ThemeBg(UiConstants.WorkspaceBackdropLight, UiConstants.WorkspaceBackdropDark);
 
 			m_documents = new List<FloatingPanel>();
+			m_modalStack = new System.Collections.Generic.List<ModalEntry>();
 			m_openItemButtons = new List<Border>();
 			m_openItemActions = new List<string>();
 			m_openMenuIndex = -1;
@@ -3866,7 +3872,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			if (m_modalContent != null)
+			if (m_modalStack.Count > 0)
 			{
 				CloseModal();
 				args.Handled = true;
@@ -4451,32 +4457,35 @@ namespace Bitmute.UI
 
 		private void ShowModal(View content, double width, double height)
 		{
-			CloseModal();
-			m_modalBackdrop = new BoxView();
-			m_modalBackdrop.Color = Colors.Transparent;
-			AbsoluteLayout.SetLayoutBounds(m_modalBackdrop, new Rect(0.0, 0.0, 1.0, 1.0));
-			AbsoluteLayout.SetLayoutFlags(m_modalBackdrop, AbsoluteLayoutFlags.All);
+			BoxView backdrop = new BoxView();
+			backdrop.Color = Colors.Transparent;
+			AbsoluteLayout.SetLayoutBounds(backdrop, new Rect(0.0, 0.0, 1.0, 1.0));
+			AbsoluteLayout.SetLayoutFlags(backdrop, AbsoluteLayoutFlags.All);
 			TapGestureRecognizer backdropTap = new TapGestureRecognizer();
 			backdropTap.Tapped += OnModalBackdropTapped;
-			m_modalBackdrop.GestureRecognizers.Add(backdropTap);
+			backdrop.GestureRecognizers.Add(backdropTap);
 			m_topZIndex = m_topZIndex + 1;
-			m_modalBackdrop.ZIndex = m_topZIndex + 1000;
-			m_workspace.Add(m_modalBackdrop);
+			backdrop.ZIndex = m_topZIndex + 1000;
+			m_workspace.Add(backdrop);
 
-			m_modalContent = content;
-			m_modalWidth = width;
-			m_modalHeight = height;
-			m_modalX = (m_workspace.Width - width) / 2.0;
-			m_modalY = (m_workspace.Height - height) / 2.0;
-			if (m_modalX < 0.0)
+			ModalEntry entry = new ModalEntry();
+			entry.m_content = content;
+			entry.m_backdrop = backdrop;
+			entry.m_width = width;
+			entry.m_height = height;
+			entry.m_x = (m_workspace.Width - width) / 2.0;
+			entry.m_y = (m_workspace.Height - height) / 2.0;
+			if (entry.m_x < 0.0)
 			{
-				m_modalX = 0.0;
+				entry.m_x = 0.0;
 			}
-			if (m_modalY < 0.0)
+			if (entry.m_y < 0.0)
 			{
-				m_modalY = 0.0;
+				entry.m_y = 0.0;
 			}
-			AbsoluteLayout.SetLayoutBounds(content, new Rect(m_modalX, m_modalY, width, AbsoluteLayout.AutoSize));
+			m_modalStack.Add(entry);
+
+			AbsoluteLayout.SetLayoutBounds(content, new Rect(entry.m_x, entry.m_y, width, AbsoluteLayout.AutoSize));
 			AbsoluteLayout.SetLayoutFlags(content, AbsoluteLayoutFlags.None);
 			content.ZIndex = m_topZIndex + 1001;
 			m_workspace.Add(content);
@@ -4484,24 +4493,25 @@ namespace Bitmute.UI
 
 		public void DragModal(Microsoft.Maui.GestureStatus status, double totalX, double totalY)
 		{
-			if (m_modalContent == null)
+			if (m_modalStack.Count == 0)
 			{
 				return;
 			}
+			ModalEntry entry = m_modalStack[m_modalStack.Count - 1];
 			if (status == Microsoft.Maui.GestureStatus.Started)
 			{
-				m_modalDragOriginX = m_modalX;
-				m_modalDragOriginY = m_modalY;
+				entry.m_dragOriginX = entry.m_x;
+				entry.m_dragOriginY = entry.m_y;
 				return;
 			}
 			if (status != Microsoft.Maui.GestureStatus.Running)
 			{
 				return;
 			}
-			double targetX = m_modalDragOriginX + totalX;
-			double targetY = m_modalDragOriginY + totalY;
-			double maxX = m_workspace.Width - m_modalWidth;
-			double maxY = m_workspace.Height - m_modalHeight;
+			double targetX = entry.m_dragOriginX + totalX;
+			double targetY = entry.m_dragOriginY + totalY;
+			double maxX = m_workspace.Width - entry.m_width;
+			double maxY = m_workspace.Height - entry.m_height;
 			if (targetX < 0.0)
 			{
 				targetX = 0.0;
@@ -4518,23 +4528,27 @@ namespace Bitmute.UI
 			{
 				targetY = maxY;
 			}
-			m_modalX = targetX;
-			m_modalY = targetY;
-			AbsoluteLayout.SetLayoutBounds(m_modalContent, new Rect(m_modalX, m_modalY, m_modalWidth, AbsoluteLayout.AutoSize));
+			entry.m_x = targetX;
+			entry.m_y = targetY;
+			AbsoluteLayout.SetLayoutBounds(entry.m_content, new Rect(entry.m_x, entry.m_y, entry.m_width, AbsoluteLayout.AutoSize));
 		}
 
 		public void CloseModal()
 		{
 			m_editingSwatchIndex = -1;
-			if (m_modalBackdrop != null)
+			if (m_modalStack.Count == 0)
 			{
-				m_workspace.Remove(m_modalBackdrop);
-				m_modalBackdrop = null;
+				return;
 			}
-			if (m_modalContent != null)
+			ModalEntry entry = m_modalStack[m_modalStack.Count - 1];
+			m_modalStack.RemoveAt(m_modalStack.Count - 1);
+			if (entry.m_backdrop != null)
 			{
-				m_workspace.Remove(m_modalContent);
-				m_modalContent = null;
+				m_workspace.Remove(entry.m_backdrop);
+			}
+			if (entry.m_content != null)
+			{
+				m_workspace.Remove(entry.m_content);
 			}
 		}
 
