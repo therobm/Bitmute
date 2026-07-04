@@ -191,6 +191,7 @@ namespace Bitmute.UI
 		private CanvasView m_guideCreateCanvas;
 		private bool m_gridEnabled;
 		private bool m_snapEnabled;
+		private int m_channelViewMode;
 		private double m_openDropdownX;
 		private List<Border> m_submenuParentRows;
 		private List<string> m_submenuParentNames;
@@ -265,6 +266,10 @@ namespace Bitmute.UI
 			{
 				return true;
 			}
+			if (title == "View" && item == "Channels")
+			{
+				return true;
+			}
 			return false;
 		}
 
@@ -282,6 +287,10 @@ namespace Bitmute.UI
 			if (title == "Edit" && item == "Transform")
 			{
 				return new string[] { "Free Transform", "Scale", "Rotate", "Skew", "Distort", "Perspective", "Flip Horizontal (Layer)", "Flip Vertical (Layer)" };
+			}
+			if (title == "View" && item == "Channels")
+			{
+				return new string[] { PanelMenuLabel("Composite", m_channelViewMode < 0), PanelMenuLabel("Red", m_channelViewMode == 0), PanelMenuLabel("Green", m_channelViewMode == 1), PanelMenuLabel("Blue", m_channelViewMode == 2), PanelMenuLabel("Alpha", m_channelViewMode == 3) };
 			}
 			return new string[] { };
 		}
@@ -346,7 +355,7 @@ namespace Bitmute.UI
 			}
 			if (title == "View")
 			{
-				return new string[] { "Zoom In", "Zoom Out", "Fit on Screen", "Rulers", "Grid", PanelMenuLabel("Snap to Guides", m_snapEnabled), PanelMenuLabel("Lock Guides", GuidesLocked()), "Clear Guides" };
+				return new string[] { "Zoom In", "Zoom Out", "Fit on Screen", "Rulers", "Grid", "Channels", PanelMenuLabel("Snap to Guides", m_snapEnabled), PanelMenuLabel("Lock Guides", GuidesLocked()), "Clear Guides" };
 			}
 			if (title == "Window")
 			{
@@ -901,6 +910,31 @@ namespace Bitmute.UI
 			if (action == "Grid")
 			{
 				ToggleGrid();
+				return;
+			}
+			if (action == "Composite" || action == "✓ Composite")
+			{
+				SetChannelView(-1);
+				return;
+			}
+			if (action == "Red" || action == "✓ Red")
+			{
+				SetChannelView(0);
+				return;
+			}
+			if (action == "Green" || action == "✓ Green")
+			{
+				SetChannelView(1);
+				return;
+			}
+			if (action == "Blue" || action == "✓ Blue")
+			{
+				SetChannelView(2);
+				return;
+			}
+			if (action == "Alpha" || action == "✓ Alpha")
+			{
+				SetChannelView(3);
 				return;
 			}
 			if (action == "Snap to Guides" || action == "✓ Snap to Guides")
@@ -2772,6 +2806,7 @@ namespace Bitmute.UI
 			m_guideCreateOrientation = 0;
 			m_guideCreateCanvas = null;
 			m_gridEnabled = false;
+			m_channelViewMode = -1;
 			m_snapEnabled = Microsoft.Maui.Storage.Preferences.Default.Get("snap_enabled", false);
 			m_submenuParentRows = new List<Border>();
 			m_submenuParentNames = new List<string>();
@@ -4218,6 +4253,21 @@ namespace Bitmute.UI
 		public bool GridEnabled()
 		{
 			return m_gridEnabled;
+		}
+
+		public int ChannelViewMode()
+		{
+			return m_channelViewMode;
+		}
+
+		private void SetChannelView(int mode)
+		{
+			m_channelViewMode = mode;
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.MarkComposeDirty();
+			}
 		}
 
 		private void OnToleranceValue(int tolerance)

@@ -37,6 +37,7 @@ namespace Bitmute.UI
 		private Document m_document;
 		private SKBitmap m_composite;
 		private SKBitmap m_transformAbove;
+		private SKBitmap m_channelBitmap;
 		private float m_zoom;
 		private float m_offsetX;
 		private float m_offsetY;
@@ -216,7 +217,22 @@ namespace Bitmute.UI
 			canvas.DrawRect(destination, checkerPaint);
 			checkerPaint.Dispose();
 
-			SKImage image = SKImage.FromBitmap(m_composite);
+			SKBitmap displayBitmap = m_composite;
+			MainView channelMain = MainView.Self;
+			if (channelMain != null && channelMain.ChannelViewMode() >= 0)
+			{
+				if (m_channelBitmap == null || m_channelBitmap.Width != m_composite.Width || m_channelBitmap.Height != m_composite.Height)
+				{
+					if (m_channelBitmap != null)
+					{
+						m_channelBitmap.Dispose();
+					}
+					m_channelBitmap = new SKBitmap(m_composite.Width, m_composite.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				}
+				Bitmute.Imaging.ChannelRender.Render(m_composite, m_channelBitmap, channelMain.ChannelViewMode());
+				displayBitmap = m_channelBitmap;
+			}
+			SKImage image = SKImage.FromBitmap(displayBitmap);
 			SKPaint imagePaint = new SKPaint();
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
 			canvas.DrawImage(image, destination, sampling, imagePaint);

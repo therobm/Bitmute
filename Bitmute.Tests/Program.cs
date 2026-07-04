@@ -47,6 +47,7 @@ namespace Bitmute.Tests
 			TestSpongeMath();
 			TestColorReplaceMath();
 			TestGradientFill();
+			TestChannelRender();
 			TestWandContiguous();
 			TestWandNonContiguous();
 			TestWandSampleAll();
@@ -621,6 +622,27 @@ namespace Bitmute.Tests
 			SKColor leftReversed = bmp.GetPixel(0, 0);
 			Check(leftReversed.Blue > leftReversed.Red, "gradient reverse flips ends");
 			bmp.Dispose();
+		}
+
+		private static void TestChannelRender()
+		{
+			SKBitmap source = new SKBitmap(2, 1, SKColorType.Rgba8888, SKAlphaType.Premul);
+			source.SetPixel(0, 0, new SKColor(255, 0, 0, 255));
+			source.SetPixel(1, 0, new SKColor(0, 0, 0, 0));
+			SKBitmap target = new SKBitmap(2, 1, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			ChannelRender.Render(source, target, 0);
+			SKColor redChannel = target.GetPixel(0, 0);
+			Check(redChannel.Red == 255 && redChannel.Green == 255 && redChannel.Blue == 255, "channel red of opaque red is white");
+			ChannelRender.Render(source, target, 1);
+			SKColor greenChannel = target.GetPixel(0, 0);
+			Check(greenChannel.Red == 0, "channel green of red pixel is black");
+			ChannelRender.Render(source, target, 3);
+			SKColor alphaOpaque = target.GetPixel(0, 0);
+			SKColor alphaTransparent = target.GetPixel(1, 0);
+			Check(alphaOpaque.Red == 255, "channel alpha of opaque is white");
+			Check(alphaTransparent.Red == 0, "channel alpha of transparent is black");
+			source.Dispose();
+			target.Dispose();
 		}
 
 		private static void TestMovePerfRegion()
