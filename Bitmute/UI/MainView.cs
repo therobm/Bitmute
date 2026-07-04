@@ -189,7 +189,6 @@ namespace Bitmute.UI
 		private SharpenTool m_sharpenTool;
 		private CloneTool m_cloneTool;
 		private HealTool m_healTool;
-		private SliceTool m_sliceTool;
 		private SmudgeTool m_smudgeTool;
 		private EyedropperTool m_eyedropperTool;
 		private FillTool m_fillTool;
@@ -3064,7 +3063,6 @@ namespace Bitmute.UI
 			m_sharpenTool = new SharpenTool();
 			m_cloneTool = new CloneTool();
 			m_healTool = new HealTool();
-			m_sliceTool = new SliceTool();
 			m_smudgeTool = new SmudgeTool();
 			m_eyedropperTool = new EyedropperTool();
 			m_fillTool = new FillTool();
@@ -4856,10 +4854,6 @@ namespace Bitmute.UI
 			{
 				m_cropTool.Reset();
 			}
-			if (m_sliceTool != null)
-			{
-				m_sliceTool.Reset();
-			}
 			if (m_freeTransformTool != null)
 			{
 				m_freeTransformTool.Reset();
@@ -6520,10 +6514,6 @@ namespace Bitmute.UI
 			if (tool == eTool.Heal)
 			{
 				return m_healTool;
-			}
-			if (tool == eTool.Slice)
-			{
-				return m_sliceTool;
 			}
 			if (tool == eTool.Smudge)
 			{

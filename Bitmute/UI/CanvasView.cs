@@ -522,11 +522,6 @@ namespace Bitmute.UI
 				DrawCropPreview(canvas, (CropTool)tool);
 				return;
 			}
-			if (tool is SliceTool)
-			{
-				DrawSlices(canvas, (SliceTool)tool);
-				return;
-			}
 			if (tool is FreeTransformTool)
 			{
 				DrawTransformPreview(canvas, (FreeTransformTool)tool);
@@ -1196,50 +1191,6 @@ namespace Bitmute.UI
 			canvas.DrawRect(rect, border);
 		}
 
-		private void DrawSlices(SKCanvas canvas, SliceTool slice)
-		{
-			Bitmute.Imaging.Slices slices = m_document.Slices();
-			SKPaint border = new SKPaint();
-			border.Style = SKPaintStyle.Stroke;
-			border.StrokeWidth = 1.0f;
-			border.Color = new SKColor(255, 200, 0, 230);
-			border.IsAntialias = false;
-			SKPaint fill = new SKPaint();
-			fill.Style = SKPaintStyle.Fill;
-			fill.Color = new SKColor(255, 200, 0, 24);
-			SKPaint labelPaint = new SKPaint();
-			labelPaint.Color = new SKColor(255, 200, 0, 255);
-			labelPaint.IsAntialias = true;
-			SKFont labelFont = new SKFont();
-			labelFont.Size = 11.0f;
-			for (int index = 0; index < slices.Count(); index++)
-			{
-				SKRectI rect = slices.RectAt(index);
-				float left = m_offsetX + (rect.Left * m_zoom);
-				float top = m_offsetY + (rect.Top * m_zoom);
-				float right = m_offsetX + (rect.Right * m_zoom);
-				float bottom = m_offsetY + (rect.Bottom * m_zoom);
-				SKRect screen = new SKRect(left, top, right, bottom);
-				canvas.DrawRect(screen, fill);
-				canvas.DrawRect(screen, border);
-				canvas.DrawText(slices.NameAt(index), left + 3.0f, top + 13.0f, SKTextAlign.Left, labelFont, labelPaint);
-			}
-			if (slice.HasPreview())
-			{
-				float previewLeft = m_offsetX + (slice.PreviewLeft() * m_zoom);
-				float previewTop = m_offsetY + (slice.PreviewTop() * m_zoom);
-				float previewRight = m_offsetX + (slice.PreviewRight() * m_zoom);
-				float previewBottom = m_offsetY + (slice.PreviewBottom() * m_zoom);
-				SKRect pending = new SKRect(previewLeft, previewTop, previewRight, previewBottom);
-				canvas.DrawRect(pending, fill);
-				canvas.DrawRect(pending, border);
-			}
-			labelFont.Dispose();
-			labelPaint.Dispose();
-			fill.Dispose();
-			border.Dispose();
-		}
-
 		private void DrawRulerPreview(SKCanvas canvas, RulerTool ruler)
 		{
 			if (!ruler.HasPreview())
@@ -1866,14 +1817,6 @@ namespace Bitmute.UI
 			{
 				bool cropActed = eventArgs.ActionType == SKTouchAction.Pressed || eventArgs.ActionType == SKTouchAction.Released || (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact);
 				if (cropActed)
-				{
-					InvalidateSurface();
-				}
-			}
-			if (tool is SliceTool)
-			{
-				bool sliceActed = eventArgs.ActionType == SKTouchAction.Pressed || eventArgs.ActionType == SKTouchAction.Released || (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact);
-				if (sliceActed)
 				{
 					InvalidateSurface();
 				}

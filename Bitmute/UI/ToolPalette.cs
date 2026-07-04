@@ -499,7 +499,6 @@ namespace Bitmute.UI
 				new eTool[] { eTool.Lasso, eTool.FreehandLasso, eTool.MagneticLasso },
 				new eTool[] { eTool.MagicWand },
 				new eTool[] { eTool.Crop },
-				new eTool[] { eTool.Slice },
 				new eTool[] { eTool.Brush, eTool.Pencil, eTool.ColorReplacement },
 				new eTool[] { eTool.Eraser },
 				new eTool[] { eTool.Clone, eTool.Heal },
@@ -520,7 +519,6 @@ namespace Bitmute.UI
 				new string[] { "lasso.png", "freehand_lasso.png", "magnetic_lasso.png" },
 				new string[] { "magic_wand.png" },
 				new string[] { "crop.png" },
-				new string[] { "slice.png" },
 				new string[] { "brush.png", "pencil.png", "color_replacement.png" },
 				new string[] { "eraser.png" },
 				new string[] { "clone.png", "heal.png" },
@@ -541,7 +539,6 @@ namespace Bitmute.UI
 				new string[] { "Poly Lasso", "Freehand Lasso", "Magnetic Lasso (drag along an edge)" },
 				new string[] { "Magic Wand" },
 				new string[] { "Crop (double-click inside to commit)" },
-				new string[] { "Slice (drag to add a named region)" },
 				new string[] { "Brush", "Pencil", "Color Replacement" },
 				new string[] { "Eraser" },
 				new string[] { "Clone (Alt-click sets source)", "Heal (Alt-click sets source)" },
@@ -571,9 +568,9 @@ namespace Bitmute.UI
 
 			bool[] breakAfterCell = new bool[m_groupTools.Length];
 			breakAfterCell[3] = true;
-			breakAfterCell[5] = true;
-			breakAfterCell[11] = true;
-			breakAfterCell[13] = true;
+			breakAfterCell[4] = true;
+			breakAfterCell[10] = true;
+			breakAfterCell[12] = true;
 
 			int breakCount = 0;
 			for (int index = 0; index < breakAfterCell.Length; index++)
