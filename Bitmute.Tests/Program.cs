@@ -78,6 +78,7 @@ namespace Bitmute.Tests
 			TestTransformSelectionLiftCancel();
 			TestTransformBackgroundStaysCanvas();
 			TestCanvasOpUndo();
+			TestStructuralLayerUndo();
 			TestGuidesModel();
 			if (s_failures == 0)
 			{
@@ -581,6 +582,47 @@ namespace Bitmute.Tests
 			bool redone = doc.Redo();
 			Check(redone, "rotate90 redoable");
 			Check(doc.Width() == 8 && doc.Height() == 12, "rotate90 redo re-applies");
+		}
+
+		private static void TestStructuralLayerUndo()
+		{
+			Document doc = new Document("t", 16, 16);
+
+			int beforeAdd = doc.Layers().Count;
+			doc.BeginCanvasEdit("Add Layer");
+			doc.AddLayer("X");
+			doc.EndCanvasEdit();
+			Check(doc.Layers().Count == beforeAdd + 1, "add layer increases count");
+			doc.Undo();
+			Check(doc.Layers().Count == beforeAdd, "undo removes added layer");
+
+			int beforeDuplicate = doc.Layers().Count;
+			doc.BeginCanvasEdit("Duplicate Layer");
+			doc.DuplicateLayer(doc.ActiveLayerIndex());
+			doc.EndCanvasEdit();
+			Check(doc.Layers().Count == beforeDuplicate + 1, "duplicate layer increases count");
+			doc.Undo();
+			Check(doc.Layers().Count == beforeDuplicate, "undo removes duplicated layer");
+
+			Layer removable = doc.AddLayer("Y");
+			int beforeDelete = doc.Layers().Count;
+			doc.BeginCanvasEdit("Delete Layer");
+			doc.DeleteLayer(doc.ActiveLayerIndex());
+			doc.EndCanvasEdit();
+			Check(doc.Layers().Count == beforeDelete - 1, "delete layer decreases count");
+			doc.Undo();
+			Check(doc.Layers().Count == beforeDelete, "undo restores deleted layer");
+
+			int topIndex = doc.Layers().Count - 1;
+			doc.Layers()[topIndex].Bitmap().SetPixel(0, 0, new SKColor(7, 8, 9, 255));
+			doc.BeginCanvasEdit("Reorder Layer");
+			doc.MoveLayer(topIndex, 0);
+			doc.EndCanvasEdit();
+			SKColor movedMark = doc.Layers()[0].Bitmap().GetPixel(0, 0);
+			Check(movedMark.Red == 7 && movedMark.Green == 8 && movedMark.Blue == 9, "reorder moves marked layer to bottom");
+			doc.Undo();
+			SKColor restoredMark = doc.Layers()[topIndex].Bitmap().GetPixel(0, 0);
+			Check(restoredMark.Red == 7 && restoredMark.Green == 8 && restoredMark.Blue == 9, "undo restores layer order");
 		}
 
 		private static void TestGuidesModel()

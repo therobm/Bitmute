@@ -1881,9 +1881,11 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			document.BeginCanvasEdit("Paste");
 			Layer layer = document.AddLayer("Pasted");
 			if (layer == null)
 			{
+				document.EndCanvasEdit();
 				pasted.Dispose();
 				return;
 			}
@@ -1915,6 +1917,7 @@ namespace Bitmute.UI
 			{
 				document.Selection().SelectRect(new SkiaSharp.SKRectI(selLeft, selTop, selRight, selBottom));
 			}
+			document.EndCanvasEdit();
 			CanvasView canvas = ActiveCanvas();
 			if (canvas != null)
 			{
@@ -3708,7 +3711,9 @@ namespace Bitmute.UI
 				return;
 			}
 			Document document = canvas.CurrentDocument();
+			document.BeginCanvasEdit("Duplicate Layer");
 			document.DuplicateLayer(document.ActiveLayerIndex());
+			document.EndCanvasEdit();
 			FinishLayerStructureChange(canvas);
 		}
 
@@ -3720,7 +3725,9 @@ namespace Bitmute.UI
 				return;
 			}
 			Document document = canvas.CurrentDocument();
+			document.BeginCanvasEdit("Delete Layer");
 			document.DeleteLayer(document.ActiveLayerIndex());
+			document.EndCanvasEdit();
 			FinishLayerStructureChange(canvas);
 		}
 

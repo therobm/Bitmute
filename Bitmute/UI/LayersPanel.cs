@@ -483,7 +483,9 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			document.BeginCanvasEdit("Reorder Layer");
 			document.MoveLayer(fromIndex, fromIndex - positions);
+			document.EndCanvasEdit();
 			RecompositeActive();
 			Refresh();
 		}
@@ -496,7 +498,9 @@ namespace Bitmute.UI
 				return;
 			}
 			int layerNumber = document.Layers().Count + 1;
+			document.BeginCanvasEdit("Add Layer");
 			document.AddLayer("Layer " + layerNumber);
+			document.EndCanvasEdit();
 			RecompositeActive();
 			Refresh();
 		}
@@ -508,7 +512,9 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			document.BeginCanvasEdit("Delete Layer");
 			document.DeleteLayer(document.ActiveLayerIndex());
+			document.EndCanvasEdit();
 			RecompositeActive();
 			Refresh();
 		}
@@ -545,7 +551,9 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			document.BeginCanvasEdit("Duplicate Layer");
 			document.DuplicateLayer(document.ActiveLayerIndex());
+			document.EndCanvasEdit();
 			RecompositeActive();
 			Refresh();
 		}
