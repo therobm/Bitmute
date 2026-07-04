@@ -57,6 +57,14 @@ namespace Bitmute.UI
 		private CheckBox m_gradientTransparentCheck;
 		private Label m_lineAntiAliasLabel;
 		private CheckBox m_lineAntiAliasCheck;
+		private Button m_selectModeNewButton;
+		private Button m_selectModeAddButton;
+		private Button m_selectModeSubtractButton;
+		private Button m_selectModeIntersectButton;
+		private Label m_selectionFeatherLabel;
+		private SliderField m_selectionFeatherField;
+		private Label m_selectionAntiAliasLabel;
+		private CheckBox m_selectionAntiAliasCheck;
 		private Label m_toleranceLabel;
 		private SliderField m_toleranceField;
 		private Label m_wandAntiAliasLabel;
@@ -108,6 +116,93 @@ namespace Bitmute.UI
 				return "Italic";
 			}
 			return "Regular";
+		}
+
+		private void StyleSelectionModeButton(Button button, bool active)
+		{
+			if (button == null)
+			{
+				return;
+			}
+			if (active)
+			{
+				button.ThemeBg(UiConstants.AccentLight, UiConstants.AccentDark);
+			}
+			else
+			{
+				button.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			}
+		}
+
+		private void RefreshSelectionModeButtons()
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			int mode = m_toolState.SelectionMode();
+			StyleSelectionModeButton(m_selectModeNewButton, mode == 0);
+			StyleSelectionModeButton(m_selectModeAddButton, mode == 1);
+			StyleSelectionModeButton(m_selectModeSubtractButton, mode == 2);
+			StyleSelectionModeButton(m_selectModeIntersectButton, mode == 3);
+		}
+
+		private void OnSelectModeNewClicked(object sender, System.EventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetSelectionMode(0);
+			RefreshSelectionModeButtons();
+		}
+
+		private void OnSelectModeAddClicked(object sender, System.EventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetSelectionMode(1);
+			RefreshSelectionModeButtons();
+		}
+
+		private void OnSelectModeSubtractClicked(object sender, System.EventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetSelectionMode(2);
+			RefreshSelectionModeButtons();
+		}
+
+		private void OnSelectModeIntersectClicked(object sender, System.EventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetSelectionMode(3);
+			RefreshSelectionModeButtons();
+		}
+
+		private void OnSelectionFeatherValue(int feather)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetSelectionFeather(feather);
+		}
+
+		private void OnSelectionAntiAliasChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetSelectionAntiAlias(m_selectionAntiAliasCheck.IsChecked);
 		}
 
 		private void OnToleranceValue(int tolerance)
@@ -1260,6 +1355,72 @@ namespace Bitmute.UI
 			m_lineAntiAliasCheck.IsVisible = false;
 			m_lineAntiAliasCheck.CheckedChanged += OnLineAntiAliasChanged;
 
+			m_selectModeNewButton = new Button();
+			m_selectModeNewButton.Text = "New";
+			m_selectModeNewButton.FontSize = 12.0;
+			m_selectModeNewButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
+			m_selectModeNewButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			m_selectModeNewButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_selectModeNewButton.VerticalOptions = LayoutOptions.Center;
+			m_selectModeNewButton.IsVisible = false;
+			m_selectModeNewButton.Clicked += OnSelectModeNewClicked;
+
+			m_selectModeAddButton = new Button();
+			m_selectModeAddButton.Text = "Add";
+			m_selectModeAddButton.FontSize = 12.0;
+			m_selectModeAddButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
+			m_selectModeAddButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			m_selectModeAddButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_selectModeAddButton.VerticalOptions = LayoutOptions.Center;
+			m_selectModeAddButton.IsVisible = false;
+			m_selectModeAddButton.Clicked += OnSelectModeAddClicked;
+
+			m_selectModeSubtractButton = new Button();
+			m_selectModeSubtractButton.Text = "Sub";
+			m_selectModeSubtractButton.FontSize = 12.0;
+			m_selectModeSubtractButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
+			m_selectModeSubtractButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			m_selectModeSubtractButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_selectModeSubtractButton.VerticalOptions = LayoutOptions.Center;
+			m_selectModeSubtractButton.IsVisible = false;
+			m_selectModeSubtractButton.Clicked += OnSelectModeSubtractClicked;
+
+			m_selectModeIntersectButton = new Button();
+			m_selectModeIntersectButton.Text = "Sect";
+			m_selectModeIntersectButton.FontSize = 12.0;
+			m_selectModeIntersectButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
+			m_selectModeIntersectButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			m_selectModeIntersectButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_selectModeIntersectButton.VerticalOptions = LayoutOptions.Center;
+			m_selectModeIntersectButton.IsVisible = false;
+			m_selectModeIntersectButton.Clicked += OnSelectModeIntersectClicked;
+
+			RefreshSelectionModeButtons();
+
+			m_selectionFeatherLabel = new Label();
+			m_selectionFeatherLabel.Text = "Feather";
+			m_selectionFeatherLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_selectionFeatherLabel.FontSize = 12.0;
+			m_selectionFeatherLabel.VerticalOptions = LayoutOptions.Center;
+			m_selectionFeatherLabel.IsVisible = false;
+
+			m_selectionFeatherField = new SliderField(0, 100, m_toolState.SelectionFeather(), " px", OnSelectionFeatherValue);
+			m_selectionFeatherField.VerticalOptions = LayoutOptions.Center;
+			m_selectionFeatherField.IsVisible = false;
+
+			m_selectionAntiAliasLabel = new Label();
+			m_selectionAntiAliasLabel.Text = "Anti-alias";
+			m_selectionAntiAliasLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_selectionAntiAliasLabel.FontSize = 12.0;
+			m_selectionAntiAliasLabel.VerticalOptions = LayoutOptions.Center;
+			m_selectionAntiAliasLabel.IsVisible = false;
+
+			m_selectionAntiAliasCheck = new CheckBox();
+			m_selectionAntiAliasCheck.VerticalOptions = LayoutOptions.Center;
+			m_selectionAntiAliasCheck.IsVisible = false;
+			m_selectionAntiAliasCheck.IsChecked = m_toolState.SelectionAntiAlias();
+			m_selectionAntiAliasCheck.CheckedChanged += OnSelectionAntiAliasChanged;
+
 			m_toleranceLabel = new Label();
 			m_toleranceLabel.Text = "Tolerance";
 			m_toleranceLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
@@ -1488,6 +1649,14 @@ namespace Bitmute.UI
 			options.Add(m_brushSettingsButton);
 			options.Add(m_lineAntiAliasLabel);
 			options.Add(m_lineAntiAliasCheck);
+			options.Add(m_selectModeNewButton);
+			options.Add(m_selectModeAddButton);
+			options.Add(m_selectModeSubtractButton);
+			options.Add(m_selectModeIntersectButton);
+			options.Add(m_selectionFeatherLabel);
+			options.Add(m_selectionFeatherField);
+			options.Add(m_selectionAntiAliasLabel);
+			options.Add(m_selectionAntiAliasCheck);
 			options.Add(m_toleranceLabel);
 			options.Add(m_toleranceField);
 			options.Add(m_wandAntiAliasLabel);
@@ -1540,6 +1709,23 @@ namespace Bitmute.UI
 			if (m_lineAntiAliasCheck != null)
 			{
 				m_lineAntiAliasCheck.IsVisible = isLine;
+			}
+			bool isSelectionTool = tool == eTool.Select || tool == eTool.EllipseSelect || tool == eTool.FreehandLasso || tool == eTool.Lasso || tool == eTool.MagneticLasso || tool == eTool.MagicWand;
+			bool usesSelectionAntiAlias = tool == eTool.EllipseSelect || tool == eTool.FreehandLasso || tool == eTool.Lasso || tool == eTool.MagneticLasso;
+			if (m_selectModeNewButton != null)
+			{
+				m_selectModeNewButton.IsVisible = isSelectionTool;
+				m_selectModeAddButton.IsVisible = isSelectionTool;
+				m_selectModeSubtractButton.IsVisible = isSelectionTool;
+				m_selectModeIntersectButton.IsVisible = isSelectionTool;
+				m_selectionFeatherLabel.IsVisible = isSelectionTool;
+				m_selectionFeatherField.IsVisible = isSelectionTool;
+				m_selectionAntiAliasLabel.IsVisible = usesSelectionAntiAlias;
+				m_selectionAntiAliasCheck.IsVisible = usesSelectionAntiAlias;
+				if (isSelectionTool)
+				{
+					RefreshSelectionModeButtons();
+				}
 			}
 			bool isWand = tool == eTool.MagicWand;
 			bool usesTolerance = isWand || tool == eTool.Fill;
