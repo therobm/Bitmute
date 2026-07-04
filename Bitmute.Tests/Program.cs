@@ -42,6 +42,7 @@ namespace Bitmute.Tests
 			TestSelectionMoveLayer();
 			TestFloatingSelection();
 			TestFloatingSelectionMultiGrab();
+			TestMoveTextLayerUndo();
 			TestCustomBlends();
 			TestCustomBlendOpacity();
 			TestCustomBlendTransparentBase();
@@ -1347,6 +1348,72 @@ namespace Bitmute.Tests
 			Check(undoMovedGone.Alpha == 0, "multi-grab: one undo clears the moved position (52,31)");
 			bool secondUndo = doc.Undo();
 			Check(!secondUndo, "multi-grab: commit pushes exactly one undo entry (no stray stroke command)");
+		}
+
+		private static int CountOpaquePixels(SKBitmap bitmap)
+		{
+			int count = 0;
+			for (int y = 0; y < bitmap.Height; y++)
+			{
+				for (int x = 0; x < bitmap.Width; x++)
+				{
+					if (bitmap.GetPixel(x, y).Alpha != 0)
+					{
+						count = count + 1;
+					}
+				}
+			}
+			return count;
+		}
+
+		private static bool BitmapsIdentical(SKBitmap first, SKBitmap second)
+		{
+			if (first.Width != second.Width || first.Height != second.Height)
+			{
+				return false;
+			}
+			for (int y = 0; y < first.Height; y++)
+			{
+				for (int x = 0; x < first.Width; x++)
+				{
+					if (first.GetPixel(x, y) != second.GetPixel(x, y))
+					{
+						return false;
+					}
+				}
+			}
+			return true;
+		}
+
+		private static void TestMoveTextLayerUndo()
+		{
+			Document doc = new Document("t", 64, 32);
+			Layer text = doc.AddLayer("Words");
+			text.Bitmap().Erase(new SKColor(0, 0, 0, 0));
+			text.SetTextPosition(8, 6);
+			text.SetTextString("Hi");
+			text.SetTextStyle(18.0f, "Arial", true, false, new SKColor(0, 0, 0, 255), 0, 0);
+			text.RenderText();
+			Check(text.IsText(), "text move: layer is a text layer");
+			int originalInk = CountOpaquePixels(text.Bitmap());
+			Check(originalInk > 0, "text move: text renders visible ink before the move");
+			SKBitmap original = text.Bitmap().Copy();
+
+			int undoBefore = doc.HistoryIndex();
+			ToolState state = new ToolState();
+			MoveTool move = new MoveTool();
+			Check(!move.IsDestructive(), "text move: move tool is non-destructive (helper will not auto-wrap the stroke)");
+			MoveGrab(move, doc, 10, 10, 24, 18, state);
+
+			Check(text.TextX() == 22 && text.TextY() == 14, "text move: text position shifts by (14,8)");
+			Check(doc.HistoryIndex() == undoBefore + 1, "text move: a single move pushes exactly one undo entry");
+			Check(!BitmapsIdentical(original, text.Bitmap()), "text move: moved render differs from the original render");
+
+			bool undone = doc.Undo();
+			Check(undone, "text move: move is undoable");
+			Check(BitmapsIdentical(original, text.Bitmap()), "text move: undo restores the text pixels to the original position");
+			Check(doc.HistoryIndex() == undoBefore, "text move: undo consumes the single move command");
+			original.Dispose();
 		}
 
 		private static void TestFillLayer()

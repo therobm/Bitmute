@@ -314,6 +314,7 @@ namespace Bitmute.Tools
 				m_floatMode = false;
 				m_oldTextX = layer.TextX();
 				m_oldTextY = layer.TextY();
+				document.BeginStroke();
 				CacheMoveContentBounds(layer, CanvasContentBounds(layer));
 			}
 			else
@@ -383,6 +384,7 @@ namespace Bitmute.Tools
 			if (m_textMode)
 			{
 				m_textMode = false;
+				document.EndStroke();
 				ReleaseBuffers();
 				m_hasLast = false;
 				return;
