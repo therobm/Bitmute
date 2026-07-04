@@ -20,6 +20,9 @@ namespace Bitmute.UI
 
 		private const double MenuItemHeight = 26.0;
 		private const double DropdownWidth = 190.0;
+		private const double MenuSeparatorHeight = 9.0;
+		private const string MenuBreak = "__break__";
+		private const string MenuNone = "(none yet)";
 
 		private AbsoluteLayout m_workspace;
 		private AbsoluteLayout m_overlay;
@@ -255,12 +258,13 @@ namespace Bitmute.UI
 			if (title == "Image")
 			{
 				if (item == "Image Size…") return "Ctrl+Alt+I";
+				if (item == "Invert Colors") return "Ctrl+I";
 			}
 			if (title == "Select")
 			{
 				if (item == "All") return "Ctrl+A";
 				if (item == "Deselect") return "Ctrl+D";
-				if (item == "Invert") return "Ctrl+I";
+				if (item == "Invert") return "Ctrl+Shift+I";
 			}
 			if (title == "View")
 			{
@@ -290,6 +294,17 @@ namespace Bitmute.UI
 			{
 				return true;
 			}
+			if (title == "Image" && item == "Adjustments")
+			{
+				return true;
+			}
+			if (title == "Filter")
+			{
+				if (item == "Artistic" || item == "Blur" || item == "Brush Strokes" || item == "Distort" || item == "Noise" || item == "Pixelate" || item == "Render" || item == "Sharpen")
+				{
+					return true;
+				}
+			}
 			return false;
 		}
 
@@ -311,6 +326,30 @@ namespace Bitmute.UI
 			if (title == "View" && item == "Snap To")
 			{
 				return new string[] { PanelMenuLabel("Snap Guides", m_snapTargetGuides), PanelMenuLabel("Snap Grid", m_snapTargetGrid), PanelMenuLabel("Snap Edges", m_snapTargetEdges), PanelMenuLabel("Snap Layers", m_snapTargetLayerBounds) };
+			}
+			if (title == "Image" && item == "Adjustments")
+			{
+				return new string[] { "Brightness/Contrast…", "Hue/Saturation…", MenuBreak, "Desaturate", "Invert Colors", MenuBreak, "Posterize…", "Threshold…" };
+			}
+			if (title == "Filter")
+			{
+				if (item == "Blur")
+				{
+					return new string[] { "Gaussian Blur…" };
+				}
+				if (item == "Sharpen")
+				{
+					return new string[] { "Unsharp Mask…" };
+				}
+				if (item == "Noise")
+				{
+					return new string[] { "Add Noise…" };
+				}
+				if (item == "Pixelate")
+				{
+					return new string[] { "Pixelate…" };
+				}
+				return new string[] { MenuNone };
 			}
 			return new string[] { };
 		}
@@ -359,7 +398,7 @@ namespace Bitmute.UI
 			}
 			if (title == "Image")
 			{
-				return new string[] { "Image Size…", "Canvas Size…", "Flip Horizontal", "Flip Vertical", "Rotate 90° CW", "Rotate 180°", "Rotate 90° CCW", "Rotate Arbitrary…", "Crop to Selection", "Trim" };
+				return new string[] { "Adjustments", MenuBreak, "Image Size…", "Canvas Size…", "Flip Horizontal", "Flip Vertical", "Rotate 90° CW", "Rotate 180°", "Rotate 90° CCW", "Rotate Arbitrary…", "Crop to Selection", "Trim" };
 			}
 			if (title == "Layer")
 			{
@@ -371,7 +410,7 @@ namespace Bitmute.UI
 			}
 			if (title == "Filter")
 			{
-				return new string[] { "Brightness/Contrast…", "Hue/Saturation…", "Desaturate", "Invert Colors", "Posterize…", "Threshold…", "Gaussian Blur…", "Unsharp Mask…", "Add Noise…", "Pixelate…" };
+				return new string[] { "Artistic", "Blur", "Brush Strokes", "Distort", "Noise", "Pixelate", "Render", "Sharpen" };
 			}
 			if (title == "View")
 			{
@@ -386,6 +425,14 @@ namespace Bitmute.UI
 
 		private bool IsItemEnabled(string title, string item)
 		{
+			if (item == MenuBreak)
+			{
+				return false;
+			}
+			if (item == MenuNone)
+			{
+				return false;
+			}
 			if (title == "File")
 			{
 				return true;
@@ -624,7 +671,7 @@ namespace Bitmute.UI
 			AbsoluteLayout.SetLayoutBounds(catcher, new Rect(0.0, UiConstants.MenuBarHeight, 1.0, 1.0));
 			m_overlay.Add(catcher);
 
-			double dropdownHeight = (items.Length * MenuItemHeight) + 8.0;
+			double dropdownHeight = MenuListHeight(items);
 			AbsoluteLayout.SetLayoutFlags(dropdown, AbsoluteLayoutFlags.None);
 			AbsoluteLayout.SetLayoutBounds(dropdown, new Rect(dropdownX, UiConstants.MenuBarHeight, DropdownWidth, dropdownHeight));
 			m_overlay.Add(dropdown);
@@ -665,7 +712,7 @@ namespace Bitmute.UI
 				submenuX = 0.0;
 			}
 			double submenuY = UiConstants.MenuBarHeight + 4.0 + (parentIndex * MenuItemHeight);
-			double submenuHeight = (children.Length * MenuItemHeight) + 8.0;
+			double submenuHeight = MenuListHeight(children);
 			AbsoluteLayout.SetLayoutFlags(submenu, AbsoluteLayoutFlags.None);
 			AbsoluteLayout.SetLayoutBounds(submenu, new Rect(submenuX, submenuY, DropdownWidth, submenuHeight));
 			m_overlay.Add(submenu);
@@ -711,8 +758,47 @@ namespace Bitmute.UI
 			}
 		}
 
+		private Border BuildMenuSeparator()
+		{
+			Border line = new Border();
+			line.HeightRequest = 1.0;
+			line.StrokeThickness = 0.0;
+			line.HorizontalOptions = LayoutOptions.Fill;
+			line.VerticalOptions = LayoutOptions.Center;
+			line.ThemeBg(UiConstants.DividerLight, UiConstants.DividerDark);
+
+			Border separatorRow = new Border();
+			separatorRow.HeightRequest = MenuSeparatorHeight;
+			separatorRow.Padding = new Thickness(8.0, 4.0, 8.0, 4.0);
+			separatorRow.StrokeThickness = 0.0;
+			separatorRow.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
+			separatorRow.Content = line;
+			return separatorRow;
+		}
+
+		private double MenuListHeight(string[] items)
+		{
+			double total = 8.0;
+			for (int index = 0; index < items.Length; index++)
+			{
+				if (items[index] == MenuBreak)
+				{
+					total = total + MenuSeparatorHeight;
+				}
+				else
+				{
+					total = total + MenuItemHeight;
+				}
+			}
+			return total;
+		}
+
 		private Border BuildMenuItem(string title, string item, int itemIndex)
 		{
+			if (item == MenuBreak)
+			{
+				return BuildMenuSeparator();
+			}
 			bool enabled = IsItemEnabled(title, item);
 			bool submenu = IsSubmenu(title, item);
 
@@ -3078,7 +3164,8 @@ namespace Bitmute.UI
 			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorSaveAs);
 			AddAccelerator(element, Windows.System.VirtualKey.E, OnAcceleratorExport);
 			AddCtrlAltAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorImageSize);
-			AddAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorInvertSelection);
+			AddAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorInvertColors);
+			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorInvertSelection);
 			AddAccelerator(element, Windows.System.VirtualKey.R, OnAcceleratorRulers);
 			AddAccelerator(element, Windows.System.VirtualKey.T, OnAcceleratorTransform);
 			AddBareAccelerator(element, Windows.System.VirtualKey.Enter, OnAcceleratorCommitTransform);
@@ -3480,6 +3567,16 @@ namespace Bitmute.UI
 				return;
 			}
 			DoInvertSelection();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorInvertColors(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			if (m_textEditActive)
+			{
+				return;
+			}
+			DoInvert();
 			args.Handled = true;
 		}
 
