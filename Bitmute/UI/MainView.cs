@@ -3607,6 +3607,7 @@ namespace Bitmute.UI
 			{
 				m_optionsBar.UpdateTextColorSwatch(color);
 			}
+			RefreshTextEditStyle();
 		}
 
 		public void ApplyPickedColor(SKColor color, bool foreground)
