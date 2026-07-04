@@ -524,11 +524,11 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			document.BeginCanvasEdit("Delete Layer");
-			document.DeleteLayer(document.ActiveLayerIndex());
-			document.EndCanvasEdit();
-			RecompositeActive();
-			Refresh();
+			MainView main = MainView.Self;
+			if (main != null)
+			{
+				main.RequestDeleteActiveLayer();
+			}
 		}
 
 		private void OnBlendChanged(object sender, System.EventArgs eventArgs)

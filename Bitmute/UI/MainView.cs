@@ -3807,6 +3807,35 @@ namespace Bitmute.UI
 			FinishLayerStructureChange(canvas);
 		}
 
+		public void RequestDeleteActiveLayer()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			if (document.Layers().Count <= 1)
+			{
+				return;
+			}
+			ShowModal(new ConfirmDialog("Delete Layer", "Delete layer \"" + layer.Name() + "\"?", "Delete", OnConfirmDeleteLayer), 320.0, 150.0);
+		}
+
+		private void OnConfirmDeleteLayer()
+		{
+			DeleteActiveLayer();
+		}
+
 		private Border BuildContextMenuRow(string text, EventHandler<TappedEventArgs> handler)
 		{
 			Label label = new Label();
@@ -3869,7 +3898,7 @@ namespace Bitmute.UI
 		private void OnContextDeleteLayer(object sender, TappedEventArgs eventArgs)
 		{
 			ClosePulldown();
-			DeleteActiveLayer();
+			RequestDeleteActiveLayer();
 		}
 
 		private void OnAcceleratorRulers(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
