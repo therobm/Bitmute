@@ -18,11 +18,8 @@ namespace Bitmute.UI
 
 		private static SkiaSharp.SKBitmap s_clipboardBitmap;
 
-		private const double MenuItemHeight = 18.0;
-		private const double DropdownWidth = 190.0;
-		private const double MenuSeparatorHeight = 9.0;
-		private const string MenuBreak = "__break__";
-		private const string MenuNone = "(none yet)";
+		public const string MenuBreak = "__break__";
+		public const string MenuNone = "(none yet)";
 
 		private class ModalEntry
 		{
@@ -38,6 +35,7 @@ namespace Bitmute.UI
 
 		private AbsoluteLayout m_workspace;
 		private AbsoluteLayout m_overlay;
+		private MenuBar m_menuBar;
 		private List<FloatingPanel> m_documents;
 		private DocumentWindow m_activeDocumentWindow;
 		private ToolPalette m_toolPalette;
@@ -167,10 +165,6 @@ namespace Bitmute.UI
 		private Label m_statusInfoLabel;
 		private Label m_statusCursorLabel;
 		private string[] m_menuTitles;
-		private Border[] m_menuButtons;
-		private List<Border> m_openItemButtons;
-		private List<string> m_openItemActions;
-		private int m_openMenuIndex;
 		private bool m_acceleratorsHooked;
 		private int m_untitledCount;
 		private int m_cascadeCount;
@@ -222,12 +216,6 @@ namespace Bitmute.UI
 		private int m_editingSwatchIndex = -1;
 		private LayerStyle m_layerStyleSnapshot;
 		private int m_layerStyleTargetIndex;
-		private double m_openDropdownX;
-		private List<Border> m_submenuParentRows;
-		private List<string> m_submenuParentNames;
-		private List<int> m_submenuParentIndices;
-		private List<Border> m_submenuChildRows;
-		private Border m_submenuBorder;
 		private List<string> m_recentMenuPaths;
 
 		private static string RecentMenuLabel(int index, string path)
@@ -244,83 +232,7 @@ namespace Bitmute.UI
 			return name;
 		}
 
-		private static string AcceleratorForItem(string title, string item)
-		{
-			if (title == "File")
-			{
-				if (item == "New") return "Ctrl+N";
-				if (item == "Open…") return "Ctrl+O";
-				if (item == "Save") return "Ctrl+S";
-				if (item == "Save As…") return "Ctrl+Shift+S";
-				if (item == "Export As…") return "Ctrl+Alt+Shift+S";
-			}
-			if (title == "Edit")
-			{
-				if (item == "Undo") return "Ctrl+Z";
-				if (item == "Redo") return "Ctrl+Y";
-				if (item == "Cut") return "Ctrl+X";
-				if (item == "Copy") return "Ctrl+C";
-				if (item == "Paste") return "Ctrl+V";
-			}
-			if (title == "Image")
-			{
-				if (item == "Image Size…") return "Ctrl+Alt+I";
-				if (item == "Invert Colors") return "Ctrl+I";
-			}
-			if (title == "Select")
-			{
-				if (item == "All") return "Ctrl+A";
-				if (item == "Deselect") return "Ctrl+D";
-				if (item == "Invert") return "Ctrl+Shift+I";
-			}
-			if (title == "View")
-			{
-				if (item == "Zoom In") return "Ctrl++";
-				if (item == "Zoom Out") return "Ctrl+-";
-				if (item == "Fit on Screen") return "Ctrl+0";
-				if (item == "Rulers" || item == "✓ Rulers") return "Ctrl+R";
-			}
-			if (title == "Edit")
-			{
-				if (item == "Free Transform") return "Ctrl+T";
-			}
-			if (title == "Layer")
-			{
-				if (item == "Merge Down") return "Ctrl+E";
-				if (item == "Merge Visible") return "Ctrl+Shift+E";
-			}
-			return "";
-		}
-
-		private static bool IsSubmenu(string title, string item)
-		{
-			if (title == "File" && item == "Open Recent")
-			{
-				return true;
-			}
-			if (title == "Edit" && item == "Transform")
-			{
-				return true;
-			}
-			if (title == "View" && item == "Snap To")
-			{
-				return true;
-			}
-			if (title == "Image" && item == "Adjustments")
-			{
-				return true;
-			}
-			if (title == "Filter")
-			{
-				if (item == "Artistic" || item == "Blur" || item == "Brush Strokes" || item == "Distort" || item == "Noise" || item == "Pixelate" || item == "Render" || item == "Sharpen")
-				{
-					return true;
-				}
-			}
-			return false;
-		}
-
-		private string[] GetSubmenuItems(string title, string item)
+		public string[] GetSubmenuItems(string title, string item)
 		{
 			if (title == "File" && item == "Open Recent")
 			{
@@ -376,7 +288,7 @@ namespace Bitmute.UI
 			return document.Guides().IsLocked();
 		}
 
-		private string[] GetMenuItems(string title)
+		public string[] GetMenuItems(string title)
 		{
 			if (title == "File")
 			{
@@ -435,7 +347,7 @@ namespace Bitmute.UI
 			return new string[] { "About Bitmute" };
 		}
 
-		private bool IsItemEnabled(string title, string item)
+		public bool IsItemEnabled(string title, string item)
 		{
 			if (item == MenuBreak)
 			{
@@ -531,443 +443,7 @@ namespace Bitmute.UI
 			return layer.IsText();
 		}
 
-		private Border BuildMenuButton(int index)
-		{
-			Label label = new Label();
-			label.Text = m_menuTitles[index];
-			label.FontSize = 12.0;
-			label.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			label.VerticalOptions = LayoutOptions.Center;
-
-			Border button = new Border();
-			button.Padding = new Thickness(10.0, 0.0, 10.0, 0.0);
-			button.ThemeBg(UiConstants.ChromeMenubarLight, UiConstants.ChromeMenubarDark);
-			button.StrokeThickness = 0.0;
-			button.Content = label;
-
-			TapGestureRecognizer tap = new TapGestureRecognizer();
-			tap.Tapped += OnMenuButtonTapped;
-			button.GestureRecognizers.Add(tap);
-
-			PointerGestureRecognizer pointer = new PointerGestureRecognizer();
-			pointer.PointerEntered += OnMenuButtonPointerEntered;
-			pointer.PointerExited += OnMenuButtonPointerExited;
-			button.GestureRecognizers.Add(pointer);
-
-			return button;
-		}
-
-		private int FindMenuButtonIndex(object sender)
-		{
-			for (int index = 0; index < m_menuButtons.Length; index++)
-			{
-				if (ReferenceEquals(m_menuButtons[index], sender))
-				{
-					return index;
-				}
-			}
-			return -1;
-		}
-
-		private void OnMenuButtonPointerEntered(object sender, PointerEventArgs eventArgs)
-		{
-			int index = FindMenuButtonIndex(sender);
-			if (index < 0)
-			{
-				return;
-			}
-			if (m_openMenuIndex < 0)
-			{
-				m_menuButtons[index].ThemeBg(UiConstants.MenuHoverLight, UiConstants.MenuHoverDark);
-				return;
-			}
-			if (index != m_openMenuIndex)
-			{
-				OpenMenu(index);
-			}
-		}
-
-		private void OnMenuButtonPointerExited(object sender, PointerEventArgs eventArgs)
-		{
-			int index = FindMenuButtonIndex(sender);
-			if (index < 0)
-			{
-				return;
-			}
-			if (index == m_openMenuIndex)
-			{
-				return;
-			}
-			m_menuButtons[index].ThemeBg(UiConstants.ChromeMenubarLight, UiConstants.ChromeMenubarDark);
-		}
-
-		private View BuildMenuBar()
-		{
-			m_menuTitles = new string[] { "File", "Edit", "Image", "Layer", "Select", "Filter", "View", "Window", "Help" };
-			m_menuButtons = new Border[m_menuTitles.Length];
-
-			HorizontalStackLayout strip = new HorizontalStackLayout();
-			strip.HeightRequest = UiConstants.MenuBarHeight;
-			strip.ThemeBg(UiConstants.ChromeMenubarLight, UiConstants.ChromeMenubarDark);
-			strip.Spacing = 0.0;
-			strip.Padding = new Thickness(0.0);
-
-			for (int index = 0; index < m_menuTitles.Length; index++)
-			{
-				Border button = BuildMenuButton(index);
-				m_menuButtons[index] = button;
-				strip.Add(button);
-			}
-
-			return strip;
-		}
-
-		private void OnMenuButtonTapped(object sender, TappedEventArgs eventArgs)
-		{
-			int index = FindMenuButtonIndex(sender);
-			if (index < 0)
-			{
-				return;
-			}
-			if (m_openMenuIndex == index)
-			{
-				CloseMenu();
-				return;
-			}
-			OpenMenu(index);
-		}
-
-		private void OpenMenu(int index)
-		{
-			ClosePulldown();
-			CloseMenu();
-			m_openMenuIndex = index;
-			m_menuButtons[index].ThemeBg(UiConstants.MenuOpenLight, UiConstants.MenuOpenDark);
-			m_submenuParentRows.Clear();
-			m_submenuParentNames.Clear();
-			m_submenuParentIndices.Clear();
-			m_submenuBorder = null;
-
-			string title = m_menuTitles[index];
-			string[] items = GetMenuItems(title);
-
-			double dropdownX = m_menuButtons[index].Bounds.X;
-			double overlayWidth = m_overlay.Width;
-			if (overlayWidth > 0.0 && dropdownX + DropdownWidth > overlayWidth)
-			{
-				dropdownX = overlayWidth - DropdownWidth;
-			}
-			if (dropdownX < 0.0)
-			{
-				dropdownX = 0.0;
-			}
-			m_openDropdownX = dropdownX;
-
-			VerticalStackLayout list = new VerticalStackLayout();
-			list.Spacing = 0.0;
-			list.Padding = new Thickness(0.0, 4.0, 0.0, 4.0);
-
-			for (int itemIndex = 0; itemIndex < items.Length; itemIndex++)
-			{
-				list.Add(BuildMenuItem(title, items[itemIndex], itemIndex));
-			}
-
-			Border dropdown = new Border();
-			dropdown.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
-			dropdown.ThemeStroke(UiConstants.DividerLight, UiConstants.DividerDark);
-			dropdown.StrokeThickness = 1.0;
-			dropdown.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(3.0) };
-			dropdown.Content = list;
-
-			BoxView catcher = new BoxView();
-			catcher.Color = Colors.Transparent;
-			TapGestureRecognizer catcherTap = new TapGestureRecognizer();
-			catcherTap.Tapped += OnCatcherTapped;
-			catcher.GestureRecognizers.Add(catcherTap);
-			AbsoluteLayout.SetLayoutFlags(catcher, AbsoluteLayoutFlags.WidthProportional | AbsoluteLayoutFlags.HeightProportional);
-			AbsoluteLayout.SetLayoutBounds(catcher, new Rect(0.0, UiConstants.MenuBarHeight, 1.0, 1.0));
-			m_overlay.Add(catcher);
-
-			double dropdownHeight = MenuListHeight(items);
-			AbsoluteLayout.SetLayoutFlags(dropdown, AbsoluteLayoutFlags.None);
-			AbsoluteLayout.SetLayoutBounds(dropdown, new Rect(dropdownX, UiConstants.MenuBarHeight, DropdownWidth, dropdownHeight));
-			m_overlay.Add(dropdown);
-		}
-
-		private void OpenSubmenu(string parentItem, int parentIndex)
-		{
-			CloseSubmenu();
-			string[] children = GetSubmenuItems(m_menuTitles[m_openMenuIndex], parentItem);
-			if (children.Length == 0)
-			{
-				return;
-			}
-			VerticalStackLayout list = new VerticalStackLayout();
-			list.Spacing = 0.0;
-			list.Padding = new Thickness(0.0, 4.0, 0.0, 4.0);
-			m_submenuChildRows.Clear();
-			for (int index = 0; index < children.Length; index++)
-			{
-				Border childRow = BuildMenuItem(m_menuTitles[m_openMenuIndex], children[index], -1);
-				m_submenuChildRows.Add(childRow);
-				list.Add(childRow);
-			}
-			Border submenu = new Border();
-			submenu.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
-			submenu.ThemeStroke(UiConstants.DividerLight, UiConstants.DividerDark);
-			submenu.StrokeThickness = 1.0;
-			submenu.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(3.0) };
-			submenu.Content = list;
-			double submenuX = m_openDropdownX + DropdownWidth - 2.0;
-			double overlayWidth = m_overlay.Width;
-			if (overlayWidth > 0.0 && submenuX + DropdownWidth > overlayWidth)
-			{
-				submenuX = m_openDropdownX - DropdownWidth + 2.0;
-			}
-			if (submenuX < 0.0)
-			{
-				submenuX = 0.0;
-			}
-			double submenuY = UiConstants.MenuBarHeight + 4.0 + (parentIndex * MenuItemHeight);
-			double submenuHeight = MenuListHeight(children);
-			AbsoluteLayout.SetLayoutFlags(submenu, AbsoluteLayoutFlags.None);
-			AbsoluteLayout.SetLayoutBounds(submenu, new Rect(submenuX, submenuY, DropdownWidth, submenuHeight));
-			m_overlay.Add(submenu);
-			m_submenuBorder = submenu;
-		}
-
-		private void CloseSubmenu()
-		{
-			if (m_submenuBorder != null)
-			{
-				m_overlay.Remove(m_submenuBorder);
-				m_submenuBorder = null;
-			}
-		}
-
-		private void OnSubmenuParentEntered(object sender, PointerEventArgs eventArgs)
-		{
-			Border row = sender as Border;
-			if (row == null)
-			{
-				return;
-			}
-			row.ThemeBg(UiConstants.AccentLight, UiConstants.AccentDark);
-			for (int index = 0; index < m_submenuParentRows.Count; index++)
-			{
-				if (ReferenceEquals(m_submenuParentRows[index], sender))
-				{
-					OpenSubmenu(m_submenuParentNames[index], m_submenuParentIndices[index]);
-					return;
-				}
-			}
-		}
-
-		private void OnSubmenuParentTapped(object sender, TappedEventArgs eventArgs)
-		{
-			for (int index = 0; index < m_submenuParentRows.Count; index++)
-			{
-				if (ReferenceEquals(m_submenuParentRows[index], sender))
-				{
-					OpenSubmenu(m_submenuParentNames[index], m_submenuParentIndices[index]);
-					return;
-				}
-			}
-		}
-
-		private Border BuildMenuSeparator()
-		{
-			Border line = new Border();
-			line.HeightRequest = 1.0;
-			line.StrokeThickness = 0.0;
-			line.HorizontalOptions = LayoutOptions.Fill;
-			line.VerticalOptions = LayoutOptions.Center;
-			line.ThemeBg(UiConstants.DividerLight, UiConstants.DividerDark);
-
-			Border separatorRow = new Border();
-			separatorRow.HeightRequest = MenuSeparatorHeight;
-			separatorRow.Padding = new Thickness(8.0, 4.0, 8.0, 4.0);
-			separatorRow.StrokeThickness = 0.0;
-			separatorRow.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
-			separatorRow.Content = line;
-			return separatorRow;
-		}
-
-		private double MenuListHeight(string[] items)
-		{
-			double total = 8.0;
-			for (int index = 0; index < items.Length; index++)
-			{
-				if (items[index] == MenuBreak)
-				{
-					total = total + MenuSeparatorHeight;
-				}
-				else
-				{
-					total = total + MenuItemHeight;
-				}
-			}
-			return total;
-		}
-
-		private Border BuildMenuItem(string title, string item, int itemIndex)
-		{
-			if (item == MenuBreak)
-			{
-				return BuildMenuSeparator();
-			}
-			bool enabled = IsItemEnabled(title, item);
-			bool submenu = IsSubmenu(title, item);
-
-			string accelerator = AcceleratorForItem(title, item);
-			if (submenu)
-			{
-				accelerator = "▸";
-			}
-
-			Grid rowContent = new Grid();
-			rowContent.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-			rowContent.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
-
-			Label label = new Label();
-			label.Text = item;
-			label.FontSize = 12.0;
-			label.VerticalOptions = LayoutOptions.Center;
-			label.LineBreakMode = LineBreakMode.TailTruncation;
-			label.MaxLines = 1;
-			if (enabled)
-			{
-				label.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			}
-			else
-			{
-				label.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			}
-			Grid.SetColumn(label, 0);
-			rowContent.Add(label);
-
-			if (accelerator.Length > 0)
-			{
-				Label accelLabel = new Label();
-				accelLabel.Text = accelerator;
-				accelLabel.FontSize = 12.0;
-				accelLabel.VerticalOptions = LayoutOptions.Center;
-				if (enabled)
-				{
-					accelLabel.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-				}
-				else
-				{
-					accelLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-				}
-				Grid.SetColumn(accelLabel, 1);
-				rowContent.Add(accelLabel);
-			}
-
-			Border row = new Border();
-			row.HeightRequest = MenuItemHeight;
-			row.Padding = new Thickness(12.0, 0.0, 12.0, 0.0);
-			row.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
-			row.StrokeThickness = 0.0;
-			row.Content = rowContent;
-
-			if (submenu)
-			{
-				TapGestureRecognizer submenuTap = new TapGestureRecognizer();
-				submenuTap.Tapped += OnSubmenuParentTapped;
-				row.GestureRecognizers.Add(submenuTap);
-				PointerGestureRecognizer submenuPointer = new PointerGestureRecognizer();
-				submenuPointer.PointerEntered += OnSubmenuParentEntered;
-				submenuPointer.PointerExited += OnMenuItemPointerExited;
-				row.GestureRecognizers.Add(submenuPointer);
-				m_submenuParentRows.Add(row);
-				m_submenuParentNames.Add(item);
-				m_submenuParentIndices.Add(itemIndex);
-			}
-			else if (enabled)
-			{
-				TapGestureRecognizer tap = new TapGestureRecognizer();
-				tap.Tapped += OnMenuItemTapped;
-				row.GestureRecognizers.Add(tap);
-				PointerGestureRecognizer pointer = new PointerGestureRecognizer();
-				pointer.PointerEntered += OnMenuItemPointerEntered;
-				pointer.PointerExited += OnMenuItemPointerExited;
-				row.GestureRecognizers.Add(pointer);
-				m_openItemButtons.Add(row);
-				m_openItemActions.Add(item);
-			}
-
-			return row;
-		}
-
-		private void OnMenuItemPointerEntered(object sender, PointerEventArgs eventArgs)
-		{
-			Border row = sender as Border;
-			if (row != null)
-			{
-				row.ThemeBg(UiConstants.AccentLight, UiConstants.AccentDark);
-			}
-			bool isSubmenuChild = false;
-			for (int index = 0; index < m_submenuChildRows.Count; index++)
-			{
-				if (ReferenceEquals(m_submenuChildRows[index], sender))
-				{
-					isSubmenuChild = true;
-					break;
-				}
-			}
-			if (!isSubmenuChild)
-			{
-				CloseSubmenu();
-			}
-		}
-
-		private void OnMenuItemPointerExited(object sender, PointerEventArgs eventArgs)
-		{
-			Border row = sender as Border;
-			if (row != null)
-			{
-				row.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
-			}
-		}
-
-		private void OnMenuItemTapped(object sender, TappedEventArgs eventArgs)
-		{
-			for (int index = 0; index < m_openItemButtons.Count; index++)
-			{
-				if (ReferenceEquals(m_openItemButtons[index], sender))
-				{
-					string action = m_openItemActions[index];
-					CloseMenu();
-					InvokeMenuAction(action);
-					return;
-				}
-			}
-		}
-
-		private void OnCatcherTapped(object sender, TappedEventArgs eventArgs)
-		{
-			CloseMenu();
-		}
-
-		private void CloseMenu()
-		{
-			m_overlay.Clear();
-			m_openItemButtons.Clear();
-			m_openItemActions.Clear();
-			m_submenuParentRows.Clear();
-			m_submenuParentNames.Clear();
-			m_submenuParentIndices.Clear();
-			m_submenuChildRows.Clear();
-			m_submenuBorder = null;
-			if (m_openMenuIndex >= 0)
-			{
-				m_menuButtons[m_openMenuIndex].ThemeBg(UiConstants.ChromeMenubarLight, UiConstants.ChromeMenubarDark);
-			}
-			m_openMenuIndex = -1;
-		}
-
-		private void InvokeMenuAction(string action)
+		public void InvokeMenuAction(string action)
 		{
 			if (action == "New")
 			{
@@ -3174,9 +2650,6 @@ namespace Bitmute.UI
 
 			m_documents = new List<FloatingPanel>();
 			m_modalStack = new System.Collections.Generic.List<ModalEntry>();
-			m_openItemButtons = new List<Border>();
-			m_openItemActions = new List<string>();
-			m_openMenuIndex = -1;
 			m_untitledCount = 0;
 			m_cascadeCount = 0;
 			m_topZIndex = 0;
@@ -3224,14 +2697,15 @@ namespace Bitmute.UI
 			m_snapTargetGrid = Microsoft.Maui.Storage.Preferences.Default.Get("snap_target_grid", true);
 			m_snapTargetEdges = Microsoft.Maui.Storage.Preferences.Default.Get("snap_target_edges", true);
 			m_snapTargetLayerBounds = Microsoft.Maui.Storage.Preferences.Default.Get("snap_target_layer_bounds", true);
-			m_submenuParentRows = new List<Border>();
-			m_submenuParentNames = new List<string>();
-			m_submenuParentIndices = new List<int>();
-			m_submenuChildRows = new List<Border>();
-			m_submenuBorder = null;
 			m_recentMenuPaths = new List<string>();
 
-			View menuBar = BuildMenuBar();
+			m_menuTitles = new string[] { "File", "Edit", "Image", "Layer", "Select", "Filter", "View", "Window", "Help" };
+			m_overlay = new AbsoluteLayout();
+			m_overlay.InputTransparent = true;
+			m_overlay.CascadeInputTransparent = false;
+			m_menuBar = new MenuBar(this, m_menuTitles, m_overlay);
+
+			View menuBar = m_menuBar.Root();
 			View optionsBar = BuildOptionsBar();
 			View middle = BuildMiddle();
 			View statusBar = BuildStatusBar();
@@ -3268,10 +2742,6 @@ namespace Bitmute.UI
 
 			Grid.SetRow(statusBar, 6);
 			root.Add(statusBar);
-
-			m_overlay = new AbsoluteLayout();
-			m_overlay.InputTransparent = true;
-			m_overlay.CascadeInputTransparent = false;
 
 			Grid outer = new Grid();
 			outer.Add(root);
@@ -3921,7 +3391,7 @@ namespace Bitmute.UI
 			label.VerticalOptions = LayoutOptions.Center;
 
 			Border row = new Border();
-			row.HeightRequest = MenuItemHeight;
+			row.HeightRequest = MenuBar.MenuItemHeight;
 			row.Padding = new Thickness(12.0, 0.0, 12.0, 0.0);
 			row.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
 			row.StrokeThickness = 0.0;
@@ -3942,10 +3412,10 @@ namespace Bitmute.UI
 			menu.Add(BuildContextMenuRow("Duplicate Layer", OnContextDuplicateLayer));
 			menu.Add(BuildContextMenuRow("Merge Down", OnContextMergeDown));
 			menu.Add(BuildContextMenuRow("Rasterize Text", OnContextRasterizeText));
-			menu.Add(BuildMenuSeparator());
+			menu.Add(MenuBar.BuildMenuSeparator());
 			menu.Add(BuildContextMenuRow("Delete Layer", OnContextDeleteLayer));
-			double height = (6.0 * MenuItemHeight) + MenuSeparatorHeight + 8.0;
-			ShowPulldown(menu, anchorX, anchorY, DropdownWidth, height);
+			double height = (6.0 * MenuBar.MenuItemHeight) + MenuBar.MenuSeparatorHeight + 8.0;
+			ShowPulldown(menu, anchorX, anchorY, MenuBar.DropdownWidth, height);
 		}
 
 		private void OnContextLayerStyle(object sender, TappedEventArgs eventArgs)
@@ -5640,7 +5110,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void ClosePulldown()
+		public void ClosePulldown()
 		{
 			if (m_pulldownPanel != null)
 			{
@@ -5657,7 +5127,7 @@ namespace Bitmute.UI
 		public void ShowPulldown(View content, double anchorX, double anchorY, double width, double height)
 		{
 			ClosePulldown();
-			CloseMenu();
+			m_menuBar.CloseOpenMenu();
 
 			Border panel = new Border();
 			panel.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
