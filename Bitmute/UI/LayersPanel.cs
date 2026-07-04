@@ -179,6 +179,15 @@ namespace Bitmute.UI
 			m_thumbnailImages.Add(thumbnail);
 			m_thumbnailLayers.Add(layerIndex);
 
+			Label fxGlyph = new Label();
+			if (layer.LayerStyle().HasAnyEffect())
+			{
+				fxGlyph.Text = "fx";
+			}
+			fxGlyph.FontSize = 11.0;
+			fxGlyph.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			fxGlyph.VerticalOptions = LayoutOptions.Center;
+
 			Label name = new Label();
 			name.Text = layer.Name();
 			name.FontSize = 12.0;
@@ -199,14 +208,17 @@ namespace Bitmute.UI
 			rowGrid.ColumnSpacing = 4.0;
 			rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
 			rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			Grid.SetColumn(eye, 0);
 			Grid.SetColumn(thumbnail, 1);
-			Grid.SetColumn(name, 2);
-			Grid.SetColumn(lockGlyph, 3);
+			Grid.SetColumn(fxGlyph, 2);
+			Grid.SetColumn(name, 3);
+			Grid.SetColumn(lockGlyph, 4);
 			rowGrid.Add(eye);
 			rowGrid.Add(thumbnail);
+			rowGrid.Add(fxGlyph);
 			rowGrid.Add(name);
 			rowGrid.Add(lockGlyph);
 
