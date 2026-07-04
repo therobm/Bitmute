@@ -82,6 +82,11 @@ namespace Bitmute.UI
 				{
 					m_contents[index].IsVisible = index == activeIndex;
 				}
+				MainView main = MainView.Self;
+				if (main != null)
+				{
+					main.OnPaletteTabChanged();
+				}
 			}
 		}
 
