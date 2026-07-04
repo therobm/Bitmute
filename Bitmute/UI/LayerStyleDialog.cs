@@ -40,6 +40,9 @@ namespace Bitmute.UI
 		private SliderField m_glowSize;
 
 		private ContentView m_detailHost;
+		private View m_strokeDetail;
+		private View m_shadowDetail;
+		private View m_glowDetail;
 
 		private static Color ToMauiColor(SKColor color)
 		{
@@ -159,7 +162,10 @@ namespace Bitmute.UI
 
 			m_detailHost = new ContentView();
 			m_detailHost.WidthRequest = 300.0;
-			m_detailHost.Content = BuildStrokeDetail();
+			m_strokeDetail = BuildStrokeDetail();
+			m_shadowDetail = BuildShadowDetail();
+			m_glowDetail = BuildGlowDetail();
+			m_detailHost.Content = m_strokeDetail;
 
 			HorizontalStackLayout body = new HorizontalStackLayout();
 			body.Spacing = 16.0;
@@ -207,15 +213,15 @@ namespace Bitmute.UI
 		{
 			if (m_selected == eStyleEffect.Stroke)
 			{
-				m_detailHost.Content = BuildStrokeDetail();
+				m_detailHost.Content = m_strokeDetail;
 				return;
 			}
 			if (m_selected == eStyleEffect.Shadow)
 			{
-				m_detailHost.Content = BuildShadowDetail();
+				m_detailHost.Content = m_shadowDetail;
 				return;
 			}
-			m_detailHost.Content = BuildGlowDetail();
+			m_detailHost.Content = m_glowDetail;
 		}
 
 		private void Preview()
