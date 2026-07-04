@@ -482,7 +482,8 @@ namespace Bitmute.UI
 		{
 			m_groupTools = new eTool[][]
 			{
-				new eTool[] { eTool.Move, eTool.FreeTransform },
+				new eTool[] { eTool.Move },
+				new eTool[] { eTool.FreeTransform },
 				new eTool[] { eTool.Select, eTool.EllipseSelect },
 				new eTool[] { eTool.Lasso, eTool.FreehandLasso, eTool.MagneticLasso },
 				new eTool[] { eTool.MagicWand },
@@ -502,7 +503,8 @@ namespace Bitmute.UI
 			};
 			m_groupIcons = new string[][]
 			{
-				new string[] { "move.png", "transform.png" },
+				new string[] { "move.png" },
+				new string[] { "transform.png" },
 				new string[] { "box_select.png", "ellipse_select.png" },
 				new string[] { "lasso.png", "freehand_lasso.png", "magnetic_lasso.png" },
 				new string[] { "magic_wand.png" },
@@ -522,7 +524,8 @@ namespace Bitmute.UI
 			};
 			m_groupNames = new string[][]
 			{
-				new string[] { "Move", "Free Transform (Ctrl+T)" },
+				new string[] { "Move" },
+				new string[] { "Free Transform (Ctrl+T)" },
 				new string[] { "Rectangle Select", "Ellipse Select" },
 				new string[] { "Poly Lasso", "Freehand Lasso", "Magnetic Lasso (drag along an edge)" },
 				new string[] { "Magic Wand" },

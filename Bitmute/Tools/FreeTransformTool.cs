@@ -26,13 +26,22 @@ namespace Bitmute.Tools
 
 		private const double DoubleClickMilliseconds = 350.0;
 		private const int DoubleClickDistance = 4;
+		private const double RotateSnapRadians = Math.PI / 12.0;
 
 		private bool m_armed;
 		private int m_mode;
 		private int m_layerIndex;
+		private Document m_document;
 		private SKBitmap m_sourceBitmap;
+		private SKBitmap m_originalLayerBitmap;
+		private int m_sourceOffsetX;
+		private int m_sourceOffsetY;
 		private int m_oldOffsetX;
 		private int m_oldOffsetY;
+		private bool m_hasSelection;
+		private bool m_isBackground;
+		private byte[] m_savedMask;
+		private SKRectI m_savedBounds;
 		private int m_pickRadius;
 
 		private double[] m_cornerX;
@@ -55,9 +64,16 @@ namespace Bitmute.Tools
 			m_armed = false;
 			m_mode = ModeFree;
 			m_layerIndex = -1;
+			m_document = null;
 			m_sourceBitmap = null;
+			m_originalLayerBitmap = null;
+			m_sourceOffsetX = 0;
+			m_sourceOffsetY = 0;
 			m_oldOffsetX = 0;
 			m_oldOffsetY = 0;
+			m_hasSelection = false;
+			m_isBackground = false;
+			m_savedMask = null;
 			m_pickRadius = 6;
 			m_cornerX = new double[4];
 			m_cornerY = new double[4];
@@ -268,7 +284,7 @@ namespace Bitmute.Tools
 			}
 		}
 
-		private void ApplyCornerScale(int corner, double targetX, double targetY)
+		private void ApplyCornerScale(int corner, double targetX, double targetY, bool aspect)
 		{
 			int anchor = (corner + 2) % 4;
 			int neighbor1 = (corner + 1) % 4;
@@ -287,6 +303,12 @@ namespace Bitmute.Tools
 			{
 				return;
 			}
+			if (aspect)
+			{
+				double uniform = (s1 + s2) * 0.5;
+				s1 = uniform;
+				s2 = uniform;
+			}
 			m_cornerX[neighbor1] = anchorX + (s1 * a1x);
 			m_cornerY[neighbor1] = anchorY + (s1 * a1y);
 			m_cornerX[neighbor3] = anchorX + (s2 * a2x);
@@ -295,6 +317,68 @@ namespace Bitmute.Tools
 			m_cornerY[corner] = anchorY + (s1 * a1y) + (s2 * a2y);
 			m_cornerX[anchor] = anchorX;
 			m_cornerY[anchor] = anchorY;
+		}
+
+		private void ApplyCornerScaleCentered(int corner, double targetX, double targetY, bool aspect)
+		{
+			double centerX = 0.0;
+			double centerY = 0.0;
+			for (int index = 0; index < 4; index++)
+			{
+				centerX += m_pressQuadX[index];
+				centerY += m_pressQuadY[index];
+			}
+			centerX = centerX * 0.25;
+			centerY = centerY * 0.25;
+			double halfUx = (m_pressQuadX[1] - m_pressQuadX[0]) * 0.5;
+			double halfUy = (m_pressQuadY[1] - m_pressQuadY[0]) * 0.5;
+			double halfVx = (m_pressQuadX[3] - m_pressQuadX[0]) * 0.5;
+			double halfVy = (m_pressQuadY[3] - m_pressQuadY[0]) * 0.5;
+			double signU = -1.0;
+			double signV = -1.0;
+			if (corner == 1)
+			{
+				signU = 1.0;
+				signV = -1.0;
+			}
+			else if (corner == 2)
+			{
+				signU = 1.0;
+				signV = 1.0;
+			}
+			else if (corner == 3)
+			{
+				signU = -1.0;
+				signV = 1.0;
+			}
+			double columnUx = signU * halfUx;
+			double columnUy = signU * halfUy;
+			double columnVx = signV * halfVx;
+			double columnVy = signV * halfVy;
+			double a;
+			double b;
+			if (!SolveTwoByTwo(columnUx, columnVx, columnUy, columnVy, targetX - centerX, targetY - centerY, out a, out b))
+			{
+				return;
+			}
+			if (aspect)
+			{
+				double uniform = (a + b) * 0.5;
+				a = uniform;
+				b = uniform;
+			}
+			double newHalfUx = a * halfUx;
+			double newHalfUy = a * halfUy;
+			double newHalfVx = b * halfVx;
+			double newHalfVy = b * halfVy;
+			m_cornerX[0] = centerX - newHalfUx - newHalfVx;
+			m_cornerY[0] = centerY - newHalfUy - newHalfVy;
+			m_cornerX[1] = centerX + newHalfUx - newHalfVx;
+			m_cornerY[1] = centerY + newHalfUy - newHalfVy;
+			m_cornerX[2] = centerX + newHalfUx + newHalfVx;
+			m_cornerY[2] = centerY + newHalfUy + newHalfVy;
+			m_cornerX[3] = centerX - newHalfUx + newHalfVx;
+			m_cornerY[3] = centerY - newHalfUy + newHalfVy;
 		}
 
 		private void ApplyEdgeScale(int edge, double deltaX, double deltaY)
@@ -326,7 +410,7 @@ namespace Bitmute.Tools
 			m_cornerY[c1] = m_pressQuadY[c1] + moveY;
 		}
 
-		private void ApplyRotate(double curX, double curY)
+		private void ApplyRotate(double curX, double curY, bool snap)
 		{
 			double centerX = 0.0;
 			double centerY = 0.0;
@@ -340,6 +424,10 @@ namespace Bitmute.Tools
 			double angleCurrent = Math.Atan2(curY - centerY, curX - centerX);
 			double anglePress = Math.Atan2(m_pressY - centerY, m_pressX - centerX);
 			double angle = angleCurrent - anglePress;
+			if (snap)
+			{
+				angle = Math.Round(angle / RotateSnapRadians) * RotateSnapRadians;
+			}
 			double cosAngle = Math.Cos(angle);
 			double sinAngle = Math.Sin(angle);
 			for (int index = 0; index < 4; index++)
@@ -417,6 +505,55 @@ namespace Bitmute.Tools
 			m_cornerY[neighbor] = m_pressQuadY[neighbor] + mirrorY;
 		}
 
+		private SKBitmap ExtractSelection(SKBitmap source, int layerOffsetX, int layerOffsetY, Selection selection, SKRectI bounds)
+		{
+			int width = bounds.Right - bounds.Left;
+			int height = bounds.Bottom - bounds.Top;
+			SKBitmap piece = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			piece.Erase(SKColors.Transparent);
+			for (int canvasY = bounds.Top; canvasY < bounds.Bottom; canvasY++)
+			{
+				for (int canvasX = bounds.Left; canvasX < bounds.Right; canvasX++)
+				{
+					if (!selection.IsSelected(canvasX, canvasY))
+					{
+						continue;
+					}
+					int bitmapX = canvasX - layerOffsetX;
+					int bitmapY = canvasY - layerOffsetY;
+					if (bitmapX < 0 || bitmapY < 0 || bitmapX >= source.Width || bitmapY >= source.Height)
+					{
+						continue;
+					}
+					piece.SetPixel(canvasX - bounds.Left, canvasY - bounds.Top, source.GetPixel(bitmapX, bitmapY));
+				}
+			}
+			return piece;
+		}
+
+		private SKBitmap CopyWithSelectionCleared(SKBitmap source, int layerOffsetX, int layerOffsetY, Selection selection, SKRectI bounds)
+		{
+			SKBitmap remainder = source.Copy();
+			for (int canvasY = bounds.Top; canvasY < bounds.Bottom; canvasY++)
+			{
+				for (int canvasX = bounds.Left; canvasX < bounds.Right; canvasX++)
+				{
+					if (!selection.IsSelected(canvasX, canvasY))
+					{
+						continue;
+					}
+					int bitmapX = canvasX - layerOffsetX;
+					int bitmapY = canvasY - layerOffsetY;
+					if (bitmapX < 0 || bitmapY < 0 || bitmapX >= remainder.Width || bitmapY >= remainder.Height)
+					{
+						continue;
+					}
+					remainder.SetPixel(bitmapX, bitmapY, SKColors.Transparent);
+				}
+			}
+			return remainder;
+		}
+
 		private void Disarm()
 		{
 			m_armed = false;
@@ -424,13 +561,51 @@ namespace Bitmute.Tools
 			m_grabIndex = -1;
 			m_hasLastPress = false;
 			m_sourceBitmap = null;
+			m_originalLayerBitmap = null;
+			m_savedMask = null;
 			m_layerIndex = -1;
+			m_document = null;
 		}
 
-		private void CommitInternal(Document document)
+		private void RestoreLifted()
 		{
-			if (!m_armed)
+			if (m_document == null)
 			{
+				return;
+			}
+			if (m_layerIndex < 0 || m_layerIndex >= m_document.Layers().Count)
+			{
+				return;
+			}
+			Layer layer = m_document.Layers()[m_layerIndex];
+			if (layer == null || m_originalLayerBitmap == null)
+			{
+				return;
+			}
+			layer.SetBitmap(m_originalLayerBitmap);
+			layer.SetOffset(m_oldOffsetX, m_oldOffsetY);
+			if (m_hasSelection && m_savedMask != null)
+			{
+				m_document.Selection().SelectMask(m_savedMask, m_savedBounds);
+			}
+			m_document.MarkComposeDirtyAll();
+		}
+
+		private void CommitInternal()
+		{
+			if (!m_armed || m_document == null)
+			{
+				return;
+			}
+			if (m_layerIndex < 0 || m_layerIndex >= m_document.Layers().Count)
+			{
+				Disarm();
+				return;
+			}
+			Layer layer = m_document.Layers()[m_layerIndex];
+			if (layer == null)
+			{
+				Disarm();
 				return;
 			}
 			SKPoint[] destQuad = new SKPoint[4];
@@ -443,24 +618,27 @@ namespace Bitmute.Tools
 			SKBitmap warped = TransformMath.Warp(m_sourceBitmap, destQuad, 2, out outX, out outY);
 			if (warped == null)
 			{
+				RestoreLifted();
 				Disarm();
 				return;
 			}
-			if (m_layerIndex < 0 || m_layerIndex >= document.Layers().Count)
+			if (m_hasSelection)
 			{
-				Disarm();
-				return;
+				BlitCanvasBitmap(m_document, layer, warped, outX, outY);
+				warped.Dispose();
+				m_document.PushCommand(new MoveLayerCommand(m_layerIndex, m_originalLayerBitmap, m_oldOffsetX, m_oldOffsetY, layer.Bitmap(), m_oldOffsetX, m_oldOffsetY));
 			}
-			Layer layer = document.Layers()[m_layerIndex];
-			if (layer == null)
+			else
 			{
-				Disarm();
-				return;
+				m_document.PushCommand(new MoveLayerCommand(m_layerIndex, m_originalLayerBitmap, m_oldOffsetX, m_oldOffsetY, warped, outX, outY));
+				layer.SetBitmap(warped);
+				layer.SetOffset(outX, outY);
+				if (m_isBackground && m_mode <= ModePerspective)
+				{
+					layer.SetIsBackground(false);
+				}
 			}
-			document.PushCommand(new MoveLayerCommand(m_layerIndex, m_sourceBitmap, m_oldOffsetX, m_oldOffsetY, warped, outX, outY));
-			layer.SetBitmap(warped);
-			layer.SetOffset(outX, outY);
-			document.MarkComposeDirtyAll();
+			m_document.MarkComposeDirtyAll();
 			Disarm();
 		}
 
@@ -495,6 +673,11 @@ namespace Bitmute.Tools
 
 		public bool Begin(Document document, int mode)
 		{
+			if (m_armed)
+			{
+				RestoreLifted();
+				Disarm();
+			}
 			Layer layer = document.ActiveLayer();
 			if (layer == null)
 			{
@@ -504,24 +687,55 @@ namespace Bitmute.Tools
 			{
 				return false;
 			}
-			SKBitmap bitmap = layer.Bitmap();
+			m_document = document;
 			m_mode = mode;
 			m_layerIndex = document.ActiveLayerIndex();
-			m_sourceBitmap = bitmap;
 			m_oldOffsetX = layer.OffsetX();
 			m_oldOffsetY = layer.OffsetY();
-			SetIdentityQuad(m_oldOffsetX, m_oldOffsetY, bitmap.Width, bitmap.Height);
+			m_isBackground = layer.IsBackground();
+			m_originalLayerBitmap = layer.Bitmap();
 			m_grab = GrabNone;
 			m_grabIndex = -1;
 			m_hasLastPress = false;
-			if (mode >= ModeFlipHorizontal && mode <= ModeRotate90CCW)
+			bool instant = mode >= ModeFlipHorizontal && mode <= ModeRotate90CCW;
+			Selection selection = document.Selection();
+			if (selection.IsActive() && !instant)
 			{
-				m_armed = true;
-				ApplyInstantQuad(mode);
-				CommitInternal(document);
-				return true;
+				m_hasSelection = true;
+				SKRectI bounds = selection.Bounds();
+				m_savedMask = selection.MaskCopy();
+				m_savedBounds = bounds;
+				m_sourceBitmap = ExtractSelection(m_originalLayerBitmap, m_oldOffsetX, m_oldOffsetY, selection, bounds);
+				m_sourceOffsetX = bounds.Left;
+				m_sourceOffsetY = bounds.Top;
+				SKBitmap cleared = CopyWithSelectionCleared(m_originalLayerBitmap, m_oldOffsetX, m_oldOffsetY, selection, bounds);
+				layer.SetBitmap(cleared);
+				selection.Clear();
+				SetIdentityQuad(bounds.Left, bounds.Top, bounds.Right - bounds.Left, bounds.Bottom - bounds.Top);
+			}
+			else
+			{
+				m_hasSelection = false;
+				m_savedMask = null;
+				m_sourceBitmap = m_originalLayerBitmap;
+				m_sourceOffsetX = m_oldOffsetX;
+				m_sourceOffsetY = m_oldOffsetY;
+				SetIdentityQuad(m_oldOffsetX, m_oldOffsetY, m_originalLayerBitmap.Width, m_originalLayerBitmap.Height);
+				if (!instant)
+				{
+					SKBitmap lifted = new SKBitmap(m_originalLayerBitmap.Width, m_originalLayerBitmap.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+					lifted.Erase(SKColors.Transparent);
+					layer.SetBitmap(lifted);
+				}
 			}
 			m_armed = true;
+			if (instant)
+			{
+				ApplyInstantQuad(mode);
+				CommitInternal();
+				return true;
+			}
+			m_document.MarkComposeDirtyAll();
 			return true;
 		}
 
@@ -533,6 +747,11 @@ namespace Bitmute.Tools
 		public int Mode()
 		{
 			return m_mode;
+		}
+
+		public SKBitmap PreviewBitmap()
+		{
+			return m_sourceBitmap;
 		}
 
 		public double CornerX(int i)
@@ -564,12 +783,25 @@ namespace Bitmute.Tools
 
 		public void Reset()
 		{
+			if (m_armed)
+			{
+				RestoreLifted();
+			}
 			Disarm();
 		}
 
 		public void Commit(Document document)
 		{
-			CommitInternal(document);
+			CommitInternal();
+		}
+
+		public void Cancel()
+		{
+			if (m_armed)
+			{
+				RestoreLifted();
+			}
+			Disarm();
 		}
 
 		public override bool OnPressed(Document document, int x, int y, ToolState state)
@@ -582,7 +814,7 @@ namespace Bitmute.Tools
 			RecordPress(x, y);
 			if (doubleClick && PointInQuad(x, y, m_cornerX, m_cornerY))
 			{
-				CommitInternal(document);
+				CommitInternal();
 				return false;
 			}
 			m_pressX = x;
@@ -601,7 +833,7 @@ namespace Bitmute.Tools
 				m_grabIndex = index;
 				return false;
 			}
-			if (m_mode == ModeFree && HitRotateRing(x, y, out index))
+			if (HitRotateRing(x, y, out index))
 			{
 				m_grab = GrabRotate;
 				m_grabIndex = index;
@@ -628,6 +860,8 @@ namespace Bitmute.Tools
 			{
 				return false;
 			}
+			bool shift = state.ShiftHeld();
+			bool alt = state.AltHeld();
 			double deltaX = x - m_pressX;
 			double deltaY = y - m_pressY;
 			if (m_grab == GrabMove)
@@ -637,12 +871,12 @@ namespace Bitmute.Tools
 			}
 			if (m_grab == GrabRotate)
 			{
-				ApplyRotate(x, y);
+				ApplyRotate(x, y, shift);
 				return false;
 			}
 			if (m_mode == ModeRotate)
 			{
-				ApplyRotate(x, y);
+				ApplyRotate(x, y, shift);
 				return false;
 			}
 			if (m_grab == GrabCorner)
@@ -657,7 +891,12 @@ namespace Bitmute.Tools
 					ApplyPerspective(m_grabIndex, deltaX, deltaY);
 					return false;
 				}
-				ApplyCornerScale(m_grabIndex, x, y);
+				if (alt)
+				{
+					ApplyCornerScaleCentered(m_grabIndex, x, y, shift);
+					return false;
+				}
+				ApplyCornerScale(m_grabIndex, x, y, shift);
 				return false;
 			}
 			if (m_grab == GrabEdge)

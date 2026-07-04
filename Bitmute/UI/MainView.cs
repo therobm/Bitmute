@@ -184,7 +184,7 @@ namespace Bitmute.UI
 
 		private static string RecentMenuLabel(int index, string path)
 		{
-			return (index + 1) + "  " + System.IO.Path.GetFileName(path);
+			return System.IO.Path.GetFileName(path);
 		}
 
 		private static string PanelMenuLabel(string name, bool visible)
@@ -260,7 +260,6 @@ namespace Bitmute.UI
 				{
 					items.Add(RecentMenuLabel(index, m_recentMenuPaths[index]));
 				}
-				items.Add("Clear Recent");
 				return items.ToArray();
 			}
 			if (title == "Edit" && item == "Transform")
@@ -355,6 +354,10 @@ namespace Bitmute.UI
 				{
 					return ActiveLayerIsText();
 				}
+				if (item == "Merge Down")
+				{
+					return CanMergeDown();
+				}
 				return true;
 			}
 			if (title == "Select")
@@ -382,6 +385,16 @@ namespace Bitmute.UI
 				return true;
 			}
 			return false;
+		}
+
+		private bool CanMergeDown()
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return false;
+			}
+			return document.ActiveLayerIndex() > 0;
 		}
 
 		private bool ActiveLayerIsText()
@@ -662,6 +675,8 @@ namespace Bitmute.UI
 			label.Text = item;
 			label.FontSize = 12.0;
 			label.VerticalOptions = LayoutOptions.Center;
+			label.LineBreakMode = LineBreakMode.TailTruncation;
+			label.MaxLines = 1;
 			if (enabled)
 			{
 				label.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
@@ -948,11 +963,6 @@ namespace Bitmute.UI
 			if (action == "Stroke…")
 			{
 				OpenStrokeDialog();
-				return;
-			}
-			if (action == "Clear Recent")
-			{
-				RecentFiles.Clear();
 				return;
 			}
 			for (int recentIndex = 0; recentIndex < m_recentMenuPaths.Count; recentIndex++)
@@ -2726,6 +2736,8 @@ namespace Bitmute.UI
 			AddAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorInvertSelection);
 			AddAccelerator(element, Windows.System.VirtualKey.R, OnAcceleratorRulers);
 			AddAccelerator(element, Windows.System.VirtualKey.T, OnAcceleratorTransform);
+			AddBareAccelerator(element, Windows.System.VirtualKey.Enter, OnAcceleratorCommitTransform);
+			AddBareAccelerator(element, Windows.System.VirtualKey.Escape, OnAcceleratorCancelTransform);
 			AddBareAccelerator(element, Windows.System.VirtualKey.X, OnAcceleratorSwapColors);
 			AddBareAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDelete);
 			AddAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDeleteBackground);
@@ -3073,6 +3085,60 @@ namespace Bitmute.UI
 				return;
 			}
 			BeginTransform(0);
+			args.Handled = true;
+		}
+
+		private bool TransformActive()
+		{
+			if (m_toolState == null || m_freeTransformTool == null)
+			{
+				return false;
+			}
+			return m_toolState.Tool() == eTool.FreeTransform && m_freeTransformTool.HasPreview();
+		}
+
+		private void RefreshTransformCanvas()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.MarkComposeDirty();
+				canvas.InvalidateSurface();
+			}
+			RefreshLayerThumbnails();
+		}
+
+		private void OnAcceleratorCommitTransform(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			if (m_textEditActive)
+			{
+				return;
+			}
+			if (!TransformActive())
+			{
+				return;
+			}
+			Document document = ActiveDocument();
+			if (document != null)
+			{
+				m_freeTransformTool.Commit(document);
+			}
+			RefreshTransformCanvas();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorCancelTransform(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			if (m_textEditActive)
+			{
+				return;
+			}
+			if (!TransformActive())
+			{
+				return;
+			}
+			m_freeTransformTool.Cancel();
+			RefreshTransformCanvas();
 			args.Handled = true;
 		}
 
@@ -3439,6 +3505,12 @@ namespace Bitmute.UI
 			{
 				SetStatusMessage("Export failed: " + error.Message);
 			}
+		}
+
+		public void ClearRecentFiles()
+		{
+			RecentFiles.Clear();
+			SetStatusMessage("Recent files cleared");
 		}
 
 		public int CurrentUndoDepth()

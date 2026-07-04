@@ -52,6 +52,79 @@ namespace Bitmute.Imaging
 			destinationPixel[3] = ClampByte(sumAlpha);
 		}
 
+		public static bool QuadMatrix(SKPoint[] destQuad, float sourceWidth, float sourceHeight, out SKMatrix matrix)
+		{
+			matrix = SKMatrix.CreateIdentity();
+			if (sourceWidth <= 0.0f || sourceHeight <= 0.0f)
+			{
+				return false;
+			}
+			double p0x = destQuad[0].X;
+			double p0y = destQuad[0].Y;
+			double p1x = destQuad[1].X;
+			double p1y = destQuad[1].Y;
+			double p2x = destQuad[2].X;
+			double p2y = destQuad[2].Y;
+			double p3x = destQuad[3].X;
+			double p3y = destQuad[3].Y;
+			double dx1 = p1x - p2x;
+			double dx2 = p3x - p2x;
+			double dx3 = p0x - p1x + p2x - p3x;
+			double dy1 = p1y - p2y;
+			double dy2 = p3y - p2y;
+			double dy3 = p0y - p1y + p2y - p3y;
+			double a;
+			double b;
+			double c;
+			double d;
+			double e;
+			double f;
+			double g;
+			double h;
+			double i;
+			if (Math.Abs(dx3) < 0.0000000001 && Math.Abs(dy3) < 0.0000000001)
+			{
+				a = p1x - p0x;
+				b = p3x - p0x;
+				c = p0x;
+				d = p1y - p0y;
+				e = p3y - p0y;
+				f = p0y;
+				g = 0.0;
+				h = 0.0;
+				i = 1.0;
+			}
+			else
+			{
+				double denominator = dx1 * dy2 - dx2 * dy1;
+				if (Math.Abs(denominator) < 0.0000000001)
+				{
+					return false;
+				}
+				g = (dx3 * dy2 - dx2 * dy3) / denominator;
+				h = (dx1 * dy3 - dx3 * dy1) / denominator;
+				a = p1x - p0x + g * p1x;
+				b = p3x - p0x + h * p3x;
+				c = p0x;
+				d = p1y - p0y + g * p1y;
+				e = p3y - p0y + h * p3y;
+				f = p0y;
+				i = 1.0;
+			}
+			double invWidth = 1.0 / sourceWidth;
+			double invHeight = 1.0 / sourceHeight;
+			matrix.ScaleX = (float)(a * invWidth);
+			matrix.SkewX = (float)(b * invHeight);
+			matrix.TransX = (float)c;
+			matrix.SkewY = (float)(d * invWidth);
+			matrix.ScaleY = (float)(e * invHeight);
+			matrix.TransY = (float)f;
+			matrix.Persp0 = (float)(g * invWidth);
+			matrix.Persp1 = (float)(h * invHeight);
+			matrix.Persp2 = (float)i;
+			return true;
+		}
+
 		private static unsafe bool SolveInverseHomography(SKPoint[] destQuad, int sourceWidth, int sourceHeight, double* result)
 		{
 			double p0x = destQuad[0].X;

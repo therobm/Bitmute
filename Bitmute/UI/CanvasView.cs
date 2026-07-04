@@ -229,18 +229,14 @@ namespace Bitmute.UI
 				GridOverlay.Draw(canvas, m_offsetX, m_offsetY, m_zoom, m_document.Width(), m_document.Height(), 16, true);
 			}
 
-			DrawGuides(canvas);
+			DrawGuides(canvas, info.Width, info.Height);
 			DrawSelection(canvas);
 			DrawToolOverlay(canvas);
 		}
 
-		private void DrawGuides(SKCanvas canvas)
+		private void DrawGuides(SKCanvas canvas, float viewWidth, float viewHeight)
 		{
 			Bitmute.Imaging.Guides guides = m_document.Guides();
-			float docLeft = m_offsetX;
-			float docTop = m_offsetY;
-			float docRight = m_offsetX + (m_document.Width() * m_zoom);
-			float docBottom = m_offsetY + (m_document.Height() * m_zoom);
 			SKPaint paint = new SKPaint();
 			paint.Style = SKPaintStyle.Stroke;
 			paint.StrokeWidth = 1.0f;
@@ -250,13 +246,13 @@ namespace Bitmute.UI
 			for (int index = 0; index < verticals.Count; index++)
 			{
 				float sx = (float)System.Math.Floor(m_offsetX + (verticals[index] * m_zoom)) + 0.5f;
-				canvas.DrawLine(sx, docTop, sx, docBottom, paint);
+				canvas.DrawLine(sx, 0.0f, sx, viewHeight, paint);
 			}
 			System.Collections.Generic.List<int> horizontals = guides.HorizontalGuides();
 			for (int index = 0; index < horizontals.Count; index++)
 			{
 				float sy = (float)System.Math.Floor(m_offsetY + (horizontals[index] * m_zoom)) + 0.5f;
-				canvas.DrawLine(docLeft, sy, docRight, sy, paint);
+				canvas.DrawLine(0.0f, sy, viewWidth, sy, paint);
 			}
 			if (m_pendingGuideKind != 0)
 			{
@@ -268,12 +264,12 @@ namespace Bitmute.UI
 				if (m_pendingGuideKind == 2)
 				{
 					float sx = (float)System.Math.Floor(m_offsetX + (m_pendingGuidePos * m_zoom)) + 0.5f;
-					canvas.DrawLine(sx, docTop, sx, docBottom, pendingPaint);
+					canvas.DrawLine(sx, 0.0f, sx, viewHeight, pendingPaint);
 				}
 				else
 				{
 					float sy = (float)System.Math.Floor(m_offsetY + (m_pendingGuidePos * m_zoom)) + 0.5f;
-					canvas.DrawLine(docLeft, sy, docRight, sy, pendingPaint);
+					canvas.DrawLine(0.0f, sy, viewWidth, sy, pendingPaint);
 				}
 				pendingPaint.Dispose();
 			}
@@ -811,6 +807,30 @@ namespace Bitmute.UI
 			float y2 = m_offsetY + (float)(transform.CornerY(2) * m_zoom);
 			float x3 = m_offsetX + (float)(transform.CornerX(3) * m_zoom);
 			float y3 = m_offsetY + (float)(transform.CornerY(3) * m_zoom);
+			SKBitmap previewBitmap = transform.PreviewBitmap();
+			if (previewBitmap != null && previewBitmap.Width > 0 && previewBitmap.Height > 0)
+			{
+				SKPoint[] screenQuad = new SKPoint[4];
+				screenQuad[0] = new SKPoint(x0, y0);
+				screenQuad[1] = new SKPoint(x1, y1);
+				screenQuad[2] = new SKPoint(x2, y2);
+				screenQuad[3] = new SKPoint(x3, y3);
+				SKMatrix quadMatrix;
+				if (Bitmute.Imaging.TransformMath.QuadMatrix(screenQuad, previewBitmap.Width, previewBitmap.Height, out quadMatrix))
+				{
+					SKPixmap previewPixmap = previewBitmap.PeekPixels();
+					SKImage previewImage = SKImage.FromPixels(previewPixmap);
+					SKPaint previewPaint = new SKPaint();
+					SKSamplingOptions previewSampling = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None);
+					canvas.Save();
+					canvas.SetMatrix(quadMatrix);
+					canvas.DrawImage(previewImage, 0.0f, 0.0f, previewSampling, previewPaint);
+					canvas.Restore();
+					previewPaint.Dispose();
+					previewImage.Dispose();
+					previewPixmap.Dispose();
+				}
+			}
 			SKPathBuilder builder = new SKPathBuilder();
 			builder.MoveTo(x0, y0);
 			builder.LineTo(x1, y1);
@@ -1224,6 +1244,28 @@ namespace Bitmute.UI
 				return;
 			}
 
+			if (m_pendingGuideKind != 0)
+			{
+				if (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact)
+				{
+					int pendingPos = pixelX;
+					if (m_pendingGuideKind == 1)
+					{
+						pendingPos = pixelY;
+					}
+					m_pendingGuidePos = pendingPos;
+					InvalidateSurface();
+					eventArgs.Handled = true;
+					return;
+				}
+				if (eventArgs.ActionType == SKTouchAction.Released || eventArgs.ActionType == SKTouchAction.Pressed || (eventArgs.ActionType == SKTouchAction.Moved && !eventArgs.InContact))
+				{
+					CommitPendingGuide();
+					eventArgs.Handled = true;
+					return;
+				}
+			}
+
 			Tool tool = main.CurrentTool();
 			ToolState state = main.CurrentToolState();
 			if (tool == null || state == null)
@@ -1498,10 +1540,10 @@ namespace Bitmute.UI
 			{
 				return false;
 			}
-			int tolerance = (int)System.Math.Ceiling(6.0 / m_zoom);
-			if (tolerance < 3)
+			int tolerance = (int)System.Math.Ceiling(8.0 / m_zoom);
+			if (tolerance < 4)
 			{
-				tolerance = 3;
+				tolerance = 4;
 			}
 			if (eventArgs.ActionType == SKTouchAction.Pressed)
 			{

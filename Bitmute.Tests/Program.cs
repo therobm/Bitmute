@@ -51,6 +51,8 @@ namespace Bitmute.Tests
 			TestSelectionStroke();
 			TestWarpAffineScale();
 			TestFlipTransformCommitUndo();
+			TestTransformScaleCommit();
+			TestTransformSelectionLiftCancel();
 			TestCanvasOpUndo();
 			TestGuidesModel();
 			if (s_failures == 0)
@@ -439,6 +441,54 @@ namespace Bitmute.Tests
 			Check(undone, "flip transform undoable");
 			SKColor restored = doc.ActiveLayer().GetPixelCanvas(1, 4);
 			Check(restored.Red == 255 && restored.Alpha == 255, "flip transform undo restores");
+		}
+
+		private static void TestTransformScaleCommit()
+		{
+			Document doc = new Document("t", 8, 8);
+			Layer layer = doc.ActiveLayer();
+			layer.Bitmap().Erase(new SKColor(0, 0, 0, 0));
+			for (int y = 2; y < 6; y++)
+			{
+				for (int x = 2; x < 6; x++)
+				{
+					layer.SetPixelCanvas(x, y, new SKColor(255, 0, 0, 255));
+				}
+			}
+			FreeTransformTool transform = new FreeTransformTool();
+			transform.SetPickRadius(2);
+			bool armed = transform.Begin(doc, 1);
+			Check(armed, "transform scale arms");
+			ToolState state = new ToolState();
+			transform.OnPressed(doc, 8, 8, state);
+			transform.OnDragged(doc, 16, 16, state);
+			transform.OnReleased(doc, 16, 16, state);
+			transform.Commit(doc);
+			SKBitmap result = doc.ActiveLayer().Bitmap();
+			Check(result.Width == 16 && result.Height == 16, "transform scale doubles layer bitmap");
+			SKColor scaled = doc.ActiveLayer().GetPixelCanvas(8, 8);
+			Check(scaled.Red > 150 && scaled.Green < 80, "transform scale keeps painted content");
+			bool undone = doc.Undo();
+			Check(undone, "transform scale undoable");
+			Check(doc.ActiveLayer().Bitmap().Width == 8, "transform scale undo restores bitmap");
+		}
+
+		private static void TestTransformSelectionLiftCancel()
+		{
+			Document doc = new Document("t", 16, 16);
+			Layer layer = doc.ActiveLayer();
+			layer.Bitmap().Erase(new SKColor(255, 0, 0, 255));
+			layer.SetIsBackground(false);
+			doc.Selection().SelectRect(new SKRectI(4, 4, 8, 8));
+			FreeTransformTool transform = new FreeTransformTool();
+			bool armed = transform.Begin(doc, 1);
+			Check(armed, "transform selection arms");
+			Check(doc.ActiveLayer().GetPixelCanvas(5, 5).Alpha == 0, "transform lifts selected pixels");
+			Check(doc.ActiveLayer().GetPixelCanvas(0, 0).Red == 255, "transform leaves unselected pixels");
+			Check(!doc.Selection().IsActive(), "transform clears live selection");
+			transform.Cancel();
+			Check(doc.ActiveLayer().GetPixelCanvas(5, 5).Red == 255, "transform cancel restores lifted pixels");
+			Check(doc.Selection().IsActive(), "transform cancel restores selection");
 		}
 
 		private static void TestCanvasOpUndo()

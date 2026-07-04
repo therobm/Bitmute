@@ -75,10 +75,16 @@ namespace Bitmute.UI
 				eventArgs.Handled = true;
 				return;
 			}
-			if (eventArgs.ActionType == SKTouchAction.Released || eventArgs.ActionType == SKTouchAction.Moved || eventArgs.ActionType == SKTouchAction.Cancelled || eventArgs.ActionType == SKTouchAction.Exited)
+			if (eventArgs.ActionType == SKTouchAction.Released)
 			{
 				m_dragging = false;
 				m_canvas.CommitPendingGuide();
+				eventArgs.Handled = true;
+				return;
+			}
+			if (eventArgs.ActionType == SKTouchAction.Cancelled || eventArgs.ActionType == SKTouchAction.Exited)
+			{
+				m_dragging = false;
 				eventArgs.Handled = true;
 				return;
 			}
