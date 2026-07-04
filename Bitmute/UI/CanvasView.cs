@@ -36,6 +36,7 @@ namespace Bitmute.UI
 
 		private Document m_document;
 		private SKBitmap m_composite;
+		private SKBitmap m_transformAbove;
 		private float m_zoom;
 		private float m_offsetX;
 		private float m_offsetY;
@@ -947,6 +948,12 @@ namespace Bitmute.UI
 					previewPixmap.Dispose();
 				}
 			}
+			int aboveStart = transform.LayerIndex() + 1;
+			int layerCount = m_document.Layers().Count;
+			if (transform.LayerIndex() >= 0 && aboveStart < layerCount)
+			{
+				DrawTransformAboveLayers(canvas, aboveStart, layerCount, x0, y0, x1, y1, x2, y2, x3, y3);
+			}
 			SKPathBuilder builder = new SKPathBuilder();
 			builder.MoveTo(x0, y0);
 			builder.LineTo(x1, y1);
@@ -989,6 +996,60 @@ namespace Bitmute.UI
 			DrawTransformHandle(canvas, (x3 + x0) / 2.0f, (y3 + y0) / 2.0f, handleSize, handleFill, handleBorder);
 			handleFill.Dispose();
 			handleBorder.Dispose();
+		}
+
+		private void DrawTransformAboveLayers(SKCanvas canvas, int startIndex, int endExclusive, float sx0, float sy0, float sx1, float sy1, float sx2, float sy2, float sx3, float sy3)
+		{
+			int docWidth = m_document.Width();
+			int docHeight = m_document.Height();
+			if (m_transformAbove == null || m_transformAbove.Width != docWidth || m_transformAbove.Height != docHeight)
+			{
+				if (m_transformAbove != null)
+				{
+					m_transformAbove.Dispose();
+				}
+				m_transformAbove = new SKBitmap(docWidth, docHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
+			}
+			float minX = System.Math.Min(System.Math.Min(sx0, sx1), System.Math.Min(sx2, sx3));
+			float maxX = System.Math.Max(System.Math.Max(sx0, sx1), System.Math.Max(sx2, sx3));
+			float minY = System.Math.Min(System.Math.Min(sy0, sy1), System.Math.Min(sy2, sy3));
+			float maxY = System.Math.Max(System.Math.Max(sy0, sy1), System.Math.Max(sy2, sy3));
+			int docLeft = (int)System.Math.Floor((minX - m_offsetX) / m_zoom) - 1;
+			int docTop = (int)System.Math.Floor((minY - m_offsetY) / m_zoom) - 1;
+			int docRight = (int)System.Math.Ceiling((maxX - m_offsetX) / m_zoom) + 1;
+			int docBottom = (int)System.Math.Ceiling((maxY - m_offsetY) / m_zoom) + 1;
+			if (docLeft < 0)
+			{
+				docLeft = 0;
+			}
+			if (docTop < 0)
+			{
+				docTop = 0;
+			}
+			if (docRight > docWidth)
+			{
+				docRight = docWidth;
+			}
+			if (docBottom > docHeight)
+			{
+				docBottom = docHeight;
+			}
+			if (docRight <= docLeft || docBottom <= docTop)
+			{
+				return;
+			}
+			SKRectI region = new SKRectI(docLeft, docTop, docRight, docBottom);
+			m_document.CompositeRangeInto(m_transformAbove, region, startIndex, endExclusive);
+			SKPixmap pixmap = m_transformAbove.PeekPixels();
+			SKImage image = SKImage.FromPixels(pixmap);
+			SKRect srcRect = new SKRect(docLeft, docTop, docRight, docBottom);
+			SKRect dstRect = new SKRect(m_offsetX + (docLeft * m_zoom), m_offsetY + (docTop * m_zoom), m_offsetX + (docRight * m_zoom), m_offsetY + (docBottom * m_zoom));
+			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
+			SKPaint paint = new SKPaint();
+			canvas.DrawImage(image, srcRect, dstRect, sampling, paint);
+			paint.Dispose();
+			image.Dispose();
+			pixmap.Dispose();
 		}
 
 		private void DrawTransformHandle(SKCanvas canvas, float cx, float cy, float size, SKPaint fill, SKPaint border)

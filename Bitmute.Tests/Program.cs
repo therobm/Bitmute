@@ -41,6 +41,7 @@ namespace Bitmute.Tests
 			TestCustomBlendOpacity();
 			TestCustomBlendTransparentBase();
 			TestMixedComposite();
+			TestCompositeRangeInto();
 			TestWandContiguous();
 			TestWandNonContiguous();
 			TestWandSampleAll();
@@ -560,6 +561,29 @@ namespace Bitmute.Tests
 			guides.SetLocked(false);
 			guides.RemoveVertical(0);
 			Check(guides.VerticalGuides().Count == 0, "guides remove vertical");
+		}
+
+		private static void TestCompositeRangeInto()
+		{
+			Document doc = new Document("t", 4, 4);
+			doc.ActiveLayer().Bitmap().Erase(new SKColor(255, 0, 0, 255));
+			Layer mid = doc.AddLayer("mid");
+			mid.Bitmap().Erase(new SKColor(0, 255, 0, 255));
+			Layer top = doc.AddLayer("top");
+			top.Bitmap().Erase(new SKColor(0, 0, 255, 0));
+			SKBitmap target = new SKBitmap(4, 4, SKColorType.Rgba8888, SKAlphaType.Premul);
+			target.Erase(SKColors.Transparent);
+			doc.CompositeRangeInto(target, new SKRectI(0, 0, 4, 4), 1, 3);
+			SKColor px = target.GetPixel(1, 1);
+			Check(px.Green == 255 && px.Red == 0 && px.Blue == 0, "range composite excludes below-range layer");
+			Check(px.Alpha == 255, "range composite alpha from in-range layer");
+			SKBitmap targetTop = new SKBitmap(4, 4, SKColorType.Rgba8888, SKAlphaType.Premul);
+			targetTop.Erase(SKColors.Transparent);
+			doc.CompositeRangeInto(targetTop, new SKRectI(0, 0, 4, 4), 2, 3);
+			SKColor pxTop = targetTop.GetPixel(1, 1);
+			Check(pxTop.Alpha == 0, "range composite of transparent-only range is empty");
+			target.Dispose();
+			targetTop.Dispose();
 		}
 
 		private static void TestMixedComposite()

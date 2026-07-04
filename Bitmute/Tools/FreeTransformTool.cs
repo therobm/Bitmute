@@ -761,6 +761,11 @@ namespace Bitmute.Tools
 			return m_mode;
 		}
 
+		public int LayerIndex()
+		{
+			return m_layerIndex;
+		}
+
 		public SKBitmap PreviewBitmap()
 		{
 			return m_sourceBitmap;

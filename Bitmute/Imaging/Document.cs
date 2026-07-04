@@ -800,6 +800,71 @@ namespace Bitmute.Imaging
 			CompositeRegionSkia(target, region);
 		}
 
+		public void CompositeRangeInto(SKBitmap target, SKRectI region, int startIndex, int endExclusive)
+		{
+			int left = region.Left;
+			int top = region.Top;
+			int right = region.Right;
+			int bottom = region.Bottom;
+			if (left < 0)
+			{
+				left = 0;
+			}
+			if (top < 0)
+			{
+				top = 0;
+			}
+			if (right > target.Width)
+			{
+				right = target.Width;
+			}
+			if (bottom > target.Height)
+			{
+				bottom = target.Height;
+			}
+			if (right <= left || bottom <= top)
+			{
+				return;
+			}
+			if (startIndex < 0)
+			{
+				startIndex = 0;
+			}
+			if (endExclusive > m_layers.Count)
+			{
+				endExclusive = m_layers.Count;
+			}
+			SKRect clipRect = new SKRect(left, top, right, bottom);
+			SKCanvas canvas = new SKCanvas(target);
+			canvas.Save();
+			canvas.ClipRect(clipRect);
+			SKPaint clearPaint = new SKPaint();
+			clearPaint.Color = SKColors.Transparent;
+			clearPaint.BlendMode = SKBlendMode.Src;
+			canvas.DrawRect(clipRect, clearPaint);
+			clearPaint.Dispose();
+			SKPaint paint = new SKPaint();
+			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
+			for (int index = startIndex; index < endExclusive; index++)
+			{
+				Layer layer = m_layers[index];
+				if (!layer.IsVisible())
+				{
+					continue;
+				}
+				paint.Color = SKColors.White.WithAlpha(layer.Opacity());
+				paint.BlendMode = Layer.ToSkBlendMode(layer.BlendMode());
+				SKPixmap pixmap = layer.Bitmap().PeekPixels();
+				SKImage image = SKImage.FromPixels(pixmap);
+				canvas.DrawImage(image, layer.OffsetX(), layer.OffsetY(), sampling, paint);
+				image.Dispose();
+				pixmap.Dispose();
+			}
+			paint.Dispose();
+			canvas.Restore();
+			canvas.Dispose();
+		}
+
 		private unsafe void CompositeRegionRaw(SKBitmap target, SKRectI region)
 		{
 			int canvasWidth = target.Width;
