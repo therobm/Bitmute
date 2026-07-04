@@ -51,6 +51,10 @@ namespace Bitmute.UI
 		private DocumentWindow m_ownerWindow;
 		private IDispatcherTimer m_antTimer;
 		private float m_antPhase;
+		private IDispatcherTimer m_airbrushTimer;
+		private bool m_airbrushActive;
+		private int m_airbrushX;
+		private int m_airbrushY;
 		private List<AntEdge> m_antEdges;
 		private int m_antEdgesGeneration;
 		private float m_cursorDeviceX;
@@ -1761,16 +1765,26 @@ namespace Bitmute.UI
 					m_document.BeginStroke();
 				}
 				changed = tool.OnPressed(m_document, pixelX, pixelY, state);
+				if (tool is BrushFamilyTool && state.Airbrush())
+				{
+					StartAirbrush(pixelX, pixelY);
+				}
 			}
 			else if (eventArgs.ActionType == SKTouchAction.Moved)
 			{
 				if (!eventArgs.InContact)
 				{
 					m_toolStrokeActive = false;
+					StopAirbrush();
 				}
 				else if (m_toolStrokeActive)
 				{
 					changed = tool.OnDragged(m_document, pixelX, pixelY, state);
+					if (m_airbrushActive)
+					{
+						m_airbrushX = pixelX;
+						m_airbrushY = pixelY;
+					}
 				}
 			}
 			else if (eventArgs.ActionType == SKTouchAction.Released)
@@ -1785,6 +1799,7 @@ namespace Bitmute.UI
 					}
 				}
 				m_toolStrokeActive = false;
+				StopAirbrush();
 			}
 
 			bool needsRepaint = changed || m_document.ComposeDirtyAny();
@@ -2275,6 +2290,56 @@ namespace Bitmute.UI
 		public void Redraw()
 		{
 			InvalidateSurface();
+		}
+
+		private void StartAirbrush(int x, int y)
+		{
+			m_airbrushX = x;
+			m_airbrushY = y;
+			m_airbrushActive = true;
+			if (m_airbrushTimer == null && Dispatcher != null)
+			{
+				m_airbrushTimer = Dispatcher.CreateTimer();
+				m_airbrushTimer.Interval = TimeSpan.FromMilliseconds(60.0);
+				m_airbrushTimer.Tick += OnAirbrushTick;
+			}
+			if (m_airbrushTimer != null)
+			{
+				m_airbrushTimer.Start();
+			}
+		}
+
+		private void StopAirbrush()
+		{
+			m_airbrushActive = false;
+			if (m_airbrushTimer != null)
+			{
+				m_airbrushTimer.Stop();
+			}
+		}
+
+		private void OnAirbrushTick(object sender, EventArgs eventArgs)
+		{
+			if (!m_airbrushActive || !m_toolStrokeActive)
+			{
+				return;
+			}
+			MainView main = MainView.Self;
+			if (main == null)
+			{
+				return;
+			}
+			Tool tool = main.CurrentTool();
+			if (!(tool is BrushFamilyTool))
+			{
+				return;
+			}
+			ToolState state = main.CurrentToolState();
+			((BrushFamilyTool)tool).AirbrushStamp(m_document, m_airbrushX, m_airbrushY, state);
+			if (m_document.ComposeDirtyAny())
+			{
+				InvalidateSurface();
+			}
 		}
 
 		private void OnAntTick(object sender, EventArgs eventArgs)

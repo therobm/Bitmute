@@ -53,6 +53,20 @@ namespace Bitmute.Tools
 			return true;
 		}
 
+		public void AirbrushStamp(Document document, int x, int y, ToolState state)
+		{
+			if (!m_engine.IsActive())
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			m_engine.AirbrushStamp(document, layer, x, y, document.Selection());
+		}
+
 		public override void OnReleased(Document document, int x, int y, ToolState state)
 		{
 			m_engine.End();

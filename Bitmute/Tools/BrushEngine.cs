@@ -750,6 +750,12 @@ namespace Bitmute.Tools
 			document.MarkComposeDirtyRegion(new SKRectI(left, top, right, bottom));
 		}
 
+		public void AirbrushStamp(Document document, Layer layer, double x, double y, Selection selection)
+		{
+			StampDab(layer, x, y, selection);
+			MarkDirty(document, x, y, x, y);
+		}
+
 		public void StampFirst(Document document, Layer layer, double x, double y, Selection selection)
 		{
 			StampDab(layer, x, y, selection);

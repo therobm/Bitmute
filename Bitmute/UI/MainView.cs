@@ -70,6 +70,8 @@ namespace Bitmute.UI
 		private Label m_brushSpacingValue;
 		private Label m_brushModeLabel;
 		private Picker m_brushModePicker;
+		private Label m_brushAirbrushLabel;
+		private CheckBox m_brushAirbrushCheck;
 		private Label m_spongeModeLabel;
 		private Picker m_spongeModePicker;
 		private Label m_colorReplaceModeLabel;
@@ -2004,6 +2006,19 @@ namespace Bitmute.UI
 			m_brushSettingsButton.IsVisible = false;
 			m_brushSettingsButton.Clicked += OnBrushSettingsClicked;
 
+			m_brushAirbrushLabel = new Label();
+			m_brushAirbrushLabel.Text = "Airbrush";
+			m_brushAirbrushLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_brushAirbrushLabel.FontSize = 12.0;
+			m_brushAirbrushLabel.VerticalOptions = LayoutOptions.Center;
+			m_brushAirbrushLabel.IsVisible = false;
+
+			m_brushAirbrushCheck = new CheckBox();
+			m_brushAirbrushCheck.VerticalOptions = LayoutOptions.Center;
+			m_brushAirbrushCheck.IsVisible = false;
+			m_brushAirbrushCheck.IsChecked = m_toolState.Airbrush();
+			m_brushAirbrushCheck.CheckedChanged += OnBrushAirbrushChanged;
+
 			m_spongeModeLabel = new Label();
 			m_spongeModeLabel.Text = "Mode";
 			m_spongeModeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
@@ -2312,6 +2327,8 @@ namespace Bitmute.UI
 			options.Add(m_brushSmoothingField);
 			options.Add(m_brushModeLabel);
 			options.Add(m_brushModePicker);
+			options.Add(m_brushAirbrushLabel);
+			options.Add(m_brushAirbrushCheck);
 			options.Add(m_spongeModeLabel);
 			options.Add(m_spongeModePicker);
 			options.Add(m_colorReplaceModeLabel);
@@ -4220,6 +4237,8 @@ namespace Bitmute.UI
 				m_brushSmoothingField.IsVisible = isBrushFamily;
 				m_brushModeLabel.IsVisible = showsBlendMode;
 				m_brushModePicker.IsVisible = showsBlendMode;
+				m_brushAirbrushLabel.IsVisible = isBrushFamily;
+				m_brushAirbrushCheck.IsVisible = isBrushFamily;
 				m_brushSettingsButton.IsVisible = isBrushFamily;
 			}
 			if (m_spongeModeLabel != null)
@@ -4566,6 +4585,15 @@ namespace Bitmute.UI
 				return;
 			}
 			m_toolState.SetGradientToTransparent(m_gradientTransparentCheck.IsChecked);
+		}
+
+		private void OnBrushAirbrushChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetAirbrush(m_brushAirbrushCheck.IsChecked);
 		}
 
 		private void OnBrushSettingsClicked(object sender, System.EventArgs eventArgs)

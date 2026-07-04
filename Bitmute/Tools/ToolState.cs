@@ -25,6 +25,7 @@ namespace Bitmute.Tools
 		private bool m_gradientToTransparent;
 		private bool m_snapToGuides;
 		private int m_snapTolerance;
+		private bool m_airbrush;
 		private bool m_wandContiguous;
 		private bool m_wandSampleAll;
 		private bool m_wandAntiAlias;
@@ -71,6 +72,7 @@ namespace Bitmute.Tools
 			m_gradientToTransparent = false;
 			m_snapToGuides = false;
 			m_snapTolerance = 6;
+			m_airbrush = false;
 			m_wandContiguous = true;
 			m_wandSampleAll = false;
 			m_wandAntiAlias = true;
@@ -588,6 +590,16 @@ namespace Bitmute.Tools
 		public void SetSnapTolerance(int tolerance)
 		{
 			m_snapTolerance = tolerance;
+		}
+
+		public bool Airbrush()
+		{
+			return m_airbrush;
+		}
+
+		public void SetAirbrush(bool airbrush)
+		{
+			m_airbrush = airbrush;
 		}
 
 		public void SwapColors()
