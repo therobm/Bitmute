@@ -11,12 +11,78 @@ namespace Bitmute.UI
 
 		private CanvasView m_canvas;
 		private bool m_horizontal;
+		private bool m_dragging;
 
 		public Ruler(CanvasView canvas, bool horizontal)
 		{
 			m_canvas = canvas;
 			m_horizontal = horizontal;
+			m_dragging = false;
 			PaintSurface += OnPaintSurface;
+			EnableTouchEvents = true;
+			Touch += OnTouch;
+		}
+
+		private int GuidePositionFromTouch(SKTouchEventArgs eventArgs)
+		{
+			float zoom = m_canvas.Zoom();
+			if (zoom <= 0.0f)
+			{
+				return 0;
+			}
+			float device;
+			float offset;
+			if (m_horizontal)
+			{
+				device = eventArgs.Location.X;
+				offset = m_canvas.PanOffsetX();
+			}
+			else
+			{
+				device = eventArgs.Location.Y;
+				offset = m_canvas.PanOffsetY();
+			}
+			return (int)Math.Round((device - offset) / zoom);
+		}
+
+		private void OnTouch(object sender, SKTouchEventArgs eventArgs)
+		{
+			int kind = 1;
+			if (m_horizontal)
+			{
+				kind = 2;
+			}
+			if (eventArgs.ActionType == SKTouchAction.Pressed)
+			{
+				if (m_canvas.CurrentDocument().Guides().IsLocked())
+				{
+					eventArgs.Handled = true;
+					return;
+				}
+				m_dragging = true;
+				m_canvas.SetPendingGuide(kind, GuidePositionFromTouch(eventArgs));
+				eventArgs.Handled = true;
+				return;
+			}
+			if (!m_dragging)
+			{
+				eventArgs.Handled = true;
+				return;
+			}
+			if (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact)
+			{
+				m_canvas.SetPendingGuide(kind, GuidePositionFromTouch(eventArgs));
+				eventArgs.Handled = true;
+				return;
+			}
+			if (eventArgs.ActionType == SKTouchAction.Released || eventArgs.ActionType == SKTouchAction.Moved || eventArgs.ActionType == SKTouchAction.Cancelled || eventArgs.ActionType == SKTouchAction.Exited)
+			{
+				m_dragging = false;
+				m_canvas.CommitPendingGuide();
+				eventArgs.Handled = true;
+				return;
+			}
+			eventArgs.Handled = true;
 		}
 
 		private static int NiceStep(float zoom)

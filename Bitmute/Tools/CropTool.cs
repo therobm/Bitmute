@@ -180,7 +180,9 @@ namespace Bitmute.Tools
 		private void Commit(Document document)
 		{
 			SKRectI rect = new SKRectI(m_left, m_top, m_right, m_bottom);
+			document.BeginCanvasEdit("Crop");
 			document.CropToRect(rect);
+			document.EndCanvasEdit();
 			ClearAll();
 		}
 

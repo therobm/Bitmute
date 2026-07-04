@@ -382,6 +382,39 @@ namespace Bitmute.Imaging
 			m_bitmap = bitmap;
 		}
 
+		public Layer Clone()
+		{
+			Layer copy = new Layer(m_name, m_bitmap.Width, m_bitmap.Height);
+			copy.m_bitmap = m_bitmap.Copy();
+			copy.m_offsetX = m_offsetX;
+			copy.m_offsetY = m_offsetY;
+			copy.m_visible = m_visible;
+			copy.m_opacity = m_opacity;
+			copy.m_blendMode = m_blendMode;
+			copy.m_isBackground = m_isBackground;
+			copy.m_isText = m_isText;
+			copy.m_text = m_text;
+			copy.m_textX = m_textX;
+			copy.m_textY = m_textY;
+			copy.m_textSize = m_textSize;
+			copy.m_textBold = m_textBold;
+			copy.m_textItalic = m_textItalic;
+			copy.m_textFontFamily = m_textFontFamily;
+			copy.m_textColor = m_textColor;
+			copy.m_textAlign = m_textAlign;
+			copy.m_textAntiAlias = m_textAntiAlias;
+			copy.m_textLeadingAuto = m_textLeadingAuto;
+			copy.m_textLeading = m_textLeading;
+			copy.m_textTracking = m_textTracking;
+			copy.m_textHorizontalScale = m_textHorizontalScale;
+			copy.m_textVerticalScale = m_textVerticalScale;
+			copy.m_textBaselineShift = m_textBaselineShift;
+			copy.m_textFauxBold = m_textFauxBold;
+			copy.m_textFauxItalic = m_textFauxItalic;
+			copy.m_textKerningAuto = m_textKerningAuto;
+			return copy;
+		}
+
 		public int OffsetX()
 		{
 			return m_offsetX;

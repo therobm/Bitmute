@@ -43,6 +43,8 @@ namespace Bitmute.Imaging
 		private bool m_strokeDirtyValid;
 		private bool m_dirty;
 		private string m_sourcePath;
+		private Guides m_guides;
+		private DocumentStateCommand m_pendingDocEdit;
 
 		public static Document OpenImage(string title, SKBitmap source)
 		{
@@ -74,6 +76,8 @@ namespace Bitmute.Imaging
 			m_strokeDirtyValid = false;
 			m_dirty = false;
 			m_sourcePath = null;
+			m_guides = new Guides();
+			m_pendingDocEdit = null;
 		}
 
 		public string SourcePath()
@@ -368,6 +372,72 @@ namespace Bitmute.Imaging
 				m_undoStack.RemoveAt(0);
 			}
 			m_dirty = true;
+		}
+
+		public Guides Guides()
+		{
+			return m_guides;
+		}
+
+		public List<Layer> CloneLayers()
+		{
+			List<Layer> copy = new List<Layer>();
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				copy.Add(m_layers[index].Clone());
+			}
+			return copy;
+		}
+
+		public void ReplaceLayers(List<Layer> layers, int width, int height, int activeIndex)
+		{
+			m_layers = new List<Layer>();
+			for (int index = 0; index < layers.Count; index++)
+			{
+				m_layers.Add(layers[index].Clone());
+			}
+			m_width = width;
+			m_height = height;
+			if (activeIndex < 0)
+			{
+				activeIndex = 0;
+			}
+			if (activeIndex >= m_layers.Count)
+			{
+				activeIndex = m_layers.Count - 1;
+			}
+			m_activeLayerIndex = activeIndex;
+			MarkComposeDirtyAll();
+		}
+
+		public void RestoreSelection(byte[] mask, SKRectI bounds, bool active)
+		{
+			m_selection = new Selection(m_width, m_height);
+			if (active && mask != null && mask.Length == m_width * m_height)
+			{
+				m_selection.SelectMask(mask, bounds);
+			}
+		}
+
+		public void BeginCanvasEdit(string label)
+		{
+			if (m_pendingDocEdit != null)
+			{
+				return;
+			}
+			m_pendingDocEdit = new DocumentStateCommand(label);
+			m_pendingDocEdit.CaptureBefore(this);
+		}
+
+		public void EndCanvasEdit()
+		{
+			if (m_pendingDocEdit == null)
+			{
+				return;
+			}
+			m_pendingDocEdit.CaptureAfter(this);
+			PushCommand(m_pendingDocEdit);
+			m_pendingDocEdit = null;
 		}
 
 		public bool Undo()
