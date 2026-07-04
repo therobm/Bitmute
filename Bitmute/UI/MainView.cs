@@ -50,6 +50,7 @@ namespace Bitmute.UI
 		private double m_modalHeight;
 		private double m_modalDragOriginX;
 		private double m_modalDragOriginY;
+		private FloatingPanel m_pendingClosePanel;
 		private Label m_optionsToolLabel;
 		private Label m_brushSizeLabel;
 		private SliderField m_brushSizeField;
@@ -4291,7 +4292,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		public async void ClosePanel(FloatingPanel panel)
+		public void ClosePanel(FloatingPanel panel)
 		{
 			DocumentWindow window = panel as DocumentWindow;
 			if (window != null)
@@ -4299,22 +4300,61 @@ namespace Bitmute.UI
 				Document model = window.DocumentModel();
 				if (model != null && model.IsDirty())
 				{
-					string choice = await DisplayActionSheetAsync("Save changes to " + model.Title() + "?", "Cancel", null, "Save", "Don't Save");
-					if (choice == "Save")
-					{
-						bool saved = await SaveDocumentAsync(model);
-						if (!saved)
-						{
-							return;
-						}
-					}
-					else if (choice != "Don't Save")
-					{
-						return;
-					}
+					m_pendingClosePanel = panel;
+					ShowModal(new SaveChangesDialog(model.Title()), 360.0, 170.0);
+					return;
 				}
 			}
 			RemovePanel(panel);
+		}
+
+		public void OnCloseSaveChanges()
+		{
+			CloseModal();
+			FloatingPanel panel = m_pendingClosePanel;
+			m_pendingClosePanel = null;
+			if (panel == null)
+			{
+				return;
+			}
+			SaveThenClose(panel);
+		}
+
+		private async void SaveThenClose(FloatingPanel panel)
+		{
+			DocumentWindow window = panel as DocumentWindow;
+			if (window == null)
+			{
+				return;
+			}
+			Document model = window.DocumentModel();
+			if (model == null)
+			{
+				RemovePanel(panel);
+				return;
+			}
+			bool saved = await SaveDocumentAsync(model);
+			if (saved)
+			{
+				RemovePanel(panel);
+			}
+		}
+
+		public void OnCloseDontSave()
+		{
+			CloseModal();
+			FloatingPanel panel = m_pendingClosePanel;
+			m_pendingClosePanel = null;
+			if (panel != null)
+			{
+				RemovePanel(panel);
+			}
+		}
+
+		public void OnCloseCancelSave()
+		{
+			CloseModal();
+			m_pendingClosePanel = null;
 		}
 
 		private void RemovePanel(FloatingPanel panel)
