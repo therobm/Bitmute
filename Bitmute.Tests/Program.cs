@@ -57,6 +57,7 @@ namespace Bitmute.Tests
 			TestBlurStrength();
 			TestBrushHardnessSmall();
 			TestGaussianBlur();
+			TestGaussianBlurAlpha();
 			TestLayerMerging();
 			TestChannelVisibilityMask();
 			TestDodgeBurnRange();
@@ -1033,6 +1034,29 @@ namespace Bitmute.Tests
 			SKColor semi = hideAlpha.GetPixel(1, 0);
 			Check(semi.Alpha == 255, "channel mask forces opaque when alpha hidden");
 			CheckNear(semi.Red, 200, 3, "channel mask un-premultiplies red of a semi-transparent pixel");
+		}
+
+		private static void TestGaussianBlurAlpha()
+		{
+			SKBitmap bmp = new SKBitmap(16, 1, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			for (int x = 0; x < 16; x++)
+			{
+				if (x < 8)
+				{
+					bmp.SetPixel(x, 0, new SKColor(255, 0, 0, 255));
+				}
+				else
+				{
+					bmp.SetPixel(x, 0, new SKColor(0, 0, 0, 0));
+				}
+			}
+			Adjustments.GaussianBlur(bmp, 3);
+			SKColor edge = bmp.GetPixel(8, 0);
+			SKColor farClear = bmp.GetPixel(15, 0);
+			Check(edge.Alpha > 0 && edge.Alpha < 255, "gaussian blur feathers a hard alpha edge into partial transparency");
+			Check(farClear.Alpha < 40, "gaussian blur leaves the far transparent region transparent");
+			Check(edge.Red > 180, "gaussian blur keeps edge color saturated (premultiplied, no dark fringe)");
+			bmp.Dispose();
 		}
 
 		private static int BurnCenterRed(int startValue, int range, int exposure)

@@ -5,20 +5,21 @@ namespace Bitmute.Imaging
 {
 	public static class Adjustments
 	{
-		public static void InvertColors(SKBitmap bitmap)
+		public static unsafe void InvertColors(SKBitmap bitmap)
 		{
 			int width = bitmap.Width;
 			int height = bitmap.Height;
+			int rowBytes = bitmap.RowBytes;
+			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
 			for (int y = 0; y < height; y++)
 			{
+				byte* row = basePointer + ((long)y * rowBytes);
 				for (int x = 0; x < width; x++)
 				{
-					SKColor color = bitmap.GetPixel(x, y);
-					byte red = (byte)(255 - color.Red);
-					byte green = (byte)(255 - color.Green);
-					byte blue = (byte)(255 - color.Blue);
-					SKColor inverted = new SKColor(red, green, blue, color.Alpha);
-					bitmap.SetPixel(x, y, inverted);
+					byte* pixel = row + (x * 4);
+					pixel[0] = (byte)(255 - pixel[0]);
+					pixel[1] = (byte)(255 - pixel[1]);
+					pixel[2] = (byte)(255 - pixel[2]);
 				}
 			}
 		}
@@ -166,9 +167,11 @@ namespace Bitmute.Imaging
 			int height = bitmap.Height;
 			SKBitmap bufferA = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
 			SKBitmap bufferB = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-			BoxBlurCopy(bitmap, bufferA, radius);
+			Premultiply(bitmap, bufferA);
 			BoxBlurCopy(bufferA, bufferB, radius);
-			BoxBlurCopy(bufferB, bitmap, radius);
+			BoxBlurCopy(bufferB, bufferA, radius);
+			BoxBlurCopy(bufferA, bufferB, radius);
+			Unpremultiply(bufferB, bitmap);
 			bufferA.Dispose();
 			bufferB.Dispose();
 		}
@@ -318,6 +321,7 @@ namespace Bitmute.Imaging
 				long sumRed = 0;
 				long sumGreen = 0;
 				long sumBlue = 0;
+				long sumAlpha = 0;
 				for (int offset = -radius; offset <= radius; offset++)
 				{
 					int sampleX = offset;
@@ -333,6 +337,7 @@ namespace Bitmute.Imaging
 					sumRed += sourceRow[sampleOffset + 0];
 					sumGreen += sourceRow[sampleOffset + 1];
 					sumBlue += sourceRow[sampleOffset + 2];
+					sumAlpha += sourceRow[sampleOffset + 3];
 				}
 				for (int x = 0; x < width; x++)
 				{
@@ -340,7 +345,7 @@ namespace Bitmute.Imaging
 					temporaryRow[pixelOffset + 0] = (byte)(sumRed / windowLength);
 					temporaryRow[pixelOffset + 1] = (byte)(sumGreen / windowLength);
 					temporaryRow[pixelOffset + 2] = (byte)(sumBlue / windowLength);
-					temporaryRow[pixelOffset + 3] = sourceRow[pixelOffset + 3];
+					temporaryRow[pixelOffset + 3] = (byte)(sumAlpha / windowLength);
 					int leavingX = x - radius;
 					if (leavingX < 0)
 					{
@@ -364,6 +369,7 @@ namespace Bitmute.Imaging
 					sumRed += sourceRow[enteringOffset + 0] - sourceRow[leavingOffset + 0];
 					sumGreen += sourceRow[enteringOffset + 1] - sourceRow[leavingOffset + 1];
 					sumBlue += sourceRow[enteringOffset + 2] - sourceRow[leavingOffset + 2];
+					sumAlpha += sourceRow[enteringOffset + 3] - sourceRow[leavingOffset + 3];
 				}
 			}
 			for (int x = 0; x < width; x++)
@@ -372,6 +378,7 @@ namespace Bitmute.Imaging
 				long sumRed = 0;
 				long sumGreen = 0;
 				long sumBlue = 0;
+				long sumAlpha = 0;
 				for (int offset = -radius; offset <= radius; offset++)
 				{
 					int sampleY = offset;
@@ -387,6 +394,7 @@ namespace Bitmute.Imaging
 					sumRed += sampleRow[pixelOffset + 0];
 					sumGreen += sampleRow[pixelOffset + 1];
 					sumBlue += sampleRow[pixelOffset + 2];
+					sumAlpha += sampleRow[pixelOffset + 3];
 				}
 				for (int y = 0; y < height; y++)
 				{
@@ -395,7 +403,7 @@ namespace Bitmute.Imaging
 					destinationRow[pixelOffset + 0] = (byte)(sumRed / windowLength);
 					destinationRow[pixelOffset + 1] = (byte)(sumGreen / windowLength);
 					destinationRow[pixelOffset + 2] = (byte)(sumBlue / windowLength);
-					destinationRow[pixelOffset + 3] = temporaryRow[pixelOffset + 3];
+					destinationRow[pixelOffset + 3] = (byte)(sumAlpha / windowLength);
 					int leavingY = y - radius;
 					if (leavingY < 0)
 					{
@@ -419,9 +427,81 @@ namespace Bitmute.Imaging
 					sumRed += enteringRow[pixelOffset + 0] - leavingRow[pixelOffset + 0];
 					sumGreen += enteringRow[pixelOffset + 1] - leavingRow[pixelOffset + 1];
 					sumBlue += enteringRow[pixelOffset + 2] - leavingRow[pixelOffset + 2];
+					sumAlpha += enteringRow[pixelOffset + 3] - leavingRow[pixelOffset + 3];
 				}
 			}
 			temporary.Dispose();
+		}
+
+		private static unsafe void Premultiply(SKBitmap source, SKBitmap destination)
+		{
+			int width = source.Width;
+			int height = source.Height;
+			int sourceStride = source.RowBytes;
+			int destinationStride = destination.RowBytes;
+			byte* sourceBase = (byte*)source.GetPixels().ToPointer();
+			byte* destinationBase = (byte*)destination.GetPixels().ToPointer();
+			for (int y = 0; y < height; y++)
+			{
+				byte* sourceRow = sourceBase + ((long)y * sourceStride);
+				byte* destinationRow = destinationBase + ((long)y * destinationStride);
+				for (int x = 0; x < width; x++)
+				{
+					int pixelOffset = x * 4;
+					int alpha = sourceRow[pixelOffset + 3];
+					destinationRow[pixelOffset + 0] = (byte)(((sourceRow[pixelOffset + 0] * alpha) + 127) / 255);
+					destinationRow[pixelOffset + 1] = (byte)(((sourceRow[pixelOffset + 1] * alpha) + 127) / 255);
+					destinationRow[pixelOffset + 2] = (byte)(((sourceRow[pixelOffset + 2] * alpha) + 127) / 255);
+					destinationRow[pixelOffset + 3] = (byte)alpha;
+				}
+			}
+		}
+
+		private static unsafe void Unpremultiply(SKBitmap source, SKBitmap destination)
+		{
+			int width = source.Width;
+			int height = source.Height;
+			int sourceStride = source.RowBytes;
+			int destinationStride = destination.RowBytes;
+			byte* sourceBase = (byte*)source.GetPixels().ToPointer();
+			byte* destinationBase = (byte*)destination.GetPixels().ToPointer();
+			for (int y = 0; y < height; y++)
+			{
+				byte* sourceRow = sourceBase + ((long)y * sourceStride);
+				byte* destinationRow = destinationBase + ((long)y * destinationStride);
+				for (int x = 0; x < width; x++)
+				{
+					int pixelOffset = x * 4;
+					int alpha = sourceRow[pixelOffset + 3];
+					if (alpha == 0)
+					{
+						destinationRow[pixelOffset + 0] = 0;
+						destinationRow[pixelOffset + 1] = 0;
+						destinationRow[pixelOffset + 2] = 0;
+						destinationRow[pixelOffset + 3] = 0;
+						continue;
+					}
+					int red = ((sourceRow[pixelOffset + 0] * 255) + (alpha / 2)) / alpha;
+					int green = ((sourceRow[pixelOffset + 1] * 255) + (alpha / 2)) / alpha;
+					int blue = ((sourceRow[pixelOffset + 2] * 255) + (alpha / 2)) / alpha;
+					if (red > 255)
+					{
+						red = 255;
+					}
+					if (green > 255)
+					{
+						green = 255;
+					}
+					if (blue > 255)
+					{
+						blue = 255;
+					}
+					destinationRow[pixelOffset + 0] = (byte)red;
+					destinationRow[pixelOffset + 1] = (byte)green;
+					destinationRow[pixelOffset + 2] = (byte)blue;
+					destinationRow[pixelOffset + 3] = (byte)alpha;
+				}
+			}
 		}
 
 		private static byte PosterizeChannel(byte channel, int levels)
