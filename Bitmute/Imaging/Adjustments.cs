@@ -168,14 +168,7 @@ namespace Bitmute.Imaging
 			SKBitmap bufferB = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
 			BoxBlurCopy(bitmap, bufferA, radius);
 			BoxBlurCopy(bufferA, bufferB, radius);
-			BoxBlurCopy(bufferB, bufferA, radius);
-			for (int y = 0; y < height; y++)
-			{
-				for (int x = 0; x < width; x++)
-				{
-					bitmap.SetPixel(x, y, bufferA.GetPixel(x, y));
-				}
-			}
+			BoxBlurCopy(bufferB, bitmap, radius);
 			bufferA.Dispose();
 			bufferB.Dispose();
 		}
@@ -289,55 +282,146 @@ namespace Bitmute.Imaging
 			blurred.Dispose();
 		}
 
-		private static void BoxBlurCopy(SKBitmap source, SKBitmap destination, int radius)
+		private static unsafe void BoxBlurCopy(SKBitmap source, SKBitmap destination, int radius)
 		{
 			int width = source.Width;
 			int height = source.Height;
+			int sourceStride = source.RowBytes;
+			int destinationStride = destination.RowBytes;
+			byte* sourceBase = (byte*)source.GetPixels().ToPointer();
+			byte* destinationBase = (byte*)destination.GetPixels().ToPointer();
+			if (radius <= 0)
+			{
+				for (int y = 0; y < height; y++)
+				{
+					byte* sourceRow = sourceBase + (long)y * sourceStride;
+					byte* destinationRow = destinationBase + (long)y * destinationStride;
+					for (int x = 0; x < width; x++)
+					{
+						int pixelOffset = x * 4;
+						destinationRow[pixelOffset + 0] = sourceRow[pixelOffset + 0];
+						destinationRow[pixelOffset + 1] = sourceRow[pixelOffset + 1];
+						destinationRow[pixelOffset + 2] = sourceRow[pixelOffset + 2];
+						destinationRow[pixelOffset + 3] = sourceRow[pixelOffset + 3];
+					}
+				}
+				return;
+			}
+			int windowLength = 2 * radius + 1;
+			SKBitmap temporary = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			int temporaryStride = temporary.RowBytes;
+			byte* temporaryBase = (byte*)temporary.GetPixels().ToPointer();
 			for (int y = 0; y < height; y++)
 			{
+				byte* sourceRow = sourceBase + (long)y * sourceStride;
+				byte* temporaryRow = temporaryBase + (long)y * temporaryStride;
+				long sumRed = 0;
+				long sumGreen = 0;
+				long sumBlue = 0;
+				for (int offset = -radius; offset <= radius; offset++)
+				{
+					int sampleX = offset;
+					if (sampleX < 0)
+					{
+						sampleX = 0;
+					}
+					if (sampleX > width - 1)
+					{
+						sampleX = width - 1;
+					}
+					int sampleOffset = sampleX * 4;
+					sumRed += sourceRow[sampleOffset + 0];
+					sumGreen += sourceRow[sampleOffset + 1];
+					sumBlue += sourceRow[sampleOffset + 2];
+				}
 				for (int x = 0; x < width; x++)
 				{
-					long sumRed = 0;
-					long sumGreen = 0;
-					long sumBlue = 0;
-					int count = 0;
-					for (int offsetY = -radius; offsetY <= radius; offsetY++)
+					int pixelOffset = x * 4;
+					temporaryRow[pixelOffset + 0] = (byte)(sumRed / windowLength);
+					temporaryRow[pixelOffset + 1] = (byte)(sumGreen / windowLength);
+					temporaryRow[pixelOffset + 2] = (byte)(sumBlue / windowLength);
+					temporaryRow[pixelOffset + 3] = sourceRow[pixelOffset + 3];
+					int leavingX = x - radius;
+					if (leavingX < 0)
 					{
-						for (int offsetX = -radius; offsetX <= radius; offsetX++)
-						{
-							int sampleX = x + offsetX;
-							int sampleY = y + offsetY;
-							if (sampleX < 0)
-							{
-								sampleX = 0;
-							}
-							if (sampleX > width - 1)
-							{
-								sampleX = width - 1;
-							}
-							if (sampleY < 0)
-							{
-								sampleY = 0;
-							}
-							if (sampleY > height - 1)
-							{
-								sampleY = height - 1;
-							}
-							SKColor sample = source.GetPixel(sampleX, sampleY);
-							sumRed += sample.Red;
-							sumGreen += sample.Green;
-							sumBlue += sample.Blue;
-							count++;
-						}
+						leavingX = 0;
 					}
-					SKColor original = source.GetPixel(x, y);
-					byte avgRed = ClampByte((int)(sumRed / count));
-					byte avgGreen = ClampByte((int)(sumGreen / count));
-					byte avgBlue = ClampByte((int)(sumBlue / count));
-					SKColor blurred = new SKColor(avgRed, avgGreen, avgBlue, original.Alpha);
-					destination.SetPixel(x, y, blurred);
+					if (leavingX > width - 1)
+					{
+						leavingX = width - 1;
+					}
+					int enteringX = x + radius + 1;
+					if (enteringX < 0)
+					{
+						enteringX = 0;
+					}
+					if (enteringX > width - 1)
+					{
+						enteringX = width - 1;
+					}
+					int leavingOffset = leavingX * 4;
+					int enteringOffset = enteringX * 4;
+					sumRed += sourceRow[enteringOffset + 0] - sourceRow[leavingOffset + 0];
+					sumGreen += sourceRow[enteringOffset + 1] - sourceRow[leavingOffset + 1];
+					sumBlue += sourceRow[enteringOffset + 2] - sourceRow[leavingOffset + 2];
 				}
 			}
+			for (int x = 0; x < width; x++)
+			{
+				int pixelOffset = x * 4;
+				long sumRed = 0;
+				long sumGreen = 0;
+				long sumBlue = 0;
+				for (int offset = -radius; offset <= radius; offset++)
+				{
+					int sampleY = offset;
+					if (sampleY < 0)
+					{
+						sampleY = 0;
+					}
+					if (sampleY > height - 1)
+					{
+						sampleY = height - 1;
+					}
+					byte* sampleRow = temporaryBase + (long)sampleY * temporaryStride;
+					sumRed += sampleRow[pixelOffset + 0];
+					sumGreen += sampleRow[pixelOffset + 1];
+					sumBlue += sampleRow[pixelOffset + 2];
+				}
+				for (int y = 0; y < height; y++)
+				{
+					byte* temporaryRow = temporaryBase + (long)y * temporaryStride;
+					byte* destinationRow = destinationBase + (long)y * destinationStride;
+					destinationRow[pixelOffset + 0] = (byte)(sumRed / windowLength);
+					destinationRow[pixelOffset + 1] = (byte)(sumGreen / windowLength);
+					destinationRow[pixelOffset + 2] = (byte)(sumBlue / windowLength);
+					destinationRow[pixelOffset + 3] = temporaryRow[pixelOffset + 3];
+					int leavingY = y - radius;
+					if (leavingY < 0)
+					{
+						leavingY = 0;
+					}
+					if (leavingY > height - 1)
+					{
+						leavingY = height - 1;
+					}
+					int enteringY = y + radius + 1;
+					if (enteringY < 0)
+					{
+						enteringY = 0;
+					}
+					if (enteringY > height - 1)
+					{
+						enteringY = height - 1;
+					}
+					byte* leavingRow = temporaryBase + (long)leavingY * temporaryStride;
+					byte* enteringRow = temporaryBase + (long)enteringY * temporaryStride;
+					sumRed += enteringRow[pixelOffset + 0] - leavingRow[pixelOffset + 0];
+					sumGreen += enteringRow[pixelOffset + 1] - leavingRow[pixelOffset + 1];
+					sumBlue += enteringRow[pixelOffset + 2] - leavingRow[pixelOffset + 2];
+				}
+			}
+			temporary.Dispose();
 		}
 
 		private static byte PosterizeChannel(byte channel, int levels)
