@@ -43,6 +43,7 @@ namespace Bitmute.Tests
 			TestMixedComposite();
 			TestCompositeRangeInto();
 			TestGuideStickyCenter();
+			TestMovePerfRegion();
 			TestWandContiguous();
 			TestWandNonContiguous();
 			TestWandSampleAll();
@@ -562,6 +563,48 @@ namespace Bitmute.Tests
 			guides.SetLocked(false);
 			guides.RemoveVertical(0);
 			Check(guides.VerticalGuides().Count == 0, "guides remove vertical");
+		}
+
+		private static void TestMovePerfRegion()
+		{
+			Document doc = new Document("t", 64, 48);
+			Layer content = doc.AddLayer("c");
+			SKColor mark = new SKColor(255, 0, 0, 255);
+			for (int y = 5; y < 15; y++)
+			{
+				for (int x = 5; x < 15; x++)
+				{
+					content.Bitmap().SetPixel(x, y, mark);
+				}
+			}
+			SKBitmap before = new SKBitmap(64, 48, SKColorType.Rgba8888, SKAlphaType.Premul);
+			doc.CompositeInto(before);
+			MoveTool move = new MoveTool();
+			ToolState state = new ToolState();
+			move.OnPressed(doc, 20, 20, state);
+			move.OnDragged(doc, 28, 25, state);
+			SKRectI dirty = doc.ComposeDirtyRect();
+			Check(dirty.Width > 0 && dirty.Height > 0, "move marks a bounded dirty region");
+			Check(dirty.Width < 64 || dirty.Height < 48, "move dirty region is smaller than full canvas");
+			SKBitmap full = new SKBitmap(64, 48, SKColorType.Rgba8888, SKAlphaType.Premul);
+			doc.CompositeInto(full);
+			SKBitmap region = before.Copy();
+			doc.CompositeRegion(region, dirty);
+			bool match = true;
+			for (int y = 0; y < 48; y++)
+			{
+				for (int x = 0; x < 64; x++)
+				{
+					if (full.GetPixel(x, y) != region.GetPixel(x, y))
+					{
+						match = false;
+					}
+				}
+			}
+			Check(match, "move region composite matches full recomposite");
+			before.Dispose();
+			full.Dispose();
+			region.Dispose();
 		}
 
 		private static void TestGuideStickyCenter()

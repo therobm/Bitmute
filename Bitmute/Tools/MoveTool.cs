@@ -17,6 +17,99 @@ namespace Bitmute.Tools
 		private int m_oldOffsetY;
 		private int m_oldTextX;
 		private int m_oldTextY;
+		private SKRectI m_moveContentBounds;
+		private bool m_moveContentValid;
+		private int m_prevDeltaX;
+		private int m_prevDeltaY;
+
+		private static SKRectI OffsetRectI(SKRectI rect, int deltaX, int deltaY)
+		{
+			return new SKRectI(rect.Left + deltaX, rect.Top + deltaY, rect.Right + deltaX, rect.Bottom + deltaY);
+		}
+
+		private static SKRectI UnionRectI(SKRectI first, SKRectI second)
+		{
+			int left = first.Left;
+			if (second.Left < left)
+			{
+				left = second.Left;
+			}
+			int top = first.Top;
+			if (second.Top < top)
+			{
+				top = second.Top;
+			}
+			int right = first.Right;
+			if (second.Right > right)
+			{
+				right = second.Right;
+			}
+			int bottom = first.Bottom;
+			if (second.Bottom > bottom)
+			{
+				bottom = second.Bottom;
+			}
+			return new SKRectI(left, top, right, bottom);
+		}
+
+		private void MarkMoveDirty(Document document, int curDeltaX, int curDeltaY)
+		{
+			if (!m_moveContentValid)
+			{
+				document.MarkComposeDirtyAll();
+				return;
+			}
+			SKRectI previous = OffsetRectI(m_moveContentBounds, m_prevDeltaX, m_prevDeltaY);
+			SKRectI current = OffsetRectI(m_moveContentBounds, curDeltaX, curDeltaY);
+			SKRectI region = UnionRectI(previous, current);
+			int left = region.Left - 1;
+			int top = region.Top - 1;
+			int right = region.Right + 1;
+			int bottom = region.Bottom + 1;
+			if (left < 0)
+			{
+				left = 0;
+			}
+			if (top < 0)
+			{
+				top = 0;
+			}
+			if (right > document.Width())
+			{
+				right = document.Width();
+			}
+			if (bottom > document.Height())
+			{
+				bottom = document.Height();
+			}
+			if (right <= left || bottom <= top)
+			{
+				m_prevDeltaX = curDeltaX;
+				m_prevDeltaY = curDeltaY;
+				return;
+			}
+			document.MarkComposeDirtyRegion(new SKRectI(left, top, right, bottom));
+			m_prevDeltaX = curDeltaX;
+			m_prevDeltaY = curDeltaY;
+		}
+
+		private void CacheMoveContentBounds(Layer layer, SKRectI canvasBounds)
+		{
+			m_moveContentBounds = canvasBounds;
+			m_moveContentValid = canvasBounds.Width > 0 && canvasBounds.Height > 0;
+			m_prevDeltaX = 0;
+			m_prevDeltaY = 0;
+		}
+
+		private SKRectI CanvasContentBounds(Layer layer)
+		{
+			SKRectI local = PixelRegion.ComputeContentBounds(layer.Bitmap());
+			if (local.Width <= 0 || local.Height <= 0)
+			{
+				return SKRectI.Empty;
+			}
+			return OffsetRectI(local, layer.OffsetX(), layer.OffsetY());
+		}
 
 		private SKBitmap ExtractSelected(Layer layer, Selection selection)
 		{
@@ -109,6 +202,7 @@ namespace Bitmute.Tools
 				m_static = null;
 			}
 			m_selectionMask = null;
+			m_moveContentValid = false;
 		}
 
 		public override bool OnPressed(Document document, int x, int y, ToolState state)
@@ -130,6 +224,7 @@ namespace Bitmute.Tools
 				m_static = CloneWithSelectionCleared(layer, selection);
 				m_selectionMask = selection.MaskCopy();
 				m_selectionBounds = selection.Bounds();
+				CacheMoveContentBounds(layer, m_selectionBounds);
 			}
 			else if (layer.IsText())
 			{
@@ -137,6 +232,7 @@ namespace Bitmute.Tools
 				m_offsetMode = false;
 				m_oldTextX = layer.TextX();
 				m_oldTextY = layer.TextY();
+				CacheMoveContentBounds(layer, CanvasContentBounds(layer));
 			}
 			else
 			{
@@ -144,6 +240,7 @@ namespace Bitmute.Tools
 				m_offsetMode = true;
 				m_oldOffsetX = layer.OffsetX();
 				m_oldOffsetY = layer.OffsetY();
+				CacheMoveContentBounds(layer, CanvasContentBounds(layer));
 			}
 			return false;
 		}
@@ -155,28 +252,31 @@ namespace Bitmute.Tools
 			{
 				return false;
 			}
+			int deltaX = x - m_startX;
+			int deltaY = y - m_startY;
 			if (m_textMode)
 			{
-				layer.SetTextPosition(m_oldTextX + (x - m_startX), m_oldTextY + (y - m_startY));
+				layer.SetTextPosition(m_oldTextX + deltaX, m_oldTextY + deltaY);
 				layer.RenderText();
+				MarkMoveDirty(document, deltaX, deltaY);
 				return true;
 			}
 			if (m_offsetMode)
 			{
-				layer.SetOffset(m_oldOffsetX + (x - m_startX), m_oldOffsetY + (y - m_startY));
+				layer.SetOffset(m_oldOffsetX + deltaX, m_oldOffsetY + deltaY);
+				MarkMoveDirty(document, deltaX, deltaY);
 				return true;
 			}
 			if (m_moving == null)
 			{
 				return false;
 			}
-			int deltaX = x - m_startX;
-			int deltaY = y - m_startY;
 			Rebuild(layer, deltaX, deltaY);
 			if (m_selectionMask != null)
 			{
 				document.Selection().SetShifted(m_selectionMask, m_selectionBounds, deltaX, deltaY);
 			}
+			MarkMoveDirty(document, deltaX, deltaY);
 			return true;
 		}
 
