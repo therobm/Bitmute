@@ -19,6 +19,9 @@ namespace Bitmute.UI
 
 		private int m_dragRowLayer = -1;
 		private double m_dragTotalY;
+		private int m_pendingContextLayer;
+		private double m_pendingContextX;
+		private double m_pendingContextY;
 
 		private VerticalStackLayout m_listHost;
 		private SliderField m_opacityField;
@@ -234,9 +237,7 @@ namespace Bitmute.UI
 			PanGestureRecognizer pan = new PanGestureRecognizer();
 			pan.PanUpdated += OnRowPan;
 			row.GestureRecognizers.Add(pan);
-			PointerGestureRecognizer pointer = new PointerGestureRecognizer();
-			pointer.PointerPressed += OnRowPointerPressed;
-			row.GestureRecognizers.Add(pointer);
+			row.HandlerChanged += OnRowHandlerChanged;
 			m_rowBorders.Add(row);
 			m_rowLayers.Add(layerIndex);
 
@@ -395,48 +396,53 @@ namespace Bitmute.UI
 			return total;
 		}
 
-		private void OnRowPointerPressed(object sender, PointerEventArgs eventArgs)
+		private void OnRowHandlerChanged(object sender, EventArgs eventArgs)
 		{
-			Microsoft.Maui.Controls.PlatformPointerEventArgs platformArgs = eventArgs.PlatformArgs;
-			if (platformArgs == null)
+			VisualElement rowElement = sender as VisualElement;
+			if (rowElement == null || rowElement.Handler == null)
 			{
 				return;
 			}
-			Microsoft.UI.Xaml.Input.PointerRoutedEventArgs routed = platformArgs.PointerRoutedEventArgs;
-			if (routed == null)
+			Microsoft.UI.Xaml.UIElement platformElement = rowElement.Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (platformElement == null)
 			{
 				return;
 			}
-			Microsoft.UI.Input.PointerPoint point = routed.GetCurrentPoint(null);
-			if (!point.Properties.IsRightButtonPressed)
+			platformElement.RightTapped -= OnRowRightTapped;
+			platformElement.RightTapped += OnRowRightTapped;
+		}
+
+		private void OnRowRightTapped(object sender, Microsoft.UI.Xaml.Input.RightTappedRoutedEventArgs eventArgs)
+		{
+			for (int index = 0; index < m_rowBorders.Count; index++)
 			{
-				return;
+				Border candidate = m_rowBorders[index];
+				if (candidate.Handler != null && ReferenceEquals(candidate.Handler.PlatformView, sender))
+				{
+					m_pendingContextLayer = m_rowLayers[index];
+					m_pendingContextX = PageCoordinate(candidate, true);
+					m_pendingContextY = PageCoordinate(candidate, false);
+					Dispatcher.Dispatch(ShowPendingLayerContextMenu);
+					return;
+				}
 			}
-			int layerIndex = LayerIndexForRow(sender);
-			if (layerIndex < 0)
-			{
-				return;
-			}
+		}
+
+		private void ShowPendingLayerContextMenu()
+		{
 			Document document = Doc();
 			if (document == null)
 			{
 				return;
 			}
-			document.SetActiveLayerIndex(layerIndex);
+			document.SetActiveLayerIndex(m_pendingContextLayer);
 			Refresh();
 			MainView main = MainView.Self;
 			if (main == null)
 			{
 				return;
 			}
-			VisualElement rowElement = sender as VisualElement;
-			if (rowElement == null)
-			{
-				return;
-			}
-			double anchorX = PageCoordinate(rowElement, true);
-			double anchorY = PageCoordinate(rowElement, false);
-			main.ShowLayerContextMenu(layerIndex, anchorX, anchorY);
+			main.ShowLayerContextMenu(m_pendingContextLayer, m_pendingContextX, m_pendingContextY);
 		}
 
 		private void OnRowPan(object sender, PanUpdatedEventArgs eventArgs)

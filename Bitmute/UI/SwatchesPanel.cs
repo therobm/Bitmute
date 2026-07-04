@@ -151,20 +151,39 @@ namespace Bitmute.UI
 			ApplyColor(color, foreground);
 		}
 
-		private void OnSwatchDoubleTapped(object sender, TappedEventArgs eventArgs)
+		private void OnSwatchCellHandlerChanged(object sender, EventArgs eventArgs)
 		{
-			int index = SwatchIndexForCell(sender);
-			if (index < 0)
+			VisualElement cellElement = sender as VisualElement;
+			if (cellElement == null || cellElement.Handler == null)
 			{
 				return;
 			}
-			MainView main = MainView.Self;
-			if (main == null)
+			Microsoft.UI.Xaml.UIElement platformElement = cellElement.Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (platformElement == null)
 			{
 				return;
 			}
-			m_selectedIndex = index;
-			main.OpenSwatchColorPicker(index, m_swatchCellColors[index]);
+			platformElement.DoubleTapped -= OnSwatchCellDoubleTapped;
+			platformElement.DoubleTapped += OnSwatchCellDoubleTapped;
+		}
+
+		private void OnSwatchCellDoubleTapped(object sender, Microsoft.UI.Xaml.Input.DoubleTappedRoutedEventArgs eventArgs)
+		{
+			for (int index = 0; index < m_swatchCells.Count; index++)
+			{
+				Border candidate = m_swatchCells[index];
+				if (candidate.Handler != null && ReferenceEquals(candidate.Handler.PlatformView, sender))
+				{
+					MainView main = MainView.Self;
+					if (main == null)
+					{
+						return;
+					}
+					m_selectedIndex = index;
+					main.OpenSwatchColorPicker(index, m_swatchCellColors[index]);
+					return;
+				}
+			}
 		}
 
 		private void OnRecentTapped(object sender, TappedEventArgs eventArgs)
@@ -358,10 +377,7 @@ namespace Bitmute.UI
 			{
 				Border cell = BuildCell(m_swatches[i], OnSwatchTapped);
 				cell.Margin = new Thickness(0.0, 0.0, 2.0, 2.0);
-				TapGestureRecognizer editTap = new TapGestureRecognizer();
-				editTap.NumberOfTapsRequired = 2;
-				editTap.Tapped += OnSwatchDoubleTapped;
-				cell.GestureRecognizers.Add(editTap);
+				cell.HandlerChanged += OnSwatchCellHandlerChanged;
 				m_swatchHost.Add(cell);
 				m_swatchCells.Add(cell);
 				m_swatchCellColors.Add(m_swatches[i]);
