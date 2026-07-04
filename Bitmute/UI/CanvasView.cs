@@ -224,18 +224,30 @@ namespace Bitmute.UI
 
 			SKBitmap displayBitmap = m_composite;
 			MainView channelMain = MainView.Self;
-			if (channelMain != null && channelMain.ChannelViewMode() >= 0)
+			if (channelMain != null)
 			{
-				if (m_channelBitmap == null || m_channelBitmap.Width != m_composite.Width || m_channelBitmap.Height != m_composite.Height)
+				int channelMode = channelMain.ChannelViewMode();
+				bool maskChannels = channelMode < 0 && !channelMain.AllChannelsVisible();
+				if (channelMode >= 0 || maskChannels)
 				{
-					if (m_channelBitmap != null)
+					if (m_channelBitmap == null || m_channelBitmap.Width != m_composite.Width || m_channelBitmap.Height != m_composite.Height)
 					{
-						m_channelBitmap.Dispose();
+						if (m_channelBitmap != null)
+						{
+							m_channelBitmap.Dispose();
+						}
+						m_channelBitmap = new SKBitmap(m_composite.Width, m_composite.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
 					}
-					m_channelBitmap = new SKBitmap(m_composite.Width, m_composite.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+					if (channelMode >= 0)
+					{
+						Bitmute.Imaging.ChannelRender.Render(m_composite, m_channelBitmap, channelMode);
+					}
+					else
+					{
+						Bitmute.Imaging.ChannelRender.ApplyVisibilityMask(m_composite, m_channelBitmap, channelMain.ChannelVisible(0), channelMain.ChannelVisible(1), channelMain.ChannelVisible(2), channelMain.ChannelVisible(3));
+					}
+					displayBitmap = m_channelBitmap;
 				}
-				Bitmute.Imaging.ChannelRender.Render(m_composite, m_channelBitmap, channelMain.ChannelViewMode());
-				displayBitmap = m_channelBitmap;
 			}
 			SKImage image = SKImage.FromBitmap(displayBitmap);
 			SKPaint imagePaint = new SKPaint();

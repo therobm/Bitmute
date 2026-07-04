@@ -17,6 +17,8 @@ namespace Bitmute.UI
 		private Border[] m_rows;
 		private Label[] m_labels;
 		private Image[] m_thumbs;
+		private Border[] m_eyes;
+		private IconView[] m_eyeIcons;
 
 		private static Microsoft.Maui.Controls.ImageSource ToImageSource(SKBitmap bitmap)
 		{
@@ -41,9 +43,31 @@ namespace Bitmute.UI
 			label.VerticalOptions = LayoutOptions.Center;
 			m_labels[index] = label;
 
+			IconView eyeIcon = new IconView("eye.png");
+			eyeIcon.WidthRequest = 16.0;
+			eyeIcon.HeightRequest = 16.0;
+			eyeIcon.BackgroundColor = Colors.Transparent;
+			eyeIcon.HorizontalOptions = LayoutOptions.Center;
+			eyeIcon.VerticalOptions = LayoutOptions.Center;
+			m_eyeIcons[index] = eyeIcon;
+
+			Border eye = new Border();
+			eye.WidthRequest = 22.0;
+			eye.HeightRequest = 20.0;
+			eye.Padding = new Thickness(0.0);
+			eye.BackgroundColor = Colors.Transparent;
+			eye.StrokeThickness = 0.0;
+			eye.Content = eyeIcon;
+			ToolTipProperties.SetText(eye, "Toggle channel visibility");
+			TapGestureRecognizer eyeTap = new TapGestureRecognizer();
+			eyeTap.Tapped += OnEyeTapped;
+			eye.GestureRecognizers.Add(eyeTap);
+			m_eyes[index] = eye;
+
 			HorizontalStackLayout content = new HorizontalStackLayout();
 			content.Spacing = 8.0;
 			content.Padding = new Thickness(6.0, 3.0, 6.0, 3.0);
+			content.Add(eye);
 			content.Add(thumb);
 			content.Add(label);
 
@@ -70,6 +94,59 @@ namespace Bitmute.UI
 						main.SelectChannelView(index - 1);
 					}
 					return;
+				}
+			}
+		}
+
+		private void OnEyeTapped(object sender, TappedEventArgs eventArgs)
+		{
+			MainView main = MainView.Self;
+			if (main == null)
+			{
+				return;
+			}
+			for (int index = 0; index < m_eyes.Length; index++)
+			{
+				if (ReferenceEquals(m_eyes[index], sender))
+				{
+					if (index == 0)
+					{
+						main.ToggleRgbChannelsVisible();
+					}
+					else
+					{
+						main.ToggleChannelVisible(index - 1);
+					}
+					return;
+				}
+			}
+		}
+
+		private void RefreshEyes(MainView main)
+		{
+			if (main == null)
+			{
+				return;
+			}
+			for (int index = 0; index < m_eyeIcons.Length; index++)
+			{
+				bool visible = true;
+				if (index == 0)
+				{
+					visible = main.RgbChannelsVisible();
+				}
+				else
+				{
+					visible = main.ChannelVisible(index - 1);
+				}
+				string icon = "eye.png";
+				if (!visible)
+				{
+					icon = "eye_off.png";
+				}
+				if (m_eyeIcons[index] != null)
+				{
+					m_eyeIcons[index].SetIcon(icon);
 				}
 			}
 		}
@@ -138,6 +215,7 @@ namespace Bitmute.UI
 				mode = main.ChannelViewMode();
 			}
 			RefreshHighlight(mode);
+			RefreshEyes(main);
 			if (!IsVisible)
 			{
 				return;
@@ -171,6 +249,8 @@ namespace Bitmute.UI
 			m_rows = new Border[m_names.Length];
 			m_labels = new Label[m_names.Length];
 			m_thumbs = new Image[m_names.Length];
+			m_eyes = new Border[m_names.Length];
+			m_eyeIcons = new IconView[m_names.Length];
 
 			VerticalStackLayout list = new VerticalStackLayout();
 			list.Spacing = 1.0;

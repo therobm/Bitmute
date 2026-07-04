@@ -214,6 +214,7 @@ namespace Bitmute.UI
 		private bool m_snapTargetEdges;
 		private bool m_snapTargetLayerBounds;
 		private int m_channelViewMode;
+		private bool[] m_channelVisible = new bool[] { true, true, true, true };
 		private double m_openDropdownX;
 		private List<Border> m_submenuParentRows;
 		private List<string> m_submenuParentNames;
@@ -4758,6 +4759,64 @@ namespace Bitmute.UI
 		private void SetChannelView(int mode)
 		{
 			m_channelViewMode = mode;
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.MarkComposeDirty();
+			}
+			if (m_channelsPanel != null)
+			{
+				m_channelsPanel.Refresh();
+			}
+		}
+
+		public bool ChannelVisible(int channel)
+		{
+			if (channel < 0 || channel > 3)
+			{
+				return true;
+			}
+			return m_channelVisible[channel];
+		}
+
+		public bool AllChannelsVisible()
+		{
+			for (int index = 0; index < 4; index++)
+			{
+				if (!m_channelVisible[index])
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+
+		public bool RgbChannelsVisible()
+		{
+			return m_channelVisible[0] && m_channelVisible[1] && m_channelVisible[2];
+		}
+
+		public void ToggleChannelVisible(int channel)
+		{
+			if (channel < 0 || channel > 3)
+			{
+				return;
+			}
+			m_channelVisible[channel] = !m_channelVisible[channel];
+			ApplyChannelVisibilityChange();
+		}
+
+		public void ToggleRgbChannelsVisible()
+		{
+			bool target = !RgbChannelsVisible();
+			m_channelVisible[0] = target;
+			m_channelVisible[1] = target;
+			m_channelVisible[2] = target;
+			ApplyChannelVisibilityChange();
+		}
+
+		private void ApplyChannelVisibilityChange()
+		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas != null)
 			{

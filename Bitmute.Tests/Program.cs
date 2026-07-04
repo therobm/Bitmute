@@ -58,6 +58,7 @@ namespace Bitmute.Tests
 			TestBrushHardnessSmall();
 			TestGaussianBlur();
 			TestLayerMerging();
+			TestChannelVisibilityMask();
 			TestDodgeBurnRange();
 			TestSlices();
 			TestChannelRender();
@@ -1011,6 +1012,27 @@ namespace Bitmute.Tests
 			Check(selectedMerged.GetPixelCanvas(1, 1).Green > 180, "merge selected holds green from layer a");
 			Check(selectedMerged.GetPixelCanvas(2, 2).Blue > 180, "merge selected holds blue from layer b");
 			Check(selectedMerged.GetPixelCanvas(0, 0).Alpha == 0, "merge selected stays transparent where neither layer had pixels");
+		}
+
+		private static void TestChannelVisibilityMask()
+		{
+			SKBitmap source = new SKBitmap(2, 1, SKColorType.Rgba8888, SKAlphaType.Premul);
+			source.SetPixel(0, 0, new SKColor(100, 150, 200, 255));
+			source.SetPixel(1, 0, new SKColor(200, 100, 50, 128));
+
+			SKBitmap hideGreen = new SKBitmap(2, 1, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			ChannelRender.ApplyVisibilityMask(source, hideGreen, true, false, true, true);
+			SKColor opaque = hideGreen.GetPixel(0, 0);
+			Check(opaque.Red == 100, "channel mask keeps red when shown");
+			Check(opaque.Green == 0, "channel mask zeroes green when hidden");
+			Check(opaque.Blue == 200, "channel mask keeps blue when shown");
+			Check(opaque.Alpha == 255, "channel mask keeps opaque alpha");
+
+			SKBitmap hideAlpha = new SKBitmap(2, 1, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			ChannelRender.ApplyVisibilityMask(source, hideAlpha, true, true, true, false);
+			SKColor semi = hideAlpha.GetPixel(1, 0);
+			Check(semi.Alpha == 255, "channel mask forces opaque when alpha hidden");
+			CheckNear(semi.Red, 200, 3, "channel mask un-premultiplies red of a semi-transparent pixel");
 		}
 
 		private static int BurnCenterRed(int startValue, int range, int exposure)
