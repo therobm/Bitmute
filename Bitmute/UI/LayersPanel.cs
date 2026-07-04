@@ -509,12 +509,11 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			int layerNumber = document.Layers().Count + 1;
-			document.BeginCanvasEdit("Add Layer");
-			document.AddLayer("Layer " + layerNumber);
-			document.EndCanvasEdit();
-			RecompositeActive();
-			Refresh();
+			MainView main = MainView.Self;
+			if (main != null)
+			{
+				main.AddNewLayer();
+			}
 		}
 
 		private void OnDeleteClicked(object sender, TappedEventArgs eventArgs)

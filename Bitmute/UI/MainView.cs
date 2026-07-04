@@ -472,6 +472,11 @@ namespace Bitmute.UI
 					}
 					return styleDocument.ActiveLayer() != null;
 				}
+				if (item == "New Layer" || item == "Delete Layer")
+				{
+					Document layerDocument = ActiveDocument();
+					return layerDocument != null;
+				}
 				return true;
 			}
 			if (title == "Select")
@@ -1268,6 +1273,16 @@ namespace Bitmute.UI
 			if (panelAction == "Navigator" || panelAction == "Swatches" || panelAction == "Layers" || panelAction == "Info")
 			{
 				ToggleDockPanel(panelAction);
+				return;
+			}
+			if (action == "New Layer")
+			{
+				AddNewLayer();
+				return;
+			}
+			if (action == "Delete Layer")
+			{
+				RequestDeleteActiveLayer();
 				return;
 			}
 			if (action == "Rasterize Text")
@@ -3831,6 +3846,25 @@ namespace Bitmute.UI
 			Document document = canvas.CurrentDocument();
 			document.BeginCanvasEdit("Duplicate Layer");
 			document.DuplicateLayer(document.ActiveLayerIndex());
+			document.EndCanvasEdit();
+			FinishLayerStructureChange(canvas);
+		}
+
+		public void AddNewLayer()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			if (document == null)
+			{
+				return;
+			}
+			int layerNumber = document.Layers().Count + 1;
+			document.BeginCanvasEdit("Add Layer");
+			document.AddLayer("Layer " + layerNumber);
 			document.EndCanvasEdit();
 			FinishLayerStructureChange(canvas);
 		}
