@@ -206,7 +206,15 @@ namespace Bitmute.Tools
 				distance = System.Math.Sqrt((offsetX * offsetX) + (offsetY * offsetY));
 			}
 			double inner = m_hardness * outer;
-			double antialias = 1.0;
+			double antialias = outer * 0.08;
+			if (antialias > 1.0)
+			{
+				antialias = 1.0;
+			}
+			if (antialias < 0.4)
+			{
+				antialias = 0.4;
+			}
 			if (outer - inner < antialias)
 			{
 				inner = outer - antialias;
