@@ -23,6 +23,8 @@ namespace Bitmute.Tools
 		private int m_cloneOffsetX;
 		private int m_cloneOffsetY;
 		private int m_blurRadius;
+		private int m_dodgeBurnRange;
+		private double m_exposure;
 		private double m_smudgeR;
 		private double m_smudgeG;
 		private double m_smudgeB;
@@ -59,6 +61,12 @@ namespace Bitmute.Tools
 		public void SetStrength(double strength)
 		{
 			m_strength = strength;
+		}
+
+		public void SetDodgeBurn(int range, double exposure)
+		{
+			m_dodgeBurnRange = range;
+			m_exposure = exposure;
 		}
 
 		public void SetSpongeSaturate(bool saturate)
@@ -107,6 +115,8 @@ namespace Bitmute.Tools
 			{
 				m_blurRadius = 12;
 			}
+			m_dodgeBurnRange = 1;
+			m_exposure = 0.5;
 			m_smudgeR = 0.0;
 			m_smudgeG = 0.0;
 			m_smudgeB = 0.0;
@@ -258,10 +268,24 @@ namespace Bitmute.Tools
 			return effective * 255.0;
 		}
 
-		private byte DodgeBurnChannel(byte channel, double amount)
+		private double RangeWeight(double luminance)
+		{
+			if (m_dodgeBurnRange == 0)
+			{
+				double shadow = 1.0 - luminance;
+				return shadow * shadow;
+			}
+			if (m_dodgeBurnRange == 2)
+			{
+				return luminance * luminance;
+			}
+			return 4.0 * luminance * (1.0 - luminance);
+		}
+
+		private byte DodgeBurnChannel(byte channel, double amount, double rangeWeight)
 		{
 			double c = channel / 255.0;
-			double exposure = amount * 0.5;
+			double exposure = amount * m_exposure * rangeWeight;
 			double result;
 			if (m_op == eBrushOp.Burn)
 			{
@@ -437,9 +461,11 @@ namespace Bitmute.Tools
 					}
 					if (m_op == eBrushOp.Dodge || m_op == eBrushOp.Burn)
 					{
-						destinationPixel[0] = DodgeBurnChannel(originalPixel[0], finalAlpha);
-						destinationPixel[1] = DodgeBurnChannel(originalPixel[1], finalAlpha);
-						destinationPixel[2] = DodgeBurnChannel(originalPixel[2], finalAlpha);
+						double dodgeBurnLuminance = ((0.299 * originalPixel[0]) + (0.587 * originalPixel[1]) + (0.114 * originalPixel[2])) / 255.0;
+						double dodgeBurnWeight = RangeWeight(dodgeBurnLuminance);
+						destinationPixel[0] = DodgeBurnChannel(originalPixel[0], finalAlpha, dodgeBurnWeight);
+						destinationPixel[1] = DodgeBurnChannel(originalPixel[1], finalAlpha, dodgeBurnWeight);
+						destinationPixel[2] = DodgeBurnChannel(originalPixel[2], finalAlpha, dodgeBurnWeight);
 						destinationPixel[3] = originalPixel[3];
 						continue;
 					}

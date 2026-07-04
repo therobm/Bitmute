@@ -51,6 +51,7 @@ namespace Bitmute.Tests
 			TestHealMath();
 			TestCloneAligned();
 			TestBlurStrength();
+			TestDodgeBurnRange();
 			TestSlices();
 			TestChannelRender();
 			TestWandContiguous();
@@ -843,6 +844,35 @@ namespace Bitmute.Tests
 			int half = BlurCenterRed(50);
 			CheckNear(full, 245, 4, "blur strength 100 lerps center fully to neighborhood average");
 			CheckNear(half, 122, 4, "blur strength 50 lerps center halfway to neighborhood average");
+		}
+
+		private static int BurnCenterRed(int startValue, int range, int exposure)
+		{
+			Document doc = new Document("t", 32, 32);
+			Layer layer = doc.ActiveLayer();
+			layer.Bitmap().Erase(new SKColor((byte)startValue, (byte)startValue, (byte)startValue, 255));
+			ToolState state = new ToolState();
+			state.SetBrushSize(6);
+			state.SetAltHeld(true);
+			state.SetDodgeBurnRange(range);
+			state.SetDodgeBurnExposure(exposure);
+			DodgeBurnTool tool = new DodgeBurnTool();
+			doc.BeginStroke();
+			tool.OnPressed(doc, 16, 16, state);
+			tool.OnReleased(doc, 16, 16, state);
+			doc.EndStroke();
+			return layer.GetPixelCanvas(16, 16).Red;
+		}
+
+		private static void TestDodgeBurnRange()
+		{
+			int shadowsDark = BurnCenterRed(40, 0, 50);
+			int highlightsDark = BurnCenterRed(40, 2, 50);
+			Check(shadowsDark < 32, "burn shadows range darkens a dark pixel");
+			Check(highlightsDark > 38, "burn highlights range barely touches a dark pixel");
+			int exposureHalf = BurnCenterRed(40, 0, 50);
+			int exposureFull = BurnCenterRed(40, 0, 100);
+			Check(exposureFull < exposureHalf, "burn exposure 100 darkens more than exposure 50");
 		}
 
 		private static void TestGuideStickyCenter()

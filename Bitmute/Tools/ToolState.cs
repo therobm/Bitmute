@@ -21,6 +21,8 @@ namespace Bitmute.Tools
 		private bool m_spongeSaturate;
 		private int m_colorReplaceMode;
 		private int m_colorReplaceTolerance;
+		private int m_dodgeBurnRange;
+		private int m_dodgeBurnExposure;
 		private int m_gradientType;
 		private bool m_gradientReverse;
 		private bool m_gradientToTransparent;
@@ -70,6 +72,8 @@ namespace Bitmute.Tools
 			m_spongeSaturate = false;
 			m_colorReplaceMode = 0;
 			m_colorReplaceTolerance = 32;
+			m_dodgeBurnRange = 1;
+			m_dodgeBurnExposure = 50;
 			m_gradientType = 0;
 			m_gradientReverse = false;
 			m_gradientToTransparent = false;
@@ -562,6 +566,42 @@ namespace Bitmute.Tools
 		public void SetColorReplaceTolerance(int tolerance)
 		{
 			m_colorReplaceTolerance = tolerance;
+		}
+
+		public int DodgeBurnRange()
+		{
+			return m_dodgeBurnRange;
+		}
+
+		public void SetDodgeBurnRange(int range)
+		{
+			if (range < 0)
+			{
+				range = 0;
+			}
+			if (range > 2)
+			{
+				range = 2;
+			}
+			m_dodgeBurnRange = range;
+		}
+
+		public int DodgeBurnExposure()
+		{
+			return m_dodgeBurnExposure;
+		}
+
+		public void SetDodgeBurnExposure(int exposure)
+		{
+			if (exposure < 1)
+			{
+				exposure = 1;
+			}
+			if (exposure > 100)
+			{
+				exposure = 100;
+			}
+			m_dodgeBurnExposure = exposure;
 		}
 
 		public int GradientType()

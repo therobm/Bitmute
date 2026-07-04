@@ -82,6 +82,10 @@ namespace Bitmute.UI
 		private Picker m_colorReplaceModePicker;
 		private Label m_colorReplaceToleranceLabel;
 		private SliderField m_colorReplaceToleranceField;
+		private Label m_dodgeBurnRangeLabel;
+		private Picker m_dodgeBurnRangePicker;
+		private Label m_dodgeBurnExposureLabel;
+		private SliderField m_dodgeBurnExposureField;
 		private Label m_gradientTypeLabel;
 		private Button m_gradientTypeButton;
 		private string[] m_gradientTypeNames;
@@ -2096,6 +2100,36 @@ namespace Bitmute.UI
 			m_colorReplaceToleranceField.VerticalOptions = LayoutOptions.Center;
 			m_colorReplaceToleranceField.IsVisible = false;
 
+			m_dodgeBurnRangeLabel = new Label();
+			m_dodgeBurnRangeLabel.Text = "Range";
+			m_dodgeBurnRangeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_dodgeBurnRangeLabel.FontSize = 12.0;
+			m_dodgeBurnRangeLabel.VerticalOptions = LayoutOptions.Center;
+			m_dodgeBurnRangeLabel.IsVisible = false;
+
+			m_dodgeBurnRangePicker = new Picker();
+			m_dodgeBurnRangePicker.FontSize = 12.0;
+			m_dodgeBurnRangePicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
+			m_dodgeBurnRangePicker.WidthRequest = 110.0;
+			m_dodgeBurnRangePicker.VerticalOptions = LayoutOptions.Center;
+			m_dodgeBurnRangePicker.IsVisible = false;
+			m_dodgeBurnRangePicker.Items.Add("Shadows");
+			m_dodgeBurnRangePicker.Items.Add("Midtones");
+			m_dodgeBurnRangePicker.Items.Add("Highlights");
+			m_dodgeBurnRangePicker.SelectedIndex = m_toolState.DodgeBurnRange();
+			m_dodgeBurnRangePicker.SelectedIndexChanged += OnDodgeBurnRangeChanged;
+
+			m_dodgeBurnExposureLabel = new Label();
+			m_dodgeBurnExposureLabel.Text = "Exposure";
+			m_dodgeBurnExposureLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_dodgeBurnExposureLabel.FontSize = 12.0;
+			m_dodgeBurnExposureLabel.VerticalOptions = LayoutOptions.Center;
+			m_dodgeBurnExposureLabel.IsVisible = false;
+
+			m_dodgeBurnExposureField = new SliderField(1, 100, m_toolState.DodgeBurnExposure(), "%", OnDodgeBurnExposureValue);
+			m_dodgeBurnExposureField.VerticalOptions = LayoutOptions.Center;
+			m_dodgeBurnExposureField.IsVisible = false;
+
 			m_gradientTypeLabel = new Label();
 			m_gradientTypeLabel.Text = "Type";
 			m_gradientTypeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
@@ -2367,6 +2401,10 @@ namespace Bitmute.UI
 			options.Add(m_colorReplaceModePicker);
 			options.Add(m_colorReplaceToleranceLabel);
 			options.Add(m_colorReplaceToleranceField);
+			options.Add(m_dodgeBurnRangeLabel);
+			options.Add(m_dodgeBurnRangePicker);
+			options.Add(m_dodgeBurnExposureLabel);
+			options.Add(m_dodgeBurnExposureField);
 			options.Add(m_gradientTypeLabel);
 			options.Add(m_gradientTypeButton);
 			options.Add(m_gradientReverseLabel);
@@ -4288,6 +4326,11 @@ namespace Bitmute.UI
 				m_colorReplaceModePicker.IsVisible = isColorReplace;
 				m_colorReplaceToleranceLabel.IsVisible = isColorReplace;
 				m_colorReplaceToleranceField.IsVisible = isColorReplace;
+				bool isDodgeBurn = tool == eTool.DodgeBurn;
+				m_dodgeBurnRangeLabel.IsVisible = isDodgeBurn;
+				m_dodgeBurnRangePicker.IsVisible = isDodgeBurn;
+				m_dodgeBurnExposureLabel.IsVisible = isDodgeBurn;
+				m_dodgeBurnExposureField.IsVisible = isDodgeBurn;
 			}
 			bool isGradient = tool == eTool.Gradient;
 			if (m_gradientTypeLabel != null)
@@ -4505,6 +4548,29 @@ namespace Bitmute.UI
 				return;
 			}
 			m_toolState.SetColorReplaceTolerance(tolerance);
+		}
+
+		private void OnDodgeBurnRangeChanged(object sender, System.EventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			int index = m_dodgeBurnRangePicker.SelectedIndex;
+			if (index < 0)
+			{
+				index = 0;
+			}
+			m_toolState.SetDodgeBurnRange(index);
+		}
+
+		private void OnDodgeBurnExposureValue(int exposure)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetDodgeBurnExposure(exposure);
 		}
 
 		private void UpdateGradientTypeButtonText()
