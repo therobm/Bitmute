@@ -67,6 +67,7 @@ namespace Bitmute.UI
 		private int m_guideDragIndex;
 		private bool m_hasCursorShape;
 		private Microsoft.UI.Input.InputSystemCursorShape m_currentCursorShape;
+		private int m_transformHoverKind;
 		private static System.Reflection.PropertyInfo s_protectedCursorProp = typeof(Microsoft.UI.Xaml.UIElement).GetProperty("ProtectedCursor", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
 		private static SKBitmap CheckerTile()
@@ -396,7 +397,7 @@ namespace Bitmute.UI
 			}
 			if (kind == 5)
 			{
-				return Microsoft.UI.Input.InputSystemCursorShape.Cross;
+				return Microsoft.UI.Input.InputSystemCursorShape.Arrow;
 			}
 			if (kind == 6)
 			{
@@ -407,6 +408,7 @@ namespace Bitmute.UI
 
 		private void UpdateHoverCursor(Tool tool, int pixelX, int pixelY)
 		{
+			m_transformHoverKind = 0;
 			Microsoft.UI.Input.InputSystemCursorShape desired = Microsoft.UI.Input.InputSystemCursorShape.Arrow;
 			Bitmute.Imaging.Guides guides = m_document.Guides();
 			if (!guides.IsLocked())
@@ -428,6 +430,7 @@ namespace Bitmute.UI
 			if (desired == Microsoft.UI.Input.InputSystemCursorShape.Arrow && tool is FreeTransformTool)
 			{
 				int kind = ((FreeTransformTool)tool).HitTestKind(pixelX, pixelY);
+				m_transformHoverKind = kind;
 				desired = TransformCursorShape(kind);
 			}
 			ApplyCursorShape(desired);
@@ -996,6 +999,99 @@ namespace Bitmute.UI
 			DrawTransformHandle(canvas, (x3 + x0) / 2.0f, (y3 + y0) / 2.0f, handleSize, handleFill, handleBorder);
 			handleFill.Dispose();
 			handleBorder.Dispose();
+			if (m_transformHoverKind == 5 && m_cursorInside)
+			{
+				DrawRotateCursor(canvas, m_cursorDeviceX, m_cursorDeviceY);
+			}
+		}
+
+		private void DrawRotateCursor(SKCanvas canvas, float cx, float cy)
+		{
+			float radius = 10.0f;
+			float startDegrees = 40.0f;
+			float sweepDegrees = 280.0f;
+			SKRect oval = new SKRect(cx - radius, cy - radius, cx + radius, cy + radius);
+			SKPathBuilder arcBuilder = new SKPathBuilder();
+			arcBuilder.AddArc(oval, startDegrees, sweepDegrees);
+			SKPath arc = arcBuilder.Snapshot();
+			double startRadians = startDegrees * System.Math.PI / 180.0;
+			double endRadians = (startDegrees + sweepDegrees) * System.Math.PI / 180.0;
+			float startX = cx + (radius * (float)System.Math.Cos(startRadians));
+			float startY = cy + (radius * (float)System.Math.Sin(startRadians));
+			float endX = cx + (radius * (float)System.Math.Cos(endRadians));
+			float endY = cy + (radius * (float)System.Math.Sin(endRadians));
+			float startTangentX = (float)System.Math.Sin(startRadians);
+			float startTangentY = -(float)System.Math.Cos(startRadians);
+			float endTangentX = -(float)System.Math.Sin(endRadians);
+			float endTangentY = (float)System.Math.Cos(endRadians);
+			SKPath startHead = BuildArrowHead(startX, startY, startTangentX, startTangentY);
+			SKPath endHead = BuildArrowHead(endX, endY, endTangentX, endTangentY);
+			SKPaint arcUnder = new SKPaint();
+			arcUnder.Style = SKPaintStyle.Stroke;
+			arcUnder.StrokeWidth = 3.0f;
+			arcUnder.Color = SKColors.Black;
+			arcUnder.IsAntialias = true;
+			canvas.DrawPath(arc, arcUnder);
+			arcUnder.Dispose();
+			SKPaint headUnder = new SKPaint();
+			headUnder.Style = SKPaintStyle.Fill;
+			headUnder.Color = SKColors.Black;
+			headUnder.IsAntialias = true;
+			SKPaint headUnderStroke = new SKPaint();
+			headUnderStroke.Style = SKPaintStyle.Stroke;
+			headUnderStroke.StrokeWidth = 3.0f;
+			headUnderStroke.Color = SKColors.Black;
+			headUnderStroke.IsAntialias = true;
+			canvas.DrawPath(startHead, headUnderStroke);
+			canvas.DrawPath(endHead, headUnderStroke);
+			canvas.DrawPath(startHead, headUnder);
+			canvas.DrawPath(endHead, headUnder);
+			headUnderStroke.Dispose();
+			SKPaint arcOver = new SKPaint();
+			arcOver.Style = SKPaintStyle.Stroke;
+			arcOver.StrokeWidth = 1.5f;
+			arcOver.Color = SKColors.White;
+			arcOver.IsAntialias = true;
+			canvas.DrawPath(arc, arcOver);
+			arcOver.Dispose();
+			SKPaint headOver = new SKPaint();
+			headOver.Style = SKPaintStyle.Fill;
+			headOver.Color = SKColors.White;
+			headOver.IsAntialias = true;
+			canvas.DrawPath(startHead, headOver);
+			canvas.DrawPath(endHead, headOver);
+			headOver.Dispose();
+			headUnder.Dispose();
+			arc.Dispose();
+			startHead.Dispose();
+			endHead.Dispose();
+		}
+
+		private SKPath BuildArrowHead(float tipX, float tipY, float directionX, float directionY)
+		{
+			float length = (float)System.Math.Sqrt((directionX * directionX) + (directionY * directionY));
+			if (length < 0.0001f)
+			{
+				length = 1.0f;
+			}
+			float dirX = directionX / length;
+			float dirY = directionY / length;
+			float perpX = -dirY;
+			float perpY = dirX;
+			float headLength = 6.0f;
+			float headHalfWidth = 3.5f;
+			float baseX = tipX - (dirX * headLength);
+			float baseY = tipY - (dirY * headLength);
+			float leftX = baseX + (perpX * headHalfWidth);
+			float leftY = baseY + (perpY * headHalfWidth);
+			float rightX = baseX - (perpX * headHalfWidth);
+			float rightY = baseY - (perpY * headHalfWidth);
+			SKPathBuilder builder = new SKPathBuilder();
+			builder.MoveTo(tipX, tipY);
+			builder.LineTo(leftX, leftY);
+			builder.LineTo(rightX, rightY);
+			builder.Close();
+			return builder.Snapshot();
 		}
 
 		private void DrawTransformAboveLayers(SKCanvas canvas, int startIndex, int endExclusive, float sx0, float sy0, float sx1, float sy1, float sx2, float sy2, float sx3, float sy3)
@@ -1378,7 +1474,13 @@ namespace Bitmute.UI
 			{
 				m_cursorInside = true;
 			}
-			if (eventArgs.ActionType == SKTouchAction.Moved && !eventArgs.InContact && ShowsBrushCursor(main.CurrentTool()))
+			Tool hoverTool = main.CurrentTool();
+			bool wantsHoverRepaint = ShowsBrushCursor(hoverTool);
+			if (hoverTool is FreeTransformTool && ((FreeTransformTool)hoverTool).HasPreview())
+			{
+				wantsHoverRepaint = true;
+			}
+			if (eventArgs.ActionType == SKTouchAction.Moved && !eventArgs.InContact && wantsHoverRepaint)
 			{
 				InvalidateSurface();
 			}
