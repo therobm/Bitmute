@@ -34,6 +34,7 @@ namespace Bitmute.UI
 		private bool m_docked;
 		private bool m_ready;
 		private bool m_gradientPressed;
+		private Action<SKColor> m_onApply;
 
 		private static string ToHex(SKColor color)
 		{
@@ -283,11 +284,21 @@ namespace Bitmute.UI
 
 		private void OnOkClicked(object sender, EventArgs eventArgs)
 		{
-			MainView main = MainView.Self;
-			if (main != null)
+			if (m_onApply != null)
 			{
-				main.ApplyPickedColor(CurrentColor(), m_foreground);
-				main.CloseModal();
+				m_onApply(CurrentColor());
+				MainView main = MainView.Self;
+				if (main != null)
+				{
+					main.CloseModal();
+				}
+				return;
+			}
+			MainView foreground = MainView.Self;
+			if (foreground != null)
+			{
+				foreground.ApplyPickedColor(CurrentColor(), m_foreground);
+				foreground.CloseModal();
 			}
 		}
 
@@ -345,6 +356,11 @@ namespace Bitmute.UI
 
 		public ColorPicker(SKColor initial, bool foreground) : this(initial, foreground, false)
 		{
+		}
+
+		public ColorPicker(SKColor initial, Action<SKColor> onApply) : this(initial, false, false)
+		{
+			m_onApply = onApply;
 		}
 
 		public ColorPicker(SKColor initial, bool foreground, bool docked)

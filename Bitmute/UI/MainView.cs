@@ -220,6 +220,8 @@ namespace Bitmute.UI
 		private int m_channelViewMode;
 		private bool[] m_channelVisible = new bool[] { true, true, true, true };
 		private int m_editingSwatchIndex = -1;
+		private LayerStyle m_layerStyleSnapshot;
+		private int m_layerStyleTargetIndex;
 		private double m_openDropdownX;
 		private List<Border> m_submenuParentRows;
 		private List<string> m_submenuParentNames;
@@ -2007,29 +2009,89 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			ShowModal(new LayerStyleDialog(layer.LayerStyle().Clone()), 360.0, 560.0);
+			m_layerStyleSnapshot = layer.LayerStyle().Clone();
+			m_layerStyleTargetIndex = document.ActiveLayerIndex();
+			ShowModal(new LayerStyleDialog(layer.LayerStyle().Clone()), 620.0, 340.0);
 		}
 
-		public void ApplyLayerStyle(LayerStyle style)
+		private Layer LayerStyleTargetLayer()
 		{
-			CloseModal();
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return null;
+			}
+			System.Collections.Generic.List<Layer> layers = document.Layers();
+			if (m_layerStyleTargetIndex < 0 || m_layerStyleTargetIndex >= layers.Count)
+			{
+				return null;
+			}
+			return layers[m_layerStyleTargetIndex];
+		}
+
+		public void PreviewLayerStyle(LayerStyle style)
+		{
+			Layer layer = LayerStyleTargetLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			layer.SetLayerStyle(style);
 			CanvasView canvas = ActiveCanvas();
 			if (canvas == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
-			Layer layer = document.ActiveLayer();
-			if (layer == null)
-			{
-				return;
-			}
-			document.BeginCanvasEdit("Layer Style");
-			layer.SetLayerStyle(style);
-			document.EndCanvasEdit();
 			canvas.MarkComposeDirty();
 			canvas.InvalidateSurface();
-			RefreshLayerThumbnails();
+		}
+
+		public void CommitLayerStyle(LayerStyle style)
+		{
+			Document document = ActiveDocument();
+			Layer layer = LayerStyleTargetLayer();
+			if (document == null || layer == null || m_layerStyleSnapshot == null)
+			{
+				m_layerStyleSnapshot = null;
+				CloseModal();
+				return;
+			}
+			layer.SetLayerStyle(m_layerStyleSnapshot);
+			document.BeginCanvasEdit("Layer Style");
+			layer.SetLayerStyle(style.Clone());
+			document.EndCanvasEdit();
+			m_layerStyleSnapshot = null;
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.MarkComposeDirty();
+				canvas.InvalidateSurface();
+			}
+			RefreshPanels();
+			CloseModal();
+		}
+
+		public void CancelLayerStyle()
+		{
+			Layer layer = LayerStyleTargetLayer();
+			if (layer != null && m_layerStyleSnapshot != null)
+			{
+				layer.SetLayerStyle(m_layerStyleSnapshot);
+				CanvasView canvas = ActiveCanvas();
+				if (canvas != null)
+				{
+					canvas.MarkComposeDirty();
+					canvas.InvalidateSurface();
+				}
+			}
+			m_layerStyleSnapshot = null;
+			CloseModal();
+		}
+
+		public void OpenColorPickerFor(SKColor initial, System.Action<SKColor> onApply)
+		{
+			ColorPicker picker = new ColorPicker(initial, onApply);
+			ShowModal(picker, 380.0, 360.0);
 		}
 
 		public void ApplyStroke(int width, int position)
@@ -4549,6 +4611,21 @@ namespace Bitmute.UI
 			if (entry.m_content != null)
 			{
 				m_workspace.Remove(entry.m_content);
+			}
+			if (entry.m_content is LayerStyleDialog && m_layerStyleSnapshot != null)
+			{
+				Layer layer = LayerStyleTargetLayer();
+				if (layer != null)
+				{
+					layer.SetLayerStyle(m_layerStyleSnapshot);
+					CanvasView canvas = ActiveCanvas();
+					if (canvas != null)
+					{
+						canvas.MarkComposeDirty();
+						canvas.InvalidateSurface();
+					}
+				}
+				m_layerStyleSnapshot = null;
 			}
 		}
 
