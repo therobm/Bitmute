@@ -1712,6 +1712,28 @@ namespace Bitmute.UI
 					eventArgs.Handled = true;
 					return;
 				}
+				if (activeLayer != null && activeLayer.PaintLocked())
+				{
+					if (eventArgs.ActionType == SKTouchAction.Pressed)
+					{
+						main.SetStatusMessage("Layer is locked");
+					}
+					eventArgs.Handled = true;
+					return;
+				}
+			}
+			if (tool is MoveTool)
+			{
+				Bitmute.Imaging.Layer moveLayer = m_document.ActiveLayer();
+				if (moveLayer != null && moveLayer.MoveLocked())
+				{
+					if (eventArgs.ActionType == SKTouchAction.Pressed)
+					{
+						main.SetStatusMessage("Layer position is locked");
+					}
+					eventArgs.Handled = true;
+					return;
+				}
 			}
 
 			Windows.UI.Core.CoreVirtualKeyStates shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift);

@@ -223,6 +223,10 @@ namespace Bitmute.Storage
 				writer.WriteNumber("offsetX", layer.OffsetX());
 				writer.WriteNumber("offsetY", layer.OffsetY());
 				writer.WriteBoolean("isBackground", layer.IsBackground());
+			writer.WriteBoolean("lockAll", layer.LockAll());
+			writer.WriteBoolean("lockPixels", layer.LockPixels());
+			writer.WriteBoolean("lockPosition", layer.LockPosition());
+			writer.WriteBoolean("lockAlpha", layer.LockAlpha());
 				writer.WriteBoolean("isText", layer.IsText());
 				writer.WriteNumber("bitmapWidth", bitmap.Width);
 				writer.WriteNumber("bitmapHeight", bitmap.Height);
@@ -432,6 +436,10 @@ namespace Bitmute.Storage
 			layer.SetBlendMode((eBlendMode)blendMode);
 			layer.SetVisible(ReadBool(layerElement, "visible", true));
 			layer.SetIsBackground(ReadBool(layerElement, "isBackground", false));
+			layer.SetLockAll(ReadBool(layerElement, "lockAll", false));
+			layer.SetLockPixels(ReadBool(layerElement, "lockPixels", false));
+			layer.SetLockPosition(ReadBool(layerElement, "lockPosition", false));
+			layer.SetLockAlpha(ReadBool(layerElement, "lockAlpha", false));
 			if (ReadBool(layerElement, "isText", false))
 			{
 				layer.SetTextPosition(ReadInt(layerElement, "textX", 0), ReadInt(layerElement, "textY", 0));

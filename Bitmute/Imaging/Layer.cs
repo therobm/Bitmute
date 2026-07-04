@@ -44,6 +44,10 @@ namespace Bitmute.Imaging
 		private int m_offsetY;
 		private bool m_isBackground;
 		private bool m_isText;
+		private bool m_lockAll;
+		private bool m_lockPixels;
+		private bool m_lockPosition;
+		private bool m_lockAlpha;
 		private string m_text;
 		private int m_textX;
 		private int m_textY;
@@ -190,6 +194,10 @@ namespace Bitmute.Imaging
 			m_offsetY = 0;
 			m_isBackground = false;
 			m_isText = false;
+			m_lockAll = false;
+			m_lockPixels = false;
+			m_lockPosition = false;
+			m_lockAlpha = false;
 			m_text = "";
 			m_textX = 0;
 			m_textY = 0;
@@ -372,6 +380,56 @@ namespace Bitmute.Imaging
 			m_isBackground = isBackground;
 		}
 
+		public bool LockAll()
+		{
+			return m_lockAll;
+		}
+
+		public void SetLockAll(bool locked)
+		{
+			m_lockAll = locked;
+		}
+
+		public bool LockPixels()
+		{
+			return m_lockPixels;
+		}
+
+		public void SetLockPixels(bool locked)
+		{
+			m_lockPixels = locked;
+		}
+
+		public bool LockPosition()
+		{
+			return m_lockPosition;
+		}
+
+		public void SetLockPosition(bool locked)
+		{
+			m_lockPosition = locked;
+		}
+
+		public bool LockAlpha()
+		{
+			return m_lockAlpha;
+		}
+
+		public void SetLockAlpha(bool locked)
+		{
+			m_lockAlpha = locked;
+		}
+
+		public bool PaintLocked()
+		{
+			return m_lockAll || m_lockPixels;
+		}
+
+		public bool MoveLocked()
+		{
+			return m_lockAll || m_lockPosition;
+		}
+
 		public SKBitmap Bitmap()
 		{
 			return m_bitmap;
@@ -393,6 +451,10 @@ namespace Bitmute.Imaging
 			copy.m_blendMode = m_blendMode;
 			copy.m_isBackground = m_isBackground;
 			copy.m_isText = m_isText;
+			copy.m_lockAll = m_lockAll;
+			copy.m_lockPixels = m_lockPixels;
+			copy.m_lockPosition = m_lockPosition;
+			copy.m_lockAlpha = m_lockAlpha;
 			copy.m_text = m_text;
 			copy.m_textX = m_textX;
 			copy.m_textY = m_textY;

@@ -315,6 +315,8 @@ namespace Bitmute.Tests
 			second.SetPixelCanvas(10, 10, new SKColor(255, 0, 0, 255));
 			second.SetOpacity(128);
 			second.SetBlendMode(eBlendMode.Multiply);
+			second.SetLockAlpha(true);
+			second.SetLockPosition(true);
 			Layer textLayer = doc.AddLayer("Words");
 			textLayer.Bitmap().Erase(new SKColor(0, 0, 0, 0));
 			textLayer.SetTextPosition(4, 6);
@@ -341,6 +343,8 @@ namespace Bitmute.Tests
 			Check(backSecond.OffsetX() == 5 && backSecond.OffsetY() == 3, "bitmute layer offset");
 			Check(backSecond.Opacity() == 128, "bitmute layer opacity");
 			Check(backSecond.BlendMode() == eBlendMode.Multiply, "bitmute layer blend mode");
+			Check(backSecond.LockAlpha() && backSecond.LockPosition(), "bitmute layer lock flags round-trip");
+			Check(backSecond.PaintLocked() == false && backSecond.MoveLocked(), "bitmute layer lock semantics");
 			SKColor pixel = backSecond.GetPixelCanvas(10, 10);
 			Check(pixel.Red == 255 && pixel.Alpha == 255, "bitmute layer pixel");
 			Layer backText = back.Layers()[2];

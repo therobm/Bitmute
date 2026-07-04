@@ -23,6 +23,10 @@ namespace Bitmute.UI
 		private VerticalStackLayout m_listHost;
 		private SliderField m_opacityField;
 		private Picker m_blendPicker;
+		private Border m_lockAlphaButton;
+		private Border m_lockPixelsButton;
+		private Border m_lockPositionButton;
+		private Border m_lockAllButton;
 		private bool m_suppress;
 		private List<Border> m_eyeButtons;
 		private List<int> m_eyeLayers;
@@ -178,17 +182,30 @@ namespace Bitmute.UI
 			name.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			name.VerticalOptions = LayoutOptions.Center;
 
+			Label lockGlyph = new Label();
+			if (layer.LockAll() || layer.LockPixels() || layer.LockPosition() || layer.LockAlpha())
+			{
+				lockGlyph.Text = "L";
+			}
+			lockGlyph.FontSize = 11.0;
+			lockGlyph.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			lockGlyph.VerticalOptions = LayoutOptions.Center;
+			lockGlyph.HorizontalOptions = LayoutOptions.End;
+
 			Grid rowGrid = new Grid();
 			rowGrid.ColumnSpacing = 4.0;
 			rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+			rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			Grid.SetColumn(eye, 0);
 			Grid.SetColumn(thumbnail, 1);
 			Grid.SetColumn(name, 2);
+			Grid.SetColumn(lockGlyph, 3);
 			rowGrid.Add(eye);
 			rowGrid.Add(thumbnail);
 			rowGrid.Add(name);
+			rowGrid.Add(lockGlyph);
 
 			Border row = new Border();
 			row.Padding = new Thickness(4.0, 2.0, 4.0, 2.0);
@@ -456,6 +473,108 @@ namespace Bitmute.UI
 			RecompositeActive();
 		}
 
+		private Layer ActiveLayerOrNull()
+		{
+			Document document = Doc();
+			if (document == null)
+			{
+				return null;
+			}
+			return document.ActiveLayer();
+		}
+
+		private Border BuildLockToggle(string text, string tip, EventHandler<TappedEventArgs> handler)
+		{
+			Label label = new Label();
+			label.Text = text;
+			label.FontSize = 10.0;
+			label.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			label.HorizontalOptions = LayoutOptions.Center;
+			label.VerticalOptions = LayoutOptions.Center;
+
+			Border button = new Border();
+			button.HeightRequest = 22.0;
+			button.Padding = new Thickness(6.0, 0.0, 6.0, 0.0);
+			button.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			button.StrokeThickness = 0.0;
+			button.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(3.0) };
+			button.Content = label;
+			ToolTipProperties.SetText(button, tip);
+			TapGestureRecognizer tap = new TapGestureRecognizer();
+			tap.Tapped += handler;
+			button.GestureRecognizers.Add(tap);
+			return button;
+		}
+
+		private void SetToggleActive(Border button, bool active)
+		{
+			if (button == null)
+			{
+				return;
+			}
+			if (active)
+			{
+				button.ThemeBg(UiConstants.ToolSelectedLight, UiConstants.ToolSelectedDark);
+			}
+			else
+			{
+				button.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			}
+		}
+
+		private void RefreshLockButtons(Layer active)
+		{
+			bool hasActive = active != null;
+			SetToggleActive(m_lockAlphaButton, hasActive && active.LockAlpha());
+			SetToggleActive(m_lockPixelsButton, hasActive && active.LockPixels());
+			SetToggleActive(m_lockPositionButton, hasActive && active.LockPosition());
+			SetToggleActive(m_lockAllButton, hasActive && active.LockAll());
+		}
+
+		private void OnLockAlphaClicked(object sender, TappedEventArgs eventArgs)
+		{
+			Layer layer = ActiveLayerOrNull();
+			if (layer == null)
+			{
+				return;
+			}
+			layer.SetLockAlpha(!layer.LockAlpha());
+			Refresh();
+		}
+
+		private void OnLockPixelsClicked(object sender, TappedEventArgs eventArgs)
+		{
+			Layer layer = ActiveLayerOrNull();
+			if (layer == null)
+			{
+				return;
+			}
+			layer.SetLockPixels(!layer.LockPixels());
+			Refresh();
+		}
+
+		private void OnLockPositionClicked(object sender, TappedEventArgs eventArgs)
+		{
+			Layer layer = ActiveLayerOrNull();
+			if (layer == null)
+			{
+				return;
+			}
+			layer.SetLockPosition(!layer.LockPosition());
+			Refresh();
+		}
+
+		private void OnLockAllClicked(object sender, TappedEventArgs eventArgs)
+		{
+			Layer layer = ActiveLayerOrNull();
+			if (layer == null)
+			{
+				return;
+			}
+			layer.SetLockAll(!layer.LockAll());
+			Refresh();
+		}
+
 		public LayersPanel()
 		{
 			m_eyeButtons = new List<Border>();
@@ -537,10 +656,30 @@ namespace Bitmute.UI
 			blendRow.Add(blendLabel);
 			blendRow.Add(m_blendPicker);
 
+			Label lockLabel = new Label();
+			lockLabel.Text = "Lock";
+			lockLabel.FontSize = 11.0;
+			lockLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			lockLabel.VerticalOptions = LayoutOptions.Center;
+
+			m_lockAlphaButton = BuildLockToggle("Alpha", "Lock transparency (paint only where opaque)", OnLockAlphaClicked);
+			m_lockPixelsButton = BuildLockToggle("Pixels", "Lock pixels (no painting)", OnLockPixelsClicked);
+			m_lockPositionButton = BuildLockToggle("Pos", "Lock position (no move)", OnLockPositionClicked);
+			m_lockAllButton = BuildLockToggle("All", "Lock everything", OnLockAllClicked);
+
+			HorizontalStackLayout lockRow = new HorizontalStackLayout();
+			lockRow.Spacing = 3.0;
+			lockRow.Add(lockLabel);
+			lockRow.Add(m_lockAlphaButton);
+			lockRow.Add(m_lockPixelsButton);
+			lockRow.Add(m_lockPositionButton);
+			lockRow.Add(m_lockAllButton);
+
 			VerticalStackLayout topStack = new VerticalStackLayout();
 			topStack.Spacing = 4.0;
 			topStack.Add(opacityRow);
 			topStack.Add(blendRow);
+			topStack.Add(lockRow);
 
 			m_listHost = new VerticalStackLayout();
 			m_listHost.Spacing = 1.0;
@@ -602,6 +741,7 @@ namespace Bitmute.UI
 				m_blendPicker.SelectedIndex = (int)active.BlendMode();
 				m_suppress = false;
 			}
+			RefreshLockButtons(active);
 		}
 	}
 }

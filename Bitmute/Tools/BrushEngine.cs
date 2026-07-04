@@ -46,6 +46,7 @@ namespace Bitmute.Tools
 		private int m_colorReplaceSampleR;
 		private int m_colorReplaceSampleG;
 		private int m_colorReplaceSampleB;
+		private bool m_lockAlpha;
 		private bool m_active;
 
 		public void SetCloneOffset(int offsetX, int offsetY)
@@ -140,6 +141,7 @@ namespace Bitmute.Tools
 			m_colorReplaceSampleR = 0;
 			m_colorReplaceSampleG = 0;
 			m_colorReplaceSampleB = 0;
+			m_lockAlpha = layer.LockAlpha();
 			m_active = true;
 		}
 
@@ -409,8 +411,16 @@ namespace Bitmute.Tools
 					byte* originalPixel = originalPixels + (bitmapY * originalRowBytes) + (bitmapX * 4);
 					byte* destinationPixel = pixels + (bitmapY * rowBytes) + (bitmapX * 4);
 					double originalAlpha = originalPixel[3] / 255.0;
+					if (m_lockAlpha && originalPixel[3] == 0)
+					{
+						continue;
+					}
 					if (m_op == eBrushOp.Erase)
 					{
+						if (m_lockAlpha)
+						{
+							continue;
+						}
 						double erasedAlpha = originalAlpha * (1.0 - finalAlpha);
 						destinationPixel[0] = originalPixel[0];
 						destinationPixel[1] = originalPixel[1];

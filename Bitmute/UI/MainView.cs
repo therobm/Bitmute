@@ -3141,6 +3141,11 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			if (layer.PaintLocked())
+			{
+				SetStatusMessage("Layer is locked");
+				return;
+			}
 			document.BeginStroke();
 			document.FillSelection(fill);
 			document.EndStroke();
