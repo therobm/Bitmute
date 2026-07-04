@@ -98,7 +98,7 @@ namespace Bitmute.UI
 				MainView main = MainView.Self;
 				if (main != null)
 				{
-					main.ApplyPickedColor(color, m_foreground);
+					main.SetLiveForeground(color);
 				}
 			}
 		}

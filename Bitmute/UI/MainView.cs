@@ -950,7 +950,7 @@ namespace Bitmute.UI
 			m_submenuBorder = null;
 			if (m_openMenuIndex >= 0)
 			{
-				m_menuButtons[m_openMenuIndex].ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
+				m_menuButtons[m_openMenuIndex].ThemeBg(UiConstants.ChromeMenubarLight, UiConstants.ChromeMenubarDark);
 			}
 			m_openMenuIndex = -1;
 		}
@@ -4441,6 +4441,19 @@ namespace Bitmute.UI
 			}
 			ColorPicker picker = new ColorPicker(initial, foreground);
 			ShowModal(picker, 380.0, 360.0);
+		}
+
+		public void SetLiveForeground(SKColor color)
+		{
+			m_toolState.SetForeground(color);
+			if (m_toolPalette != null)
+			{
+				m_toolPalette.RefreshColors();
+			}
+			if (m_textColorSwatch != null)
+			{
+				m_textColorSwatch.Color = FromSkColor(color);
+			}
 		}
 
 		public void ApplyPickedColor(SKColor color, bool foreground)
