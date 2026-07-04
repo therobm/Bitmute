@@ -83,7 +83,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			element.KeyDown += OnTextEditorKeyDown;
+			element.PreviewKeyDown += OnTextEditorKeyDown;
 			m_textEditorKeyHooked = true;
 		}
 
