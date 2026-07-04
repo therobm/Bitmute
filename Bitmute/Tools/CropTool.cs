@@ -191,7 +191,7 @@ namespace Bitmute.Tools
 			return false;
 		}
 
-		public void Reset()
+		public override void Reset()
 		{
 			ClearAll();
 		}

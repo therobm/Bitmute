@@ -49,7 +49,7 @@ namespace Bitmute.Tools
 			return m_endY;
 		}
 
-		public void Reset()
+		public override void Reset()
 		{
 			m_active = false;
 			m_hasMeasurement = false;

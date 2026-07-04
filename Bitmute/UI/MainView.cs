@@ -67,40 +67,8 @@ namespace Bitmute.UI
 		private int m_untitledCount;
 		private int m_cascadeCount;
 		private int m_topZIndex;
+		private ToolBox m_toolBox;
 		private ToolState m_toolState;
-		private MoveTool m_moveTool;
-		private RectangleSelectTool m_rectangleSelectTool;
-		private EllipseSelectTool m_ellipseSelectTool;
-		private LassoTool m_lassoTool;
-		private FreehandLassoTool m_freehandLassoTool;
-		private MagneticLassoTool m_magneticLassoTool;
-		private MagicWandTool m_magicWandTool;
-		private TextTool m_textTool;
-		private PencilTool m_pencilTool;
-		private BrushTool m_brushTool;
-		private EraserTool m_eraserTool;
-		private DodgeBurnTool m_dodgeBurnTool;
-		private BlurTool m_blurTool;
-		private SpongeTool m_spongeTool;
-		private ColorReplacementTool m_colorReplacementTool;
-		private SharpenTool m_sharpenTool;
-		private CloneTool m_cloneTool;
-		private HealTool m_healTool;
-		private SmudgeTool m_smudgeTool;
-		private EyedropperTool m_eyedropperTool;
-		private FillTool m_fillTool;
-		private GradientTool m_gradientTool;
-		private LineTool m_lineTool;
-		private ShapeTool m_rectangleShapeTool;
-		private ShapeTool m_roundedRectangleShapeTool;
-		private ShapeTool m_ellipseShapeTool;
-		private ShapeTool m_polygonShapeTool;
-		private HandTool m_handTool;
-		private ZoomTool m_zoomTool;
-		private RulerTool m_rulerTool;
-		private CropTool m_cropTool;
-		private FreeTransformTool m_freeTransformTool;
-		private eTool m_previousTool;
 		private int m_guideCreateOrientation;
 		private CanvasView m_guideCreateCanvas;
 		private bool m_gridEnabled;
@@ -2017,40 +1985,8 @@ namespace Bitmute.UI
 			m_untitledCount = 0;
 			m_cascadeCount = 0;
 			m_topZIndex = 0;
-			m_toolState = new ToolState();
-			m_moveTool = new MoveTool();
-			m_rectangleSelectTool = new RectangleSelectTool();
-			m_ellipseSelectTool = new EllipseSelectTool();
-			m_lassoTool = new LassoTool();
-			m_freehandLassoTool = new FreehandLassoTool();
-			m_magneticLassoTool = new MagneticLassoTool();
-			m_magicWandTool = new MagicWandTool();
-			m_textTool = new TextTool();
-			m_pencilTool = new PencilTool();
-			m_brushTool = new BrushTool();
-			m_eraserTool = new EraserTool();
-			m_dodgeBurnTool = new DodgeBurnTool();
-			m_blurTool = new BlurTool();
-			m_spongeTool = new SpongeTool();
-			m_colorReplacementTool = new ColorReplacementTool();
-			m_sharpenTool = new SharpenTool();
-			m_cloneTool = new CloneTool();
-			m_healTool = new HealTool();
-			m_smudgeTool = new SmudgeTool();
-			m_eyedropperTool = new EyedropperTool();
-			m_fillTool = new FillTool();
-			m_gradientTool = new GradientTool();
-			m_lineTool = new LineTool();
-			m_rectangleShapeTool = new ShapeTool(eShapeKind.Rectangle);
-			m_roundedRectangleShapeTool = new ShapeTool(eShapeKind.RoundedRectangle);
-			m_ellipseShapeTool = new ShapeTool(eShapeKind.Ellipse);
-			m_polygonShapeTool = new ShapeTool(eShapeKind.Polygon);
-			m_handTool = new HandTool();
-			m_zoomTool = new ZoomTool();
-			m_rulerTool = new RulerTool();
-			m_cropTool = new CropTool();
-			m_freeTransformTool = new FreeTransformTool();
-			m_previousTool = eTool.Brush;
+			m_toolBox = new ToolBox();
+			m_toolState = m_toolBox.State();
 			m_guideCreateOrientation = 0;
 			m_guideCreateCanvas = null;
 			m_gridEnabled = Microsoft.Maui.Storage.Preferences.Default.Get("grid_enabled", false);
@@ -2838,11 +2774,11 @@ namespace Bitmute.UI
 
 		private bool TransformActive()
 		{
-			if (m_toolState == null || m_freeTransformTool == null)
+			if (m_toolState == null || m_toolBox == null)
 			{
 				return false;
 			}
-			return m_toolState.Tool() == eTool.FreeTransform && m_freeTransformTool.HasPreview();
+			return m_toolState.Tool() == eTool.FreeTransform && m_toolBox.FreeTransform().HasPreview();
 		}
 
 		private void RefreshTransformCanvas()
@@ -2869,7 +2805,7 @@ namespace Bitmute.UI
 			Document document = ActiveDocument();
 			if (document != null)
 			{
-				m_freeTransformTool.Commit(document);
+				m_toolBox.FreeTransform().Commit(document);
 			}
 			EndTransformMode();
 			RefreshTransformCanvas();
@@ -2892,7 +2828,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			m_freeTransformTool.Cancel();
+			m_toolBox.FreeTransform().Cancel();
 			EndTransformMode();
 			RefreshTransformCanvas();
 			args.Handled = true;
@@ -3827,29 +3763,9 @@ namespace Bitmute.UI
 			{
 				CommitTextEdit();
 			}
-			if (m_lassoTool != null)
+			if (m_toolBox != null)
 			{
-				m_lassoTool.Reset();
-			}
-			if (m_freehandLassoTool != null)
-			{
-				m_freehandLassoTool.Reset();
-			}
-			if (m_magneticLassoTool != null)
-			{
-				m_magneticLassoTool.Reset();
-			}
-			if (m_rulerTool != null)
-			{
-				m_rulerTool.Reset();
-			}
-			if (m_cropTool != null)
-			{
-				m_cropTool.Reset();
-			}
-			if (m_freeTransformTool != null)
-			{
-				m_freeTransformTool.Reset();
+				m_toolBox.ResetAll();
 			}
 		}
 
@@ -4157,136 +4073,7 @@ namespace Bitmute.UI
 
 		public Tool CurrentTool()
 		{
-			eTool tool = m_toolState.Tool();
-			if (tool == eTool.Move)
-			{
-				return m_moveTool;
-			}
-			if (tool == eTool.Select)
-			{
-				return m_rectangleSelectTool;
-			}
-			if (tool == eTool.EllipseSelect)
-			{
-				return m_ellipseSelectTool;
-			}
-			if (tool == eTool.Lasso)
-			{
-				return m_lassoTool;
-			}
-			if (tool == eTool.FreehandLasso)
-			{
-				return m_freehandLassoTool;
-			}
-			if (tool == eTool.MagneticLasso)
-			{
-				return m_magneticLassoTool;
-			}
-			if (tool == eTool.MagicWand)
-			{
-				return m_magicWandTool;
-			}
-			if (tool == eTool.Text)
-			{
-				return m_textTool;
-			}
-			if (tool == eTool.Pencil)
-			{
-				return m_pencilTool;
-			}
-			if (tool == eTool.Brush)
-			{
-				return m_brushTool;
-			}
-			if (tool == eTool.Eraser)
-			{
-				return m_eraserTool;
-			}
-			if (tool == eTool.Eyedropper)
-			{
-				return m_eyedropperTool;
-			}
-			if (tool == eTool.Fill)
-			{
-				return m_fillTool;
-			}
-			if (tool == eTool.Gradient)
-			{
-				return m_gradientTool;
-			}
-			if (tool == eTool.Line)
-			{
-				return m_lineTool;
-			}
-			if (tool == eTool.RectangleShape)
-			{
-				return m_rectangleShapeTool;
-			}
-			if (tool == eTool.RoundedRectangleShape)
-			{
-				return m_roundedRectangleShapeTool;
-			}
-			if (tool == eTool.EllipseShape)
-			{
-				return m_ellipseShapeTool;
-			}
-			if (tool == eTool.PolygonShape)
-			{
-				return m_polygonShapeTool;
-			}
-			if (tool == eTool.DodgeBurn)
-			{
-				return m_dodgeBurnTool;
-			}
-			if (tool == eTool.Blur)
-			{
-				return m_blurTool;
-			}
-			if (tool == eTool.Sponge)
-			{
-				return m_spongeTool;
-			}
-			if (tool == eTool.ColorReplacement)
-			{
-				return m_colorReplacementTool;
-			}
-			if (tool == eTool.Sharpen)
-			{
-				return m_sharpenTool;
-			}
-			if (tool == eTool.Clone)
-			{
-				return m_cloneTool;
-			}
-			if (tool == eTool.Heal)
-			{
-				return m_healTool;
-			}
-			if (tool == eTool.Smudge)
-			{
-				return m_smudgeTool;
-			}
-			if (tool == eTool.Hand)
-			{
-				return m_handTool;
-			}
-			if (tool == eTool.Zoom)
-			{
-				return m_zoomTool;
-			}
-			if (tool == eTool.Ruler)
-			{
-				return m_rulerTool;
-			}
-			if (tool == eTool.Crop)
-			{
-				return m_cropTool;
-			}
-			if (tool == eTool.FreeTransform)
-			{
-				return m_freeTransformTool;
-			}
-			return null;
+			return m_toolBox.Instance(m_toolState.Tool());
 		}
 
 		public bool SnapEnabled()
@@ -4329,14 +4116,14 @@ namespace Bitmute.UI
 			}
 			if (m_toolState.Tool() != eTool.FreeTransform)
 			{
-				m_previousTool = m_toolState.Tool();
+				m_toolBox.SetPreviousTool(m_toolState.Tool());
 			}
 			OnToolSelected(eTool.FreeTransform);
-			bool armed = m_freeTransformTool.Begin(document, mode, m_toolState.Background());
+			bool armed = m_toolBox.FreeTransform().Begin(document, mode, m_toolState.Background());
 			if (!armed)
 			{
 				SetStatusMessage("Cannot transform this layer");
-				OnToolSelected(m_previousTool);
+				OnToolSelected(m_toolBox.PreviousTool());
 				return;
 			}
 			CanvasView canvas = ActiveCanvas();
@@ -4353,7 +4140,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			OnToolSelected(m_previousTool);
+			OnToolSelected(m_toolBox.PreviousTool());
 		}
 
 		private void OnSystemThemeChanged(object sender, Microsoft.Maui.Controls.AppThemeChangedEventArgs eventArgs)

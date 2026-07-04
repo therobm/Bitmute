@@ -832,7 +832,7 @@ namespace Bitmute.Tools
 			m_pickRadius = canvasPx;
 		}
 
-		public void Reset()
+		public override void Reset()
 		{
 			if (m_armed)
 			{

@@ -27,7 +27,7 @@ namespace Bitmute.Tools
 			return false;
 		}
 
-		public void Reset()
+		public override void Reset()
 		{
 			m_verticesX.Clear();
 			m_verticesY.Clear();

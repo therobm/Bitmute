@@ -232,5 +232,9 @@ namespace Bitmute.Tools
 		{
 			m_hasLast = false;
 		}
+
+		public virtual void Reset()
+		{
+		}
 	}
 }
