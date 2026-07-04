@@ -172,6 +172,9 @@ namespace Bitmute.UI
 		private RulerTool m_rulerTool;
 		private CropTool m_cropTool;
 		private FreeTransformTool m_freeTransformTool;
+		private eTool m_previousTool;
+		private int m_guideCreateOrientation;
+		private CanvasView m_guideCreateCanvas;
 		private bool m_gridEnabled;
 		private bool m_snapEnabled;
 		private double m_openDropdownX;
@@ -2641,6 +2644,9 @@ namespace Bitmute.UI
 			m_rulerTool = new RulerTool();
 			m_cropTool = new CropTool();
 			m_freeTransformTool = new FreeTransformTool();
+			m_previousTool = eTool.Brush;
+			m_guideCreateOrientation = 0;
+			m_guideCreateCanvas = null;
 			m_gridEnabled = false;
 			m_snapEnabled = Microsoft.Maui.Storage.Preferences.Default.Get("snap_enabled", false);
 			m_submenuParentRows = new List<Border>();
@@ -2744,6 +2750,8 @@ namespace Bitmute.UI
 			AddAltAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDeleteForeground);
 			element.KeyboardAcceleratorPlacementMode = Microsoft.UI.Xaml.Input.KeyboardAcceleratorPlacementMode.Hidden;
 			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerPressedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGlobalPointerPressed), true);
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerMovedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGlobalPointerMoved), true);
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerReleasedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGlobalPointerReleased), true);
 			element.AllowDrop = true;
 			element.DragOver += OnElementDragOver;
 			element.Drop += OnElementDrop;
@@ -2772,6 +2780,56 @@ namespace Bitmute.UI
 			}
 			m_pulldownDismissTick = System.Environment.TickCount64;
 			ClosePulldown();
+		}
+
+		public void BeginGuideCreation(int orientation, CanvasView canvas)
+		{
+			if (canvas == null)
+			{
+				return;
+			}
+			if (canvas.CurrentDocument().Guides().IsLocked())
+			{
+				return;
+			}
+			ActivateDocumentWindow(canvas.OwnerWindow());
+			m_guideCreateOrientation = orientation;
+			m_guideCreateCanvas = canvas;
+		}
+
+		private void OnGlobalPointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs args)
+		{
+			if (m_guideCreateOrientation == 0)
+			{
+				return;
+			}
+			CanvasView canvas = m_guideCreateCanvas;
+			if (canvas == null)
+			{
+				return;
+			}
+			Microsoft.UI.Xaml.UIElement canvasElement = canvas.Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (canvasElement == null)
+			{
+				return;
+			}
+			Windows.Foundation.Point position = args.GetCurrentPoint(canvasElement).Position;
+			canvas.UpdatePendingGuideFromDip(m_guideCreateOrientation, position.X, position.Y);
+		}
+
+		private void OnGlobalPointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs args)
+		{
+			if (m_guideCreateOrientation == 0)
+			{
+				return;
+			}
+			CanvasView canvas = m_guideCreateCanvas;
+			m_guideCreateOrientation = 0;
+			m_guideCreateCanvas = null;
+			if (canvas != null)
+			{
+				canvas.CommitPendingGuide();
+			}
 		}
 
 		private void OnElementDragOver(object sender, Microsoft.UI.Xaml.DragEventArgs args)
@@ -3123,6 +3181,7 @@ namespace Bitmute.UI
 			{
 				m_freeTransformTool.Commit(document);
 			}
+			EndTransformMode();
 			RefreshTransformCanvas();
 			args.Handled = true;
 		}
@@ -3138,6 +3197,7 @@ namespace Bitmute.UI
 				return;
 			}
 			m_freeTransformTool.Cancel();
+			EndTransformMode();
 			RefreshTransformCanvas();
 			args.Handled = true;
 		}
@@ -5404,11 +5464,16 @@ namespace Bitmute.UI
 				SetStatusMessage("Select a raster layer to transform");
 				return;
 			}
-			m_toolPalette.SelectToolExternal(eTool.FreeTransform);
-			bool armed = m_freeTransformTool.Begin(document, mode);
+			if (m_toolState.Tool() != eTool.FreeTransform)
+			{
+				m_previousTool = m_toolState.Tool();
+			}
+			OnToolSelected(eTool.FreeTransform);
+			bool armed = m_freeTransformTool.Begin(document, mode, m_toolState.Background());
 			if (!armed)
 			{
 				SetStatusMessage("Cannot transform this layer");
+				OnToolSelected(m_previousTool);
 				return;
 			}
 			CanvasView canvas = ActiveCanvas();
@@ -5417,6 +5482,15 @@ namespace Bitmute.UI
 				canvas.MarkComposeDirty();
 				canvas.InvalidateSurface();
 			}
+		}
+
+		public void EndTransformMode()
+		{
+			if (m_toolState.Tool() != eTool.FreeTransform)
+			{
+				return;
+			}
+			OnToolSelected(m_previousTool);
 		}
 
 		private void OnSystemThemeChanged(object sender, Microsoft.Maui.Controls.AppThemeChangedEventArgs eventArgs)

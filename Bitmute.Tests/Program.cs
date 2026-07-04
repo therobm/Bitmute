@@ -53,6 +53,7 @@ namespace Bitmute.Tests
 			TestFlipTransformCommitUndo();
 			TestTransformScaleCommit();
 			TestTransformSelectionLiftCancel();
+			TestTransformBackgroundStaysCanvas();
 			TestCanvasOpUndo();
 			TestGuidesModel();
 			if (s_failures == 0)
@@ -431,7 +432,7 @@ namespace Bitmute.Tests
 			layer.Bitmap().Erase(new SKColor(0, 0, 0, 0));
 			layer.SetPixelCanvas(1, 4, new SKColor(255, 0, 0, 255));
 			FreeTransformTool transform = new FreeTransformTool();
-			bool armed = transform.Begin(doc, 6);
+			bool armed = transform.Begin(doc, 6, new SKColor(255, 255, 255, 255));
 			Check(armed, "flip transform arms and commits");
 			SKColor mirrored = doc.ActiveLayer().GetPixelCanvas(14, 4);
 			Check(mirrored.Red == 255 && mirrored.Alpha == 255, "flip transform mirrored pixel");
@@ -447,6 +448,7 @@ namespace Bitmute.Tests
 		{
 			Document doc = new Document("t", 8, 8);
 			Layer layer = doc.ActiveLayer();
+			layer.SetIsBackground(false);
 			layer.Bitmap().Erase(new SKColor(0, 0, 0, 0));
 			for (int y = 2; y < 6; y++)
 			{
@@ -457,7 +459,7 @@ namespace Bitmute.Tests
 			}
 			FreeTransformTool transform = new FreeTransformTool();
 			transform.SetPickRadius(2);
-			bool armed = transform.Begin(doc, 1);
+			bool armed = transform.Begin(doc, 1, new SKColor(255, 255, 255, 255));
 			Check(armed, "transform scale arms");
 			ToolState state = new ToolState();
 			transform.OnPressed(doc, 8, 8, state);
@@ -481,7 +483,7 @@ namespace Bitmute.Tests
 			layer.SetIsBackground(false);
 			doc.Selection().SelectRect(new SKRectI(4, 4, 8, 8));
 			FreeTransformTool transform = new FreeTransformTool();
-			bool armed = transform.Begin(doc, 1);
+			bool armed = transform.Begin(doc, 1, new SKColor(255, 255, 255, 255));
 			Check(armed, "transform selection arms");
 			Check(doc.ActiveLayer().GetPixelCanvas(5, 5).Alpha == 0, "transform lifts selected pixels");
 			Check(doc.ActiveLayer().GetPixelCanvas(0, 0).Red == 255, "transform leaves unselected pixels");
@@ -489,6 +491,32 @@ namespace Bitmute.Tests
 			transform.Cancel();
 			Check(doc.ActiveLayer().GetPixelCanvas(5, 5).Red == 255, "transform cancel restores lifted pixels");
 			Check(doc.Selection().IsActive(), "transform cancel restores selection");
+		}
+
+		private static void TestTransformBackgroundStaysCanvas()
+		{
+			Document doc = new Document("t", 8, 8);
+			Layer layer = doc.ActiveLayer();
+			for (int y = 0; y < 8; y++)
+			{
+				for (int x = 0; x < 8; x++)
+				{
+					layer.SetPixelCanvas(x, y, new SKColor(20, 40, 60, 255));
+				}
+			}
+			FreeTransformTool transform = new FreeTransformTool();
+			transform.SetPickRadius(2);
+			transform.Begin(doc, 1, new SKColor(200, 200, 200, 255));
+			ToolState state = new ToolState();
+			transform.OnPressed(doc, 8, 8, state);
+			transform.OnDragged(doc, 4, 4, state);
+			transform.OnReleased(doc, 4, 4, state);
+			transform.Commit(doc);
+			SKBitmap result = doc.ActiveLayer().Bitmap();
+			Check(result.Width == 8 && result.Height == 8, "background transform keeps canvas size");
+			Check(doc.ActiveLayer().IsBackground(), "background stays a background layer");
+			SKColor exposed = doc.ActiveLayer().GetPixelCanvas(7, 7);
+			Check(exposed.Alpha == 255, "background exposed area stays opaque");
 		}
 
 		private static void TestCanvasOpUndo()

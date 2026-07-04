@@ -64,6 +64,9 @@ namespace Bitmute.UI
 		private int m_pendingGuidePos;
 		private int m_guideDragKind;
 		private int m_guideDragIndex;
+		private bool m_hasCursorShape;
+		private Microsoft.UI.Input.InputSystemCursorShape m_currentCursorShape;
+		private static System.Reflection.PropertyInfo s_protectedCursorProp = typeof(Microsoft.UI.Xaml.UIElement).GetProperty("ProtectedCursor", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
 		private static SKBitmap CheckerTile()
 		{
@@ -314,6 +317,119 @@ namespace Bitmute.UI
 		{
 			m_pendingGuideKind = 0;
 			InvalidateSurface();
+		}
+
+		public void UpdatePendingGuideFromDip(int orientation, double dipX, double dipY)
+		{
+			double scaleX = 1.0;
+			double scaleY = 1.0;
+			if (Width > 0.0)
+			{
+				scaleX = CanvasSize.Width / Width;
+			}
+			if (Height > 0.0)
+			{
+				scaleY = CanvasSize.Height / Height;
+			}
+			float deviceX = (float)(dipX * scaleX);
+			float deviceY = (float)(dipY * scaleY);
+			int docX = (int)System.Math.Round((deviceX - m_offsetX) / m_zoom);
+			int docY = (int)System.Math.Round((deviceY - m_offsetY) / m_zoom);
+			if (orientation == 1)
+			{
+				SetPendingGuide(1, docY);
+			}
+			else
+			{
+				SetPendingGuide(2, docX);
+			}
+		}
+
+		private void ApplyCursorShape(Microsoft.UI.Input.InputSystemCursorShape shape)
+		{
+			if (m_hasCursorShape && m_currentCursorShape == shape)
+			{
+				return;
+			}
+			m_currentCursorShape = shape;
+			m_hasCursorShape = true;
+			if (s_protectedCursorProp == null)
+			{
+				return;
+			}
+			if (Handler == null)
+			{
+				return;
+			}
+			Microsoft.UI.Xaml.UIElement element = Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			try
+			{
+				s_protectedCursorProp.SetValue(element, Microsoft.UI.Input.InputSystemCursor.Create(shape));
+			}
+			catch (System.Exception)
+			{
+			}
+		}
+
+		private static Microsoft.UI.Input.InputSystemCursorShape TransformCursorShape(int kind)
+		{
+			if (kind == 1)
+			{
+				return Microsoft.UI.Input.InputSystemCursorShape.SizeNorthwestSoutheast;
+			}
+			if (kind == 2)
+			{
+				return Microsoft.UI.Input.InputSystemCursorShape.SizeNortheastSouthwest;
+			}
+			if (kind == 3)
+			{
+				return Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast;
+			}
+			if (kind == 4)
+			{
+				return Microsoft.UI.Input.InputSystemCursorShape.SizeNorthSouth;
+			}
+			if (kind == 5)
+			{
+				return Microsoft.UI.Input.InputSystemCursorShape.Cross;
+			}
+			if (kind == 6)
+			{
+				return Microsoft.UI.Input.InputSystemCursorShape.SizeAll;
+			}
+			return Microsoft.UI.Input.InputSystemCursorShape.Arrow;
+		}
+
+		private void UpdateHoverCursor(Tool tool, int pixelX, int pixelY)
+		{
+			Microsoft.UI.Input.InputSystemCursorShape desired = Microsoft.UI.Input.InputSystemCursorShape.Arrow;
+			Bitmute.Imaging.Guides guides = m_document.Guides();
+			if (!guides.IsLocked())
+			{
+				int tolerance = (int)System.Math.Ceiling(6.0 / m_zoom);
+				if (tolerance < 4)
+				{
+					tolerance = 4;
+				}
+				if (guides.HitVertical(pixelX, tolerance) >= 0)
+				{
+					desired = Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast;
+				}
+				else if (guides.HitHorizontal(pixelY, tolerance) >= 0)
+				{
+					desired = Microsoft.UI.Input.InputSystemCursorShape.SizeNorthSouth;
+				}
+			}
+			if (desired == Microsoft.UI.Input.InputSystemCursorShape.Arrow && tool is FreeTransformTool)
+			{
+				int kind = ((FreeTransformTool)tool).HitTestKind(pixelX, pixelY);
+				desired = TransformCursorShape(kind);
+			}
+			ApplyCursorShape(desired);
 		}
 
 		public void SyncDocumentSize()
@@ -1194,6 +1310,7 @@ namespace Bitmute.UI
 			if (eventArgs.ActionType == SKTouchAction.Exited || eventArgs.ActionType == SKTouchAction.Cancelled)
 			{
 				m_cursorInside = false;
+				ApplyCursorShape(Microsoft.UI.Input.InputSystemCursorShape.Arrow);
 				InvalidateSurface();
 			}
 			else
@@ -1244,28 +1361,6 @@ namespace Bitmute.UI
 				return;
 			}
 
-			if (m_pendingGuideKind != 0)
-			{
-				if (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact)
-				{
-					int pendingPos = pixelX;
-					if (m_pendingGuideKind == 1)
-					{
-						pendingPos = pixelY;
-					}
-					m_pendingGuidePos = pendingPos;
-					InvalidateSurface();
-					eventArgs.Handled = true;
-					return;
-				}
-				if (eventArgs.ActionType == SKTouchAction.Released || eventArgs.ActionType == SKTouchAction.Pressed || (eventArgs.ActionType == SKTouchAction.Moved && !eventArgs.InContact))
-				{
-					CommitPendingGuide();
-					eventArgs.Handled = true;
-					return;
-				}
-			}
-
 			Tool tool = main.CurrentTool();
 			ToolState state = main.CurrentToolState();
 			if (tool == null || state == null)
@@ -1284,7 +1379,9 @@ namespace Bitmute.UI
 				((FreeTransformTool)tool).SetPickRadius(pickRadius);
 			}
 
-			if (tool is MoveTool && HandleGuideDrag(eventArgs, pixelX, pixelY))
+			UpdateHoverCursor(tool, pixelX, pixelY);
+
+			if (HandleGuideDrag(eventArgs, pixelX, pixelY))
 			{
 				eventArgs.Handled = true;
 				return;
@@ -1473,6 +1570,10 @@ namespace Bitmute.UI
 				if (transformActed)
 				{
 					InvalidateSurface();
+				}
+				if (!((FreeTransformTool)tool).HasPreview())
+				{
+					main.EndTransformMode();
 				}
 			}
 			if (m_document.Width() != preEventWidth || m_document.Height() != preEventHeight)
@@ -1750,6 +1851,11 @@ namespace Bitmute.UI
 		public void SetOwnerWindow(DocumentWindow window)
 		{
 			m_ownerWindow = window;
+		}
+
+		public DocumentWindow OwnerWindow()
+		{
+			return m_ownerWindow;
 		}
 
 		public float Zoom()

@@ -39,6 +39,7 @@ namespace Bitmute.Tools
 		private int m_oldOffsetX;
 		private int m_oldOffsetY;
 		private bool m_hasSelection;
+		private bool m_compositeMode;
 		private bool m_isBackground;
 		private byte[] m_savedMask;
 		private SKRectI m_savedBounds;
@@ -72,6 +73,7 @@ namespace Bitmute.Tools
 			m_oldOffsetX = 0;
 			m_oldOffsetY = 0;
 			m_hasSelection = false;
+			m_compositeMode = false;
 			m_isBackground = false;
 			m_savedMask = null;
 			m_pickRadius = 6;
@@ -622,21 +624,17 @@ namespace Bitmute.Tools
 				Disarm();
 				return;
 			}
-			if (m_hasSelection)
+			if (m_compositeMode)
 			{
 				BlitCanvasBitmap(m_document, layer, warped, outX, outY);
 				warped.Dispose();
-				m_document.PushCommand(new MoveLayerCommand(m_layerIndex, m_originalLayerBitmap, m_oldOffsetX, m_oldOffsetY, layer.Bitmap(), m_oldOffsetX, m_oldOffsetY));
+				m_document.PushCommand(new MoveLayerCommand(m_layerIndex, m_originalLayerBitmap, m_oldOffsetX, m_oldOffsetY, layer.Bitmap(), layer.OffsetX(), layer.OffsetY()));
 			}
 			else
 			{
 				m_document.PushCommand(new MoveLayerCommand(m_layerIndex, m_originalLayerBitmap, m_oldOffsetX, m_oldOffsetY, warped, outX, outY));
 				layer.SetBitmap(warped);
 				layer.SetOffset(outX, outY);
-				if (m_isBackground && m_mode <= ModePerspective)
-				{
-					layer.SetIsBackground(false);
-				}
 			}
 			m_document.MarkComposeDirtyAll();
 			Disarm();
@@ -671,7 +669,7 @@ namespace Bitmute.Tools
 			return false;
 		}
 
-		public bool Begin(Document document, int mode)
+		public bool Begin(Document document, int mode, SKColor fillColor)
 		{
 			if (m_armed)
 			{
@@ -702,6 +700,7 @@ namespace Bitmute.Tools
 			if (selection.IsActive() && !instant)
 			{
 				m_hasSelection = true;
+				m_compositeMode = true;
 				SKRectI bounds = selection.Bounds();
 				m_savedMask = selection.MaskCopy();
 				m_savedBounds = bounds;
@@ -721,8 +720,21 @@ namespace Bitmute.Tools
 				m_sourceOffsetX = m_oldOffsetX;
 				m_sourceOffsetY = m_oldOffsetY;
 				SetIdentityQuad(m_oldOffsetX, m_oldOffsetY, m_originalLayerBitmap.Width, m_originalLayerBitmap.Height);
-				if (!instant)
+				if (instant)
 				{
+					m_compositeMode = false;
+				}
+				else if (m_isBackground)
+				{
+					m_compositeMode = true;
+					SKBitmap fillBase = new SKBitmap(document.Width(), document.Height(), SKColorType.Rgba8888, SKAlphaType.Unpremul);
+					fillBase.Erase(new SKColor(fillColor.Red, fillColor.Green, fillColor.Blue, 255));
+					layer.SetBitmap(fillBase);
+					layer.SetOffset(0, 0);
+				}
+				else
+				{
+					m_compositeMode = false;
 					SKBitmap lifted = new SKBitmap(m_originalLayerBitmap.Width, m_originalLayerBitmap.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
 					lifted.Erase(SKColors.Transparent);
 					layer.SetBitmap(lifted);
@@ -752,6 +764,40 @@ namespace Bitmute.Tools
 		public SKBitmap PreviewBitmap()
 		{
 			return m_sourceBitmap;
+		}
+
+		public int HitTestKind(int x, int y)
+		{
+			if (!m_armed)
+			{
+				return 0;
+			}
+			int index;
+			if (HitCorner(x, y, out index))
+			{
+				if (index == 0 || index == 2)
+				{
+					return 1;
+				}
+				return 2;
+			}
+			if (HitEdge(x, y, out index))
+			{
+				if (index == 0 || index == 2)
+				{
+					return 4;
+				}
+				return 3;
+			}
+			if (HitRotateRing(x, y, out index))
+			{
+				return 5;
+			}
+			if (PointInQuad(x, y, m_cornerX, m_cornerY))
+			{
+				return 6;
+			}
+			return 0;
 		}
 
 		public double CornerX(int i)
