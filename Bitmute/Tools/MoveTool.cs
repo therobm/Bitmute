@@ -57,6 +57,14 @@ namespace Bitmute.Tools
 
 		private void MarkMoveDirty(Document document, int curDeltaX, int curDeltaY)
 		{
+			Layer activeStyledLayer = document.ActiveLayer();
+			if (activeStyledLayer != null && activeStyledLayer.LayerStyle().HasAnyEffect())
+			{
+				document.MarkComposeDirtyAll();
+				m_prevDeltaX = curDeltaX;
+				m_prevDeltaY = curDeltaY;
+				return;
+			}
 			if (!m_moveContentValid)
 			{
 				document.MarkComposeDirtyAll();

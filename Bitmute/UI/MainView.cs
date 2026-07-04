@@ -362,7 +362,7 @@ namespace Bitmute.UI
 			}
 			if (title == "Layer")
 			{
-				return new string[] { "New Layer", "Delete Layer", "Merge Down", "Rasterize Text" };
+				return new string[] { "New Layer", "Delete Layer", "Merge Down", "Layer Style…", "Rasterize Text" };
 			}
 			if (title == "Select")
 			{
@@ -402,6 +402,15 @@ namespace Bitmute.UI
 				if (item == "Merge Down")
 				{
 					return CanMergeDown();
+				}
+				if (item == "Layer Style…")
+				{
+					Document styleDocument = ActiveDocument();
+					if (styleDocument == null)
+					{
+						return false;
+					}
+					return styleDocument.ActiveLayer() != null;
 				}
 				return true;
 			}
@@ -1167,6 +1176,11 @@ namespace Bitmute.UI
 				DoRasterizeText();
 				return;
 			}
+			if (action == "Layer Style…")
+			{
+				OpenLayerStyleDialog();
+				return;
+			}
 			if (action == "Export As…")
 			{
 				OpenExportDialog();
@@ -1850,6 +1864,48 @@ namespace Bitmute.UI
 				return;
 			}
 			ShowModal(new StrokeDialog(), 320.0, 220.0);
+		}
+
+		public SKColor ForegroundColor()
+		{
+			return m_toolState.Foreground();
+		}
+
+		private void OpenLayerStyleDialog()
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			ShowModal(new LayerStyleDialog(layer.LayerStyle().Clone()), 360.0, 560.0);
+		}
+
+		public void ApplyLayerStyle(LayerStyle style)
+		{
+			CloseModal();
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			document.BeginCanvasEdit("Layer Style");
+			layer.SetLayerStyle(style);
+			document.EndCanvasEdit();
+			canvas.MarkComposeDirty();
+			canvas.InvalidateSurface();
+			RefreshLayerThumbnails();
 		}
 
 		public void ApplyStroke(int width, int position)

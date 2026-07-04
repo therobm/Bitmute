@@ -60,6 +60,8 @@ namespace Bitmute.Tests
 			TestWandSampleAll();
 			TestTgaRoundTrip();
 			TestBitmuteRoundTrip();
+			TestLayerStyles();
+			TestStyledComposite();
 			TestCropToRect();
 			TestRotateTransform();
 			TestSelectionStroke();
@@ -321,6 +323,19 @@ namespace Bitmute.Tests
 			second.SetBlendMode(eBlendMode.Multiply);
 			second.SetLockAlpha(true);
 			second.SetLockPosition(true);
+			LayerStyle secondStyle = new LayerStyle();
+			secondStyle.m_hasStroke = true;
+			secondStyle.m_strokeSize = 7;
+			secondStyle.m_strokePosition = 0;
+			secondStyle.m_strokeColor = new SKColor(10, 20, 30, 255);
+			secondStyle.m_hasDropShadow = true;
+			secondStyle.m_shadowOpacity = 66;
+			secondStyle.m_shadowAngle = 120;
+			secondStyle.m_shadowDistance = 9;
+			secondStyle.m_shadowSize = 4;
+			secondStyle.m_hasOuterGlow = true;
+			secondStyle.m_glowSize = 8;
+			second.SetLayerStyle(secondStyle);
 			Layer textLayer = doc.AddLayer("Words");
 			textLayer.Bitmap().Erase(new SKColor(0, 0, 0, 0));
 			textLayer.SetTextPosition(4, 6);
@@ -349,6 +364,11 @@ namespace Bitmute.Tests
 			Check(backSecond.BlendMode() == eBlendMode.Multiply, "bitmute layer blend mode");
 			Check(backSecond.LockAlpha() && backSecond.LockPosition(), "bitmute layer lock flags round-trip");
 			Check(backSecond.PaintLocked() == false && backSecond.MoveLocked(), "bitmute layer lock semantics");
+			LayerStyle backStyle = backSecond.LayerStyle();
+			Check(backStyle.m_hasStroke && backStyle.m_strokeSize == 7 && backStyle.m_strokePosition == 0, "bitmute layer style stroke round-trip");
+			Check(backStyle.m_strokeColor.Red == 10 && backStyle.m_strokeColor.Green == 20 && backStyle.m_strokeColor.Blue == 30, "bitmute layer style stroke color round-trip");
+			Check(backStyle.m_hasDropShadow && backStyle.m_shadowOpacity == 66 && backStyle.m_shadowAngle == 120 && backStyle.m_shadowDistance == 9 && backStyle.m_shadowSize == 4, "bitmute layer style shadow round-trip");
+			Check(backStyle.m_hasOuterGlow && backStyle.m_glowSize == 8, "bitmute layer style glow round-trip");
 			SKColor pixel = backSecond.GetPixelCanvas(10, 10);
 			Check(pixel.Red == 255 && pixel.Alpha == 255, "bitmute layer pixel");
 			Layer backText = back.Layers()[2];
@@ -912,6 +932,81 @@ namespace Bitmute.Tests
 			int exposureHalf = BurnCenterRed(40, 0, 50);
 			int exposureFull = BurnCenterRed(40, 0, 100);
 			Check(exposureFull < exposureHalf, "burn exposure 100 darkens more than exposure 50");
+		}
+
+		private static void TestLayerStyles()
+		{
+			SKBitmap source = new SKBitmap(16, 16, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			source.Erase(SKColors.Transparent);
+			SKColor opaque = new SKColor(200, 40, 40, 255);
+			for (int y = 4; y < 12; y++)
+			{
+				for (int x = 4; x < 12; x++)
+				{
+					source.SetPixel(x, y, opaque);
+				}
+			}
+
+			int strokePlaceX;
+			int strokePlaceY;
+			SKColor blue = new SKColor(0, 0, 255, 255);
+			SKBitmap stroke = LayerStyles.RenderStroke(source, 2, 2, blue, out strokePlaceX, out strokePlaceY);
+			Check(strokePlaceX == -2 && strokePlaceY == -2, "stroke placement offset");
+			SKColor strokeBand = stroke.GetPixel(4, 9);
+			Check(strokeBand.Blue == 255 && strokeBand.Alpha == 255, "outside stroke band is opaque color");
+			SKColor strokeInside = stroke.GetPixel(9, 9);
+			Check(strokeInside.Alpha == 0, "outside stroke leaves interior clear");
+			SKColor strokeFar = stroke.GetPixel(0, 0);
+			Check(strokeFar.Alpha == 0, "outside stroke far corner is clear");
+			stroke.Dispose();
+
+			int shadowPlaceX;
+			int shadowPlaceY;
+			SKColor black = new SKColor(0, 0, 0, 255);
+			SKBitmap shadow = LayerStyles.RenderDropShadow(source, black, 4, 4, 0, 255, out shadowPlaceX, out shadowPlaceY);
+			Check(shadowPlaceX == 0 && shadowPlaceY == 0, "shadow placement offset");
+			SKColor shadowPixel = shadow.GetPixel(10, 10);
+			Check(shadowPixel.Alpha == 255 && shadowPixel.Red == 0 && shadowPixel.Green == 0 && shadowPixel.Blue == 0, "drop shadow is offset opaque black");
+			SKColor shadowClear = shadow.GetPixel(2, 2);
+			Check(shadowClear.Alpha == 0, "drop shadow origin area is clear");
+			shadow.Dispose();
+
+			int glowPlaceX;
+			int glowPlaceY;
+			SKColor yellow = new SKColor(255, 255, 0, 255);
+			SKBitmap glow = LayerStyles.RenderOuterGlow(source, yellow, 3, 255, out glowPlaceX, out glowPlaceY);
+			Check(glowPlaceX == -3 && glowPlaceY == -3, "glow placement offset");
+			SKColor glowHalo = glow.GetPixel(6, 10);
+			Check(glowHalo.Alpha > 0 && glowHalo.Red == 255 && glowHalo.Green == 255 && glowHalo.Blue == 0, "outer glow halo present in glow color");
+			glow.Dispose();
+			source.Dispose();
+		}
+
+		private static void TestStyledComposite()
+		{
+			Document doc = new Document("t", 32, 32);
+			Layer layer = doc.AddLayer("c");
+			SKColor red = new SKColor(255, 0, 0, 255);
+			for (int y = 12; y < 20; y++)
+			{
+				for (int x = 12; x < 20; x++)
+				{
+					layer.Bitmap().SetPixel(x, y, red);
+				}
+			}
+			LayerStyle style = new LayerStyle();
+			style.m_hasStroke = true;
+			style.m_strokeSize = 2;
+			style.m_strokePosition = 2;
+			style.m_strokeColor = new SKColor(0, 0, 255, 255);
+			layer.SetLayerStyle(style);
+			SKBitmap composite = new SKBitmap(32, 32, SKColorType.Rgba8888, SKAlphaType.Premul);
+			doc.CompositeInto(composite);
+			SKColor strokePixel = composite.GetPixel(11, 15);
+			Check(strokePixel.Blue == 255 && strokePixel.Alpha == 255, "styled composite draws outside stroke around layer");
+			SKColor interior = composite.GetPixel(15, 15);
+			Check(interior.Red == 255 && interior.Blue == 0, "styled composite keeps layer body");
+			composite.Dispose();
 		}
 
 		private static void TestGuideStickyCenter()

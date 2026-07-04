@@ -299,6 +299,15 @@ namespace Bitmute.Imaging
 			{
 				return;
 			}
+			if (m_strokeLayerIndex >= 0 && m_strokeLayerIndex < m_layers.Count)
+			{
+				Layer strokeStyledLayer = m_layers[m_strokeLayerIndex];
+				if (strokeStyledLayer.LayerStyle().HasAnyEffect())
+				{
+					strokeStyledLayer.InvalidateStyleCache();
+					MarkComposeDirtyAll();
+				}
+			}
 			if (m_strokeLayerIndex < 0 || m_strokeLayerIndex >= m_layers.Count)
 			{
 				m_strokeSnapshot.Dispose();
@@ -755,6 +764,47 @@ namespace Bitmute.Imaging
 			}
 		}
 
+		private void DrawStyledLayer(SKCanvas canvas, Layer layer, SKSamplingOptions sampling, SKPaint paint)
+		{
+			layer.DrawStyleUnder(canvas, sampling);
+			paint.Color = SKColors.White.WithAlpha(layer.Opacity());
+			paint.BlendMode = Layer.ToSkBlendMode(layer.BlendMode());
+			SKPixmap pixmap = layer.Bitmap().PeekPixels();
+			SKImage image = SKImage.FromPixels(pixmap);
+			canvas.DrawImage(image, layer.OffsetX(), layer.OffsetY(), sampling, paint);
+			image.Dispose();
+			pixmap.Dispose();
+			layer.DrawStyleOver(canvas, sampling);
+		}
+
+		private void DrawClippedStyleUnder(SKBitmap target, SKRect clipRect, SKSamplingOptions sampling, Layer layer)
+		{
+			if (!layer.LayerStyle().HasAnyEffect())
+			{
+				return;
+			}
+			SKCanvas canvas = new SKCanvas(target);
+			canvas.Save();
+			canvas.ClipRect(clipRect);
+			layer.DrawStyleUnder(canvas, sampling);
+			canvas.Restore();
+			canvas.Dispose();
+		}
+
+		private void DrawClippedStyleOver(SKBitmap target, SKRect clipRect, SKSamplingOptions sampling, Layer layer)
+		{
+			if (!layer.LayerStyle().HasAnyEffect())
+			{
+				return;
+			}
+			SKCanvas canvas = new SKCanvas(target);
+			canvas.Save();
+			canvas.ClipRect(clipRect);
+			layer.DrawStyleOver(canvas, sampling);
+			canvas.Restore();
+			canvas.Dispose();
+		}
+
 		private void DrawLayers(SKCanvas canvas)
 		{
 			SKPaint paint = new SKPaint();
@@ -766,13 +816,7 @@ namespace Bitmute.Imaging
 				{
 					continue;
 				}
-				paint.Color = SKColors.White.WithAlpha(layer.Opacity());
-				paint.BlendMode = Layer.ToSkBlendMode(layer.BlendMode());
-				SKPixmap pixmap = layer.Bitmap().PeekPixels();
-				SKImage image = SKImage.FromPixels(pixmap);
-				canvas.DrawImage(image, layer.OffsetX(), layer.OffsetY(), sampling, paint);
-				image.Dispose();
-				pixmap.Dispose();
+				DrawStyledLayer(canvas, layer, sampling, paint);
 			}
 			paint.Dispose();
 		}
@@ -811,6 +855,23 @@ namespace Bitmute.Imaging
 			return false;
 		}
 
+		private bool AnyVisibleLayerHasStyle()
+		{
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				if (!layer.IsVisible())
+				{
+					continue;
+				}
+				if (layer.LayerStyle().HasAnyEffect())
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+
 		public void CompositeInto(SKBitmap target)
 		{
 			CompositeRegion(target, new SKRectI(0, 0, m_width, m_height));
@@ -818,7 +879,7 @@ namespace Bitmute.Imaging
 
 		public void CompositeRegion(SKBitmap target, SKRectI region)
 		{
-			if (AllVisibleLayersNormal())
+			if (AllVisibleLayersNormal() && !AnyVisibleLayerHasStyle())
 			{
 				CompositeRegionRaw(target, region);
 				return;
@@ -883,13 +944,7 @@ namespace Bitmute.Imaging
 				{
 					continue;
 				}
-				paint.Color = SKColors.White.WithAlpha(layer.Opacity());
-				paint.BlendMode = Layer.ToSkBlendMode(layer.BlendMode());
-				SKPixmap pixmap = layer.Bitmap().PeekPixels();
-				SKImage image = SKImage.FromPixels(pixmap);
-				canvas.DrawImage(image, layer.OffsetX(), layer.OffsetY(), sampling, paint);
-				image.Dispose();
-				pixmap.Dispose();
+				DrawStyledLayer(canvas, layer, sampling, paint);
 			}
 			paint.Dispose();
 			canvas.Restore();
@@ -1066,7 +1121,9 @@ namespace Bitmute.Imaging
 				}
 				if (Layer.IsCustomBlend(layer.BlendMode()))
 				{
+					DrawClippedStyleUnder(target, clipRect, sampling, layer);
 					BlendCustomLayer(target, left, top, right, bottom, layer);
+					DrawClippedStyleOver(target, clipRect, sampling, layer);
 				}
 				else
 				{
@@ -1074,13 +1131,7 @@ namespace Bitmute.Imaging
 					canvas.Save();
 					canvas.ClipRect(clipRect);
 					SKPaint paint = new SKPaint();
-					paint.Color = SKColors.White.WithAlpha(layer.Opacity());
-					paint.BlendMode = Layer.ToSkBlendMode(layer.BlendMode());
-					SKPixmap pixmap = layer.Bitmap().PeekPixels();
-					SKImage image = SKImage.FromPixels(pixmap);
-					canvas.DrawImage(image, layer.OffsetX(), layer.OffsetY(), sampling, paint);
-					image.Dispose();
-					pixmap.Dispose();
+					DrawStyledLayer(canvas, layer, sampling, paint);
 					paint.Dispose();
 					canvas.Restore();
 					canvas.Dispose();

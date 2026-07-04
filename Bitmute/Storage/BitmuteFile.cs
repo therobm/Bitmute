@@ -256,6 +256,35 @@ namespace Bitmute.Storage
 					writer.WriteBoolean("textFauxItalic", layer.TextFauxItalic());
 					writer.WriteBoolean("textKerningAuto", layer.TextKerningAuto());
 				}
+				LayerStyle layerStyle = layer.LayerStyle();
+				SKColor strokeColor = layerStyle.m_strokeColor;
+				SKColor shadowColor = layerStyle.m_shadowColor;
+				SKColor glowColor = layerStyle.m_glowColor;
+				writer.WriteStartObject("layerStyle");
+				writer.WriteBoolean("hasStroke", layerStyle.m_hasStroke);
+				writer.WriteNumber("strokeSize", layerStyle.m_strokeSize);
+				writer.WriteNumber("strokePosition", layerStyle.m_strokePosition);
+				writer.WriteNumber("strokeColorRed", (int)strokeColor.Red);
+				writer.WriteNumber("strokeColorGreen", (int)strokeColor.Green);
+				writer.WriteNumber("strokeColorBlue", (int)strokeColor.Blue);
+				writer.WriteNumber("strokeColorAlpha", (int)strokeColor.Alpha);
+				writer.WriteBoolean("hasDropShadow", layerStyle.m_hasDropShadow);
+				writer.WriteNumber("shadowColorRed", (int)shadowColor.Red);
+				writer.WriteNumber("shadowColorGreen", (int)shadowColor.Green);
+				writer.WriteNumber("shadowColorBlue", (int)shadowColor.Blue);
+				writer.WriteNumber("shadowColorAlpha", (int)shadowColor.Alpha);
+				writer.WriteNumber("shadowOpacity", layerStyle.m_shadowOpacity);
+				writer.WriteNumber("shadowAngle", layerStyle.m_shadowAngle);
+				writer.WriteNumber("shadowDistance", layerStyle.m_shadowDistance);
+				writer.WriteNumber("shadowSize", layerStyle.m_shadowSize);
+				writer.WriteBoolean("hasOuterGlow", layerStyle.m_hasOuterGlow);
+				writer.WriteNumber("glowColorRed", (int)glowColor.Red);
+				writer.WriteNumber("glowColorGreen", (int)glowColor.Green);
+				writer.WriteNumber("glowColorBlue", (int)glowColor.Blue);
+				writer.WriteNumber("glowColorAlpha", (int)glowColor.Alpha);
+				writer.WriteNumber("glowOpacity", layerStyle.m_glowOpacity);
+				writer.WriteNumber("glowSize", layerStyle.m_glowSize);
+				writer.WriteEndObject();
 				writer.WriteEndObject();
 			}
 			writer.WriteEndArray();
@@ -466,6 +495,26 @@ namespace Bitmute.Storage
 					ReadBool(layerElement, "textFauxBold", false),
 					ReadBool(layerElement, "textFauxItalic", false),
 					ReadBool(layerElement, "textKerningAuto", true));
+			}
+			System.Text.Json.JsonElement styleElement;
+			if (layerElement.TryGetProperty("layerStyle", out styleElement))
+			{
+				LayerStyle style = new LayerStyle();
+				style.m_hasStroke = ReadBool(styleElement, "hasStroke", false);
+				style.m_strokeSize = ReadInt(styleElement, "strokeSize", 3);
+				style.m_strokePosition = ReadInt(styleElement, "strokePosition", 2);
+				style.m_strokeColor = new SKColor(ClampByte(ReadInt(styleElement, "strokeColorRed", 0)), ClampByte(ReadInt(styleElement, "strokeColorGreen", 0)), ClampByte(ReadInt(styleElement, "strokeColorBlue", 0)), ClampByte(ReadInt(styleElement, "strokeColorAlpha", 255)));
+				style.m_hasDropShadow = ReadBool(styleElement, "hasDropShadow", false);
+				style.m_shadowColor = new SKColor(ClampByte(ReadInt(styleElement, "shadowColorRed", 0)), ClampByte(ReadInt(styleElement, "shadowColorGreen", 0)), ClampByte(ReadInt(styleElement, "shadowColorBlue", 0)), ClampByte(ReadInt(styleElement, "shadowColorAlpha", 255)));
+				style.m_shadowOpacity = ReadInt(styleElement, "shadowOpacity", 75);
+				style.m_shadowAngle = ReadInt(styleElement, "shadowAngle", 135);
+				style.m_shadowDistance = ReadInt(styleElement, "shadowDistance", 5);
+				style.m_shadowSize = ReadInt(styleElement, "shadowSize", 5);
+				style.m_hasOuterGlow = ReadBool(styleElement, "hasOuterGlow", false);
+				style.m_glowColor = new SKColor(ClampByte(ReadInt(styleElement, "glowColorRed", 255)), ClampByte(ReadInt(styleElement, "glowColorGreen", 255)), ClampByte(ReadInt(styleElement, "glowColorBlue", 190)), ClampByte(ReadInt(styleElement, "glowColorAlpha", 255)));
+				style.m_glowOpacity = ReadInt(styleElement, "glowOpacity", 75);
+				style.m_glowSize = ReadInt(styleElement, "glowSize", 5);
+				layer.SetLayerStyle(style);
 			}
 			return layer;
 		}

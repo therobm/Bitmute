@@ -67,6 +67,17 @@ namespace Bitmute.Imaging
 		private bool m_textFauxBold;
 		private bool m_textFauxItalic;
 		private bool m_textKerningAuto;
+		private LayerStyle m_layerStyle;
+		private SKBitmap m_cacheStroke;
+		private SKBitmap m_cacheShadow;
+		private SKBitmap m_cacheGlow;
+		private int m_cacheStrokeX;
+		private int m_cacheStrokeY;
+		private int m_cacheShadowX;
+		private int m_cacheShadowY;
+		private int m_cacheGlowX;
+		private int m_cacheGlowY;
+		private bool m_styleCacheDirty;
 
 		public static bool IsCustomBlend(eBlendMode blendMode)
 		{
@@ -217,6 +228,8 @@ namespace Bitmute.Imaging
 			m_textFauxBold = false;
 			m_textFauxItalic = false;
 			m_textKerningAuto = true;
+			m_layerStyle = new LayerStyle();
+			m_styleCacheDirty = true;
 		}
 
 		public bool TextLeadingAuto()
@@ -438,6 +451,106 @@ namespace Bitmute.Imaging
 		public void SetBitmap(SKBitmap bitmap)
 		{
 			m_bitmap = bitmap;
+			m_styleCacheDirty = true;
+		}
+
+		public LayerStyle LayerStyle()
+		{
+			return m_layerStyle;
+		}
+
+		public void SetLayerStyle(LayerStyle style)
+		{
+			m_layerStyle = style;
+			m_styleCacheDirty = true;
+		}
+
+		public void InvalidateStyleCache()
+		{
+			m_styleCacheDirty = true;
+		}
+
+		private void DisposeStyleCache()
+		{
+			if (m_cacheStroke != null)
+			{
+				m_cacheStroke.Dispose();
+				m_cacheStroke = null;
+			}
+			if (m_cacheShadow != null)
+			{
+				m_cacheShadow.Dispose();
+				m_cacheShadow = null;
+			}
+			if (m_cacheGlow != null)
+			{
+				m_cacheGlow.Dispose();
+				m_cacheGlow = null;
+			}
+		}
+
+		private void EnsureStyleCache()
+		{
+			if (!m_styleCacheDirty)
+			{
+				return;
+			}
+			DisposeStyleCache();
+			if (m_layerStyle.m_hasDropShadow)
+			{
+				double radians = m_layerStyle.m_shadowAngle * System.Math.PI / 180.0;
+				int shadowOffsetX = (int)System.Math.Round(System.Math.Cos(radians) * m_layerStyle.m_shadowDistance);
+				int shadowOffsetY = (int)System.Math.Round(System.Math.Sin(radians) * m_layerStyle.m_shadowDistance);
+				byte shadowOpacity = (byte)((m_layerStyle.m_shadowOpacity * 255) / 100);
+				m_cacheShadow = LayerStyles.RenderDropShadow(m_bitmap, m_layerStyle.m_shadowColor, shadowOffsetX, shadowOffsetY, m_layerStyle.m_shadowSize, shadowOpacity, out m_cacheShadowX, out m_cacheShadowY);
+			}
+			if (m_layerStyle.m_hasOuterGlow)
+			{
+				byte glowOpacity = (byte)((m_layerStyle.m_glowOpacity * 255) / 100);
+				m_cacheGlow = LayerStyles.RenderOuterGlow(m_bitmap, m_layerStyle.m_glowColor, m_layerStyle.m_glowSize, glowOpacity, out m_cacheGlowX, out m_cacheGlowY);
+			}
+			if (m_layerStyle.m_hasStroke)
+			{
+				m_cacheStroke = LayerStyles.RenderStroke(m_bitmap, m_layerStyle.m_strokeSize, m_layerStyle.m_strokePosition, m_layerStyle.m_strokeColor, out m_cacheStrokeX, out m_cacheStrokeY);
+			}
+			m_styleCacheDirty = false;
+		}
+
+		private void DrawCachedEffect(SKCanvas canvas, SKBitmap effect, int placeX, int placeY, SKSamplingOptions sampling, byte layerOpacity)
+		{
+			if (effect == null)
+			{
+				return;
+			}
+			SKPaint paint = new SKPaint();
+			paint.Color = SKColors.White.WithAlpha(layerOpacity);
+			SKPixmap pixmap = effect.PeekPixels();
+			SKImage image = SKImage.FromPixels(pixmap);
+			canvas.DrawImage(image, m_offsetX + placeX, m_offsetY + placeY, sampling, paint);
+			image.Dispose();
+			pixmap.Dispose();
+			paint.Dispose();
+		}
+
+		public void DrawStyleUnder(SKCanvas canvas, SKSamplingOptions sampling)
+		{
+			if (!m_layerStyle.HasAnyEffect())
+			{
+				return;
+			}
+			EnsureStyleCache();
+			DrawCachedEffect(canvas, m_cacheShadow, m_cacheShadowX, m_cacheShadowY, sampling, m_opacity);
+			DrawCachedEffect(canvas, m_cacheGlow, m_cacheGlowX, m_cacheGlowY, sampling, m_opacity);
+		}
+
+		public void DrawStyleOver(SKCanvas canvas, SKSamplingOptions sampling)
+		{
+			if (!m_layerStyle.HasAnyEffect())
+			{
+				return;
+			}
+			EnsureStyleCache();
+			DrawCachedEffect(canvas, m_cacheStroke, m_cacheStrokeX, m_cacheStrokeY, sampling, m_opacity);
 		}
 
 		public Layer Clone()
@@ -474,6 +587,8 @@ namespace Bitmute.Imaging
 			copy.m_textFauxBold = m_textFauxBold;
 			copy.m_textFauxItalic = m_textFauxItalic;
 			copy.m_textKerningAuto = m_textKerningAuto;
+			copy.m_layerStyle = m_layerStyle.Clone();
+			copy.m_styleCacheDirty = true;
 			return copy;
 		}
 
