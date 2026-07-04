@@ -543,7 +543,7 @@ namespace Bitmute.UI
 
 			HorizontalStackLayout strip = new HorizontalStackLayout();
 			strip.HeightRequest = UiConstants.MenuBarHeight;
-			strip.ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
+			strip.ThemeBg(UiConstants.ChromeMenubarLight, UiConstants.ChromeMenubarDark);
 			strip.Spacing = 0.0;
 			strip.Padding = new Thickness(0.0);
 
@@ -3271,7 +3271,7 @@ namespace Bitmute.UI
 				return;
 			}
 			SKColor foreground = m_toolState.Foreground();
-			FillSelectionWith(new SKColor(foreground.Red, foreground.Green, foreground.Blue, 255));
+			FillSelectionWith(new SKColor(foreground.Red, foreground.Green, foreground.Blue, 255), true);
 			args.Handled = true;
 		}
 
@@ -3282,7 +3282,7 @@ namespace Bitmute.UI
 				return;
 			}
 			SKColor background = m_toolState.Background();
-			FillSelectionWith(new SKColor(background.Red, background.Green, background.Blue, 255));
+			FillSelectionWith(new SKColor(background.Red, background.Green, background.Blue, 255), true);
 			args.Handled = true;
 		}
 
@@ -3304,18 +3304,13 @@ namespace Bitmute.UI
 				SKColor background = m_toolState.Background();
 				fill = new SKColor(background.Red, background.Green, background.Blue, 255);
 			}
-			FillSelectionWith(fill);
+			FillSelectionWith(fill, false);
 		}
 
-		private void FillSelectionWith(SKColor fill)
+		private void FillSelectionWith(SKColor fill, bool fillLayerWhenEmpty)
 		{
 			Document document = ActiveDocument();
 			if (document == null)
-			{
-				return;
-			}
-			Selection selection = document.Selection();
-			if (!selection.IsActive())
 			{
 				return;
 			}
@@ -3329,8 +3324,21 @@ namespace Bitmute.UI
 				SetStatusMessage("Layer is locked");
 				return;
 			}
+			Selection selection = document.Selection();
+			bool hasSelection = selection.IsActive();
+			if (!hasSelection && !fillLayerWhenEmpty)
+			{
+				return;
+			}
 			document.BeginStroke();
-			document.FillSelection(fill);
+			if (hasSelection)
+			{
+				document.FillSelection(fill);
+			}
+			else
+			{
+				document.FillLayer(fill);
+			}
 			document.EndStroke();
 			CanvasView canvas = ActiveCanvas();
 			if (canvas != null)
@@ -3534,6 +3542,12 @@ namespace Bitmute.UI
 		{
 			if (m_textEditActive)
 			{
+				return;
+			}
+			if (m_modalContent != null)
+			{
+				CloseModal();
+				args.Handled = true;
 				return;
 			}
 			if (!TransformActive())

@@ -1725,6 +1725,7 @@ namespace Bitmute.UI
 					{
 						main.SetStatusMessage("Rasterize the text layer to paint on it");
 					}
+					InvalidateSurface();
 					eventArgs.Handled = true;
 					return;
 				}
@@ -1734,6 +1735,7 @@ namespace Bitmute.UI
 					{
 						main.SetStatusMessage("Layer is locked");
 					}
+					InvalidateSurface();
 					eventArgs.Handled = true;
 					return;
 				}

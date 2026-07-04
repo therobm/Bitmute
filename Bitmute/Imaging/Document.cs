@@ -275,6 +275,17 @@ namespace Bitmute.Imaging
 			MarkComposeDirtyRegion(new SKRectI(left, top, right, bottom));
 		}
 
+		public void FillLayer(SKColor color)
+		{
+			Layer layer = ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			layer.Bitmap().Erase(color);
+			MarkComposeDirtyAll();
+		}
+
 		public void BeginStroke()
 		{
 			if (m_strokeSnapshot != null)

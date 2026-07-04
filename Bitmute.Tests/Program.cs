@@ -37,6 +37,7 @@ namespace Bitmute.Tests
 		public static int Main(string[] args)
 		{
 			TestFillSelection();
+			TestFillLayer();
 			TestCustomBlends();
 			TestCustomBlendOpacity();
 			TestCustomBlendTransparentBase();
@@ -980,6 +981,20 @@ namespace Bitmute.Tests
 			Check(glowHalo.Alpha > 0 && glowHalo.Red == 255 && glowHalo.Green == 255 && glowHalo.Blue == 0, "outer glow halo present in glow color");
 			glow.Dispose();
 			source.Dispose();
+		}
+
+		private static void TestFillLayer()
+		{
+			Document doc = new Document("t", 16, 16);
+			Layer layer = doc.ActiveLayer();
+			layer.Bitmap().Erase(new SKColor(0, 0, 0, 0));
+			doc.BeginStroke();
+			doc.FillLayer(new SKColor(255, 0, 0, 255));
+			doc.EndStroke();
+			SKColor corner = layer.GetPixelCanvas(0, 0);
+			SKColor center = layer.GetPixelCanvas(8, 8);
+			Check(corner.Red == 255 && corner.Alpha == 255, "fill layer covers corner");
+			Check(center.Red == 255 && center.Alpha == 255, "fill layer covers center");
 		}
 
 		private static void TestStyledComposite()
