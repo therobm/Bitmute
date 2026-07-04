@@ -6,6 +6,20 @@ namespace Bitmute.Tools
 {
 	public class FillTool : Tool
 	{
+		private static SKColor BlendByCoverage(SKColor current, SKColor fill, int coverage)
+		{
+			if (coverage >= 255)
+			{
+				return fill;
+			}
+			int inverse = 255 - coverage;
+			byte red = (byte)(((current.Red * inverse) + (fill.Red * coverage) + 127) / 255);
+			byte green = (byte)(((current.Green * inverse) + (fill.Green * coverage) + 127) / 255);
+			byte blue = (byte)(((current.Blue * inverse) + (fill.Blue * coverage) + 127) / 255);
+			byte alpha = (byte)(((current.Alpha * inverse) + (fill.Alpha * coverage) + 127) / 255);
+			return new SKColor(red, green, blue, alpha);
+		}
+
 		private static bool ColorMatch(SKColor left, SKColor right, int tolerance)
 		{
 			int deltaRed = left.Red - right.Red;
@@ -87,9 +101,14 @@ namespace Bitmute.Tools
 				int index = pending.Pop();
 				int pixelX = index % width;
 				int pixelY = index / width;
-				if (selection.IsActive() && !selection.IsSelected(pixelX + offsetX, pixelY + offsetY))
+				int coverage = 255;
+				if (selection.IsActive())
 				{
-					continue;
+					coverage = selection.Coverage(pixelX + offsetX, pixelY + offsetY);
+					if (coverage == 0)
+					{
+						continue;
+					}
 				}
 				SKColor current = bitmap.GetPixel(pixelX, pixelY);
 				if (!ColorMatch(current, target, tolerance))
@@ -100,7 +119,7 @@ namespace Bitmute.Tools
 				{
 					continue;
 				}
-				bitmap.SetPixel(pixelX, pixelY, fill);
+				bitmap.SetPixel(pixelX, pixelY, BlendByCoverage(current, fill, coverage));
 				filled[index] = true;
 				if (pixelX > 0)
 				{
@@ -136,7 +155,7 @@ namespace Bitmute.Tools
 					{
 						continue;
 					}
-					if (selection.IsActive() && !selection.IsSelected(pixelX + offsetX, pixelY + offsetY))
+					if (selection.IsActive() && selection.Coverage(pixelX + offsetX, pixelY + offsetY) == 0)
 					{
 						continue;
 					}
@@ -150,7 +169,15 @@ namespace Bitmute.Tools
 			for (int position = 0; position < edge.Count; position++)
 			{
 				int index = edge[position];
-				bitmap.SetPixel(index % width, index / width, fill);
+				int pixelX = index % width;
+				int pixelY = index / width;
+				int coverage = 255;
+				if (selection.IsActive())
+				{
+					coverage = selection.Coverage(pixelX + offsetX, pixelY + offsetY);
+				}
+				SKColor current = bitmap.GetPixel(pixelX, pixelY);
+				bitmap.SetPixel(pixelX, pixelY, BlendByCoverage(current, fill, coverage));
 			}
 		}
 

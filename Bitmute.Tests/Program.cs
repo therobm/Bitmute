@@ -85,6 +85,11 @@ namespace Bitmute.Tests
 			TestCanvasOpUndo();
 			TestStructuralLayerUndo();
 			TestGuidesModel();
+			TestSelectionCoverageBrush();
+			TestSelectionCombineCoverage();
+			TestSelectionFeather();
+			TestEllipseAntiAlias();
+			TestIsSelectedThreshold();
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");
@@ -242,6 +247,7 @@ namespace Bitmute.Tests
 			ToolState state = new ToolState();
 			state.SetFillTolerance(0);
 			state.SetWandSampleAll(true);
+			state.SetWandAntiAlias(false);
 			MagicWandTool wand = new MagicWandTool();
 			wand.OnPressed(doc, 11, 11, state);
 			Check(doc.Selection().IsSelected(11, 11), "wand sample-all selects composite blue");
@@ -1621,6 +1627,146 @@ namespace Bitmute.Tests
 			CheckNear(actual.Blue, expectedB, 2, "mixed native+custom blue");
 			Check(actual.Alpha == 255, "mixed native+custom alpha");
 			target.Dispose();
+		}
+
+		private static void TestSelectionCoverageBrush()
+		{
+			Document doc = new Document("t", 32, 32);
+			Layer layer = doc.ActiveLayer();
+			layer.Bitmap().Erase(new SKColor(0, 0, 0, 0));
+			byte[] mask = new byte[32 * 32];
+			for (int y = 2; y < 30; y++)
+			{
+				for (int x = 2; x < 14; x++)
+				{
+					mask[(y * 32) + x] = 128;
+				}
+				for (int x = 18; x < 30; x++)
+				{
+					mask[(y * 32) + x] = 255;
+				}
+			}
+			doc.Selection().SelectMask(mask, new SKRectI(2, 2, 30, 30));
+			BrushEngine engine = new BrushEngine();
+			engine.Begin(layer, null, 4, 1.0, 1.0, 1.0, false, 0.25, 0.0, eBrushOp.Paint, eBlendMode.Normal, new SKColor(255, 0, 0, 255));
+			engine.StampFirst(doc, layer, 8, 16, doc.Selection());
+			engine.StampFirst(doc, layer, 24, 16, doc.Selection());
+			engine.End();
+			SKColor half = layer.GetPixelCanvas(8, 16);
+			CheckNear(half.Alpha, 128, 3, "half coverage paint yields half alpha");
+			Check(half.Red == 255 && half.Green == 0, "half coverage paint keeps color");
+			SKColor full = layer.GetPixelCanvas(24, 16);
+			Check(full.Alpha == 255, "full coverage paint yields full alpha");
+			Check(full.Red == 255 && full.Green == 0, "full coverage paint keeps color");
+		}
+
+		private static void TestSelectionCombineCoverage()
+		{
+			Selection sel = new Selection(4, 4);
+			byte[] baseAdd = new byte[16];
+			baseAdd[5] = 200;
+			sel.SelectMask(baseAdd, new SKRectI(1, 1, 2, 2));
+			sel.BeginOperation(eSelectionMode.Add);
+			byte[] regionAdd = new byte[16];
+			regionAdd[5] = 120;
+			regionAdd[6] = 90;
+			sel.ApplyMask(regionAdd);
+			Check(sel.Coverage(1, 1) == 200, "union keeps max of base and new");
+			Check(sel.Coverage(2, 1) == 90, "union takes new where base empty");
+
+			byte[] baseSubtract = new byte[16];
+			baseSubtract[5] = 200;
+			baseSubtract[6] = 40;
+			sel.SelectMask(baseSubtract, new SKRectI(1, 1, 3, 2));
+			sel.BeginOperation(eSelectionMode.Subtract);
+			byte[] regionSubtract = new byte[16];
+			regionSubtract[5] = 120;
+			regionSubtract[6] = 90;
+			sel.ApplyMask(regionSubtract);
+			Check(sel.Coverage(1, 1) == 80, "subtract is base minus new");
+			Check(sel.Coverage(2, 1) == 0, "subtract clamps at zero");
+
+			byte[] baseIntersect = new byte[16];
+			baseIntersect[5] = 200;
+			sel.SelectMask(baseIntersect, new SKRectI(1, 1, 2, 2));
+			sel.BeginOperation(eSelectionMode.Intersect);
+			byte[] regionIntersect = new byte[16];
+			regionIntersect[5] = 120;
+			regionIntersect[6] = 90;
+			sel.ApplyMask(regionIntersect);
+			Check(sel.Coverage(1, 1) == 120, "intersect takes min");
+			Check(sel.Coverage(2, 1) == 0, "intersect zero where base empty");
+		}
+
+		private static void TestSelectionFeather()
+		{
+			Selection sel = new Selection(64, 64);
+			sel.BeginOperation(eSelectionMode.Replace, 4);
+			sel.ApplyRect(new SKRectI(20, 20, 44, 44));
+			Check(sel.IsActive(), "feathered selection stays active");
+			Check(sel.Coverage(32, 32) > 200, "feather keeps strong center");
+			int edge = sel.Coverage(20, 32);
+			Check(edge > 0 && edge < 255, "feather intermediate at rect edge");
+			int skirt = sel.Coverage(17, 32);
+			Check(skirt > 0 && skirt < 128, "feather skirt outside original rect");
+			Check(sel.Coverage(2, 32) == 0, "feather zero far outside");
+			Check(sel.IsSelected(32, 32), "feathered center still selected");
+		}
+
+		private static void TestEllipseAntiAlias()
+		{
+			Document doc = new Document("t", 64, 64);
+			ToolState state = new ToolState();
+			state.SetSelectionAntiAlias(true);
+			EllipseSelectTool tool = new EllipseSelectTool();
+			tool.OnPressed(doc, 12, 12, state);
+			tool.OnDragged(doc, 50, 46, state);
+			tool.OnReleased(doc, 50, 46, state);
+			byte[] mask = doc.Selection().Mask();
+			int intermediate = 0;
+			for (int index = 0; index < mask.Length; index++)
+			{
+				if (mask[index] > 0 && mask[index] < 255)
+				{
+					intermediate = intermediate + 1;
+				}
+			}
+			Check(intermediate > 0, "ellipse AA edge has partial coverage");
+			Check(doc.Selection().Coverage(31, 29) == 255, "ellipse AA center full coverage");
+
+			Document docHard = new Document("t", 64, 64);
+			state.SetSelectionAntiAlias(false);
+			EllipseSelectTool toolHard = new EllipseSelectTool();
+			toolHard.OnPressed(docHard, 12, 12, state);
+			toolHard.OnDragged(docHard, 50, 46, state);
+			toolHard.OnReleased(docHard, 50, 46, state);
+			byte[] maskHard = docHard.Selection().Mask();
+			int intermediateHard = 0;
+			for (int index = 0; index < maskHard.Length; index++)
+			{
+				if (maskHard[index] > 0 && maskHard[index] < 255)
+				{
+					intermediateHard = intermediateHard + 1;
+				}
+			}
+			Check(intermediateHard == 0, "ellipse AA off has no partial coverage");
+			Check(docHard.Selection().IsActive(), "ellipse AA off still selects");
+		}
+
+		private static void TestIsSelectedThreshold()
+		{
+			Selection sel = new Selection(4, 4);
+			byte[] mask = new byte[16];
+			mask[0] = 127;
+			mask[1] = 128;
+			mask[2] = 255;
+			sel.SelectMask(mask, new SKRectI(0, 0, 3, 1));
+			Check(!sel.IsSelected(0, 0), "coverage 127 below threshold");
+			Check(sel.IsSelected(1, 0), "coverage 128 at threshold selected");
+			Check(sel.IsSelected(2, 0), "coverage 255 selected");
+			Check(sel.Coverage(0, 0) == 127, "coverage accessor exact value");
+			Check(sel.Coverage(-1, 0) == 0, "coverage out of bounds x is zero");
+			Check(sel.Coverage(0, 9) == 0, "coverage out of bounds y is zero");
 		}
 	}
 }

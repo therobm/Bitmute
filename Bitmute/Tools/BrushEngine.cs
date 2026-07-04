@@ -424,9 +424,15 @@ namespace Bitmute.Tools
 					{
 						continue;
 					}
-					if (clip && !selection.IsSelected(canvasX, canvasY))
+					double selectionFactor = 1.0;
+					if (clip)
 					{
-						continue;
+						int selectionCoverage = selection.Coverage(canvasX, canvasY);
+						if (selectionCoverage == 0)
+						{
+							continue;
+						}
+						selectionFactor = selectionCoverage / 255.0;
 					}
 					int bitmapX = canvasX - layerOffsetX;
 					if (bitmapX < 0 || bitmapX >= m_width)
@@ -447,6 +453,7 @@ namespace Bitmute.Tools
 					{
 						finalAlpha = m_opacity;
 					}
+					finalAlpha = finalAlpha * selectionFactor;
 					byte* originalPixel = originalPixels + (bitmapY * originalRowBytes) + (bitmapX * 4);
 					byte* destinationPixel = pixels + (bitmapY * rowBytes) + (bitmapX * 4);
 					double originalAlpha = originalPixel[3] / 255.0;
@@ -677,9 +684,14 @@ namespace Bitmute.Tools
 					{
 						continue;
 					}
-					if (clip && !selection.IsSelected(canvasX, canvasY))
+					if (clip)
 					{
-						continue;
+						int selectionCoverage = selection.Coverage(canvasX, canvasY);
+						if (selectionCoverage == 0)
+						{
+							continue;
+						}
+						tip = tip * (selectionCoverage / 255.0);
 					}
 					int bitmapX = canvasX - layerOffsetX;
 					if (bitmapX < 0 || bitmapX >= m_width)
@@ -731,9 +743,14 @@ namespace Bitmute.Tools
 					{
 						continue;
 					}
-					if (clip && !selection.IsSelected(canvasX, canvasY))
+					if (clip)
 					{
-						continue;
+						int selectionCoverage = selection.Coverage(canvasX, canvasY);
+						if (selectionCoverage == 0)
+						{
+							continue;
+						}
+						tip = tip * (selectionCoverage / 255.0);
 					}
 					int bitmapX = canvasX - layerOffsetX;
 					if (bitmapX < 0 || bitmapX >= m_width)

@@ -233,7 +233,7 @@ namespace Bitmute.Tools
 			}
 		}
 
-		private void CommitSelection(Document document)
+		private void CommitSelection(Document document, ToolState state)
 		{
 			int count = m_verticesX.Count;
 			if (count < MinimumVertices)
@@ -326,6 +326,10 @@ namespace Bitmute.Tools
 				}
 			}
 
+			if (state.SelectionAntiAlias())
+			{
+				SmoothMaskBoundary(mask, documentWidth, documentHeight);
+			}
 			document.Selection().ApplyMask(mask);
 		}
 
@@ -378,7 +382,7 @@ namespace Bitmute.Tools
 			{
 				document.Selection().Clear();
 			}
-			document.Selection().BeginOperation(mode);
+			document.Selection().BeginOperation(mode, state.SelectionFeather());
 			int snappedX;
 			int snappedY;
 			SnapPoint(document, x, y, state, out snappedX, out snappedY);
@@ -410,7 +414,7 @@ namespace Bitmute.Tools
 			int snappedY;
 			SnapPoint(document, x, y, state, out snappedX, out snappedY);
 			AppendPoint(snappedX, snappedY);
-			CommitSelection(document);
+			CommitSelection(document, state);
 			m_active = false;
 			m_verticesX.Clear();
 			m_verticesY.Clear();

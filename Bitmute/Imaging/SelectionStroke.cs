@@ -16,7 +16,7 @@ namespace Bitmute.Imaging
 				return 1 << 29;
 			}
 			int neighborIndex = (neighborY * width) + neighborX;
-			bool neighborSelected = state[neighborIndex] != 0;
+			bool neighborSelected = state[neighborIndex] >= 128;
 			if (neighborSelected != selected)
 			{
 				return 1;
@@ -37,7 +37,7 @@ namespace Bitmute.Imaging
 				for (int x = 0; x < width; x++)
 				{
 					int index = row + x;
-					bool selected = state[index] != 0;
+					bool selected = state[index] >= 128;
 					int best = distance[index];
 					int candidate = NeighborCandidate(state, distance, width, height, x - 1, y, selected);
 					if (candidate < best)
@@ -68,7 +68,7 @@ namespace Bitmute.Imaging
 				for (int x = width - 1; x >= 0; x--)
 				{
 					int index = row + x;
-					bool selected = state[index] != 0;
+					bool selected = state[index] >= 128;
 					int best = distance[index];
 					int candidate = NeighborCandidate(state, distance, width, height, x + 1, y, selected);
 					if (candidate < best)
@@ -182,7 +182,7 @@ namespace Bitmute.Imaging
 				{
 					int index = row + canvasX;
 					int limit;
-					if (state[index] != 0)
+					if (state[index] >= 128)
 					{
 						limit = insideLimit;
 					}

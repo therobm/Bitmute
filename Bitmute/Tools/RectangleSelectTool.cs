@@ -24,7 +24,7 @@ namespace Bitmute.Tools
 			{
 				document.Selection().Clear();
 			}
-			document.Selection().BeginOperation(mode);
+			document.Selection().BeginOperation(mode, state.SelectionFeather());
 			return false;
 		}
 

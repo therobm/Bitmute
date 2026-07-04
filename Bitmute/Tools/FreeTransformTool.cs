@@ -517,7 +517,8 @@ namespace Bitmute.Tools
 			{
 				for (int canvasX = bounds.Left; canvasX < bounds.Right; canvasX++)
 				{
-					if (!selection.IsSelected(canvasX, canvasY))
+					int coverage = selection.Coverage(canvasX, canvasY);
+					if (coverage == 0)
 					{
 						continue;
 					}
@@ -527,7 +528,12 @@ namespace Bitmute.Tools
 					{
 						continue;
 					}
-					piece.SetPixel(canvasX - bounds.Left, canvasY - bounds.Top, source.GetPixel(bitmapX, bitmapY));
+					SKColor sourcePixel = source.GetPixel(bitmapX, bitmapY);
+					if (coverage < 255)
+					{
+						sourcePixel = new SKColor(sourcePixel.Red, sourcePixel.Green, sourcePixel.Blue, (byte)(((sourcePixel.Alpha * coverage) + 127) / 255));
+					}
+					piece.SetPixel(canvasX - bounds.Left, canvasY - bounds.Top, sourcePixel);
 				}
 			}
 			return piece;
@@ -540,7 +546,8 @@ namespace Bitmute.Tools
 			{
 				for (int canvasX = bounds.Left; canvasX < bounds.Right; canvasX++)
 				{
-					if (!selection.IsSelected(canvasX, canvasY))
+					int coverage = selection.Coverage(canvasX, canvasY);
+					if (coverage == 0)
 					{
 						continue;
 					}
@@ -550,7 +557,13 @@ namespace Bitmute.Tools
 					{
 						continue;
 					}
-					remainder.SetPixel(bitmapX, bitmapY, SKColors.Transparent);
+					if (coverage >= 255)
+					{
+						remainder.SetPixel(bitmapX, bitmapY, SKColors.Transparent);
+						continue;
+					}
+					SKColor remainderPixel = remainder.GetPixel(bitmapX, bitmapY);
+					remainder.SetPixel(bitmapX, bitmapY, new SKColor(remainderPixel.Red, remainderPixel.Green, remainderPixel.Blue, (byte)(((remainderPixel.Alpha * (255 - coverage)) + 127) / 255)));
 				}
 			}
 			return remainder;

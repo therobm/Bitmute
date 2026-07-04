@@ -24,7 +24,7 @@ namespace Bitmute.Tools
 			{
 				document.Selection().Clear();
 			}
-			document.Selection().BeginOperation(mode);
+			document.Selection().BeginOperation(mode, state.SelectionFeather());
 			return false;
 		}
 
@@ -58,22 +58,22 @@ namespace Bitmute.Tools
 
 			int documentWidth = document.Width();
 			int documentHeight = document.Height();
-			int clampedLeft = left;
+			int clampedLeft = left - 1;
 			if (clampedLeft < 0)
 			{
 				clampedLeft = 0;
 			}
-			int clampedTop = top;
+			int clampedTop = top - 1;
 			if (clampedTop < 0)
 			{
 				clampedTop = 0;
 			}
-			int clampedRight = right;
+			int clampedRight = right + 1;
 			if (clampedRight > documentWidth)
 			{
 				clampedRight = documentWidth;
 			}
-			int clampedBottom = bottom;
+			int clampedBottom = bottom + 1;
 			if (clampedBottom > documentHeight)
 			{
 				clampedBottom = documentHeight;
@@ -88,6 +88,7 @@ namespace Bitmute.Tools
 			double centerY = (top + bottom) / 2.0;
 			double radiusX = (right - left) / 2.0;
 			double radiusY = (bottom - top) / 2.0;
+			bool antiAlias = state.SelectionAntiAlias();
 
 			byte[] mask = new byte[documentWidth * documentHeight];
 			for (int pixelY = clampedTop; pixelY < clampedBottom; pixelY++)
@@ -98,11 +99,41 @@ namespace Bitmute.Tools
 				for (int pixelX = clampedLeft; pixelX < clampedRight; pixelX++)
 				{
 					double normalizedX = ((pixelX + 0.5) - centerX) / radiusX;
-					if ((normalizedX * normalizedX) + normalizedYSquared > 1.0)
+					double radialSquared = (normalizedX * normalizedX) + normalizedYSquared;
+					if (!antiAlias)
+					{
+						if (radialSquared > 1.0)
+						{
+							continue;
+						}
+						mask[rowStart + pixelX] = 255;
+						continue;
+					}
+					double radial = System.Math.Sqrt(radialSquared);
+					if (radial <= 0.0)
+					{
+						mask[rowStart + pixelX] = 255;
+						continue;
+					}
+					double gradientX = normalizedX / radiusX;
+					double gradientY = normalizedY / radiusY;
+					double gradient = System.Math.Sqrt((gradientX * gradientX) + (gradientY * gradientY)) / radial;
+					if (gradient <= 0.0)
+					{
+						mask[rowStart + pixelX] = 255;
+						continue;
+					}
+					double signedDistance = (radial - 1.0) / gradient;
+					double alpha = 0.5 - signedDistance;
+					if (alpha <= 0.0)
 					{
 						continue;
 					}
-					mask[rowStart + pixelX] = 255;
+					if (alpha > 1.0)
+					{
+						alpha = 1.0;
+					}
+					mask[rowStart + pixelX] = (byte)((alpha * 255.0) + 0.5);
 				}
 			}
 

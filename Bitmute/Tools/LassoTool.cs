@@ -85,9 +85,9 @@ namespace Bitmute.Tools
 			m_hasLastClick = true;
 		}
 
-		private void Finalize(Document document)
+		private void Finalize(Document document, ToolState state)
 		{
-			CommitSelection(document);
+			CommitSelection(document, state);
 			m_active = false;
 			m_verticesX.Clear();
 			m_verticesY.Clear();
@@ -116,7 +116,7 @@ namespace Bitmute.Tools
 			}
 		}
 
-		private void CommitSelection(Document document)
+		private void CommitSelection(Document document, ToolState state)
 		{
 			int count = m_verticesX.Count;
 			if (count < MinimumVertices)
@@ -199,6 +199,10 @@ namespace Bitmute.Tools
 				}
 			}
 
+			if (state.SelectionAntiAlias())
+			{
+				SmoothMaskBoundary(mask, documentWidth, documentHeight);
+			}
 			document.Selection().ApplyMask(mask);
 		}
 
@@ -216,7 +220,7 @@ namespace Bitmute.Tools
 				{
 					document.Selection().Clear();
 				}
-				document.Selection().BeginOperation(mode);
+				document.Selection().BeginOperation(mode, state.SelectionFeather());
 				m_verticesX.Add(x);
 				m_verticesY.Add(y);
 				return false;
@@ -225,7 +229,7 @@ namespace Bitmute.Tools
 			{
 				if (doubleClick)
 				{
-					Finalize(document);
+					Finalize(document, state);
 					return false;
 				}
 				int deltaX = x - m_verticesX[0];
@@ -233,7 +237,7 @@ namespace Bitmute.Tools
 				int distanceSquared = (deltaX * deltaX) + (deltaY * deltaY);
 				if (distanceSquared <= CloseThreshold * CloseThreshold)
 				{
-					Finalize(document);
+					Finalize(document, state);
 					return false;
 				}
 			}

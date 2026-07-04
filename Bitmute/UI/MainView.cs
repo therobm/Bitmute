@@ -1146,9 +1146,15 @@ namespace Bitmute.UI
 					{
 						int canvasX = bounds.Left + column;
 						int canvasY = bounds.Top + row;
-						if (selection.IsSelected(canvasX, canvasY))
+						int coverage = selection.Coverage(canvasX, canvasY);
+						if (coverage > 0)
 						{
-							result.SetPixel(column, row, layer.GetPixelCanvas(canvasX, canvasY));
+							SkiaSharp.SKColor pixel = layer.GetPixelCanvas(canvasX, canvasY);
+							if (coverage < 255)
+							{
+								pixel = new SkiaSharp.SKColor(pixel.Red, pixel.Green, pixel.Blue, (byte)(((pixel.Alpha * coverage) + 127) / 255));
+							}
+							result.SetPixel(column, row, pixel);
 						}
 					}
 				}
@@ -1167,10 +1173,19 @@ namespace Bitmute.UI
 				{
 					for (int canvasX = bounds.Left; canvasX < bounds.Right; canvasX++)
 					{
-						if (selection.IsSelected(canvasX, canvasY))
+						int coverage = selection.Coverage(canvasX, canvasY);
+						if (coverage == 0)
+						{
+							continue;
+						}
+						if (coverage == 255)
 						{
 							layer.SetPixelCanvas(canvasX, canvasY, SkiaSharp.SKColors.Transparent);
+							continue;
 						}
+						SkiaSharp.SKColor pixel = layer.GetPixelCanvas(canvasX, canvasY);
+						byte reducedAlpha = (byte)(((pixel.Alpha * (255 - coverage)) + 127) / 255);
+						layer.SetPixelCanvas(canvasX, canvasY, new SkiaSharp.SKColor(pixel.Red, pixel.Green, pixel.Blue, reducedAlpha));
 					}
 				}
 				return;

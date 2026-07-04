@@ -37,6 +37,9 @@ namespace Bitmute.Tools
 		private bool m_wandContiguous;
 		private bool m_wandSampleAll;
 		private bool m_wandAntiAlias;
+		private int m_selectionFeather;
+		private bool m_selectionAntiAlias;
+		private int m_selectionMode;
 		private int m_magneticWidth;
 		private int m_magneticContrast;
 		private bool m_lineAntiAlias;
@@ -92,6 +95,9 @@ namespace Bitmute.Tools
 			m_wandContiguous = true;
 			m_wandSampleAll = false;
 			m_wandAntiAlias = true;
+			m_selectionFeather = 0;
+			m_selectionAntiAlias = true;
+			m_selectionMode = 0;
 			m_magneticWidth = 10;
 			m_magneticContrast = 10;
 			m_lineAntiAlias = false;
@@ -174,6 +180,52 @@ namespace Bitmute.Tools
 		public void SetWandAntiAlias(bool antiAlias)
 		{
 			m_wandAntiAlias = antiAlias;
+		}
+
+		public int SelectionFeather()
+		{
+			return m_selectionFeather;
+		}
+
+		public void SetSelectionFeather(int feather)
+		{
+			if (feather < 0)
+			{
+				feather = 0;
+			}
+			if (feather > 100)
+			{
+				feather = 100;
+			}
+			m_selectionFeather = feather;
+		}
+
+		public bool SelectionAntiAlias()
+		{
+			return m_selectionAntiAlias;
+		}
+
+		public void SetSelectionAntiAlias(bool antiAlias)
+		{
+			m_selectionAntiAlias = antiAlias;
+		}
+
+		public int SelectionMode()
+		{
+			return m_selectionMode;
+		}
+
+		public void SetSelectionMode(int mode)
+		{
+			if (mode < 0)
+			{
+				mode = 0;
+			}
+			if (mode > 3)
+			{
+				mode = 3;
+			}
+			m_selectionMode = mode;
 		}
 
 		public bool TextLeadingAuto()

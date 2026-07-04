@@ -9,6 +9,107 @@ namespace Bitmute.Tools
 		protected int m_lastY;
 		protected bool m_hasLast;
 
+		protected static void SmoothMaskBoundary(byte[] mask, int width, int height)
+		{
+			int minX = width;
+			int minY = height;
+			int maxX = -1;
+			int maxY = -1;
+			for (int y = 0; y < height; y++)
+			{
+				int rowStart = y * width;
+				for (int x = 0; x < width; x++)
+				{
+					if (mask[rowStart + x] == 0)
+					{
+						continue;
+					}
+					if (x < minX)
+					{
+						minX = x;
+					}
+					if (x > maxX)
+					{
+						maxX = x;
+					}
+					if (y < minY)
+					{
+						minY = y;
+					}
+					if (y > maxY)
+					{
+						maxY = y;
+					}
+				}
+			}
+			if (maxX < 0)
+			{
+				return;
+			}
+			int left = minX - 1;
+			int top = minY - 1;
+			int right = maxX + 2;
+			int bottom = maxY + 2;
+			if (left < 0)
+			{
+				left = 0;
+			}
+			if (top < 0)
+			{
+				top = 0;
+			}
+			if (right > width)
+			{
+				right = width;
+			}
+			if (bottom > height)
+			{
+				bottom = height;
+			}
+			byte[] source = new byte[mask.Length];
+			System.Array.Copy(mask, source, mask.Length);
+			for (int y = top; y < bottom; y++)
+			{
+				int rowStart = y * width;
+				for (int x = left; x < right; x++)
+				{
+					int center = source[rowStart + x];
+					bool boundary = false;
+					int sum = 0;
+					int count = 0;
+					for (int deltaY = -1; deltaY <= 1; deltaY++)
+					{
+						int neighborY = y + deltaY;
+						if (neighborY < 0 || neighborY >= height)
+						{
+							continue;
+						}
+						int neighborRow = neighborY * width;
+						for (int deltaX = -1; deltaX <= 1; deltaX++)
+						{
+							int neighborX = x + deltaX;
+							if (neighborX < 0 || neighborX >= width)
+							{
+								continue;
+							}
+							int value = source[neighborRow + neighborX];
+							if (value != center)
+							{
+								boundary = true;
+							}
+							sum = sum + value;
+							count = count + 1;
+						}
+					}
+					if (!boundary || count == 0)
+					{
+						continue;
+					}
+					mask[rowStart + x] = (byte)((sum + (count / 2)) / count);
+				}
+			}
+		}
+
 		protected unsafe void DrawDab(Layer layer, int centerX, int centerY, int radius, SKColor color, Selection selection)
 		{
 			SKBitmap bitmap = layer.Bitmap();
@@ -41,9 +142,14 @@ namespace Bitmute.Tools
 						continue;
 					}
 					int canvasX = centerX + offsetX;
-					if (clip && !selection.IsSelected(canvasX, canvasY))
+					int coverage = 255;
+					if (clip)
 					{
-						continue;
+						coverage = selection.Coverage(canvasX, canvasY);
+						if (coverage == 0)
+						{
+							continue;
+						}
 					}
 					int bitmapX = canvasX - layerOffsetX;
 					if (bitmapX < 0 || bitmapX >= width)
@@ -51,10 +157,19 @@ namespace Bitmute.Tools
 						continue;
 					}
 					byte* pixel = rowStart + (bitmapX * 4);
-					pixel[0] = red;
-					pixel[1] = green;
-					pixel[2] = blue;
-					pixel[3] = alpha;
+					if (coverage == 255)
+					{
+						pixel[0] = red;
+						pixel[1] = green;
+						pixel[2] = blue;
+						pixel[3] = alpha;
+						continue;
+					}
+					int inverse = 255 - coverage;
+					pixel[0] = (byte)(((pixel[0] * inverse) + (red * coverage) + 127) / 255);
+					pixel[1] = (byte)(((pixel[1] * inverse) + (green * coverage) + 127) / 255);
+					pixel[2] = (byte)(((pixel[2] * inverse) + (blue * coverage) + 127) / 255);
+					pixel[3] = (byte)(((pixel[3] * inverse) + (alpha * coverage) + 127) / 255);
 				}
 			}
 		}
@@ -115,9 +230,18 @@ namespace Bitmute.Tools
 						{
 							continue;
 						}
-						if (mask[(canvasY * documentWidth) + canvasX] == 0)
+						int coverage = mask[(canvasY * documentWidth) + canvasX];
+						if (coverage == 0)
 						{
 							continue;
+						}
+						if (coverage < 255)
+						{
+							sourceAlpha = ((sourceAlpha * coverage) + 127) / 255;
+							if (sourceAlpha == 0)
+							{
+								continue;
+							}
 						}
 					}
 					byte* destinationPixel = layerRow + (bitmapX * 4);
@@ -215,6 +339,19 @@ namespace Bitmute.Tools
 			if (state.AltHeld())
 			{
 				return eSelectionMode.Subtract;
+			}
+			int baseMode = state.SelectionMode();
+			if (baseMode == 1)
+			{
+				return eSelectionMode.Add;
+			}
+			if (baseMode == 2)
+			{
+				return eSelectionMode.Subtract;
+			}
+			if (baseMode == 3)
+			{
+				return eSelectionMode.Intersect;
 			}
 			return eSelectionMode.Replace;
 		}

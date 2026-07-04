@@ -116,7 +116,7 @@ namespace Bitmute.Tools
 			{
 				document.Selection().Clear();
 			}
-			document.Selection().BeginOperation(mode);
+			document.Selection().BeginOperation(mode, state.SelectionFeather());
 
 			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
 			int rowBytes = bitmap.RowBytes;
@@ -224,6 +224,10 @@ namespace Bitmute.Tools
 			{
 				document.Selection().ApplyRect(SKRectI.Empty);
 				return false;
+			}
+			if (state.WandAntiAlias())
+			{
+				SmoothMaskBoundary(mask, documentWidth, documentHeight);
 			}
 			document.Selection().ApplyMask(mask);
 			return false;

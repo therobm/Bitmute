@@ -143,7 +143,7 @@ namespace Bitmute.Tools
 			}
 		}
 
-		private void CommitSelection(Document document)
+		private void CommitSelection(Document document, ToolState state)
 		{
 			int count = m_verticesX.Count;
 			if (count < MinimumVertices)
@@ -236,6 +236,10 @@ namespace Bitmute.Tools
 				}
 			}
 
+			if (state.SelectionAntiAlias())
+			{
+				SmoothMaskBoundary(mask, documentWidth, documentHeight);
+			}
 			document.Selection().ApplyMask(mask);
 		}
 
@@ -249,7 +253,7 @@ namespace Bitmute.Tools
 			{
 				document.Selection().Clear();
 			}
-			document.Selection().BeginOperation(mode);
+			document.Selection().BeginOperation(mode, state.SelectionFeather());
 			AppendPoint(x, y);
 			return true;
 		}
@@ -272,7 +276,7 @@ namespace Bitmute.Tools
 				return;
 			}
 			AppendPoint(x, y);
-			CommitSelection(document);
+			CommitSelection(document, state);
 			m_active = false;
 			m_verticesX.Clear();
 			m_verticesY.Clear();

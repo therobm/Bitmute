@@ -103,7 +103,7 @@ namespace Bitmute.Imaging
 			m_floatSourceBounds = SKRectI.Empty;
 		}
 
-		private SKBitmap ExtractSelected(Layer layer, Selection selection)
+		private unsafe SKBitmap ExtractSelected(Layer layer, Selection selection)
 		{
 			SKBitmap source = layer.Bitmap();
 			int offsetX = layer.OffsetX();
@@ -113,11 +113,18 @@ namespace Bitmute.Imaging
 			SKBitmap moving = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
 			moving.Erase(SKColors.Transparent);
 			SKRectI bounds = selection.Bounds();
+			byte[] mask = selection.Mask();
+			byte* sourceBase = (byte*)source.GetPixels().ToPointer();
+			int sourceRowBytes = source.RowBytes;
+			byte* movingBase = (byte*)moving.GetPixels().ToPointer();
+			int movingRowBytes = moving.RowBytes;
 			for (int y = bounds.Top; y < bounds.Bottom; y++)
 			{
+				int maskRow = y * m_width;
 				for (int x = bounds.Left; x < bounds.Right; x++)
 				{
-					if (!selection.IsSelected(x, y))
+					int coverage = mask[maskRow + x];
+					if (coverage == 0)
 					{
 						continue;
 					}
@@ -127,13 +134,25 @@ namespace Bitmute.Imaging
 					{
 						continue;
 					}
-					moving.SetPixel(bitmapX, bitmapY, source.GetPixel(bitmapX, bitmapY));
+					byte* sourcePixel = sourceBase + (bitmapY * sourceRowBytes) + (bitmapX * 4);
+					byte* movingPixel = movingBase + (bitmapY * movingRowBytes) + (bitmapX * 4);
+					movingPixel[0] = sourcePixel[0];
+					movingPixel[1] = sourcePixel[1];
+					movingPixel[2] = sourcePixel[2];
+					if (coverage == 255)
+					{
+						movingPixel[3] = sourcePixel[3];
+					}
+					else
+					{
+						movingPixel[3] = (byte)(((sourcePixel[3] * coverage) + 127) / 255);
+					}
 				}
 			}
 			return moving;
 		}
 
-		private SKBitmap CloneWithSelectionCleared(Layer layer, Selection selection)
+		private unsafe SKBitmap CloneWithSelectionCleared(Layer layer, Selection selection)
 		{
 			SKBitmap remainder = layer.Bitmap().Copy();
 			int offsetX = layer.OffsetX();
@@ -141,11 +160,16 @@ namespace Bitmute.Imaging
 			int width = remainder.Width;
 			int height = remainder.Height;
 			SKRectI bounds = selection.Bounds();
+			byte[] mask = selection.Mask();
+			byte* remainderBase = (byte*)remainder.GetPixels().ToPointer();
+			int remainderRowBytes = remainder.RowBytes;
 			for (int y = bounds.Top; y < bounds.Bottom; y++)
 			{
+				int maskRow = y * m_width;
 				for (int x = bounds.Left; x < bounds.Right; x++)
 				{
-					if (!selection.IsSelected(x, y))
+					int coverage = mask[maskRow + x];
+					if (coverage == 0)
 					{
 						continue;
 					}
@@ -155,7 +179,15 @@ namespace Bitmute.Imaging
 					{
 						continue;
 					}
-					remainder.SetPixel(bitmapX, bitmapY, SKColors.Transparent);
+					byte* remainderPixel = remainderBase + (bitmapY * remainderRowBytes) + (bitmapX * 4);
+					if (coverage == 255)
+					{
+						remainderPixel[3] = 0;
+					}
+					else
+					{
+						remainderPixel[3] = (byte)(((remainderPixel[3] * (255 - coverage)) + 127) / 255);
+					}
 				}
 			}
 			return remainder;
@@ -564,15 +596,25 @@ namespace Bitmute.Imaging
 				byte* row = basePointer + ((canvasY - offsetY) * rowBytes);
 				for (int canvasX = left; canvasX < right; canvasX++)
 				{
-					if (mask[maskRow + canvasX] == 0)
+					int coverage = mask[maskRow + canvasX];
+					if (coverage == 0)
 					{
 						continue;
 					}
 					byte* pixel = row + ((canvasX - offsetX) * 4);
-					pixel[0] = fillRed;
-					pixel[1] = fillGreen;
-					pixel[2] = fillBlue;
-					pixel[3] = fillAlpha;
+					if (coverage == 255)
+					{
+						pixel[0] = fillRed;
+						pixel[1] = fillGreen;
+						pixel[2] = fillBlue;
+						pixel[3] = fillAlpha;
+						continue;
+					}
+					int inverse = 255 - coverage;
+					pixel[0] = (byte)(((pixel[0] * inverse) + (fillRed * coverage) + 127) / 255);
+					pixel[1] = (byte)(((pixel[1] * inverse) + (fillGreen * coverage) + 127) / 255);
+					pixel[2] = (byte)(((pixel[2] * inverse) + (fillBlue * coverage) + 127) / 255);
+					pixel[3] = (byte)(((pixel[3] * inverse) + (fillAlpha * coverage) + 127) / 255);
 				}
 			}
 			MarkComposeDirtyRegion(new SKRectI(left, top, right, bottom));
