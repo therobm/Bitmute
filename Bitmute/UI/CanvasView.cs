@@ -65,6 +65,9 @@ namespace Bitmute.UI
 		private int m_pendingGuidePos;
 		private int m_guideDragKind;
 		private int m_guideDragIndex;
+		private int m_guideStickyState;
+		private int m_guideStickyCenterX;
+		private int m_guideStickyCenterY;
 		private bool m_hasCursorShape;
 		private Microsoft.UI.Input.InputSystemCursorShape m_currentCursorShape;
 		private int m_transformHoverKind;
@@ -339,11 +342,11 @@ namespace Bitmute.UI
 			int docY = (int)System.Math.Round((deviceY - m_offsetY) / m_zoom);
 			if (orientation == 1)
 			{
-				SetPendingGuide(1, docY);
+				SetPendingGuide(1, SnapGuideToCenter(docY, false));
 			}
 			else
 			{
-				SetPendingGuide(2, docX);
+				SetPendingGuide(2, SnapGuideToCenter(docX, true));
 			}
 		}
 
@@ -1797,6 +1800,61 @@ namespace Bitmute.UI
 			return value;
 		}
 
+		public void ResetGuideStickyCache()
+		{
+			m_guideStickyState = 0;
+		}
+
+		private void EnsureGuideStickyCenter()
+		{
+			if (m_guideStickyState != 0)
+			{
+				return;
+			}
+			int centerX;
+			int centerY;
+			bool valid = m_document.ActiveLayerGuideCenter(out centerX, out centerY);
+			if (valid)
+			{
+				m_guideStickyCenterX = centerX;
+				m_guideStickyCenterY = centerY;
+				m_guideStickyState = 1;
+			}
+			else
+			{
+				m_guideStickyState = 2;
+			}
+		}
+
+		private int SnapGuideToCenter(int pos, bool vertical)
+		{
+			EnsureGuideStickyCenter();
+			if (m_guideStickyState != 1)
+			{
+				return pos;
+			}
+			int center = m_guideStickyCenterY;
+			if (vertical)
+			{
+				center = m_guideStickyCenterX;
+			}
+			int tolerance = (int)System.Math.Ceiling(8.0 / m_zoom);
+			if (tolerance < 6)
+			{
+				tolerance = 6;
+			}
+			int delta = pos - center;
+			if (delta < 0)
+			{
+				delta = -delta;
+			}
+			if (delta <= tolerance)
+			{
+				return center;
+			}
+			return pos;
+		}
+
 		private bool HandleGuideDrag(SKTouchEventArgs eventArgs, int pixelX, int pixelY)
 		{
 			Bitmute.Imaging.Guides guides = m_document.Guides();
@@ -1816,6 +1874,7 @@ namespace Bitmute.UI
 				{
 					m_guideDragKind = 2;
 					m_guideDragIndex = verticalIndex;
+					ResetGuideStickyCache();
 					return true;
 				}
 				int horizontalIndex = guides.HitHorizontal(pixelY, tolerance);
@@ -1823,6 +1882,7 @@ namespace Bitmute.UI
 				{
 					m_guideDragKind = 1;
 					m_guideDragIndex = horizontalIndex;
+					ResetGuideStickyCache();
 					return true;
 				}
 				return false;
@@ -1835,11 +1895,11 @@ namespace Bitmute.UI
 			{
 				if (m_guideDragKind == 2)
 				{
-					guides.MoveVertical(m_guideDragIndex, pixelX);
+					guides.MoveVertical(m_guideDragIndex, SnapGuideToCenter(pixelX, true));
 				}
 				else
 				{
-					guides.MoveHorizontal(m_guideDragIndex, pixelY);
+					guides.MoveHorizontal(m_guideDragIndex, SnapGuideToCenter(pixelY, false));
 				}
 				InvalidateSurface();
 				return true;

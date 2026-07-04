@@ -2795,6 +2795,7 @@ namespace Bitmute.UI
 			ActivateDocumentWindow(canvas.OwnerWindow());
 			m_guideCreateOrientation = orientation;
 			m_guideCreateCanvas = canvas;
+			canvas.ResetGuideStickyCache();
 		}
 
 		private void OnGlobalPointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs args)

@@ -42,6 +42,7 @@ namespace Bitmute.Tests
 			TestCustomBlendTransparentBase();
 			TestMixedComposite();
 			TestCompositeRangeInto();
+			TestGuideStickyCenter();
 			TestWandContiguous();
 			TestWandNonContiguous();
 			TestWandSampleAll();
@@ -561,6 +562,35 @@ namespace Bitmute.Tests
 			guides.SetLocked(false);
 			guides.RemoveVertical(0);
 			Check(guides.VerticalGuides().Count == 0, "guides remove vertical");
+		}
+
+		private static void TestGuideStickyCenter()
+		{
+			Document doc = new Document("t", 40, 20);
+			int backgroundX;
+			int backgroundY;
+			bool backgroundValid = doc.ActiveLayerGuideCenter(out backgroundX, out backgroundY);
+			Check(backgroundValid, "sticky center valid on background");
+			Check(backgroundX == 20 && backgroundY == 10, "sticky center is canvas center on background");
+			Layer content = doc.AddLayer("content");
+			SKColor mark = new SKColor(255, 0, 0, 255);
+			for (int y = 4; y < 12; y++)
+			{
+				for (int x = 10; x < 20; x++)
+				{
+					content.Bitmap().SetPixel(x, y, mark);
+				}
+			}
+			int contentX;
+			int contentY;
+			bool contentValid = doc.ActiveLayerGuideCenter(out contentX, out contentY);
+			Check(contentValid, "sticky center valid on written content");
+			Check(contentX == 15 && contentY == 8, "sticky center is content-bounds center");
+			Layer empty = doc.AddLayer("empty");
+			int emptyX;
+			int emptyY;
+			bool emptyValid = doc.ActiveLayerGuideCenter(out emptyX, out emptyY);
+			Check(!emptyValid, "sticky center absent on empty layer");
 		}
 
 		private static void TestCompositeRangeInto()

@@ -562,6 +562,31 @@ namespace Bitmute.Imaging
 			return m_layers[m_activeLayerIndex];
 		}
 
+		public bool ActiveLayerGuideCenter(out int centerX, out int centerY)
+		{
+			centerX = 0;
+			centerY = 0;
+			Layer layer = ActiveLayer();
+			if (layer == null)
+			{
+				return false;
+			}
+			if (layer.IsBackground())
+			{
+				centerX = m_width / 2;
+				centerY = m_height / 2;
+				return true;
+			}
+			SKRectI bounds = PixelRegion.ComputeContentBounds(layer.Bitmap());
+			if (bounds.IsEmpty)
+			{
+				return false;
+			}
+			centerX = layer.OffsetX() + ((bounds.Left + bounds.Right) / 2);
+			centerY = layer.OffsetY() + ((bounds.Top + bounds.Bottom) / 2);
+			return true;
+		}
+
 		public Layer AddLayer(string name)
 		{
 			Layer layer = new Layer(name, m_width, m_height);
