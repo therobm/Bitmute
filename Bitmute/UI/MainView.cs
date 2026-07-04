@@ -271,7 +271,7 @@ namespace Bitmute.UI
 				if (item == "Zoom In") return "Ctrl++";
 				if (item == "Zoom Out") return "Ctrl+-";
 				if (item == "Fit on Screen") return "Ctrl+0";
-				if (item == "Rulers") return "Ctrl+R";
+				if (item == "Rulers" || item == "✓ Rulers") return "Ctrl+R";
 			}
 			if (title == "Edit")
 			{
@@ -419,7 +419,7 @@ namespace Bitmute.UI
 			}
 			if (title == "View")
 			{
-				return new string[] { "Zoom In", "Zoom Out", "Fit on Screen", "Rulers", "Grid", PanelMenuLabel("Snap", m_snapEnabled), "Snap To", PanelMenuLabel("Lock Guides", GuidesLocked()), "Clear Guides" };
+				return new string[] { "Zoom In", "Zoom Out", "Fit on Screen", PanelMenuLabel("Rulers", m_rulersEnabled), PanelMenuLabel("Grid", m_gridEnabled), PanelMenuLabel("Snap", m_snapEnabled), "Snap To", PanelMenuLabel("Lock Guides", GuidesLocked()), "Clear Guides" };
 			}
 			if (title == "Window")
 			{
@@ -1022,12 +1022,12 @@ namespace Bitmute.UI
 				DoFit();
 				return;
 			}
-			if (action == "Rulers")
+			if (action == "Rulers" || action == "✓ Rulers")
 			{
 				ToggleRulers();
 				return;
 			}
-			if (action == "Grid")
+			if (action == "Grid" || action == "✓ Grid")
 			{
 				ToggleGrid();
 				return;
@@ -1935,6 +1935,7 @@ namespace Bitmute.UI
 		private void ToggleGrid()
 		{
 			m_gridEnabled = !m_gridEnabled;
+			Microsoft.Maui.Storage.Preferences.Default.Set("grid_enabled", m_gridEnabled);
 			for (int index = 0; index < m_documents.Count; index++)
 			{
 				DocumentWindow window = m_documents[index] as DocumentWindow;
@@ -2039,6 +2040,7 @@ namespace Bitmute.UI
 		private void ToggleRulers()
 		{
 			m_rulersEnabled = !m_rulersEnabled;
+			Microsoft.Maui.Storage.Preferences.Default.Set("rulers_enabled", m_rulersEnabled);
 			for (int index = 0; index < m_documents.Count; index++)
 			{
 				DocumentWindow window = m_documents[index] as DocumentWindow;
@@ -3079,7 +3081,8 @@ namespace Bitmute.UI
 			m_previousTool = eTool.Brush;
 			m_guideCreateOrientation = 0;
 			m_guideCreateCanvas = null;
-			m_gridEnabled = false;
+			m_gridEnabled = Microsoft.Maui.Storage.Preferences.Default.Get("grid_enabled", false);
+			m_rulersEnabled = Microsoft.Maui.Storage.Preferences.Default.Get("rulers_enabled", true);
 			m_channelViewMode = -1;
 			m_snapEnabled = Microsoft.Maui.Storage.Preferences.Default.Get("snap_enabled", true);
 			m_snapTargetGuides = Microsoft.Maui.Storage.Preferences.Default.Get("snap_target_guides", true);
