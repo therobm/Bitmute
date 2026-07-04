@@ -54,6 +54,8 @@ namespace Bitmute.Tests
 			TestHealMath();
 			TestCloneAligned();
 			TestBlurStrength();
+			TestBrushHardnessSmall();
+			TestGaussianBlur();
 			TestDodgeBurnRange();
 			TestSlices();
 			TestChannelRender();
@@ -905,6 +907,71 @@ namespace Bitmute.Tests
 			int half = BlurCenterRed(50);
 			CheckNear(full, 245, 4, "blur strength 100 lerps center fully to neighborhood average");
 			CheckNear(half, 122, 4, "blur strength 50 lerps center halfway to neighborhood average");
+		}
+
+		private static int BrushEdgeRed(int hardness)
+		{
+			Document doc = new Document("t", 32, 32);
+			Layer layer = doc.ActiveLayer();
+			layer.Bitmap().Erase(new SKColor(255, 255, 255, 255));
+			ToolState state = new ToolState();
+			state.SetBrushSize(4);
+			state.SetBrushHardness(hardness);
+			state.SetForeground(new SKColor(0, 0, 0, 255));
+			BrushTool brush = new BrushTool();
+			doc.BeginStroke();
+			brush.OnPressed(doc, 16, 16, state);
+			brush.OnReleased(doc, 16, 16, state);
+			doc.EndStroke();
+			return layer.GetPixelCanvas(17, 16).Red;
+		}
+
+		private static void TestBrushHardnessSmall()
+		{
+			int hard = BrushEdgeRed(100);
+			int soft = BrushEdgeRed(0);
+			Check(hard < 40, "small hard brush edge pixel is nearly opaque (was inert before)");
+			Check(soft - hard > 25, "small brush hardness meaningfully changes edge coverage");
+		}
+
+		private static void TestGaussianBlur()
+		{
+			SKBitmap bmp = new SKBitmap(32, 32, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			for (int y = 0; y < 32; y++)
+			{
+				for (int x = 0; x < 32; x++)
+				{
+					if (x < 16)
+					{
+						bmp.SetPixel(x, y, new SKColor(0, 0, 0, 255));
+					}
+					else
+					{
+						bmp.SetPixel(x, y, new SKColor(255, 255, 255, 255));
+					}
+				}
+			}
+			Adjustments.GaussianBlur(bmp, 5);
+			SKColor leftEdge = bmp.GetPixel(15, 16);
+			SKColor rightEdge = bmp.GetPixel(16, 16);
+			SKColor farLeft = bmp.GetPixel(0, 16);
+			SKColor farRight = bmp.GetPixel(31, 16);
+			Check(leftEdge.Red > 15, "gaussian blur lightens the dark side of an edge");
+			Check(rightEdge.Red < 240, "gaussian blur darkens the light side of an edge");
+			Check(farLeft.Red < 60, "gaussian blur leaves far dark region mostly dark");
+			Check(farRight.Red > 195, "gaussian blur leaves far light region mostly light");
+			Check(rightEdge.Alpha == 255, "gaussian blur preserves alpha");
+			bmp.Dispose();
+
+			SKBitmap uniform = new SKBitmap(16, 16, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			uniform.Erase(new SKColor(100, 150, 200, 255));
+			Adjustments.GaussianBlur(uniform, 4);
+			SKColor flat = uniform.GetPixel(8, 8);
+			CheckNear(flat.Red, 100, 2, "gaussian blur leaves a flat field unchanged (red)");
+			CheckNear(flat.Green, 150, 2, "gaussian blur leaves a flat field unchanged (green)");
+			CheckNear(flat.Blue, 200, 2, "gaussian blur leaves a flat field unchanged (blue)");
+			Check(flat.Alpha == 255, "gaussian blur flat field keeps alpha");
+			uniform.Dispose();
 		}
 
 		private static int BurnCenterRed(int startValue, int range, int exposure)
