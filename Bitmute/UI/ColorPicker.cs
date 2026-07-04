@@ -35,6 +35,9 @@ namespace Bitmute.UI
 		private bool m_ready;
 		private bool m_gradientPressed;
 		private Action<SKColor> m_onApply;
+		private SKColor m_originalColor;
+		private bool m_applied;
+		private bool m_liveFired;
 
 		private static string ToHex(SKColor color)
 		{
@@ -100,6 +103,22 @@ namespace Bitmute.UI
 				if (main != null)
 				{
 					main.SetLiveForeground(color);
+				}
+			}
+			if (!m_docked && m_ready && m_onApply == null)
+			{
+				MainView modalMain = MainView.Self;
+				if (modalMain != null && !modalMain.EditingSwatch())
+				{
+					if (m_foreground)
+					{
+						modalMain.SetLiveForeground(color);
+					}
+					else
+					{
+						modalMain.SetLiveBackground(color);
+					}
+					m_liveFired = true;
 				}
 			}
 		}
@@ -282,8 +301,30 @@ namespace Bitmute.UI
 			AdoptColor(new SKColor(red, green, blue, m_alpha));
 		}
 
+		public void RevertLivePreview()
+		{
+			if (!m_liveFired || m_applied)
+			{
+				return;
+			}
+			MainView main = MainView.Self;
+			if (main == null)
+			{
+				return;
+			}
+			if (m_foreground)
+			{
+				main.SetLiveForeground(m_originalColor);
+			}
+			else
+			{
+				main.SetLiveBackground(m_originalColor);
+			}
+		}
+
 		private void OnOkClicked(object sender, EventArgs eventArgs)
 		{
+			m_applied = true;
 			if (m_onApply != null)
 			{
 				m_onApply(CurrentColor());
@@ -368,6 +409,7 @@ namespace Bitmute.UI
 			m_foreground = foreground;
 			m_docked = docked;
 			m_alpha = initial.Alpha;
+			m_originalColor = initial;
 
 			m_gradient = new SKCanvasView();
 			m_gradient.WidthRequest = GradientWidth;

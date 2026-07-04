@@ -3496,6 +3496,11 @@ namespace Bitmute.UI
 			{
 				m_workspace.Remove(entry.m_content);
 			}
+			ColorPicker cancelledPicker = entry.m_content as ColorPicker;
+			if (cancelledPicker != null)
+			{
+				cancelledPicker.RevertLivePreview();
+			}
 			if (entry.m_content is LayerStyleDialog && m_layerStyleSnapshot != null)
 			{
 				Layer layer = LayerStyleTargetLayer();
@@ -3544,6 +3549,20 @@ namespace Bitmute.UI
 				m_optionsBar.UpdateTextColorSwatch(color);
 			}
 			RefreshTextEditStyle();
+		}
+
+		public void SetLiveBackground(SKColor color)
+		{
+			m_toolState.SetBackground(color);
+			if (m_toolPalette != null)
+			{
+				m_toolPalette.RefreshColors();
+			}
+		}
+
+		public bool EditingSwatch()
+		{
+			return m_editingSwatchIndex >= 0;
 		}
 
 		public void ApplyPickedColor(SKColor color, bool foreground)
