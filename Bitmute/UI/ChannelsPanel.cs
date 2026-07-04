@@ -206,6 +206,17 @@ namespace Bitmute.UI
 			return thumbnail;
 		}
 
+		private void ClearThumbnails()
+		{
+			for (int index = 0; index < m_thumbs.Length; index++)
+			{
+				if (m_thumbs[index] != null)
+				{
+					m_thumbs[index].Source = null;
+				}
+			}
+		}
+
 		public void Refresh()
 		{
 			MainView main = MainView.Self;
@@ -220,13 +231,14 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			if (main == null)
+			Document document = null;
+			if (main != null)
 			{
-				return;
+				document = main.ActiveDocument();
 			}
-			Document document = main.ActiveDocument();
 			if (document == null)
 			{
+				ClearThumbnails();
 				return;
 			}
 			SKBitmap thumbnail = BuildCompositeThumbnail(document);

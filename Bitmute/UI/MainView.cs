@@ -4702,6 +4702,40 @@ namespace Bitmute.UI
 			m_pendingClosePanel = null;
 		}
 
+		private DocumentWindow TopmostDocumentWindow()
+		{
+			DocumentWindow topmost = null;
+			for (int index = 0; index < m_documents.Count; index++)
+			{
+				DocumentWindow window = m_documents[index] as DocumentWindow;
+				if (window == null)
+				{
+					continue;
+				}
+				if (topmost == null || window.ZIndex >= topmost.ZIndex)
+				{
+					topmost = window;
+				}
+			}
+			return topmost;
+		}
+
+		private void ClearClosedDocumentReadouts()
+		{
+			if (m_statusInfoLabel != null)
+			{
+				m_statusInfoLabel.Text = "";
+			}
+			if (m_statusCursorLabel != null)
+			{
+				m_statusCursorLabel.Text = "x: —   y: —";
+			}
+			if (m_infoPanel != null)
+			{
+				m_infoPanel.ClearReadout();
+			}
+		}
+
 		private void RemovePanel(FloatingPanel panel)
 		{
 			if (!m_documents.Contains(panel))
@@ -4714,7 +4748,17 @@ namespace Bitmute.UI
 			if (window != null && m_activeDocumentWindow == window)
 			{
 				m_activeDocumentWindow = null;
-				RefreshDocumentTitleBars();
+				DocumentWindow next = TopmostDocumentWindow();
+				if (next != null)
+				{
+					BringToFront(next);
+				}
+				else
+				{
+					RefreshDocumentTitleBars();
+					RefreshPanels();
+					ClearClosedDocumentReadouts();
+				}
 			}
 		}
 
