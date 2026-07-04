@@ -75,6 +75,12 @@ namespace Bitmute.UI
 		private Picker m_colorReplaceModePicker;
 		private Label m_colorReplaceToleranceLabel;
 		private SliderField m_colorReplaceToleranceField;
+		private Label m_gradientTypeLabel;
+		private Picker m_gradientTypePicker;
+		private Label m_gradientReverseLabel;
+		private CheckBox m_gradientReverseCheck;
+		private Label m_gradientTransparentLabel;
+		private CheckBox m_gradientTransparentCheck;
 		private Label m_lineAntiAliasLabel;
 		private CheckBox m_lineAntiAliasCheck;
 		private Label m_toleranceLabel;
@@ -2017,6 +2023,53 @@ namespace Bitmute.UI
 			m_colorReplaceToleranceField.VerticalOptions = LayoutOptions.Center;
 			m_colorReplaceToleranceField.IsVisible = false;
 
+			m_gradientTypeLabel = new Label();
+			m_gradientTypeLabel.Text = "Type";
+			m_gradientTypeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_gradientTypeLabel.FontSize = 12.0;
+			m_gradientTypeLabel.VerticalOptions = LayoutOptions.Center;
+			m_gradientTypeLabel.IsVisible = false;
+
+			m_gradientTypePicker = new Picker();
+			m_gradientTypePicker.FontSize = 12.0;
+			m_gradientTypePicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
+			m_gradientTypePicker.WidthRequest = 110.0;
+			m_gradientTypePicker.VerticalOptions = LayoutOptions.Center;
+			m_gradientTypePicker.IsVisible = false;
+			m_gradientTypePicker.Items.Add("Linear");
+			m_gradientTypePicker.Items.Add("Radial");
+			m_gradientTypePicker.Items.Add("Angle");
+			m_gradientTypePicker.Items.Add("Reflected");
+			m_gradientTypePicker.Items.Add("Diamond");
+			m_gradientTypePicker.SelectedIndex = m_toolState.GradientType();
+			m_gradientTypePicker.SelectedIndexChanged += OnGradientTypeChanged;
+
+			m_gradientReverseLabel = new Label();
+			m_gradientReverseLabel.Text = "Reverse";
+			m_gradientReverseLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_gradientReverseLabel.FontSize = 12.0;
+			m_gradientReverseLabel.VerticalOptions = LayoutOptions.Center;
+			m_gradientReverseLabel.IsVisible = false;
+
+			m_gradientReverseCheck = new CheckBox();
+			m_gradientReverseCheck.VerticalOptions = LayoutOptions.Center;
+			m_gradientReverseCheck.IsVisible = false;
+			m_gradientReverseCheck.IsChecked = m_toolState.GradientReverse();
+			m_gradientReverseCheck.CheckedChanged += OnGradientReverseChanged;
+
+			m_gradientTransparentLabel = new Label();
+			m_gradientTransparentLabel.Text = "To Transparent";
+			m_gradientTransparentLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_gradientTransparentLabel.FontSize = 12.0;
+			m_gradientTransparentLabel.VerticalOptions = LayoutOptions.Center;
+			m_gradientTransparentLabel.IsVisible = false;
+
+			m_gradientTransparentCheck = new CheckBox();
+			m_gradientTransparentCheck.VerticalOptions = LayoutOptions.Center;
+			m_gradientTransparentCheck.IsVisible = false;
+			m_gradientTransparentCheck.IsChecked = m_toolState.GradientToTransparent();
+			m_gradientTransparentCheck.CheckedChanged += OnGradientTransparentChanged;
+
 			m_lineAntiAliasLabel = new Label();
 			m_lineAntiAliasLabel.Text = "Anti-alias";
 			m_lineAntiAliasLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
@@ -2238,6 +2291,12 @@ namespace Bitmute.UI
 			options.Add(m_colorReplaceModePicker);
 			options.Add(m_colorReplaceToleranceLabel);
 			options.Add(m_colorReplaceToleranceField);
+			options.Add(m_gradientTypeLabel);
+			options.Add(m_gradientTypePicker);
+			options.Add(m_gradientReverseLabel);
+			options.Add(m_gradientReverseCheck);
+			options.Add(m_gradientTransparentLabel);
+			options.Add(m_gradientTransparentCheck);
 			options.Add(m_brushSettingsButton);
 			options.Add(m_lineAntiAliasLabel);
 			options.Add(m_lineAntiAliasCheck);
@@ -4120,6 +4179,16 @@ namespace Bitmute.UI
 				m_colorReplaceToleranceLabel.IsVisible = isColorReplace;
 				m_colorReplaceToleranceField.IsVisible = isColorReplace;
 			}
+			bool isGradient = tool == eTool.Gradient;
+			if (m_gradientTypeLabel != null)
+			{
+				m_gradientTypeLabel.IsVisible = isGradient;
+				m_gradientTypePicker.IsVisible = isGradient;
+				m_gradientReverseLabel.IsVisible = isGradient;
+				m_gradientReverseCheck.IsVisible = isGradient;
+				m_gradientTransparentLabel.IsVisible = isGradient;
+				m_gradientTransparentCheck.IsVisible = isGradient;
+			}
 			if (m_lassoTool != null)
 			{
 				m_lassoTool.Reset();
@@ -4285,6 +4354,38 @@ namespace Bitmute.UI
 				return;
 			}
 			m_toolState.SetColorReplaceTolerance(tolerance);
+		}
+
+		private void OnGradientTypeChanged(object sender, System.EventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			int index = m_gradientTypePicker.SelectedIndex;
+			if (index < 0)
+			{
+				index = 0;
+			}
+			m_toolState.SetGradientType(index);
+		}
+
+		private void OnGradientReverseChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetGradientReverse(m_gradientReverseCheck.IsChecked);
+		}
+
+		private void OnGradientTransparentChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetGradientToTransparent(m_gradientTransparentCheck.IsChecked);
 		}
 
 		private void OnBrushSettingsClicked(object sender, System.EventArgs eventArgs)

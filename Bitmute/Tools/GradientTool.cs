@@ -98,17 +98,13 @@ namespace Bitmute.Tools
 			}
 
 			SKBitmap gradientBitmap = new SKBitmap(documentWidth, documentHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-			SKCanvas gradientCanvas = new SKCanvas(gradientBitmap);
-			SKColor[] colors = new SKColor[] { state.Foreground(), state.Background() };
-			SKPoint startPoint = new SKPoint(m_startX, m_startY);
-			SKPoint endPoint = new SKPoint(m_endX, m_endY);
-			SKShader shader = SKShader.CreateLinearGradient(startPoint, endPoint, colors, null, SKShaderTileMode.Clamp);
-			SKPaint gradientPaint = new SKPaint();
-			gradientPaint.Shader = shader;
-			gradientCanvas.DrawRect(new SKRect(0.0f, 0.0f, documentWidth, documentHeight), gradientPaint);
-			gradientPaint.Dispose();
-			shader.Dispose();
-			gradientCanvas.Dispose();
+			SKColor startColor = state.Foreground();
+			SKColor endColor = state.Background();
+			if (state.GradientToTransparent())
+			{
+				endColor = new SKColor(startColor.Red, startColor.Green, startColor.Blue, 0);
+			}
+			GradientFill.Fill(gradientBitmap, (eGradientType)state.GradientType(), m_startX, m_startY, m_endX, m_endY, startColor, endColor, state.GradientReverse());
 
 			BlitCanvasBitmap(document, layer, gradientBitmap, 0, 0);
 			gradientBitmap.Dispose();

@@ -46,6 +46,7 @@ namespace Bitmute.Tests
 			TestMovePerfRegion();
 			TestSpongeMath();
 			TestColorReplaceMath();
+			TestGradientFill();
 			TestWandContiguous();
 			TestWandNonContiguous();
 			TestWandSampleAll();
@@ -604,6 +605,22 @@ namespace Bitmute.Tests
 			ColorReplaceMath.Apply(200, 200, 200, 255, 0, 0, 3, 1.0, out rl, out gl, out bl);
 			Check(rl == gl && gl == bl, "color replace luminosity stays gray");
 			Check(rl < 200, "color replace luminosity uses fg luma");
+		}
+
+		private static void TestGradientFill()
+		{
+			SKBitmap bmp = new SKBitmap(10, 1, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			SKColor red = new SKColor(255, 0, 0, 255);
+			SKColor blue = new SKColor(0, 0, 255, 255);
+			GradientFill.Fill(bmp, eGradientType.Linear, 0.0f, 0.0f, 9.0f, 0.0f, red, blue, false);
+			SKColor left = bmp.GetPixel(0, 0);
+			SKColor right = bmp.GetPixel(9, 0);
+			Check(left.Red > right.Red, "gradient linear left redder");
+			Check(right.Blue > left.Blue, "gradient linear right bluer");
+			GradientFill.Fill(bmp, eGradientType.Linear, 0.0f, 0.0f, 9.0f, 0.0f, red, blue, true);
+			SKColor leftReversed = bmp.GetPixel(0, 0);
+			Check(leftReversed.Blue > leftReversed.Red, "gradient reverse flips ends");
+			bmp.Dispose();
 		}
 
 		private static void TestMovePerfRegion()

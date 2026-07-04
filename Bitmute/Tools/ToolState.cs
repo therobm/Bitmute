@@ -20,6 +20,9 @@ namespace Bitmute.Tools
 		private bool m_spongeSaturate;
 		private int m_colorReplaceMode;
 		private int m_colorReplaceTolerance;
+		private int m_gradientType;
+		private bool m_gradientReverse;
+		private bool m_gradientToTransparent;
 		private bool m_wandContiguous;
 		private bool m_wandSampleAll;
 		private bool m_wandAntiAlias;
@@ -61,6 +64,9 @@ namespace Bitmute.Tools
 			m_spongeSaturate = false;
 			m_colorReplaceMode = 0;
 			m_colorReplaceTolerance = 32;
+			m_gradientType = 0;
+			m_gradientReverse = false;
+			m_gradientToTransparent = false;
 			m_wandContiguous = true;
 			m_wandSampleAll = false;
 			m_wandAntiAlias = true;
@@ -528,6 +534,36 @@ namespace Bitmute.Tools
 		public void SetColorReplaceTolerance(int tolerance)
 		{
 			m_colorReplaceTolerance = tolerance;
+		}
+
+		public int GradientType()
+		{
+			return m_gradientType;
+		}
+
+		public void SetGradientType(int type)
+		{
+			m_gradientType = type;
+		}
+
+		public bool GradientReverse()
+		{
+			return m_gradientReverse;
+		}
+
+		public void SetGradientReverse(bool reverse)
+		{
+			m_gradientReverse = reverse;
+		}
+
+		public bool GradientToTransparent()
+		{
+			return m_gradientToTransparent;
+		}
+
+		public void SetGradientToTransparent(bool toTransparent)
+		{
+			m_gradientToTransparent = toTransparent;
 		}
 
 		public void SwapColors()
