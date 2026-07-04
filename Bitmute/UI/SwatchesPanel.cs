@@ -163,11 +163,11 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			platformElement.DoubleTapped -= OnSwatchCellDoubleTapped;
-			platformElement.DoubleTapped += OnSwatchCellDoubleTapped;
+			platformElement.RightTapped -= OnSwatchCellRightTapped;
+			platformElement.RightTapped += OnSwatchCellRightTapped;
 		}
 
-		private void OnSwatchCellDoubleTapped(object sender, Microsoft.UI.Xaml.Input.DoubleTappedRoutedEventArgs eventArgs)
+		private void OnSwatchCellRightTapped(object sender, Microsoft.UI.Xaml.Input.RightTappedRoutedEventArgs eventArgs)
 		{
 			for (int index = 0; index < m_swatchCells.Count; index++)
 			{
@@ -377,6 +377,7 @@ namespace Bitmute.UI
 			{
 				Border cell = BuildCell(m_swatches[i], OnSwatchTapped);
 				cell.Margin = new Thickness(0.0, 0.0, 2.0, 2.0);
+				ToolTipProperties.SetText(cell, "Click: set foreground · Right-click: edit swatch");
 				cell.HandlerChanged += OnSwatchCellHandlerChanged;
 				m_swatchHost.Add(cell);
 				m_swatchCells.Add(cell);
