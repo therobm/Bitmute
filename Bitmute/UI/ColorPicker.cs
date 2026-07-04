@@ -31,6 +31,9 @@ namespace Bitmute.UI
 		private byte m_alpha;
 		private bool m_foreground;
 		private bool m_suppress;
+		private bool m_docked;
+		private bool m_ready;
+		private bool m_gradientPressed;
 
 		private static string ToHex(SKColor color)
 		{
@@ -90,6 +93,14 @@ namespace Bitmute.UI
 			m_suppress = false;
 			m_preview.Color = ToMaui(color);
 			m_gradient.InvalidateSurface();
+			if (m_docked && m_ready)
+			{
+				MainView main = MainView.Self;
+				if (main != null)
+				{
+					main.ApplyPickedColor(color, m_foreground);
+				}
+			}
 		}
 
 		private void OnGradientPaint(object sender, SKPaintSurfaceEventArgs eventArgs)
@@ -141,7 +152,15 @@ namespace Bitmute.UI
 
 		private void OnGradientTouch(object sender, SKTouchEventArgs eventArgs)
 		{
-			bool active = eventArgs.ActionType == SKTouchAction.Pressed || (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact);
+			if (eventArgs.ActionType == SKTouchAction.Pressed)
+			{
+				m_gradientPressed = true;
+			}
+			else if (eventArgs.ActionType == SKTouchAction.Released || eventArgs.ActionType == SKTouchAction.Cancelled || eventArgs.ActionType == SKTouchAction.Exited)
+			{
+				m_gradientPressed = false;
+			}
+			bool active = eventArgs.ActionType == SKTouchAction.Pressed || (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact && m_gradientPressed);
 			if (!active)
 			{
 				eventArgs.Handled = true;
@@ -324,9 +343,14 @@ namespace Bitmute.UI
 			return titleBar;
 		}
 
-		public ColorPicker(SKColor initial, bool foreground)
+		public ColorPicker(SKColor initial, bool foreground) : this(initial, foreground, false)
+		{
+		}
+
+		public ColorPicker(SKColor initial, bool foreground, bool docked)
 		{
 			m_foreground = foreground;
+			m_docked = docked;
 			m_alpha = initial.Alpha;
 
 			m_gradient = new SKCanvasView();
@@ -349,6 +373,32 @@ namespace Bitmute.UI
 			m_hexEntry.WidthRequest = 80.0;
 			m_hexEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_hexEntry.Completed += OnHexCompleted;
+
+			if (docked)
+			{
+				HorizontalStackLayout channelRow = new HorizontalStackLayout();
+				channelRow.Spacing = 6.0;
+				channelRow.Add(BuildLabeledEntry("R", m_redEntry));
+				channelRow.Add(BuildLabeledEntry("G", m_greenEntry));
+				channelRow.Add(BuildLabeledEntry("B", m_blueEntry));
+
+				HorizontalStackLayout hexRow = new HorizontalStackLayout();
+				hexRow.Spacing = 6.0;
+				hexRow.Add(m_preview);
+				hexRow.Add(BuildLabeledEntry("#", m_hexEntry));
+
+				VerticalStackLayout dockedLayout = new VerticalStackLayout();
+				dockedLayout.Spacing = 8.0;
+				dockedLayout.Padding = new Thickness(8.0);
+				dockedLayout.Add(m_gradient);
+				dockedLayout.Add(channelRow);
+				dockedLayout.Add(hexRow);
+
+				Content = dockedLayout;
+				AdoptColor(initial);
+				m_ready = true;
+				return;
+			}
 
 			VerticalStackLayout fields = new VerticalStackLayout();
 			fields.Spacing = 6.0;
@@ -404,6 +454,7 @@ namespace Bitmute.UI
 
 			Content = frame;
 			AdoptColor(initial);
+			m_ready = true;
 		}
 	}
 }

@@ -37,7 +37,6 @@ namespace Bitmute.UI
 		private PaletteGroup m_navigatorGroup;
 		private PaletteGroup m_swatchesGroup;
 		private PaletteGroup m_layersGroup;
-		private PaletteGroup m_infoGroup;
 		private List<PaletteGroup> m_paletteOrder;
 		private Grid m_paletteDock;
 		private bool m_navigatorPanelVisible = true;
@@ -423,7 +422,7 @@ namespace Bitmute.UI
 			}
 			if (title == "Window")
 			{
-				return new string[] { "Cascade", "Tile", PanelMenuLabel("Navigator", m_navigatorPanelVisible), PanelMenuLabel("Swatches", m_swatchesPanelVisible), PanelMenuLabel("Layers", m_layersPanelVisible), PanelMenuLabel("Info", m_infoPanelVisible) };
+				return new string[] { "Cascade", "Tile", PanelMenuLabel("Navigator", m_navigatorPanelVisible), PanelMenuLabel("Swatches", m_swatchesPanelVisible), PanelMenuLabel("Layers", m_layersPanelVisible) };
 			}
 			return new string[] { "About Bitmute" };
 		}
@@ -2678,17 +2677,16 @@ namespace Bitmute.UI
 		private View BuildPaletteDock()
 		{
 			m_navigatorPanel = new NavigatorPanel();
-			m_navigatorGroup = new PaletteGroup(new string[] { "Navigator" }, m_navigatorPanel);
+			m_infoPanel = new InfoPanel();
+			m_navigatorGroup = new PaletteGroup(new string[] { "Navigator", "Info" }, new View[] { m_navigatorPanel, m_infoPanel });
 
 			m_swatchesPanel = new SwatchesPanel();
-			m_swatchesGroup = new PaletteGroup(new string[] { "Swatches" }, m_swatchesPanel);
+			ColorPicker dockColorPicker = new ColorPicker(new SKColor(0, 0, 0, 255), true, true);
+			m_swatchesGroup = new PaletteGroup(new string[] { "Swatches", "Color" }, new View[] { m_swatchesPanel, dockColorPicker });
 
 			m_layersPanel = new LayersPanel();
 			m_channelsPanel = new ChannelsPanel();
 			m_layersGroup = new PaletteGroup(new string[] { "Layers", "Channels" }, new View[] { m_layersPanel, m_channelsPanel });
-
-			m_infoPanel = new InfoPanel();
-			m_infoGroup = new PaletteGroup(new string[] { "Info" }, m_infoPanel);
 
 			Grid dock = new Grid();
 			dock.ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
@@ -2703,13 +2701,11 @@ namespace Bitmute.UI
 			dock.Add(m_navigatorGroup);
 			dock.Add(m_swatchesGroup);
 			dock.Add(m_layersGroup);
-			dock.Add(m_infoGroup);
 
 			m_paletteOrder = new List<PaletteGroup>();
 			m_paletteOrder.Add(m_navigatorGroup);
 			m_paletteOrder.Add(m_swatchesGroup);
 			m_paletteOrder.Add(m_layersGroup);
-			m_paletteOrder.Add(m_infoGroup);
 
 			m_paletteDock = dock;
 			LoadPanelLayout();
@@ -2730,10 +2726,6 @@ namespace Bitmute.UI
 			if (key == "Layers")
 			{
 				return m_layersGroup;
-			}
-			if (key == "Info")
-			{
-				return m_infoGroup;
 			}
 			return null;
 		}
@@ -2872,7 +2864,6 @@ namespace Bitmute.UI
 			m_navigatorGroup.IsVisible = m_navigatorPanelVisible;
 			m_swatchesGroup.IsVisible = m_swatchesPanelVisible;
 			m_layersGroup.IsVisible = m_layersPanelVisible;
-			m_infoGroup.IsVisible = m_infoPanelVisible;
 			bool layersStretch = m_layersPanelVisible && !m_layersGroup.IsCollapsed();
 			for (int index = 0; index < m_paletteOrder.Count; index++)
 			{
