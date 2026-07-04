@@ -18,7 +18,7 @@ namespace Bitmute.UI
 
 		private static SkiaSharp.SKBitmap s_clipboardBitmap;
 
-		private const double MenuItemHeight = 26.0;
+		private const double MenuItemHeight = 18.0;
 		private const double DropdownWidth = 190.0;
 		private const double MenuSeparatorHeight = 9.0;
 		private const string MenuBreak = "__break__";
@@ -4537,9 +4537,9 @@ namespace Bitmute.UI
 
 		public void OpenSwatchColorPicker(int index, SKColor current)
 		{
-			m_editingSwatchIndex = index;
 			ColorPicker picker = new ColorPicker(current, true);
 			ShowModal(picker, 380.0, 360.0);
+			m_editingSwatchIndex = index;
 		}
 
 		public void SetLiveForeground(SKColor color)
