@@ -39,12 +39,30 @@ namespace Bitmute.Tools
 		private byte m_red;
 		private byte m_green;
 		private byte m_blue;
+		private bool m_spongeSaturate;
+		private int m_colorReplaceMode;
+		private int m_colorReplaceTolerance;
+		private bool m_colorReplaceHasSample;
+		private int m_colorReplaceSampleR;
+		private int m_colorReplaceSampleG;
+		private int m_colorReplaceSampleB;
 		private bool m_active;
 
 		public void SetCloneOffset(int offsetX, int offsetY)
 		{
 			m_cloneOffsetX = offsetX;
 			m_cloneOffsetY = offsetY;
+		}
+
+		public void SetSpongeSaturate(bool saturate)
+		{
+			m_spongeSaturate = saturate;
+		}
+
+		public void SetColorReplace(int mode, int tolerance)
+		{
+			m_colorReplaceMode = mode;
+			m_colorReplaceTolerance = tolerance;
 		}
 
 		public void Begin(Layer layer, SKBitmap original, int radius, double hardness, double opacity, double flow, bool square, double spacingFraction, double smoothing, eBrushOp op, eBlendMode mode, SKColor color)
@@ -115,6 +133,13 @@ namespace Bitmute.Tools
 			m_red = color.Red;
 			m_green = color.Green;
 			m_blue = color.Blue;
+			m_spongeSaturate = false;
+			m_colorReplaceMode = 0;
+			m_colorReplaceTolerance = 0;
+			m_colorReplaceHasSample = false;
+			m_colorReplaceSampleR = 0;
+			m_colorReplaceSampleG = 0;
+			m_colorReplaceSampleB = 0;
 			m_active = true;
 		}
 
@@ -324,6 +349,19 @@ namespace Bitmute.Tools
 			int layerOffsetY = layer.OffsetY();
 			byte* pixels = (byte*)bitmap.GetPixels().ToPointer();
 			byte* originalPixels = (byte*)m_original.GetPixels().ToPointer();
+			if (m_op == eBrushOp.ColorReplace && !m_colorReplaceHasSample)
+			{
+				int sampleX = (int)System.Math.Round(centerX) - layerOffsetX;
+				int sampleY = (int)System.Math.Round(centerY) - layerOffsetY;
+				if (sampleX >= 0 && sampleY >= 0 && sampleX < m_width && sampleY < m_height)
+				{
+					byte* samplePixel = originalPixels + (sampleY * originalRowBytes) + (sampleX * 4);
+					m_colorReplaceSampleR = samplePixel[0];
+					m_colorReplaceSampleG = samplePixel[1];
+					m_colorReplaceSampleB = samplePixel[2];
+					m_colorReplaceHasSample = true;
+				}
+			}
 			bool clip = selection != null && selection.IsActive();
 			int radius = m_radius;
 			int minCanvasX = (int)System.Math.Floor(centerX) - radius - 1;
@@ -406,6 +444,61 @@ namespace Bitmute.Tools
 						destinationPixel[0] = ClampByte(originalPixel[0] + ((targetRed - originalPixel[0]) * finalAlpha));
 						destinationPixel[1] = ClampByte(originalPixel[1] + ((targetGreen - originalPixel[1]) * finalAlpha));
 						destinationPixel[2] = ClampByte(originalPixel[2] + ((targetBlue - originalPixel[2]) * finalAlpha));
+						destinationPixel[3] = originalPixel[3];
+						continue;
+					}
+					if (m_op == eBrushOp.Sponge)
+					{
+						byte spongeR;
+						byte spongeG;
+						byte spongeB;
+						SpongeMath.Apply(originalPixel[0], originalPixel[1], originalPixel[2], m_spongeSaturate, finalAlpha, out spongeR, out spongeG, out spongeB);
+						destinationPixel[0] = spongeR;
+						destinationPixel[1] = spongeG;
+						destinationPixel[2] = spongeB;
+						destinationPixel[3] = originalPixel[3];
+						continue;
+					}
+					if (m_op == eBrushOp.ColorReplace)
+					{
+						if (m_colorReplaceHasSample)
+						{
+							int deltaR = originalPixel[0] - m_colorReplaceSampleR;
+							if (deltaR < 0)
+							{
+								deltaR = -deltaR;
+							}
+							int deltaG = originalPixel[1] - m_colorReplaceSampleG;
+							if (deltaG < 0)
+							{
+								deltaG = -deltaG;
+							}
+							int deltaB = originalPixel[2] - m_colorReplaceSampleB;
+							if (deltaB < 0)
+							{
+								deltaB = -deltaB;
+							}
+							int maxDelta = deltaR;
+							if (deltaG > maxDelta)
+							{
+								maxDelta = deltaG;
+							}
+							if (deltaB > maxDelta)
+							{
+								maxDelta = deltaB;
+							}
+							if (maxDelta > m_colorReplaceTolerance)
+							{
+								continue;
+							}
+						}
+						byte replaceR;
+						byte replaceG;
+						byte replaceB;
+						ColorReplaceMath.Apply(originalPixel[0], originalPixel[1], originalPixel[2], m_red, m_green, m_blue, m_colorReplaceMode, finalAlpha, out replaceR, out replaceG, out replaceB);
+						destinationPixel[0] = replaceR;
+						destinationPixel[1] = replaceG;
+						destinationPixel[2] = replaceB;
 						destinationPixel[3] = originalPixel[3];
 						continue;
 					}

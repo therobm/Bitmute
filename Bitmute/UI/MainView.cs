@@ -69,6 +69,12 @@ namespace Bitmute.UI
 		private Label m_brushSpacingValue;
 		private Label m_brushModeLabel;
 		private Picker m_brushModePicker;
+		private Label m_spongeModeLabel;
+		private Picker m_spongeModePicker;
+		private Label m_colorReplaceModeLabel;
+		private Picker m_colorReplaceModePicker;
+		private Label m_colorReplaceToleranceLabel;
+		private SliderField m_colorReplaceToleranceField;
 		private Label m_lineAntiAliasLabel;
 		private CheckBox m_lineAntiAliasCheck;
 		private Label m_toleranceLabel;
@@ -156,6 +162,8 @@ namespace Bitmute.UI
 		private EraserTool m_eraserTool;
 		private DodgeBurnTool m_dodgeBurnTool;
 		private BlurTool m_blurTool;
+		private SpongeTool m_spongeTool;
+		private ColorReplacementTool m_colorReplacementTool;
 		private SharpenTool m_sharpenTool;
 		private CloneTool m_cloneTool;
 		private SmudgeTool m_smudgeTool;
@@ -1960,6 +1968,55 @@ namespace Bitmute.UI
 			m_brushSettingsButton.IsVisible = false;
 			m_brushSettingsButton.Clicked += OnBrushSettingsClicked;
 
+			m_spongeModeLabel = new Label();
+			m_spongeModeLabel.Text = "Mode";
+			m_spongeModeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_spongeModeLabel.FontSize = 12.0;
+			m_spongeModeLabel.VerticalOptions = LayoutOptions.Center;
+			m_spongeModeLabel.IsVisible = false;
+
+			m_spongeModePicker = new Picker();
+			m_spongeModePicker.FontSize = 12.0;
+			m_spongeModePicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
+			m_spongeModePicker.WidthRequest = 110.0;
+			m_spongeModePicker.VerticalOptions = LayoutOptions.Center;
+			m_spongeModePicker.IsVisible = false;
+			m_spongeModePicker.Items.Add("Desaturate");
+			m_spongeModePicker.Items.Add("Saturate");
+			m_spongeModePicker.SelectedIndex = 0;
+			m_spongeModePicker.SelectedIndexChanged += OnSpongeModeChanged;
+
+			m_colorReplaceModeLabel = new Label();
+			m_colorReplaceModeLabel.Text = "Mode";
+			m_colorReplaceModeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_colorReplaceModeLabel.FontSize = 12.0;
+			m_colorReplaceModeLabel.VerticalOptions = LayoutOptions.Center;
+			m_colorReplaceModeLabel.IsVisible = false;
+
+			m_colorReplaceModePicker = new Picker();
+			m_colorReplaceModePicker.FontSize = 12.0;
+			m_colorReplaceModePicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
+			m_colorReplaceModePicker.WidthRequest = 120.0;
+			m_colorReplaceModePicker.VerticalOptions = LayoutOptions.Center;
+			m_colorReplaceModePicker.IsVisible = false;
+			m_colorReplaceModePicker.Items.Add("Color");
+			m_colorReplaceModePicker.Items.Add("Hue");
+			m_colorReplaceModePicker.Items.Add("Saturation");
+			m_colorReplaceModePicker.Items.Add("Luminosity");
+			m_colorReplaceModePicker.SelectedIndex = m_toolState.ColorReplaceMode();
+			m_colorReplaceModePicker.SelectedIndexChanged += OnColorReplaceModeChanged;
+
+			m_colorReplaceToleranceLabel = new Label();
+			m_colorReplaceToleranceLabel.Text = "Tolerance";
+			m_colorReplaceToleranceLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_colorReplaceToleranceLabel.FontSize = 12.0;
+			m_colorReplaceToleranceLabel.VerticalOptions = LayoutOptions.Center;
+			m_colorReplaceToleranceLabel.IsVisible = false;
+
+			m_colorReplaceToleranceField = new SliderField(0, 255, m_toolState.ColorReplaceTolerance(), "", OnColorReplaceToleranceValue);
+			m_colorReplaceToleranceField.VerticalOptions = LayoutOptions.Center;
+			m_colorReplaceToleranceField.IsVisible = false;
+
 			m_lineAntiAliasLabel = new Label();
 			m_lineAntiAliasLabel.Text = "Anti-alias";
 			m_lineAntiAliasLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
@@ -2175,6 +2232,12 @@ namespace Bitmute.UI
 			options.Add(m_brushSmoothingField);
 			options.Add(m_brushModeLabel);
 			options.Add(m_brushModePicker);
+			options.Add(m_spongeModeLabel);
+			options.Add(m_spongeModePicker);
+			options.Add(m_colorReplaceModeLabel);
+			options.Add(m_colorReplaceModePicker);
+			options.Add(m_colorReplaceToleranceLabel);
+			options.Add(m_colorReplaceToleranceField);
 			options.Add(m_brushSettingsButton);
 			options.Add(m_lineAntiAliasLabel);
 			options.Add(m_lineAntiAliasCheck);
@@ -2628,6 +2691,8 @@ namespace Bitmute.UI
 			m_eraserTool = new EraserTool();
 			m_dodgeBurnTool = new DodgeBurnTool();
 			m_blurTool = new BlurTool();
+			m_spongeTool = new SpongeTool();
+			m_colorReplacementTool = new ColorReplacementTool();
 			m_sharpenTool = new SharpenTool();
 			m_cloneTool = new CloneTool();
 			m_smudgeTool = new SmudgeTool();
@@ -4022,7 +4087,10 @@ namespace Bitmute.UI
 			{
 				CommitTextEdit();
 			}
-			bool isBrushFamily = tool == eTool.Brush || tool == eTool.Eraser || tool == eTool.Clone || tool == eTool.Blur || tool == eTool.Sharpen || tool == eTool.Smudge || tool == eTool.DodgeBurn;
+			bool isSponge = tool == eTool.Sponge;
+			bool isColorReplace = tool == eTool.ColorReplacement;
+			bool isBrushFamily = tool == eTool.Brush || tool == eTool.Eraser || tool == eTool.Clone || tool == eTool.Blur || tool == eTool.Sharpen || tool == eTool.Smudge || tool == eTool.DodgeBurn || isSponge || isColorReplace;
+			bool showsBlendMode = isBrushFamily && !isSponge && !isColorReplace;
 			bool usesSize = isBrushFamily || tool == eTool.Pencil || tool == eTool.Line;
 			if (m_brushSizeLabel != null)
 			{
@@ -4039,9 +4107,18 @@ namespace Bitmute.UI
 				m_brushFlowField.IsVisible = isBrushFamily;
 				m_brushSmoothingLabel.IsVisible = isBrushFamily;
 				m_brushSmoothingField.IsVisible = isBrushFamily;
-				m_brushModeLabel.IsVisible = isBrushFamily;
-				m_brushModePicker.IsVisible = isBrushFamily;
+				m_brushModeLabel.IsVisible = showsBlendMode;
+				m_brushModePicker.IsVisible = showsBlendMode;
 				m_brushSettingsButton.IsVisible = isBrushFamily;
+			}
+			if (m_spongeModeLabel != null)
+			{
+				m_spongeModeLabel.IsVisible = isSponge;
+				m_spongeModePicker.IsVisible = isSponge;
+				m_colorReplaceModeLabel.IsVisible = isColorReplace;
+				m_colorReplaceModePicker.IsVisible = isColorReplace;
+				m_colorReplaceToleranceLabel.IsVisible = isColorReplace;
+				m_colorReplaceToleranceField.IsVisible = isColorReplace;
 			}
 			if (m_lassoTool != null)
 			{
@@ -4176,6 +4253,38 @@ namespace Bitmute.UI
 				index = 0;
 			}
 			m_toolState.SetBrushMode((Bitmute.Imaging.eBlendMode)index);
+		}
+
+		private void OnSpongeModeChanged(object sender, System.EventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetSpongeSaturate(m_spongeModePicker.SelectedIndex == 1);
+		}
+
+		private void OnColorReplaceModeChanged(object sender, System.EventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			int index = m_colorReplaceModePicker.SelectedIndex;
+			if (index < 0)
+			{
+				index = 0;
+			}
+			m_toolState.SetColorReplaceMode(index);
+		}
+
+		private void OnColorReplaceToleranceValue(int tolerance)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetColorReplaceTolerance(tolerance);
 		}
 
 		private void OnBrushSettingsClicked(object sender, System.EventArgs eventArgs)
@@ -5411,6 +5520,14 @@ namespace Bitmute.UI
 			if (tool == eTool.Blur)
 			{
 				return m_blurTool;
+			}
+			if (tool == eTool.Sponge)
+			{
+				return m_spongeTool;
+			}
+			if (tool == eTool.ColorReplacement)
+			{
+				return m_colorReplacementTool;
 			}
 			if (tool == eTool.Sharpen)
 			{

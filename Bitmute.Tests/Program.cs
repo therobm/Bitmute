@@ -44,6 +44,8 @@ namespace Bitmute.Tests
 			TestCompositeRangeInto();
 			TestGuideStickyCenter();
 			TestMovePerfRegion();
+			TestSpongeMath();
+			TestColorReplaceMath();
 			TestWandContiguous();
 			TestWandNonContiguous();
 			TestWandSampleAll();
@@ -563,6 +565,45 @@ namespace Bitmute.Tests
 			guides.SetLocked(false);
 			guides.RemoveVertical(0);
 			Check(guides.VerticalGuides().Count == 0, "guides remove vertical");
+		}
+
+		private static void TestSpongeMath()
+		{
+			byte r;
+			byte g;
+			byte b;
+			SpongeMath.Apply(255, 0, 0, false, 1.0, out r, out g, out b);
+			Check(r == g && g == b, "sponge full desaturate to gray");
+			byte r0;
+			byte g0;
+			byte b0;
+			SpongeMath.Apply(200, 50, 40, false, 0.0, out r0, out g0, out b0);
+			Check(r0 == 200 && g0 == 50 && b0 == 40, "sponge zero strength unchanged");
+			byte rs;
+			byte gs;
+			byte bs;
+			SpongeMath.Apply(128, 100, 100, true, 1.0, out rs, out gs, out bs);
+			Check(rs > 128 && gs < 100, "sponge saturate pushes channels apart");
+		}
+
+		private static void TestColorReplaceMath()
+		{
+			byte r0;
+			byte g0;
+			byte b0;
+			ColorReplaceMath.Apply(128, 128, 128, 255, 0, 0, 0, 0.0, out r0, out g0, out b0);
+			Check(r0 == 128 && g0 == 128 && b0 == 128, "color replace zero strength unchanged");
+			byte rc;
+			byte gc;
+			byte bc;
+			ColorReplaceMath.Apply(128, 128, 128, 255, 0, 0, 0, 1.0, out rc, out gc, out bc);
+			Check(rc > gc && rc > bc, "color replace color mode is reddish");
+			byte rl;
+			byte gl;
+			byte bl;
+			ColorReplaceMath.Apply(200, 200, 200, 255, 0, 0, 3, 1.0, out rl, out gl, out bl);
+			Check(rl == gl && gl == bl, "color replace luminosity stays gray");
+			Check(rl < 200, "color replace luminosity uses fg luma");
 		}
 
 		private static void TestMovePerfRegion()

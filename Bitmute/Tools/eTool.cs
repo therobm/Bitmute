@@ -30,6 +30,8 @@ namespace Bitmute.Tools
 		Ruler,
 		MagneticLasso,
 		Crop,
-		FreeTransform
+		FreeTransform,
+		Sponge,
+		ColorReplacement
 	}
 }

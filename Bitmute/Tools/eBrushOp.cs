@@ -9,6 +9,8 @@ namespace Bitmute.Tools
 		Sharpen,
 		Smudge,
 		Dodge,
-		Burn
+		Burn,
+		Sponge,
+		ColorReplace
 	}
 }

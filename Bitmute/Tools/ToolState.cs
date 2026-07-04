@@ -17,6 +17,9 @@ namespace Bitmute.Tools
 		private int m_brushSmoothing;
 		private eBlendMode m_brushMode;
 		private int m_fillTolerance;
+		private bool m_spongeSaturate;
+		private int m_colorReplaceMode;
+		private int m_colorReplaceTolerance;
 		private bool m_wandContiguous;
 		private bool m_wandSampleAll;
 		private bool m_wandAntiAlias;
@@ -55,6 +58,9 @@ namespace Bitmute.Tools
 			m_brushSmoothing = 0;
 			m_brushMode = eBlendMode.Normal;
 			m_fillTolerance = 0;
+			m_spongeSaturate = false;
+			m_colorReplaceMode = 0;
+			m_colorReplaceTolerance = 32;
 			m_wandContiguous = true;
 			m_wandSampleAll = false;
 			m_wandAntiAlias = true;
@@ -492,6 +498,36 @@ namespace Bitmute.Tools
 		public void SetFillTolerance(int tolerance)
 		{
 			m_fillTolerance = tolerance;
+		}
+
+		public bool SpongeSaturate()
+		{
+			return m_spongeSaturate;
+		}
+
+		public void SetSpongeSaturate(bool saturate)
+		{
+			m_spongeSaturate = saturate;
+		}
+
+		public int ColorReplaceMode()
+		{
+			return m_colorReplaceMode;
+		}
+
+		public void SetColorReplaceMode(int mode)
+		{
+			m_colorReplaceMode = mode;
+		}
+
+		public int ColorReplaceTolerance()
+		{
+			return m_colorReplaceTolerance;
+		}
+
+		public void SetColorReplaceTolerance(int tolerance)
+		{
+			m_colorReplaceTolerance = tolerance;
 		}
 
 		public void SwapColors()
