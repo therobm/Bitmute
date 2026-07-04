@@ -1,6 +1,6 @@
 # Bitmute
 
-A raster image editor built with .NET MAUI and SkiaSharp, targeting Windows (and Linux as a future goal).
+A raster image editor built with .NET MAUI and SkiaSharp, targeting Windows (Mac and Linux as a future goal).
 
 ![Preview](Docs/preview.png)
 
