@@ -87,12 +87,14 @@ namespace Bitmute.UI
 			float destinationLeft = (ThumbnailWidth - destinationWidth) / 2.0f;
 			float destinationTop = (ThumbnailHeight - destinationHeight) / 2.0f;
 			SKRect destination = new SKRect(destinationLeft, destinationTop, destinationLeft + destinationWidth, destinationTop + destinationHeight);
-			SKImage image = SKImage.FromBitmap(source);
+			SKPixmap pixmap = source.PeekPixels();
+			SKImage image = SKImage.FromPixels(pixmap);
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None);
 			SKPaint imagePaint = new SKPaint();
 			canvas.DrawImage(image, destination, sampling, imagePaint);
 			imagePaint.Dispose();
 			image.Dispose();
+			pixmap.Dispose();
 			canvas.Dispose();
 			return new SKBitmapImageSource { Bitmap = thumbnail };
 		}
@@ -109,6 +111,26 @@ namespace Bitmute.UI
 			{
 				int layerIndex = m_thumbnailLayers[index];
 				if (layerIndex < 0 || layerIndex >= layers.Count)
+				{
+					continue;
+				}
+				m_thumbnailImages[index].Source = BuildThumbnail(layers[layerIndex]);
+			}
+		}
+
+		public void RefreshActiveThumbnail()
+		{
+			Document document = Doc();
+			if (document == null)
+			{
+				return;
+			}
+			List<Layer> layers = document.Layers();
+			int activeIndex = document.ActiveLayerIndex();
+			for (int index = 0; index < m_thumbnailImages.Count; index++)
+			{
+				int layerIndex = m_thumbnailLayers[index];
+				if (layerIndex != activeIndex || layerIndex < 0 || layerIndex >= layers.Count)
 				{
 					continue;
 				}

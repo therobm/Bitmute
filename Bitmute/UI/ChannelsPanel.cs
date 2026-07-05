@@ -195,12 +195,14 @@ namespace Bitmute.UI
 			}
 			SKBitmap thumbnail = new SKBitmap(thumbWidth, thumbHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
 			SKCanvas canvas = new SKCanvas(thumbnail);
-			SKImage image = SKImage.FromBitmap(composite);
+			SKPixmap pixmap = composite.PeekPixels();
+			SKImage image = SKImage.FromPixels(pixmap);
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None);
 			SKPaint paint = new SKPaint();
 			canvas.DrawImage(image, new SKRect(0.0f, 0.0f, width, height), new SKRect(0.0f, 0.0f, thumbWidth, thumbHeight), sampling, paint);
 			paint.Dispose();
 			image.Dispose();
+			pixmap.Dispose();
 			canvas.Dispose();
 			composite.Dispose();
 			return thumbnail;

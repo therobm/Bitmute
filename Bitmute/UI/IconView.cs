@@ -97,9 +97,11 @@ namespace Bitmute.UI
 			paint.ColorFilter = SKColorFilter.CreateBlendMode(tint, SKBlendMode.SrcIn);
 			SKRect destination = new SKRect(0.0f, 0.0f, eventArgs.Info.Width, eventArgs.Info.Height);
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None);
-			SKImage image = SKImage.FromBitmap(bitmap);
+			SKPixmap pixmap = bitmap.PeekPixels();
+			SKImage image = SKImage.FromPixels(pixmap);
 			canvas.DrawImage(image, destination, sampling, paint);
 			image.Dispose();
+			pixmap.Dispose();
 			paint.Dispose();
 		}
 	}

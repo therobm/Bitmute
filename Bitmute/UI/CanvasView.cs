@@ -37,6 +37,10 @@ namespace Bitmute.UI
 
 		private Document m_document;
 		private SKBitmap m_composite;
+		private int m_compositeVersion;
+		private int m_channelCacheVersion = -1;
+		private int m_channelCacheKey = -1;
+		private SKPaint m_checkerPaint;
 		private SKBitmap m_transformAbove;
 		private SKBitmap m_channelBitmap;
 		private float m_zoom;
@@ -160,6 +164,7 @@ namespace Bitmute.UI
 			{
 				m_document.CompositeInto(m_composite);
 				m_document.ClearComposeDirty();
+				m_compositeVersion = m_compositeVersion + 1;
 			}
 			else if (m_document.ComposeDirtyAny())
 			{
@@ -169,6 +174,7 @@ namespace Bitmute.UI
 					m_document.CompositeRegion(m_composite, region);
 				}
 				m_document.ClearComposeDirty();
+				m_compositeVersion = m_compositeVersion + 1;
 			}
 
 			float docWidth = m_document.Width();
@@ -216,11 +222,15 @@ namespace Bitmute.UI
 			float rectHeight = docHeight * m_zoom;
 			SKRect destination = new SKRect(m_offsetX, m_offsetY, m_offsetX + rectWidth, m_offsetY + rectHeight);
 
-			SKPaint checkerPaint = new SKPaint();
-			SKMatrix localMatrix = SKMatrix.CreateTranslation(m_offsetX, m_offsetY);
-			checkerPaint.Shader = SKShader.CreateBitmap(CheckerTile(), SKShaderTileMode.Repeat, SKShaderTileMode.Repeat, localMatrix);
-			canvas.DrawRect(destination, checkerPaint);
-			checkerPaint.Dispose();
+			if (m_checkerPaint == null)
+			{
+				m_checkerPaint = new SKPaint();
+				m_checkerPaint.Shader = SKShader.CreateBitmap(CheckerTile(), SKShaderTileMode.Repeat, SKShaderTileMode.Repeat);
+			}
+			canvas.Save();
+			canvas.Translate(m_offsetX, m_offsetY);
+			canvas.DrawRect(new SKRect(0.0f, 0.0f, rectWidth, rectHeight), m_checkerPaint);
+			canvas.Restore();
 
 			SKBitmap displayBitmap = m_composite;
 			MainView channelMain = MainView.Self;
@@ -230,6 +240,7 @@ namespace Bitmute.UI
 				bool maskChannels = channelMode < 0 && !channelMain.AllChannelsVisible();
 				if (channelMode >= 0 || maskChannels)
 				{
+					bool reallocated = false;
 					if (m_channelBitmap == null || m_channelBitmap.Width != m_composite.Width || m_channelBitmap.Height != m_composite.Height)
 					{
 						if (m_channelBitmap != null)
@@ -237,24 +248,54 @@ namespace Bitmute.UI
 							m_channelBitmap.Dispose();
 						}
 						m_channelBitmap = new SKBitmap(m_composite.Width, m_composite.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+						reallocated = true;
 					}
-					if (channelMode >= 0)
+					int channelKey = channelMode + 16;
+					if (channelMode < 0)
 					{
-						Bitmute.Imaging.ChannelRender.Render(m_composite, m_channelBitmap, channelMode);
+						channelKey = 0;
+						if (channelMain.ChannelVisible(0))
+						{
+							channelKey = channelKey + 1;
+						}
+						if (channelMain.ChannelVisible(1))
+						{
+							channelKey = channelKey + 2;
+						}
+						if (channelMain.ChannelVisible(2))
+						{
+							channelKey = channelKey + 4;
+						}
+						if (channelMain.ChannelVisible(3))
+						{
+							channelKey = channelKey + 8;
+						}
 					}
-					else
+					bool channelStale = reallocated || m_channelCacheVersion != m_compositeVersion || m_channelCacheKey != channelKey;
+					if (channelStale)
 					{
-						Bitmute.Imaging.ChannelRender.ApplyVisibilityMask(m_composite, m_channelBitmap, channelMain.ChannelVisible(0), channelMain.ChannelVisible(1), channelMain.ChannelVisible(2), channelMain.ChannelVisible(3));
+						if (channelMode >= 0)
+						{
+							Bitmute.Imaging.ChannelRender.Render(m_composite, m_channelBitmap, channelMode);
+						}
+						else
+						{
+							Bitmute.Imaging.ChannelRender.ApplyVisibilityMask(m_composite, m_channelBitmap, channelMain.ChannelVisible(0), channelMain.ChannelVisible(1), channelMain.ChannelVisible(2), channelMain.ChannelVisible(3));
+						}
+						m_channelCacheVersion = m_compositeVersion;
+						m_channelCacheKey = channelKey;
 					}
 					displayBitmap = m_channelBitmap;
 				}
 			}
-			SKImage image = SKImage.FromBitmap(displayBitmap);
+			SKPixmap displayPixmap = displayBitmap.PeekPixels();
+			SKImage image = SKImage.FromPixels(displayPixmap);
 			SKPaint imagePaint = new SKPaint();
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
 			canvas.DrawImage(image, destination, sampling, imagePaint);
 			imagePaint.Dispose();
 			image.Dispose();
+			displayPixmap.Dispose();
 
 			SKPaint borderPaint = new SKPaint();
 			borderPaint.Style = SKPaintStyle.Stroke;
@@ -1818,11 +1859,11 @@ namespace Bitmute.UI
 					if (tool.IsDestructive())
 					{
 						m_document.EndStroke();
-						main.RefreshLayerThumbnails();
+						main.RefreshActiveLayerThumbnail();
 					}
 					else if (tool is MoveTool)
 					{
-						main.RefreshLayerThumbnails();
+						main.RefreshActiveLayerThumbnail();
 					}
 				}
 				m_toolStrokeActive = false;

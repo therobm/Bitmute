@@ -137,9 +137,11 @@ namespace Bitmute.UI
 				SKPaint paint = new SKPaint();
 				paint.Color = SKColors.White.WithAlpha(layer.Opacity());
 				paint.BlendMode = SKBlendMode.SrcOver;
-				SKImage image = SKImage.FromBitmap(bitmap);
+				SKPixmap pixmap = bitmap.PeekPixels();
+				SKImage image = SKImage.FromPixels(pixmap);
 				canvas.DrawImage(image, destination, sampling, paint);
 				image.Dispose();
+				pixmap.Dispose();
 				paint.Dispose();
 			}
 		}

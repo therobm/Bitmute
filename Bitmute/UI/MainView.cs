@@ -2909,7 +2909,6 @@ namespace Bitmute.UI
 		{
 			canvas.MarkComposeDirty();
 			RefreshPanels();
-			RefreshLayerThumbnails();
 		}
 
 		public void DuplicateActiveLayer()
@@ -3980,6 +3979,22 @@ namespace Bitmute.UI
 			}
 			DocumentWindow window = new DocumentWindow(model);
 			PlaceAndAdd(window);
+		}
+
+		public void RefreshActiveLayerThumbnail()
+		{
+			if (m_layersPanel != null)
+			{
+				m_layersPanel.RefreshActiveThumbnail();
+			}
+			if (m_navigatorPanel != null)
+			{
+				m_navigatorPanel.RefreshView();
+			}
+			if (m_channelsPanel != null)
+			{
+				m_channelsPanel.Refresh();
+			}
 		}
 
 		public void RefreshLayerThumbnails()
