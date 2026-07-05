@@ -83,7 +83,11 @@ namespace Bitmute.Imaging
 		private int m_cacheInnerGlowY;
 		private int m_cacheBevelX;
 		private int m_cacheBevelY;
-		private bool m_styleCacheDirty;
+		private bool m_strokeCacheDirty;
+		private bool m_shadowCacheDirty;
+		private bool m_glowCacheDirty;
+		private bool m_innerGlowCacheDirty;
+		private bool m_bevelCacheDirty;
 
 		public static bool IsCustomBlend(eBlendMode blendMode)
 		{
@@ -235,7 +239,7 @@ namespace Bitmute.Imaging
 			m_textFauxItalic = false;
 			m_textKerningAuto = true;
 			m_layerStyle = new LayerStyle();
-			m_styleCacheDirty = true;
+			MarkStyleCacheDirty();
 		}
 
 		public bool TextLeadingAuto()
@@ -457,7 +461,7 @@ namespace Bitmute.Imaging
 		public void SetBitmap(SKBitmap bitmap)
 		{
 			m_bitmap = bitmap;
-			m_styleCacheDirty = true;
+			MarkStyleCacheDirty();
 		}
 
 		public LayerStyle LayerStyle()
@@ -467,13 +471,47 @@ namespace Bitmute.Imaging
 
 		public void SetLayerStyle(LayerStyle style)
 		{
+			LayerStyle previous = m_layerStyle;
 			m_layerStyle = style;
-			m_styleCacheDirty = true;
+			if (previous == null)
+			{
+				MarkStyleCacheDirty();
+				return;
+			}
+			if (!style.SameStroke(previous))
+			{
+				m_strokeCacheDirty = true;
+			}
+			if (!style.SameShadow(previous))
+			{
+				m_shadowCacheDirty = true;
+			}
+			if (!style.SameOuterGlow(previous))
+			{
+				m_glowCacheDirty = true;
+			}
+			if (!style.SameInnerGlow(previous))
+			{
+				m_innerGlowCacheDirty = true;
+			}
+			if (!style.SameBevel(previous))
+			{
+				m_bevelCacheDirty = true;
+			}
 		}
 
 		public void InvalidateStyleCache()
 		{
-			m_styleCacheDirty = true;
+			MarkStyleCacheDirty();
+		}
+
+		private void MarkStyleCacheDirty()
+		{
+			m_strokeCacheDirty = true;
+			m_shadowCacheDirty = true;
+			m_glowCacheDirty = true;
+			m_innerGlowCacheDirty = true;
+			m_bevelCacheDirty = true;
 		}
 
 		private void DisposeStyleCache()
@@ -507,41 +545,80 @@ namespace Bitmute.Imaging
 
 		private void EnsureStyleCache()
 		{
-			if (!m_styleCacheDirty)
+			if (m_shadowCacheDirty)
 			{
-				return;
+				if (m_cacheShadow != null)
+				{
+					m_cacheShadow.Dispose();
+					m_cacheShadow = null;
+				}
+				if (m_layerStyle.m_hasDropShadow)
+				{
+					double radians = m_layerStyle.m_shadowAngle * System.Math.PI / 180.0;
+					int shadowOffsetX = (int)System.Math.Round(System.Math.Cos(radians) * m_layerStyle.m_shadowDistance);
+					int shadowOffsetY = (int)System.Math.Round(System.Math.Sin(radians) * m_layerStyle.m_shadowDistance);
+					byte shadowOpacity = (byte)((m_layerStyle.m_shadowOpacity * 255) / 100);
+					m_cacheShadow = LayerStyles.RenderDropShadow(m_bitmap, m_layerStyle.m_shadowColor, shadowOffsetX, shadowOffsetY, m_layerStyle.m_shadowSize, m_layerStyle.m_shadowSpread, shadowOpacity, out m_cacheShadowX, out m_cacheShadowY);
+				}
+				m_shadowCacheDirty = false;
 			}
-			DisposeStyleCache();
-			if (m_layerStyle.m_hasDropShadow)
+			if (m_glowCacheDirty)
 			{
-				double radians = m_layerStyle.m_shadowAngle * System.Math.PI / 180.0;
-				int shadowOffsetX = (int)System.Math.Round(System.Math.Cos(radians) * m_layerStyle.m_shadowDistance);
-				int shadowOffsetY = (int)System.Math.Round(System.Math.Sin(radians) * m_layerStyle.m_shadowDistance);
-				byte shadowOpacity = (byte)((m_layerStyle.m_shadowOpacity * 255) / 100);
-				m_cacheShadow = LayerStyles.RenderDropShadow(m_bitmap, m_layerStyle.m_shadowColor, shadowOffsetX, shadowOffsetY, m_layerStyle.m_shadowSize, m_layerStyle.m_shadowSpread, shadowOpacity, out m_cacheShadowX, out m_cacheShadowY);
+				if (m_cacheGlow != null)
+				{
+					m_cacheGlow.Dispose();
+					m_cacheGlow = null;
+				}
+				if (m_layerStyle.m_hasOuterGlow)
+				{
+					byte glowOpacity = (byte)((m_layerStyle.m_glowOpacity * 255) / 100);
+					m_cacheGlow = LayerStyles.RenderOuterGlow(m_bitmap, m_layerStyle.m_glowColor, m_layerStyle.m_glowSize, m_layerStyle.m_glowSpread, glowOpacity, out m_cacheGlowX, out m_cacheGlowY);
+				}
+				m_glowCacheDirty = false;
 			}
-			if (m_layerStyle.m_hasOuterGlow)
+			if (m_innerGlowCacheDirty)
 			{
-				byte glowOpacity = (byte)((m_layerStyle.m_glowOpacity * 255) / 100);
-				m_cacheGlow = LayerStyles.RenderOuterGlow(m_bitmap, m_layerStyle.m_glowColor, m_layerStyle.m_glowSize, m_layerStyle.m_glowSpread, glowOpacity, out m_cacheGlowX, out m_cacheGlowY);
+				if (m_cacheInnerGlow != null)
+				{
+					m_cacheInnerGlow.Dispose();
+					m_cacheInnerGlow = null;
+				}
+				if (m_layerStyle.m_hasInnerGlow)
+				{
+					byte innerGlowOpacity = (byte)((m_layerStyle.m_innerGlowOpacity * 255) / 100);
+					m_cacheInnerGlow = LayerStyles.RenderInnerGlow(m_bitmap, m_layerStyle.m_innerGlowColor, m_layerStyle.m_innerGlowSize, m_layerStyle.m_innerGlowSpread, innerGlowOpacity, out m_cacheInnerGlowX, out m_cacheInnerGlowY);
+				}
+				m_innerGlowCacheDirty = false;
 			}
-			if (m_layerStyle.m_hasInnerGlow)
+			if (m_bevelCacheDirty)
 			{
-				byte innerGlowOpacity = (byte)((m_layerStyle.m_innerGlowOpacity * 255) / 100);
-				m_cacheInnerGlow = LayerStyles.RenderInnerGlow(m_bitmap, m_layerStyle.m_innerGlowColor, m_layerStyle.m_innerGlowSize, m_layerStyle.m_innerGlowSpread, innerGlowOpacity, out m_cacheInnerGlowX, out m_cacheInnerGlowY);
+				if (m_cacheBevel != null)
+				{
+					m_cacheBevel.Dispose();
+					m_cacheBevel = null;
+				}
+				if (m_layerStyle.m_hasBevel)
+				{
+					byte bevelHighlightOpacity = (byte)((m_layerStyle.m_bevelHighlightOpacity * 255) / 100);
+					byte bevelShadowOpacity = (byte)((m_layerStyle.m_bevelShadowOpacity * 255) / 100);
+					m_cacheBevel = LayerStyles.RenderBevel(m_bitmap, m_layerStyle.m_bevelDepth, m_layerStyle.m_bevelSize, m_layerStyle.m_bevelAngle, m_layerStyle.m_bevelHighlightColor, bevelHighlightOpacity, m_layerStyle.m_bevelShadowColor, bevelShadowOpacity, out m_cacheBevelX, out m_cacheBevelY);
+				}
+				m_bevelCacheDirty = false;
 			}
-			if (m_layerStyle.m_hasBevel)
+			if (m_strokeCacheDirty)
 			{
-				byte bevelHighlightOpacity = (byte)((m_layerStyle.m_bevelHighlightOpacity * 255) / 100);
-				byte bevelShadowOpacity = (byte)((m_layerStyle.m_bevelShadowOpacity * 255) / 100);
-				m_cacheBevel = LayerStyles.RenderBevel(m_bitmap, m_layerStyle.m_bevelDepth, m_layerStyle.m_bevelSize, m_layerStyle.m_bevelAngle, m_layerStyle.m_bevelHighlightColor, bevelHighlightOpacity, m_layerStyle.m_bevelShadowColor, bevelShadowOpacity, out m_cacheBevelX, out m_cacheBevelY);
+				if (m_cacheStroke != null)
+				{
+					m_cacheStroke.Dispose();
+					m_cacheStroke = null;
+				}
+				if (m_layerStyle.m_hasStroke)
+				{
+					byte strokeOpacity = (byte)((m_layerStyle.m_strokeOpacity * 255) / 100);
+					m_cacheStroke = LayerStyles.RenderStroke(m_bitmap, m_layerStyle.m_strokeSize, m_layerStyle.m_strokePosition, m_layerStyle.m_strokeColor, strokeOpacity, out m_cacheStrokeX, out m_cacheStrokeY);
+				}
+				m_strokeCacheDirty = false;
 			}
-			if (m_layerStyle.m_hasStroke)
-			{
-				byte strokeOpacity = (byte)((m_layerStyle.m_strokeOpacity * 255) / 100);
-				m_cacheStroke = LayerStyles.RenderStroke(m_bitmap, m_layerStyle.m_strokeSize, m_layerStyle.m_strokePosition, m_layerStyle.m_strokeColor, strokeOpacity, out m_cacheStrokeX, out m_cacheStrokeY);
-			}
-			m_styleCacheDirty = false;
 		}
 
 		private void DrawCachedEffect(SKCanvas canvas, SKBitmap effect, int placeX, int placeY, SKSamplingOptions sampling, byte layerOpacity, eBlendMode blendMode)
@@ -619,7 +696,7 @@ namespace Bitmute.Imaging
 			copy.m_textFauxItalic = m_textFauxItalic;
 			copy.m_textKerningAuto = m_textKerningAuto;
 			copy.m_layerStyle = m_layerStyle.Clone();
-			copy.m_styleCacheDirty = true;
+			copy.MarkStyleCacheDirty();
 			return copy;
 		}
 

@@ -35,6 +35,9 @@ namespace Bitmute.UI
 		private bool m_ready;
 		private bool m_gradientPressed;
 		private Action<SKColor> m_onApply;
+		private bool m_livePendingScheduled;
+		private SKColor m_livePendingColor;
+		private bool m_liveRevoked;
 		private SKColor m_originalColor;
 		private bool m_applied;
 		private bool m_liveFired;
@@ -99,28 +102,55 @@ namespace Bitmute.UI
 			m_gradient.InvalidateSurface();
 			if (m_docked && m_ready)
 			{
-				MainView main = MainView.Self;
-				if (main != null)
-				{
-					main.SetLiveForeground(color);
-				}
+				ScheduleLiveApply(color);
 			}
 			if (!m_docked && m_ready && m_onApply == null)
 			{
-				MainView modalMain = MainView.Self;
-				if (modalMain != null && !modalMain.EditingSwatch())
-				{
-					if (m_foreground)
-					{
-						modalMain.SetLiveForeground(color);
-					}
-					else
-					{
-						modalMain.SetLiveBackground(color);
-					}
-					m_liveFired = true;
-				}
+				ScheduleLiveApply(color);
 			}
+		}
+
+		private void ScheduleLiveApply(SKColor color)
+		{
+			m_livePendingColor = color;
+			if (m_livePendingScheduled)
+			{
+				return;
+			}
+			m_livePendingScheduled = true;
+			Dispatcher.Dispatch(FlushLiveApply);
+		}
+
+		private void FlushLiveApply()
+		{
+			m_livePendingScheduled = false;
+			if (m_liveRevoked)
+			{
+				return;
+			}
+			MainView main = MainView.Self;
+			if (main == null)
+			{
+				return;
+			}
+			if (m_docked)
+			{
+				main.SetLiveForeground(m_livePendingColor);
+				return;
+			}
+			if (main.EditingSwatch())
+			{
+				return;
+			}
+			if (m_foreground)
+			{
+				main.SetLiveForeground(m_livePendingColor);
+			}
+			else
+			{
+				main.SetLiveBackground(m_livePendingColor);
+			}
+			m_liveFired = true;
 		}
 
 		private void OnGradientPaint(object sender, SKPaintSurfaceEventArgs eventArgs)
@@ -303,6 +333,7 @@ namespace Bitmute.UI
 
 		public void RevertLivePreview()
 		{
+			m_liveRevoked = true;
 			if (!m_liveFired || m_applied)
 			{
 				return;

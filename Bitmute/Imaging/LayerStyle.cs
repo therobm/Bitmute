@@ -84,6 +84,31 @@ namespace Bitmute.Imaging
 			return m_hasStroke || m_hasDropShadow || m_hasOuterGlow || m_hasInnerGlow || m_hasBevel;
 		}
 
+		public bool SameStroke(LayerStyle other)
+		{
+			return m_hasStroke == other.m_hasStroke && m_strokeSize == other.m_strokeSize && m_strokePosition == other.m_strokePosition && m_strokeColor == other.m_strokeColor && m_strokeOpacity == other.m_strokeOpacity;
+		}
+
+		public bool SameShadow(LayerStyle other)
+		{
+			return m_hasDropShadow == other.m_hasDropShadow && m_shadowColor == other.m_shadowColor && m_shadowOpacity == other.m_shadowOpacity && m_shadowAngle == other.m_shadowAngle && m_shadowDistance == other.m_shadowDistance && m_shadowSize == other.m_shadowSize && m_shadowSpread == other.m_shadowSpread;
+		}
+
+		public bool SameOuterGlow(LayerStyle other)
+		{
+			return m_hasOuterGlow == other.m_hasOuterGlow && m_glowColor == other.m_glowColor && m_glowOpacity == other.m_glowOpacity && m_glowSize == other.m_glowSize && m_glowSpread == other.m_glowSpread;
+		}
+
+		public bool SameInnerGlow(LayerStyle other)
+		{
+			return m_hasInnerGlow == other.m_hasInnerGlow && m_innerGlowColor == other.m_innerGlowColor && m_innerGlowOpacity == other.m_innerGlowOpacity && m_innerGlowSize == other.m_innerGlowSize && m_innerGlowSpread == other.m_innerGlowSpread;
+		}
+
+		public bool SameBevel(LayerStyle other)
+		{
+			return m_hasBevel == other.m_hasBevel && m_bevelDepth == other.m_bevelDepth && m_bevelSize == other.m_bevelSize && m_bevelAngle == other.m_bevelAngle && m_bevelHighlightColor == other.m_bevelHighlightColor && m_bevelHighlightOpacity == other.m_bevelHighlightOpacity && m_bevelShadowColor == other.m_bevelShadowColor && m_bevelShadowOpacity == other.m_bevelShadowOpacity;
+		}
+
 		public LayerStyle Clone()
 		{
 			LayerStyle copy = new LayerStyle();
