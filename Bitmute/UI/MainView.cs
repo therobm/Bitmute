@@ -211,9 +211,13 @@ namespace Bitmute.UI
 			}
 			if (parent == eMenuAction.FilterDistortMenu)
 			{
-				MenuBarItem placeholder = new MenuBarItem("(none yet)", eMenuAction.None);
-				placeholder.m_enabled = false;
-				items.Add(placeholder);
+				items.Add(new MenuBarItem("Pinch…", eMenuAction.Pinch));
+				items.Add(new MenuBarItem("Polar Coordinates…", eMenuAction.PolarCoordinates));
+				items.Add(new MenuBarItem("Ripple…", eMenuAction.Ripple));
+				items.Add(new MenuBarItem("Shear…", eMenuAction.Shear));
+				items.Add(new MenuBarItem("Spherize…", eMenuAction.Spherize));
+				items.Add(new MenuBarItem("Twirl…", eMenuAction.Twirl));
+				items.Add(new MenuBarItem("Wave…", eMenuAction.Wave));
 				return items;
 			}
 			return items;
@@ -811,6 +815,41 @@ namespace Bitmute.UI
 				OpenAdjustment("deinterlace");
 				return;
 			}
+			if (action == eMenuAction.Pinch)
+			{
+				OpenAdjustment("pinch");
+				return;
+			}
+			if (action == eMenuAction.PolarCoordinates)
+			{
+				OpenAdjustment("polar");
+				return;
+			}
+			if (action == eMenuAction.Ripple)
+			{
+				OpenAdjustment("ripple");
+				return;
+			}
+			if (action == eMenuAction.Shear)
+			{
+				OpenAdjustment("shear");
+				return;
+			}
+			if (action == eMenuAction.Spherize)
+			{
+				OpenAdjustment("spherize");
+				return;
+			}
+			if (action == eMenuAction.Twirl)
+			{
+				OpenAdjustment("twirl");
+				return;
+			}
+			if (action == eMenuAction.Wave)
+			{
+				OpenAdjustment("wave");
+				return;
+			}
 			if (action == eMenuAction.FlipHorizontal)
 			{
 				DoCanvasOp("fliph");
@@ -1133,6 +1172,34 @@ namespace Bitmute.UI
 			{
 				return true;
 			}
+			if (id == "pinch")
+			{
+				return true;
+			}
+			if (id == "polar")
+			{
+				return true;
+			}
+			if (id == "ripple")
+			{
+				return true;
+			}
+			if (id == "shear")
+			{
+				return true;
+			}
+			if (id == "spherize")
+			{
+				return true;
+			}
+			if (id == "twirl")
+			{
+				return true;
+			}
+			if (id == "wave")
+			{
+				return true;
+			}
 			return false;
 		}
 
@@ -1241,6 +1308,34 @@ namespace Bitmute.UI
 			if (id == "deinterlace")
 			{
 				return "De-Interlace";
+			}
+			if (id == "pinch")
+			{
+				return "Pinch";
+			}
+			if (id == "polar")
+			{
+				return "Polar Coordinates";
+			}
+			if (id == "ripple")
+			{
+				return "Ripple";
+			}
+			if (id == "shear")
+			{
+				return "Shear";
+			}
+			if (id == "spherize")
+			{
+				return "Spherize";
+			}
+			if (id == "twirl")
+			{
+				return "Twirl";
+			}
+			if (id == "wave")
+			{
+				return "Wave";
 			}
 			return "";
 		}
@@ -1402,6 +1497,34 @@ namespace Bitmute.UI
 			{
 				FilterVideo.DeInterlace(bitmap, values[0], values[1]);
 			}
+			else if (id == "pinch")
+			{
+				FilterDistort.Pinch(bitmap, values[0]);
+			}
+			else if (id == "polar")
+			{
+				FilterDistort.PolarCoordinates(bitmap, values[0]);
+			}
+			else if (id == "ripple")
+			{
+				FilterDistort.Ripple(bitmap, values[0], values[1]);
+			}
+			else if (id == "shear")
+			{
+				FilterDistort.Shear(bitmap, values[0], values[1]);
+			}
+			else if (id == "spherize")
+			{
+				FilterDistort.Spherize(bitmap, values[0], values[1]);
+			}
+			else if (id == "twirl")
+			{
+				FilterDistort.Twirl(bitmap, values[0]);
+			}
+			else if (id == "wave")
+			{
+				FilterDistort.Wave(bitmap, values[0], values[1], values[2]);
+			}
 		}
 
 		private void BeginAdjustmentPreview(string id)
@@ -1521,6 +1644,41 @@ namespace Bitmute.UI
 			if (id == "deinterlace")
 			{
 				ShowModal(new AdjustmentDialog("De-Interlace", "deinterlace", new string[0], new int[0], new int[0], new int[0], new string[] { "Eliminate", "Fill" }, new string[][] { new string[] { "Odd Fields", "Even Fields" }, new string[] { "Duplication", "Interpolation" } }, new int[] { 0, 1 }), 360.0, 230.0);
+				return;
+			}
+			if (id == "pinch")
+			{
+				ShowModal(new AdjustmentDialog("Pinch", "pinch", new string[] { "Amount" }, new int[] { -100 }, new int[] { 100 }, new int[] { 50 }), 360.0, 200.0);
+				return;
+			}
+			if (id == "polar")
+			{
+				ShowModal(new AdjustmentDialog("Polar Coordinates", "polar", new string[0], new int[0], new int[0], new int[0], new string[] { "Direction" }, new string[][] { new string[] { "Rectangular to Polar", "Polar to Rectangular" } }, new int[] { 0 }), 360.0, 200.0);
+				return;
+			}
+			if (id == "ripple")
+			{
+				ShowModal(new AdjustmentDialog("Ripple", "ripple", new string[] { "Amount" }, new int[] { -999 }, new int[] { 999 }, new int[] { 100 }, new string[] { "Size" }, new string[][] { new string[] { "Small", "Medium", "Large" } }, new int[] { 1 }), 360.0, 230.0);
+				return;
+			}
+			if (id == "shear")
+			{
+				ShowModal(new AdjustmentDialog("Shear", "shear", new string[] { "Amount" }, new int[] { -100 }, new int[] { 100 }, new int[] { 25 }, new string[] { "Undefined Areas" }, new string[][] { new string[] { "Wrap Around", "Repeat Edge Pixels" } }, new int[] { 0 }), 360.0, 230.0);
+				return;
+			}
+			if (id == "spherize")
+			{
+				ShowModal(new AdjustmentDialog("Spherize", "spherize", new string[] { "Amount" }, new int[] { -100 }, new int[] { 100 }, new int[] { 50 }, new string[] { "Mode" }, new string[][] { new string[] { "Normal", "Horizontal Only", "Vertical Only" } }, new int[] { 0 }), 360.0, 230.0);
+				return;
+			}
+			if (id == "twirl")
+			{
+				ShowModal(new AdjustmentDialog("Twirl", "twirl", new string[] { "Angle" }, new int[] { -999 }, new int[] { 999 }, new int[] { 50 }), 360.0, 200.0);
+				return;
+			}
+			if (id == "wave")
+			{
+				ShowModal(new AdjustmentDialog("Wave", "wave", new string[] { "Wavelength", "Amplitude" }, new int[] { 1, 1 }, new int[] { 200, 100 }, new int[] { 40, 10 }, new string[] { "Type" }, new string[][] { new string[] { "Sine", "Triangle", "Square" } }, new int[] { 0 }), 360.0, 260.0);
 				return;
 			}
 		}

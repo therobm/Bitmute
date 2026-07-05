@@ -109,7 +109,14 @@ namespace Bitmute.UI
 		Emboss,
 		FindEdges,
 		Solarize,
-		DeInterlace
+		DeInterlace,
+		Pinch,
+		PolarCoordinates,
+		Ripple,
+		Shear,
+		Spherize,
+		Twirl,
+		Wave
 	}
 
 	public class MenuBarItem
