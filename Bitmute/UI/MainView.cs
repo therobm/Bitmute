@@ -3041,6 +3041,7 @@ namespace Bitmute.UI
 				if (m_activeDocumentWindow != null && m_activeDocumentWindow != window)
 				{
 					m_activeDocumentWindow.CommitTextEdit();
+					CancelArmedOperation();
 				}
 				m_activeDocumentWindow = window;
 				RefreshDocumentTitleBars();
