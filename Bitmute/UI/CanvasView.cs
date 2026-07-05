@@ -439,6 +439,30 @@ namespace Bitmute.UI
 			return m_gpuContext != null;
 		}
 
+		private static double PagePosition(Microsoft.Maui.Controls.VisualElement element, bool horizontal)
+		{
+			double total = 0.0;
+			Microsoft.Maui.Controls.Element current = element;
+			for (int guard = 0; guard < 100; guard++)
+			{
+				Microsoft.Maui.Controls.VisualElement visual = current as Microsoft.Maui.Controls.VisualElement;
+				if (visual == null)
+				{
+					break;
+				}
+				if (horizontal)
+				{
+					total += visual.X;
+				}
+				else
+				{
+					total += visual.Y;
+				}
+				current = current.Parent;
+			}
+			return total;
+		}
+
 		private static void DrawPatternTiles(SKCanvas canvas, SKImage image, SKRect destination, float tileWidth, float tileHeight, SKSamplingOptions sampling, SKPaint paint)
 		{
 			MainView main = MainView.Self;
@@ -1908,6 +1932,26 @@ namespace Bitmute.UI
 
 			if (eventArgs.MouseButton == SKMouseButton.Right)
 			{
+				if (eventArgs.ActionType == SKTouchAction.Pressed)
+				{
+					MainView rightMain = MainView.Self;
+					if (rightMain != null)
+					{
+						double scaleX = 1.0;
+						double scaleY = 1.0;
+						if (CanvasSize.Width > 0 && Width > 0)
+						{
+							scaleX = Width / CanvasSize.Width;
+						}
+						if (CanvasSize.Height > 0 && Height > 0)
+						{
+							scaleY = Height / CanvasSize.Height;
+						}
+						double pageX = PagePosition(this, true) + (eventArgs.Location.X * scaleX);
+						double pageY = PagePosition(this, false) + (eventArgs.Location.Y * scaleY);
+						rightMain.OpenBrushOptionsAt(pageX, pageY);
+					}
+				}
 				eventArgs.Handled = true;
 				return;
 			}

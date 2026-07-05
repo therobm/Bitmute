@@ -3649,6 +3649,19 @@ namespace Bitmute.UI
 			}
 		}
 
+		public void OpenBrushOptionsAt(double anchorX, double anchorY)
+		{
+			Tool tool = CurrentTool();
+			if (!(tool is BrushFamilyTool))
+			{
+				return;
+			}
+			if (m_optionsBar != null)
+			{
+				m_optionsBar.OpenBrushSettingsAt(anchorX, anchorY);
+			}
+		}
+
 		public void RefreshLayersPanel()
 		{
 			if (m_layersPanel != null)
