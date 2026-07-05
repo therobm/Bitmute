@@ -50,11 +50,7 @@ namespace Bitmute.UI
 		private PaletteGroup m_layersGroup;
 		private List<PaletteGroup> m_paletteOrder;
 		private Grid m_paletteDock;
-		private bool m_navigatorPanelVisible = true;
-		private bool m_swatchesPanelVisible = true;
-		private bool m_layersPanelVisible = true;
-		private bool m_infoPanelVisible = true;
-		private bool m_rulersEnabled = true;
+		private WorkspaceState m_workspaceState;
 		private System.Collections.Generic.List<ModalEntry> m_modalStack;
 		private FloatingPanel m_pendingClosePanel;
 		private bool m_quitPending;
@@ -75,14 +71,6 @@ namespace Bitmute.UI
 		private ToolState m_toolState;
 		private int m_guideCreateOrientation;
 		private CanvasView m_guideCreateCanvas;
-		private bool m_gridEnabled;
-		private bool m_snapEnabled;
-		private bool m_snapTargetGuides;
-		private bool m_snapTargetGrid;
-		private bool m_snapTargetEdges;
-		private bool m_snapTargetLayerBounds;
-		private int m_channelViewMode;
-		private bool[] m_channelVisible = new bool[] { true, true, true, true };
 		private int m_editingSwatchIndex = -1;
 		private LayerStyle m_layerStyleSnapshot;
 		private int m_layerStyleTargetIndex;
@@ -101,17 +89,22 @@ namespace Bitmute.UI
 			return document.Guides().IsLocked();
 		}
 
+		public WorkspaceState Workspace()
+		{
+			return m_workspaceState;
+		}
+
 		public bool NavigatorPanelVisible()
 		{
-			return m_navigatorPanelVisible;
+			return m_workspaceState.PanelVisible(ePanelId.Navigator);
 		}
 		public bool SwatchesPanelVisible()
 		{
-			return m_swatchesPanelVisible;
+			return m_workspaceState.PanelVisible(ePanelId.Swatches);
 		}
 		public bool LayersPanelVisible()
 		{
-			return m_layersPanelVisible;
+			return m_workspaceState.PanelVisible(ePanelId.Layers);
 		}
 
 		public bool CanMergeDown()
@@ -239,32 +232,27 @@ namespace Bitmute.UI
 			}
 			if (action == eMenuAction.ToggleSnap)
 			{
-				m_snapEnabled = !m_snapEnabled;
-				Microsoft.Maui.Storage.Preferences.Default.Set("snap_enabled", m_snapEnabled);
+				m_workspaceState.SetSnapEnabled(!m_workspaceState.SnapEnabled());
 				return;
 			}
 			if (action == eMenuAction.ToggleSnapGuides)
 			{
-				m_snapTargetGuides = !m_snapTargetGuides;
-				Microsoft.Maui.Storage.Preferences.Default.Set("snap_target_guides", m_snapTargetGuides);
+				m_workspaceState.SetSnapTargetGuides(!m_workspaceState.SnapTargetGuides());
 				return;
 			}
 			if (action == eMenuAction.ToggleSnapGrid)
 			{
-				m_snapTargetGrid = !m_snapTargetGrid;
-				Microsoft.Maui.Storage.Preferences.Default.Set("snap_target_grid", m_snapTargetGrid);
+				m_workspaceState.SetSnapTargetGrid(!m_workspaceState.SnapTargetGrid());
 				return;
 			}
 			if (action == eMenuAction.ToggleSnapEdges)
 			{
-				m_snapTargetEdges = !m_snapTargetEdges;
-				Microsoft.Maui.Storage.Preferences.Default.Set("snap_target_edges", m_snapTargetEdges);
+				m_workspaceState.SetSnapTargetEdges(!m_workspaceState.SnapTargetEdges());
 				return;
 			}
 			if (action == eMenuAction.ToggleSnapLayers)
 			{
-				m_snapTargetLayerBounds = !m_snapTargetLayerBounds;
-				Microsoft.Maui.Storage.Preferences.Default.Set("snap_target_layer_bounds", m_snapTargetLayerBounds);
+				m_workspaceState.SetSnapTargetLayerBounds(!m_workspaceState.SnapTargetLayerBounds());
 				return;
 			}
 			if (action == eMenuAction.ToggleLockGuides)
@@ -1116,13 +1104,12 @@ namespace Bitmute.UI
 
 		public bool RulersEnabled()
 		{
-			return m_rulersEnabled;
+			return m_workspaceState.RulersEnabled();
 		}
 
 		private void ToggleGrid()
 		{
-			m_gridEnabled = !m_gridEnabled;
-			Microsoft.Maui.Storage.Preferences.Default.Set("grid_enabled", m_gridEnabled);
+			m_workspaceState.SetGridEnabled(!m_workspaceState.GridEnabled());
 			for (int index = 0; index < m_documents.Count; index++)
 			{
 				DocumentWindow window = m_documents[index] as DocumentWindow;
@@ -1323,14 +1310,13 @@ namespace Bitmute.UI
 
 		private void ToggleRulers()
 		{
-			m_rulersEnabled = !m_rulersEnabled;
-			Microsoft.Maui.Storage.Preferences.Default.Set("rulers_enabled", m_rulersEnabled);
+			m_workspaceState.SetRulersEnabled(!m_workspaceState.RulersEnabled());
 			for (int index = 0; index < m_documents.Count; index++)
 			{
 				DocumentWindow window = m_documents[index] as DocumentWindow;
 				if (window != null)
 				{
-					window.SetRulersEnabled(m_rulersEnabled);
+					window.SetRulersEnabled(m_workspaceState.RulersEnabled());
 				}
 			}
 		}
@@ -1483,41 +1469,31 @@ namespace Bitmute.UI
 			return null;
 		}
 
-		private bool PanelVisibleFlag(string key)
+		private ePanelId PanelIdForKey(string key)
 		{
 			if (key == "Navigator")
 			{
-				return m_navigatorPanelVisible;
+				return ePanelId.Navigator;
 			}
 			if (key == "Swatches")
 			{
-				return m_swatchesPanelVisible;
+				return ePanelId.Swatches;
 			}
 			if (key == "Layers")
 			{
-				return m_layersPanelVisible;
+				return ePanelId.Layers;
 			}
-			return m_infoPanelVisible;
+			return ePanelId.Info;
+		}
+
+		private bool PanelVisibleFlag(string key)
+		{
+			return m_workspaceState.PanelVisible(PanelIdForKey(key));
 		}
 
 		private void SetPanelVisibleFlag(string key, bool visible)
 		{
-			if (key == "Navigator")
-			{
-				m_navigatorPanelVisible = visible;
-			}
-			if (key == "Swatches")
-			{
-				m_swatchesPanelVisible = visible;
-			}
-			if (key == "Layers")
-			{
-				m_layersPanelVisible = visible;
-			}
-			if (key == "Info")
-			{
-				m_infoPanelVisible = visible;
-			}
+			m_workspaceState.SetPanelVisible(PanelIdForKey(key), visible);
 		}
 
 		private void SavePanelLayout()
@@ -1614,10 +1590,10 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			m_navigatorGroup.IsVisible = m_navigatorPanelVisible;
-			m_swatchesGroup.IsVisible = m_swatchesPanelVisible;
-			m_layersGroup.IsVisible = m_layersPanelVisible;
-			bool layersStretch = m_layersPanelVisible && !m_layersGroup.IsCollapsed();
+			m_navigatorGroup.IsVisible = m_workspaceState.PanelVisible(ePanelId.Navigator);
+			m_swatchesGroup.IsVisible = m_workspaceState.PanelVisible(ePanelId.Swatches);
+			m_layersGroup.IsVisible = m_workspaceState.PanelVisible(ePanelId.Layers);
+			bool layersStretch = m_workspaceState.PanelVisible(ePanelId.Layers) && !m_layersGroup.IsCollapsed();
 			for (int index = 0; index < m_paletteOrder.Count; index++)
 			{
 				PaletteGroup group = m_paletteOrder[index];
@@ -1797,14 +1773,7 @@ namespace Bitmute.UI
 			m_adjustments = new AdjustmentRegistry(this, m_toolState);
 			m_guideCreateOrientation = 0;
 			m_guideCreateCanvas = null;
-			m_gridEnabled = Microsoft.Maui.Storage.Preferences.Default.Get("grid_enabled", false);
-			m_rulersEnabled = Microsoft.Maui.Storage.Preferences.Default.Get("rulers_enabled", true);
-			m_channelViewMode = -1;
-			m_snapEnabled = Microsoft.Maui.Storage.Preferences.Default.Get("snap_enabled", true);
-			m_snapTargetGuides = Microsoft.Maui.Storage.Preferences.Default.Get("snap_target_guides", true);
-			m_snapTargetGrid = Microsoft.Maui.Storage.Preferences.Default.Get("snap_target_grid", true);
-			m_snapTargetEdges = Microsoft.Maui.Storage.Preferences.Default.Get("snap_target_edges", true);
-			m_snapTargetLayerBounds = Microsoft.Maui.Storage.Preferences.Default.Get("snap_target_layer_bounds", true);
+			m_workspaceState = new WorkspaceState();
 			m_menuTitles = new string[] { "File", "Edit", "Image", "Layer", "Select", "Filter", "View", "Window", "Help" };
 			m_overlay = new AbsoluteLayout();
 			m_overlay.InputTransparent = true;
@@ -2788,7 +2757,7 @@ namespace Bitmute.UI
 		private double WindowChromeWidth()
 		{
 			double rulerWidth = 0.0;
-			if (m_rulersEnabled)
+			if (m_workspaceState.RulersEnabled())
 			{
 				rulerWidth = UiConstants.RulerThickness;
 			}
@@ -2798,7 +2767,7 @@ namespace Bitmute.UI
 		private double WindowChromeHeight()
 		{
 			double rulerHeight = 0.0;
-			if (m_rulersEnabled)
+			if (m_workspaceState.RulersEnabled())
 			{
 				rulerHeight = UiConstants.RulerThickness;
 			}
@@ -3825,12 +3794,12 @@ namespace Bitmute.UI
 
 		public bool GridEnabled()
 		{
-			return m_gridEnabled;
+			return m_workspaceState.GridEnabled();
 		}
 
 		public int ChannelViewMode()
 		{
-			return m_channelViewMode;
+			return m_workspaceState.ChannelViewMode();
 		}
 
 		public void SelectChannelView(int mode)
@@ -3840,7 +3809,7 @@ namespace Bitmute.UI
 
 		private void SetChannelView(int mode)
 		{
-			m_channelViewMode = mode;
+			m_workspaceState.SetChannelViewMode(mode);
 			CanvasView canvas = ActiveCanvas();
 			if (canvas != null)
 			{
@@ -3854,28 +3823,17 @@ namespace Bitmute.UI
 
 		public bool ChannelVisible(int channel)
 		{
-			if (channel < 0 || channel > 3)
-			{
-				return true;
-			}
-			return m_channelVisible[channel];
+			return m_workspaceState.ChannelVisible(channel);
 		}
 
 		public bool AllChannelsVisible()
 		{
-			for (int index = 0; index < 4; index++)
-			{
-				if (!m_channelVisible[index])
-				{
-					return false;
-				}
-			}
-			return true;
+			return m_workspaceState.AllChannelsVisible();
 		}
 
 		public bool RgbChannelsVisible()
 		{
-			return m_channelVisible[0] && m_channelVisible[1] && m_channelVisible[2];
+			return m_workspaceState.RgbChannelsVisible();
 		}
 
 		public void ToggleChannelVisible(int channel)
@@ -3884,16 +3842,16 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			m_channelVisible[channel] = !m_channelVisible[channel];
+			m_workspaceState.SetChannelVisible(channel, !m_workspaceState.ChannelVisible(channel));
 			ApplyChannelVisibilityChange();
 		}
 
 		public void ToggleRgbChannelsVisible()
 		{
-			bool target = !RgbChannelsVisible();
-			m_channelVisible[0] = target;
-			m_channelVisible[1] = target;
-			m_channelVisible[2] = target;
+			bool target = !m_workspaceState.RgbChannelsVisible();
+			m_workspaceState.SetChannelVisible(0, target);
+			m_workspaceState.SetChannelVisible(1, target);
+			m_workspaceState.SetChannelVisible(2, target);
 			ApplyChannelVisibilityChange();
 		}
 
@@ -4132,27 +4090,27 @@ namespace Bitmute.UI
 
 		public bool SnapEnabled()
 		{
-			return m_snapEnabled;
+			return m_workspaceState.SnapEnabled();
 		}
 
 		public bool SnapTargetGuides()
 		{
-			return m_snapTargetGuides;
+			return m_workspaceState.SnapTargetGuides();
 		}
 
 		public bool SnapTargetGrid()
 		{
-			return m_snapTargetGrid;
+			return m_workspaceState.SnapTargetGrid();
 		}
 
 		public bool SnapTargetEdges()
 		{
-			return m_snapTargetEdges;
+			return m_workspaceState.SnapTargetEdges();
 		}
 
 		public bool SnapTargetLayerBounds()
 		{
-			return m_snapTargetLayerBounds;
+			return m_workspaceState.SnapTargetLayerBounds();
 		}
 
 		public void BeginTransform(int mode)
