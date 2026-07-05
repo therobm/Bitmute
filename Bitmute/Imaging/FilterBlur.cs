@@ -727,11 +727,20 @@ namespace Bitmute.Imaging
 			double radians = angle * Math.PI / 180.0;
 			double directionX = Math.Cos(radians);
 			double directionY = Math.Sin(radians);
-			double[] offsetX = new double[distance];
-			double[] offsetY = new double[distance];
-			for (int index = 0; index < distance; index++)
+			int sampleCount = distance;
+			if (sampleCount > 32)
 			{
-				double t = index - ((distance - 1) / 2.0);
+				sampleCount = 32;
+			}
+			double[] offsetX = new double[sampleCount];
+			double[] offsetY = new double[sampleCount];
+			for (int index = 0; index < sampleCount; index++)
+			{
+				double t = 0.0;
+				if (sampleCount > 1)
+				{
+					t = (index * (distance - 1.0) / (sampleCount - 1.0)) - ((distance - 1) / 2.0);
+				}
 				offsetX[index] = t * directionX;
 				offsetY[index] = t * directionY;
 			}
@@ -744,7 +753,7 @@ namespace Bitmute.Imaging
 			worker.m_height = height;
 			worker.m_offsetX = offsetX;
 			worker.m_offsetY = offsetY;
-			worker.m_count = distance;
+			worker.m_count = sampleCount;
 			RowBands.Run(0, height, worker.Band);
 			Unpremultiply(bufferB, bitmap);
 			bufferA.Dispose();

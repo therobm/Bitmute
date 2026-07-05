@@ -136,6 +136,72 @@ namespace Bitmute.Imaging
 			}
 		}
 
+		private sealed unsafe class CrystallizeAccumulateWorker
+		{
+			public byte* m_base;
+			public int m_rowBytes;
+			public int m_width;
+			public int m_cellSize;
+			public int m_cellsX;
+			public int m_cellsY;
+			public int[] m_siteX;
+			public int[] m_siteY;
+			public long[] m_sumRed;
+			public long[] m_sumGreen;
+			public long[] m_sumBlue;
+			public long[] m_sumAlpha;
+			public int[] m_counts;
+			public object m_mergeLock;
+
+			public void Band(int start, int end)
+			{
+				int cellRowFirst = (start / m_cellSize) - 1;
+				if (cellRowFirst < 0)
+				{
+					cellRowFirst = 0;
+				}
+				int cellRowLast = ((end - 1) / m_cellSize) + 1;
+				if (cellRowLast > m_cellsY - 1)
+				{
+					cellRowLast = m_cellsY - 1;
+				}
+				int localBase = cellRowFirst * m_cellsX;
+				int localCount = ((cellRowLast - cellRowFirst) + 1) * m_cellsX;
+				long[] localRed = new long[localCount];
+				long[] localGreen = new long[localCount];
+				long[] localBlue = new long[localCount];
+				long[] localAlpha = new long[localCount];
+				int[] localCounts = new int[localCount];
+				for (int y = start; y < end; y++)
+				{
+					byte* row = m_base + ((long)y * m_rowBytes);
+					for (int x = 0; x < m_width; x++)
+					{
+						byte* pixel = row + (x * 4);
+						int alpha = pixel[3];
+						int site = NearestSite(x, y, m_cellSize, m_cellsX, m_cellsY, m_siteX, m_siteY);
+						int local = site - localBase;
+						localRed[local] += PremultiplyChannel(pixel[0], alpha);
+						localGreen[local] += PremultiplyChannel(pixel[1], alpha);
+						localBlue[local] += PremultiplyChannel(pixel[2], alpha);
+						localAlpha[local] += alpha;
+						localCounts[local]++;
+					}
+				}
+				lock (m_mergeLock)
+				{
+					for (int index = 0; index < localCount; index++)
+					{
+						m_sumRed[localBase + index] += localRed[index];
+						m_sumGreen[localBase + index] += localGreen[index];
+						m_sumBlue[localBase + index] += localBlue[index];
+						m_sumAlpha[localBase + index] += localAlpha[index];
+						m_counts[localBase + index] += localCounts[index];
+					}
+				}
+			}
+		}
+
 		private sealed unsafe class FacetWorker
 		{
 			public byte* m_sourceBase;
@@ -455,21 +521,22 @@ namespace Bitmute.Imaging
 			long[] sumAlpha = new long[siteCount];
 			int[] counts = new int[siteCount];
 			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
-			for (int y = 0; y < height; y++)
-			{
-				byte* row = basePointer + ((long)y * rowBytes);
-				for (int x = 0; x < width; x++)
-				{
-					byte* pixel = row + (x * 4);
-					int alpha = pixel[3];
-					int site = NearestSite(x, y, cellSize, cellsX, cellsY, siteX, siteY);
-					sumRed[site] += PremultiplyChannel(pixel[0], alpha);
-					sumGreen[site] += PremultiplyChannel(pixel[1], alpha);
-					sumBlue[site] += PremultiplyChannel(pixel[2], alpha);
-					sumAlpha[site] += alpha;
-					counts[site]++;
-				}
-			}
+			CrystallizeAccumulateWorker accumulator = new CrystallizeAccumulateWorker();
+			accumulator.m_base = basePointer;
+			accumulator.m_rowBytes = rowBytes;
+			accumulator.m_width = width;
+			accumulator.m_cellSize = cellSize;
+			accumulator.m_cellsX = cellsX;
+			accumulator.m_cellsY = cellsY;
+			accumulator.m_siteX = siteX;
+			accumulator.m_siteY = siteY;
+			accumulator.m_sumRed = sumRed;
+			accumulator.m_sumGreen = sumGreen;
+			accumulator.m_sumBlue = sumBlue;
+			accumulator.m_sumAlpha = sumAlpha;
+			accumulator.m_counts = counts;
+			accumulator.m_mergeLock = new object();
+			RowBands.Run(0, height, accumulator.Band);
 			byte[] siteRed = new byte[siteCount];
 			byte[] siteGreen = new byte[siteCount];
 			byte[] siteBlue = new byte[siteCount];
