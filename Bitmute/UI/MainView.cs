@@ -157,7 +157,13 @@ namespace Bitmute.UI
 			}
 			if (parent == eMenuAction.FilterBlurMenu)
 			{
+				items.Add(new MenuBarItem("Average", eMenuAction.AverageBlur));
+				items.Add(new MenuBarItem("Blur", eMenuAction.Blur));
+				items.Add(new MenuBarItem("Blur More", eMenuAction.BlurMore));
+				items.Add(new MenuBarItem("Box Blur…", eMenuAction.BoxBlur));
 				items.Add(new MenuBarItem("Gaussian Blur…", eMenuAction.GaussianBlur));
+				items.Add(new MenuBarItem("Motion Blur…", eMenuAction.MotionBlur));
+				items.Add(new MenuBarItem("Radial Blur…", eMenuAction.RadialBlur));
 				return items;
 			}
 			if (parent == eMenuAction.FilterSharpenMenu)
@@ -683,6 +689,36 @@ namespace Bitmute.UI
 				RunInstantFilter("diffclouds");
 				return;
 			}
+			if (action == eMenuAction.AverageBlur)
+			{
+				RunInstantFilter("average");
+				return;
+			}
+			if (action == eMenuAction.Blur)
+			{
+				RunInstantFilter("blur");
+				return;
+			}
+			if (action == eMenuAction.BlurMore)
+			{
+				RunInstantFilter("blurmore");
+				return;
+			}
+			if (action == eMenuAction.BoxBlur)
+			{
+				OpenAdjustment("boxblur");
+				return;
+			}
+			if (action == eMenuAction.MotionBlur)
+			{
+				OpenAdjustment("motionblur");
+				return;
+			}
+			if (action == eMenuAction.RadialBlur)
+			{
+				OpenAdjustment("radialblur");
+				return;
+			}
 			if (action == eMenuAction.FlipHorizontal)
 			{
 				DoCanvasOp("fliph");
@@ -969,6 +1005,18 @@ namespace Bitmute.UI
 			{
 				return true;
 			}
+			if (id == "boxblur")
+			{
+				return true;
+			}
+			if (id == "motionblur")
+			{
+				return true;
+			}
+			if (id == "radialblur")
+			{
+				return true;
+			}
 			return false;
 		}
 
@@ -997,6 +1045,30 @@ namespace Bitmute.UI
 			if (id == "diffclouds")
 			{
 				return "Difference Clouds";
+			}
+			if (id == "average")
+			{
+				return "Average";
+			}
+			if (id == "blur")
+			{
+				return "Blur";
+			}
+			if (id == "blurmore")
+			{
+				return "Blur More";
+			}
+			if (id == "boxblur")
+			{
+				return "Box Blur";
+			}
+			if (id == "motionblur")
+			{
+				return "Motion Blur";
+			}
+			if (id == "radialblur")
+			{
+				return "Radial Blur";
 			}
 			return "";
 		}
@@ -1078,6 +1150,30 @@ namespace Bitmute.UI
 			{
 				FilterRender.DifferenceClouds(bitmap, m_toolState.Foreground(), m_toolState.Background(), m_filterSeed);
 			}
+			else if (id == "average")
+			{
+				FilterBlur.Average(bitmap);
+			}
+			else if (id == "blur")
+			{
+				FilterBlur.Blur(bitmap);
+			}
+			else if (id == "blurmore")
+			{
+				FilterBlur.BlurMore(bitmap);
+			}
+			else if (id == "boxblur")
+			{
+				FilterBlur.BoxBlur(bitmap, values[0]);
+			}
+			else if (id == "motionblur")
+			{
+				FilterBlur.MotionBlur(bitmap, values[0], values[1]);
+			}
+			else if (id == "radialblur")
+			{
+				FilterBlur.RadialBlur(bitmap, values[0], values[1]);
+			}
 		}
 
 		private void BeginAdjustmentPreview(string id)
@@ -1102,6 +1198,7 @@ namespace Bitmute.UI
 
 		private void OpenAdjustment(string id)
 		{
+			RollFilterSeed();
 			BeginAdjustmentPreview(id);
 			if (id == "rotate")
 			{
@@ -1150,7 +1247,22 @@ namespace Bitmute.UI
 			}
 			if (id == "pixelate")
 			{
-				ShowModal(new AdjustmentDialog("Pixelate", "pixelate", new string[] { "Cell Size" }, new int[] { 2 }, new int[] { 64 }, new int[] { 8 }), 360.0, 200.0);
+				ShowModal(new AdjustmentDialog("Mosaic", "pixelate", new string[] { "Cell Size" }, new int[] { 2 }, new int[] { 64 }, new int[] { 8 }), 360.0, 200.0);
+				return;
+			}
+			if (id == "boxblur")
+			{
+				ShowModal(new AdjustmentDialog("Box Blur", "boxblur", new string[] { "Radius" }, new int[] { 1 }, new int[] { 100 }, new int[] { 10 }), 360.0, 200.0);
+				return;
+			}
+			if (id == "motionblur")
+			{
+				ShowModal(new AdjustmentDialog("Motion Blur", "motionblur", new string[] { "Angle", "Distance" }, new int[] { -90, 1 }, new int[] { 90, 200 }, new int[] { 0, 10 }), 360.0, 230.0);
+				return;
+			}
+			if (id == "radialblur")
+			{
+				ShowModal(new AdjustmentDialog("Radial Blur", "radialblur", new string[] { "Amount" }, new int[] { 1 }, new int[] { 100 }, new int[] { 10 }, new string[] { "Method" }, new string[][] { new string[] { "Spin", "Zoom" } }, new int[] { 0 }), 360.0, 230.0);
 				return;
 			}
 		}
