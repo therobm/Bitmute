@@ -79,14 +79,15 @@ namespace Bitmute.UI
 		TransformMenu,
 		AdjustmentsMenu,
 		SnapToMenu,
-		FilterArtisticMenu,
 		FilterBlurMenu,
-		FilterBrushStrokesMenu,
 		FilterDistortMenu,
 		FilterNoiseMenu,
 		FilterPixelateMenu,
 		FilterRenderMenu,
-		FilterSharpenMenu
+		FilterSharpenMenu,
+		FilterStylizeMenu,
+		FilterVideoMenu,
+		LastFilter
 	}
 
 	public class MenuBarItem

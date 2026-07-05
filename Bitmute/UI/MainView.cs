@@ -85,6 +85,9 @@ namespace Bitmute.UI
 		private LayerStyle m_layerStyleSnapshot;
 		private int m_layerStyleTargetIndex;
 		private LayerStyle m_copiedLayerStyle;
+		private string m_lastFilterId = "";
+		private string m_lastFilterName = "";
+		private int[] m_lastFilterValues;
 
 		public List<MenuBarItem> GetSubmenuItems(eMenuAction parent)
 		{
@@ -166,10 +169,10 @@ namespace Bitmute.UI
 			}
 			if (parent == eMenuAction.FilterPixelateMenu)
 			{
-				items.Add(new MenuBarItem("Pixelate…", eMenuAction.Pixelate));
+				items.Add(new MenuBarItem("Mosaic…", eMenuAction.Pixelate));
 				return items;
 			}
-			if (parent == eMenuAction.FilterArtisticMenu || parent == eMenuAction.FilterBrushStrokesMenu || parent == eMenuAction.FilterDistortMenu || parent == eMenuAction.FilterRenderMenu)
+			if (parent == eMenuAction.FilterDistortMenu || parent == eMenuAction.FilterRenderMenu || parent == eMenuAction.FilterStylizeMenu || parent == eMenuAction.FilterVideoMenu)
 			{
 				MenuBarItem placeholder = new MenuBarItem("(none yet)", eMenuAction.None);
 				placeholder.m_enabled = false;
@@ -292,15 +295,20 @@ namespace Bitmute.UI
 			}
 			if (title == "Filter")
 			{
-				MenuBarItem artistic = new MenuBarItem("Artistic", eMenuAction.FilterArtisticMenu);
-				artistic.m_submenu = true;
-				items.Add(artistic);
+				string lastFilterLabel = "Last Filter";
+				if (m_lastFilterName.Length > 0)
+				{
+					lastFilterLabel = "Last Filter: " + m_lastFilterName;
+				}
+				MenuBarItem lastFilter = new MenuBarItem(lastFilterLabel, eMenuAction.LastFilter, "Ctrl+F");
+				lastFilter.m_enabled = m_lastFilterId.Length > 0;
+				items.Add(lastFilter);
+				MenuBarItem filterSeparator = new MenuBarItem("", eMenuAction.None);
+				filterSeparator.m_separator = true;
+				items.Add(filterSeparator);
 				MenuBarItem blur = new MenuBarItem("Blur", eMenuAction.FilterBlurMenu);
 				blur.m_submenu = true;
 				items.Add(blur);
-				MenuBarItem brushStrokes = new MenuBarItem("Brush Strokes", eMenuAction.FilterBrushStrokesMenu);
-				brushStrokes.m_submenu = true;
-				items.Add(brushStrokes);
 				MenuBarItem distort = new MenuBarItem("Distort", eMenuAction.FilterDistortMenu);
 				distort.m_submenu = true;
 				items.Add(distort);
@@ -316,6 +324,12 @@ namespace Bitmute.UI
 				MenuBarItem sharpen = new MenuBarItem("Sharpen", eMenuAction.FilterSharpenMenu);
 				sharpen.m_submenu = true;
 				items.Add(sharpen);
+				MenuBarItem stylize = new MenuBarItem("Stylize", eMenuAction.FilterStylizeMenu);
+				stylize.m_submenu = true;
+				items.Add(stylize);
+				MenuBarItem video = new MenuBarItem("Video", eMenuAction.FilterVideoMenu);
+				video.m_submenu = true;
+				items.Add(video);
 				return items;
 			}
 			if (title == "View")
@@ -645,6 +659,11 @@ namespace Bitmute.UI
 				OpenAdjustment("pixelate");
 				return;
 			}
+			if (action == eMenuAction.LastFilter)
+			{
+				ApplyLastFilter();
+				return;
+			}
 			if (action == eMenuAction.FlipHorizontal)
 			{
 				DoCanvasOp("fliph");
@@ -934,6 +953,49 @@ namespace Bitmute.UI
 			return false;
 		}
 
+		private static string FilterMenuName(string id)
+		{
+			if (id == "gblur")
+			{
+				return "Gaussian Blur";
+			}
+			if (id == "unsharp")
+			{
+				return "Unsharp Mask";
+			}
+			if (id == "noise")
+			{
+				return "Add Noise";
+			}
+			if (id == "pixelate")
+			{
+				return "Mosaic";
+			}
+			return "";
+		}
+
+		private void RecordLastFilter(string id, int[] values)
+		{
+			string filterName = FilterMenuName(id);
+			if (filterName.Length == 0)
+			{
+				return;
+			}
+			m_lastFilterId = id;
+			m_lastFilterName = filterName;
+			m_lastFilterValues = values;
+		}
+
+		private void ApplyLastFilter()
+		{
+			if (m_lastFilterId.Length == 0)
+			{
+				return;
+			}
+			ApplyAdjustment(m_lastFilterId, m_lastFilterValues);
+			RefreshLayerThumbnails();
+		}
+
 		private void RunAdjustmentMath(string id, SkiaSharp.SKBitmap bitmap, int[] values)
 		{
 			if (id == "bc")
@@ -1077,6 +1139,7 @@ namespace Bitmute.UI
 			RunAdjustmentMath(id, bitmap, values);
 			document.EndStroke();
 			canvas.MarkComposeDirty();
+			RecordLastFilter(id, values);
 		}
 
 		public void PreviewAdjustment(string id, int[] values)
@@ -1142,6 +1205,7 @@ namespace Bitmute.UI
 			document.EndStroke();
 			canvas.MarkComposeDirty();
 			RefreshLayerThumbnails();
+			RecordLastFilter(id, values);
 		}
 
 		public void CancelAdjustment()
@@ -2481,6 +2545,7 @@ namespace Bitmute.UI
 			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorInvertSelection);
 			AddAccelerator(element, Windows.System.VirtualKey.R, OnAcceleratorRulers);
 			AddAccelerator(element, Windows.System.VirtualKey.T, OnAcceleratorTransform);
+			AddAccelerator(element, Windows.System.VirtualKey.F, OnAcceleratorLastFilter);
 			AddBareAccelerator(element, Windows.System.VirtualKey.Enter, OnAcceleratorCommitTransform);
 			AddBareAccelerator(element, Windows.System.VirtualKey.Escape, OnAcceleratorCancelTransform);
 			AddBareAccelerator(element, Windows.System.VirtualKey.X, OnAcceleratorSwapColors);
@@ -2889,6 +2954,16 @@ namespace Bitmute.UI
 				return;
 			}
 			DoInvertSelection();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorLastFilter(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			if (IsTextEditActive())
+			{
+				return;
+			}
+			ApplyLastFilter();
 			args.Handled = true;
 		}
 
