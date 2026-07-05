@@ -1913,7 +1913,29 @@ namespace Bitmute.UI
 				return;
 			}
 			element.PointerWheelChanged += OnPointerWheel;
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerPressedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnPlatformPointerPressed), true);
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerReleasedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnPlatformPointerReleased), true);
 			m_wheelHooked = true;
+		}
+
+		private void OnPlatformPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs eventArgs)
+		{
+			Microsoft.UI.Xaml.UIElement element = sender as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			element.CapturePointer(eventArgs.Pointer);
+		}
+
+		private void OnPlatformPointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs eventArgs)
+		{
+			Microsoft.UI.Xaml.UIElement element = sender as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			element.ReleasePointerCapture(eventArgs.Pointer);
 		}
 
 		private void OnPointerWheel(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs eventArgs)
