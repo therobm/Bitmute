@@ -30,6 +30,7 @@ namespace Bitmute.UI.Panels
 		private double m_pendingContextY;
 
 		private VerticalStackLayout m_listHost;
+		private ScrollView m_listScroll;
 		private SliderField m_opacityField;
 		private Picker m_blendPicker;
 		private Border m_lockAlphaButton;
@@ -544,6 +545,7 @@ namespace Bitmute.UI.Panels
 				m_dragRowLayer = LayerIndexForRow(sender);
 				m_dragTotalY = 0.0;
 				m_dragTotalX = 0.0;
+				m_listScroll.ZIndex = 1;
 				return;
 			}
 			if (eventArgs.StatusType == GestureStatus.Running)
@@ -560,6 +562,7 @@ namespace Bitmute.UI.Panels
 			{
 				row.TranslationY = 0.0;
 			}
+			m_listScroll.ZIndex = 0;
 			int fromIndex = m_dragRowLayer;
 			m_dragRowLayer = -1;
 			if (fromIndex < 0)
@@ -1007,6 +1010,7 @@ namespace Bitmute.UI.Panels
 
 			ScrollView listScroll = new ScrollView();
 			listScroll.Content = m_listHost;
+			m_listScroll = listScroll;
 
 			HorizontalStackLayout bottomBar = new HorizontalStackLayout();
 			bottomBar.Spacing = 4.0;
