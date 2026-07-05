@@ -242,17 +242,20 @@ namespace Bitmute.UI
 			bool viewportChanged = info.Width != m_lastViewportWidth || info.Height != m_lastViewportHeight;
 			if (viewportChanged)
 			{
-				float contentWidth = docWidth * m_zoom;
-				float contentHeight = docHeight * m_zoom;
-				bool fullyVisible = contentWidth <= info.Width && contentHeight <= info.Height;
-				if (fullyVisible)
-				{
-					m_offsetX = (info.Width - contentWidth) / 2.0f;
-					m_offsetY = (info.Height - contentHeight) / 2.0f;
-				}
 				m_lastViewportWidth = info.Width;
 				m_lastViewportHeight = info.Height;
 				ReportZoomInfo();
+			}
+
+			float fittedWidth = docWidth * m_zoom;
+			float fittedHeight = docHeight * m_zoom;
+			if (fittedWidth <= info.Width)
+			{
+				m_offsetX = (info.Width - fittedWidth) / 2.0f;
+			}
+			if (fittedHeight <= info.Height)
+			{
+				m_offsetY = (info.Height - fittedHeight) / 2.0f;
 			}
 
 			float rectWidth = docWidth * m_zoom;
