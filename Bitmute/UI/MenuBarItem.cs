@@ -95,7 +95,9 @@ namespace Bitmute.UI
 		BlurMore,
 		BoxBlur,
 		MotionBlur,
-		RadialBlur
+		RadialBlur,
+		Despeckle,
+		Median
 	}
 
 	public class MenuBarItem

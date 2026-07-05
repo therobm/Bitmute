@@ -174,6 +174,8 @@ namespace Bitmute.UI
 			if (parent == eMenuAction.FilterNoiseMenu)
 			{
 				items.Add(new MenuBarItem("Add Noise…", eMenuAction.AddNoise));
+				items.Add(new MenuBarItem("Despeckle", eMenuAction.Despeckle));
+				items.Add(new MenuBarItem("Median…", eMenuAction.Median));
 				return items;
 			}
 			if (parent == eMenuAction.FilterPixelateMenu)
@@ -719,6 +721,16 @@ namespace Bitmute.UI
 				OpenAdjustment("radialblur");
 				return;
 			}
+			if (action == eMenuAction.Despeckle)
+			{
+				RunInstantFilter("despeckle");
+				return;
+			}
+			if (action == eMenuAction.Median)
+			{
+				OpenAdjustment("median");
+				return;
+			}
 			if (action == eMenuAction.FlipHorizontal)
 			{
 				DoCanvasOp("fliph");
@@ -1017,6 +1029,10 @@ namespace Bitmute.UI
 			{
 				return true;
 			}
+			if (id == "median")
+			{
+				return true;
+			}
 			return false;
 		}
 
@@ -1069,6 +1085,14 @@ namespace Bitmute.UI
 			if (id == "radialblur")
 			{
 				return "Radial Blur";
+			}
+			if (id == "despeckle")
+			{
+				return "Despeckle";
+			}
+			if (id == "median")
+			{
+				return "Median";
 			}
 			return "";
 		}
@@ -1174,6 +1198,14 @@ namespace Bitmute.UI
 			{
 				FilterBlur.RadialBlur(bitmap, values[0], values[1]);
 			}
+			else if (id == "despeckle")
+			{
+				FilterNoise.Despeckle(bitmap);
+			}
+			else if (id == "median")
+			{
+				FilterNoise.Median(bitmap, values[0]);
+			}
 		}
 
 		private void BeginAdjustmentPreview(string id)
@@ -1263,6 +1295,11 @@ namespace Bitmute.UI
 			if (id == "radialblur")
 			{
 				ShowModal(new AdjustmentDialog("Radial Blur", "radialblur", new string[] { "Amount" }, new int[] { 1 }, new int[] { 100 }, new int[] { 10 }, new string[] { "Method" }, new string[][] { new string[] { "Spin", "Zoom" } }, new int[] { 0 }), 360.0, 230.0);
+				return;
+			}
+			if (id == "median")
+			{
+				ShowModal(new AdjustmentDialog("Median", "median", new string[] { "Radius" }, new int[] { 1 }, new int[] { 16 }, new int[] { 3 }), 360.0, 200.0);
 				return;
 			}
 		}

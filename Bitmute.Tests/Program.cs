@@ -124,6 +124,7 @@ namespace Bitmute.Tests
 			TestShiftTranslatableFlags();
 			s_failures = s_failures + FilterRenderTests.RunAll();
 			s_failures = s_failures + FilterBlurTests.RunAll();
+			s_failures = s_failures + FilterNoiseTests.RunAll();
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");
