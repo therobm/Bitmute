@@ -19,6 +19,9 @@ namespace Bitmute.UI.Panels
 
 		private int m_dragRowLayer = -1;
 		private double m_dragTotalY;
+		private double m_dragTotalX;
+		private Border m_duplicateButton;
+		private Border m_deleteButton;
 		private int m_pendingContextLayer;
 		private double m_pendingContextX;
 		private double m_pendingContextY;
@@ -524,11 +527,13 @@ namespace Bitmute.UI.Panels
 			{
 				m_dragRowLayer = LayerIndexForRow(sender);
 				m_dragTotalY = 0.0;
+				m_dragTotalX = 0.0;
 				return;
 			}
 			if (eventArgs.StatusType == GestureStatus.Running)
 			{
 				m_dragTotalY = eventArgs.TotalY;
+				m_dragTotalX = eventArgs.TotalX;
 				if (row != null)
 				{
 					row.TranslationY = eventArgs.TotalY;
@@ -545,13 +550,38 @@ namespace Bitmute.UI.Panels
 			{
 				return;
 			}
-			int positions = (int)System.Math.Round(m_dragTotalY / RowHeightEstimate);
-			if (positions == 0)
+			Document document = Doc();
+			if (document == null)
 			{
 				return;
 			}
-			Document document = Doc();
-			if (document == null)
+			if (row != null)
+			{
+				double dropX = PagePosition(row, true) + (row.Width / 2.0) + m_dragTotalX;
+				double dropY = PagePosition(row, false) + (row.Height / 2.0) + m_dragTotalY;
+				if (DropIsOverButton(dropX, dropY, m_duplicateButton))
+				{
+					document.SetActiveLayerIndex(fromIndex);
+					MainView duplicateMain = MainView.Self;
+					if (duplicateMain != null)
+					{
+						duplicateMain.DuplicateActiveLayer();
+					}
+					return;
+				}
+				if (DropIsOverButton(dropX, dropY, m_deleteButton))
+				{
+					document.SetActiveLayerIndex(fromIndex);
+					MainView deleteMain = MainView.Self;
+					if (deleteMain != null)
+					{
+						deleteMain.RequestDeleteActiveLayer();
+					}
+					return;
+				}
+			}
+			int positions = (int)System.Math.Round(m_dragTotalY / RowHeightEstimate);
+			if (positions == 0)
 			{
 				return;
 			}
@@ -560,6 +590,49 @@ namespace Bitmute.UI.Panels
 			document.EndCanvasEdit();
 			RecompositeActive();
 			Refresh();
+		}
+
+		private static bool DropIsOverButton(double dropX, double dropY, Border button)
+		{
+			if (button == null)
+			{
+				return false;
+			}
+			double left = PagePosition(button, true);
+			double top = PagePosition(button, false);
+			if (dropX < left || dropX > left + button.Width)
+			{
+				return false;
+			}
+			if (dropY < top || dropY > top + button.Height)
+			{
+				return false;
+			}
+			return true;
+		}
+
+		private static double PagePosition(View element, bool horizontal)
+		{
+			double total = 0.0;
+			Element current = element;
+			for (int guard = 0; guard < 100; guard++)
+			{
+				VisualElement visual = current as VisualElement;
+				if (visual == null)
+				{
+					break;
+				}
+				if (horizontal)
+				{
+					total += visual.X;
+				}
+				else
+				{
+					total += visual.Y;
+				}
+				current = current.Parent;
+			}
+			return total;
 		}
 
 		private void OnAddClicked(object sender, TappedEventArgs eventArgs)
@@ -779,6 +852,8 @@ namespace Bitmute.UI.Panels
 			Border duplicateButton = BuildActionButton("layer_duplicate.png", "Duplicate layer", OnDuplicateClicked);
 			Border mergeButton = BuildActionButton("layer_merge.png", "Merge down", OnMergeClicked);
 			Border deleteButton = BuildActionButton("layer_delete.png", "Delete layer", OnDeleteClicked);
+			m_duplicateButton = duplicateButton;
+			m_deleteButton = deleteButton;
 
 			Label opacityLabel = new Label();
 			opacityLabel.Text = "Opacity";
