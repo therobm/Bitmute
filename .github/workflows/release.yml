@@ -2,6 +2,11 @@ name: Build and Release
 
 on:
   workflow_dispatch:
+    inputs:
+      notes:
+        description: Release notes
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -65,6 +70,7 @@ jobs:
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: v${{ steps.version.outputs.version }}
+          body: ${{ inputs.notes }}
           files: artifacts/Bitmute-${{ steps.version.outputs.version }}-win-x64.zip
           generate_release_notes: true
           draft: false
