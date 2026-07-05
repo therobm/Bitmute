@@ -25,7 +25,7 @@ namespace Bitmute.UI
 		public const double RulerThickness = 18.0;
 
 		public const double PanelFontSize = 11;
-		public const double ComponentFontSize = 8;
+		public const double ComponentFontSize = 10;
 		public const double ComponentHeight = ComponentFontSize * 2;
 
 		public const double DialogPadding = 12.0;
