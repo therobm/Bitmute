@@ -111,18 +111,6 @@ namespace Bitmute.UI
 			}
 		}
 
-		public void FocusKeyboardSink()
-		{
-			EnsureTextEditor();
-			PositionTextEditor();
-			m_textEditor.ZIndex = 0;
-			if (!m_host.Contains(m_textEditor))
-			{
-				m_host.Add(m_textEditor);
-			}
-			m_textEditor.Focus();
-		}
-
 		private void OnTextEditorChanged(object sender, TextChangedEventArgs eventArgs)
 		{
 			if (!m_textEditActive || m_textEditLayer == null)

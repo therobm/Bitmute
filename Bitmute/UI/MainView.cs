@@ -91,6 +91,7 @@ namespace Bitmute.UI
 		private string m_lastFilterName = "";
 		private int[] m_lastFilterValues;
 		private int m_filterSeed;
+		private Button m_focusSink;
 
 		public List<MenuBarItem> GetSubmenuItems(eMenuAction parent)
 		{
@@ -4414,6 +4415,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			FocusKeyboardSink();
 			if (m_activeDocumentWindow == window)
 			{
 				return;
@@ -4620,21 +4622,33 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void FocusKeyboardSinkDeferred()
+		public void FocusKeyboardSink()
 		{
 			if (m_modalStack.Count > 0)
 			{
 				return;
 			}
-			if (m_textEditSession == null)
+			if (m_textEditSession != null && m_textEditSession.IsActive())
 			{
 				return;
 			}
-			if (m_textEditSession.IsActive())
+			if (m_focusSink == null)
 			{
-				return;
+				m_focusSink = new Button();
+				m_focusSink.Opacity = 0.0;
+				m_focusSink.WidthRequest = 1.0;
+				m_focusSink.HeightRequest = 1.0;
+				m_focusSink.ZIndex = 0;
+				AbsoluteLayout.SetLayoutBounds(m_focusSink, new Rect(0.0, 0.0, 1.0, 1.0));
+				AbsoluteLayout.SetLayoutFlags(m_focusSink, Microsoft.Maui.Layouts.AbsoluteLayoutFlags.None);
+				m_workspace.Add(m_focusSink);
 			}
-			m_textEditSession.FocusKeyboardSink();
+			m_focusSink.Focus();
+		}
+
+		private void FocusKeyboardSinkDeferred()
+		{
+			FocusKeyboardSink();
 		}
 
 		public void OpenColorPicker(bool foreground)
