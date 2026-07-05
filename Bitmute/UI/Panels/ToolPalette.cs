@@ -707,6 +707,27 @@ namespace Bitmute.UI.Panels
 			SelectTool(tool);
 		}
 
+		public void ActivateToolKey(eTool primaryTool, bool cycle)
+		{
+			int entryIndex = EntryIndexOf(primaryTool);
+			if (entryIndex < 0)
+			{
+				return;
+			}
+			ToolEntry entry = m_tools[entryIndex];
+			int memberIndex = entry.m_activeToolIndex;
+			bool groupActive = EntryIndexOf(m_selectedTool) == entryIndex;
+			if (cycle && groupActive && entry.ToolCount() > 1)
+			{
+				memberIndex = memberIndex + 1;
+				if (memberIndex >= entry.ToolCount())
+				{
+					memberIndex = 0;
+				}
+			}
+			SelectTool(entry.ToolAt(memberIndex));
+		}
+
 		public eTool SelectedTool()
 		{
 			return SelectedTool_Impl();

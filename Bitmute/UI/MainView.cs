@@ -3601,6 +3601,14 @@ namespace Bitmute.UI
 			}
 		}
 
+		public void SelectToolKey(eTool primaryTool, bool cycle)
+		{
+			if (m_toolPalette != null)
+			{
+				m_toolPalette.ActivateToolKey(primaryTool, cycle);
+			}
+		}
+
 		public void RefreshLayersPanel()
 		{
 			if (m_layersPanel != null)

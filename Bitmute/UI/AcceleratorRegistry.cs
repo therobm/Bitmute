@@ -7,6 +7,7 @@ namespace Bitmute.UI
 	{
 		private MainView m_main;
 		private ToolState m_toolState;
+		private Microsoft.UI.Xaml.UIElement m_hookedElement;
 
 		private static void AddAccelerator(Microsoft.UI.Xaml.UIElement element, Windows.System.VirtualKey key, Windows.Foundation.TypedEventHandler<Microsoft.UI.Xaml.Input.KeyboardAccelerator, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs> handler)
 		{
@@ -31,6 +32,15 @@ namespace Bitmute.UI
 			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
 			accelerator.Key = key;
 			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.Menu;
+			accelerator.Invoked += handler;
+			element.KeyboardAccelerators.Add(accelerator);
+		}
+
+		private static void AddShiftAccelerator(Microsoft.UI.Xaml.UIElement element, Windows.System.VirtualKey key, Windows.Foundation.TypedEventHandler<Microsoft.UI.Xaml.Input.KeyboardAccelerator, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs> handler)
+		{
+			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
+			accelerator.Key = key;
+			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.Shift;
 			accelerator.Invoked += handler;
 			element.KeyboardAccelerators.Add(accelerator);
 		}
@@ -60,6 +70,129 @@ namespace Bitmute.UI
 			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.Control | Windows.System.VirtualKeyModifiers.Menu | Windows.System.VirtualKeyModifiers.Shift;
 			accelerator.Invoked += handler;
 			element.KeyboardAccelerators.Add(accelerator);
+		}
+
+		private bool TextInputFocused()
+		{
+			if (m_hookedElement == null)
+			{
+				return false;
+			}
+			object focused = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(m_hookedElement.XamlRoot);
+			if (focused is Microsoft.UI.Xaml.Controls.TextBox)
+			{
+				return true;
+			}
+			if (focused is Microsoft.UI.Xaml.Controls.RichEditBox)
+			{
+				return true;
+			}
+			if (focused is Microsoft.UI.Xaml.Controls.PasswordBox)
+			{
+				return true;
+			}
+			if (focused is Microsoft.UI.Xaml.Controls.ComboBox)
+			{
+				return true;
+			}
+			return false;
+		}
+
+		private bool ToolKeyBlocked()
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return true;
+			}
+			if (m_main.HasOpenModal())
+			{
+				return true;
+			}
+			return TextInputFocused();
+		}
+
+		private void OnAcceleratorToolKey(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			if (ToolKeyBlocked())
+			{
+				return;
+			}
+			bool cycle = (sender.Modifiers & Windows.System.VirtualKeyModifiers.Shift) == Windows.System.VirtualKeyModifiers.Shift;
+			Windows.System.VirtualKey key = sender.Key;
+			if (key == Windows.System.VirtualKey.S)
+			{
+				if (cycle && m_toolState.Tool() == eTool.Clone)
+				{
+					m_main.SelectToolKey(eTool.Heal, false);
+				}
+				else
+				{
+					m_main.SelectToolKey(eTool.Clone, false);
+				}
+				args.Handled = true;
+				return;
+			}
+			if (key == Windows.System.VirtualKey.M)
+			{
+				m_main.SelectToolKey(eTool.Select, cycle);
+			}
+			else if (key == Windows.System.VirtualKey.V)
+			{
+				m_main.SelectToolKey(eTool.Move, cycle);
+			}
+			else if (key == Windows.System.VirtualKey.L)
+			{
+				m_main.SelectToolKey(eTool.Lasso, cycle);
+			}
+			else if (key == Windows.System.VirtualKey.W)
+			{
+				m_main.SelectToolKey(eTool.MagicWand, cycle);
+			}
+			else if (key == Windows.System.VirtualKey.C)
+			{
+				m_main.SelectToolKey(eTool.Crop, cycle);
+			}
+			else if (key == Windows.System.VirtualKey.B)
+			{
+				m_main.SelectToolKey(eTool.Brush, cycle);
+			}
+			else if (key == Windows.System.VirtualKey.E)
+			{
+				m_main.SelectToolKey(eTool.Eraser, cycle);
+			}
+			else if (key == Windows.System.VirtualKey.G)
+			{
+				m_main.SelectToolKey(eTool.Fill, cycle);
+			}
+			else if (key == Windows.System.VirtualKey.O)
+			{
+				m_main.SelectToolKey(eTool.DodgeBurn, cycle);
+			}
+			else if (key == Windows.System.VirtualKey.R)
+			{
+				m_main.SelectToolKey(eTool.Blur, cycle);
+			}
+			else if (key == Windows.System.VirtualKey.T)
+			{
+				m_main.SelectToolKey(eTool.Text, cycle);
+			}
+			else if (key == Windows.System.VirtualKey.U)
+			{
+				m_main.SelectToolKey(eTool.Line, cycle);
+			}
+			else if (key == Windows.System.VirtualKey.I)
+			{
+				m_main.SelectToolKey(eTool.Eyedropper, cycle);
+			}
+			else if (key == Windows.System.VirtualKey.H)
+			{
+				m_main.SelectToolKey(eTool.Hand, cycle);
+			}
+			else if (key == Windows.System.VirtualKey.Z)
+			{
+				m_main.SelectToolKey(eTool.Zoom, cycle);
+			}
+			args.Handled = true;
 		}
 
 		private void OnAcceleratorNew(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
@@ -356,6 +489,7 @@ namespace Bitmute.UI
 
 		public void Hook(Microsoft.UI.Xaml.UIElement element)
 		{
+			m_hookedElement = element;
 			AddAccelerator(element, Windows.System.VirtualKey.N, OnAcceleratorNew);
 			AddAccelerator(element, Windows.System.VirtualKey.O, OnAcceleratorOpen);
 			AddAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorSave);
@@ -389,6 +523,30 @@ namespace Bitmute.UI
 			AddBareAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDelete);
 			AddAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDeleteBackground);
 			AddAltAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDeleteForeground);
+			AddBareAccelerator(element, Windows.System.VirtualKey.M, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.V, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.L, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.W, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.C, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.B, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.E, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.G, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.O, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.R, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.T, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.U, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.H, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.Z, OnAcceleratorToolKey);
+			AddShiftAccelerator(element, Windows.System.VirtualKey.M, OnAcceleratorToolKey);
+			AddShiftAccelerator(element, Windows.System.VirtualKey.L, OnAcceleratorToolKey);
+			AddShiftAccelerator(element, Windows.System.VirtualKey.B, OnAcceleratorToolKey);
+			AddShiftAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorToolKey);
+			AddShiftAccelerator(element, Windows.System.VirtualKey.G, OnAcceleratorToolKey);
+			AddShiftAccelerator(element, Windows.System.VirtualKey.O, OnAcceleratorToolKey);
+			AddShiftAccelerator(element, Windows.System.VirtualKey.R, OnAcceleratorToolKey);
+			AddShiftAccelerator(element, Windows.System.VirtualKey.U, OnAcceleratorToolKey);
 			element.KeyboardAcceleratorPlacementMode = Microsoft.UI.Xaml.Input.KeyboardAcceleratorPlacementMode.Hidden;
 		}
 	}
