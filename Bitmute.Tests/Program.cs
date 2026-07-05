@@ -127,6 +127,7 @@ namespace Bitmute.Tests
 			TestShiftTranslatableFlags();
 			TestOffCanvasSelection();
 			TestTextMoveOffCanvasNoTrail();
+			TestDocumentComposite();
 			s_failures = s_failures + FilterRenderTests.RunAll();
 			s_failures = s_failures + FilterBlurTests.RunAll();
 			s_failures = s_failures + FilterNoiseTests.RunAll();
@@ -3434,6 +3435,65 @@ namespace Bitmute.Tests
 			Check(masksMatch, "off-canvas shift mask matches reference incl. negative coords");
 			SKRectI expectedBounds = new SKRectI(sourceBounds.Left - 10, sourceBounds.Top - 12, sourceBounds.Right - 10, sourceBounds.Bottom - 12);
 			Check(sel.Bounds() == expectedBounds, "off-canvas shift keeps the full shifted bounds (" + sel.Bounds() + ")");
+		}
+
+		private static void TestDocumentComposite()
+		{
+			Document doc = new Document("t", 48, 40);
+			Layer top = doc.AddLayer("top");
+			SKColor red = new SKColor(220, 30, 30, 255);
+			for (int y = 8; y < 24; y++)
+			{
+				for (int x = 8; x < 30; x++)
+				{
+					top.Bitmap().SetPixel(x, y, red);
+				}
+			}
+			doc.MarkComposeDirtyAll();
+
+			int versionBefore = doc.CompositeVersion();
+			bool updatedFull;
+			SKRectI updatedRegion;
+			doc.EnsureComposited(out updatedFull, out updatedRegion);
+			Check(updatedFull, "first EnsureComposited does a full composite");
+			Check(doc.CompositeVersion() == versionBefore + 1, "composite version bumps on a full update");
+			Check(doc.Composite() != null && doc.Composite().Width == 48 && doc.Composite().Height == 40, "document owns a doc-sized composite");
+
+			SKBitmap reference = new SKBitmap(48, 40, SKColorType.Rgba8888, SKAlphaType.Premul);
+			doc.CompositeInto(reference);
+			int mismatches = 0;
+			for (int y = 0; y < 40; y++)
+			{
+				for (int x = 0; x < 48; x++)
+				{
+					if (doc.Composite().GetPixel(x, y) != reference.GetPixel(x, y))
+					{
+						mismatches = mismatches + 1;
+					}
+				}
+			}
+			Check(mismatches == 0, "maintained composite matches a fresh CompositeInto (" + mismatches + " diffs)");
+
+			int versionClean = doc.CompositeVersion();
+			doc.EnsureComposited(out updatedFull, out updatedRegion);
+			Check(!updatedFull && updatedRegion.Width == 0, "EnsureComposited is a no-op when nothing is dirty");
+			Check(doc.CompositeVersion() == versionClean, "composite version holds steady when clean");
+
+			for (int y = 30; y < 36; y++)
+			{
+				for (int x = 34; x < 44; x++)
+				{
+					top.Bitmap().SetPixel(x, y, new SKColor(30, 30, 220, 255));
+				}
+			}
+			doc.MarkComposeDirtyRegion(new SKRectI(34, 30, 44, 36));
+			doc.EnsureComposited(out updatedFull, out updatedRegion);
+			Check(!updatedFull && updatedRegion.Width > 0, "a region mark drives a region composite");
+			Check(doc.CompositeVersion() == versionClean + 1, "region update bumps the version once");
+			SKColor patch = doc.Composite().GetPixel(38, 32);
+			Check(patch.Blue > 150 && patch.Red < 120, "region composite updated the changed patch");
+			reference.Dispose();
+			doc.ReleaseComposite();
 		}
 
 		private static void TestTextMoveOffCanvasNoTrail()

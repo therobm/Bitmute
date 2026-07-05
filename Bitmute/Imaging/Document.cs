@@ -46,6 +46,8 @@ namespace Bitmute.Imaging
 		private bool m_strokeSnapshotValid;
 		private int m_strokeLayerIndex;
 		private Selection m_selection;
+		private SKBitmap m_composite;
+		private int m_compositeVersion;
 		private SKRectI m_composeDirtyRect;
 		private bool m_composeDirtyAny;
 		private bool m_composeDirtyAll;
@@ -1763,6 +1765,89 @@ namespace Bitmute.Imaging
 				}
 			}
 			return false;
+		}
+
+		public SKBitmap Composite()
+		{
+			return m_composite;
+		}
+
+		public int CompositeVersion()
+		{
+			return m_compositeVersion;
+		}
+
+		public void ReleaseComposite()
+		{
+			if (m_composite != null)
+			{
+				m_composite.Dispose();
+				m_composite = null;
+			}
+		}
+
+		public void EnsureComposited(out bool updatedFull, out SKRectI updatedRegion)
+		{
+			updatedFull = false;
+			updatedRegion = SKRectI.Empty;
+			bool recreated = false;
+			if (m_composite == null || m_composite.Width != m_width || m_composite.Height != m_height)
+			{
+				if (m_composite != null)
+				{
+					m_composite.Dispose();
+				}
+				m_composite = new SKBitmap(m_width, m_height, SKColorType.Rgba8888, SKAlphaType.Premul);
+				recreated = true;
+			}
+			if (recreated || m_composeDirtyAll)
+			{
+				CompositeInto(m_composite);
+				ClearComposeDirty();
+				m_compositeVersion = m_compositeVersion + 1;
+				updatedFull = true;
+				return;
+			}
+			if (m_composeDirtyAny)
+			{
+				SKRectI region = ClampCompositeRegion(m_composeDirtyRect);
+				if (region.Width > 0 && region.Height > 0)
+				{
+					CompositeRegion(m_composite, region);
+					updatedRegion = region;
+				}
+				ClearComposeDirty();
+				m_compositeVersion = m_compositeVersion + 1;
+			}
+		}
+
+		private SKRectI ClampCompositeRegion(SKRectI rect)
+		{
+			int left = rect.Left;
+			int top = rect.Top;
+			int right = rect.Right;
+			int bottom = rect.Bottom;
+			if (left < 0)
+			{
+				left = 0;
+			}
+			if (top < 0)
+			{
+				top = 0;
+			}
+			if (right > m_width)
+			{
+				right = m_width;
+			}
+			if (bottom > m_height)
+			{
+				bottom = m_height;
+			}
+			if (right <= left || bottom <= top)
+			{
+				return SKRectI.Empty;
+			}
+			return new SKRectI(left, top, right, bottom);
 		}
 
 		public void CompositeInto(SKBitmap target)
