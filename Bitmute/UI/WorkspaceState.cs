@@ -10,6 +10,14 @@ namespace Bitmute.UI
 		Info
 	}
 
+	public enum eRulerUnits
+	{
+		Pixels,
+		Millimeters,
+		Centimeters,
+		Percent
+	}
+
 	public class WorkspaceState
 	{
 		private bool m_rulersEnabled;
@@ -26,6 +34,7 @@ namespace Bitmute.UI
 		private bool m_layersPanelVisible;
 		private bool m_infoPanelVisible;
 		private bool m_patternPreview;
+		private eRulerUnits m_rulerUnits;
 
 		public WorkspaceState()
 		{
@@ -42,6 +51,23 @@ namespace Bitmute.UI
 			m_swatchesPanelVisible = true;
 			m_layersPanelVisible = true;
 			m_infoPanelVisible = true;
+			int storedUnits = Preferences.Default.Get("ruler_units", 0);
+			if (storedUnits < 0 || storedUnits > 3)
+			{
+				storedUnits = 0;
+			}
+			m_rulerUnits = (eRulerUnits)storedUnits;
+		}
+
+		public eRulerUnits RulerUnits()
+		{
+			return m_rulerUnits;
+		}
+
+		public void SetRulerUnits(eRulerUnits units)
+		{
+			m_rulerUnits = units;
+			Preferences.Default.Set("ruler_units", (int)units);
 		}
 
 		public bool RulersEnabled()

@@ -25,18 +25,94 @@ namespace Bitmute.UI
 		{
 			if (eventArgs.ActionType == SKTouchAction.Pressed)
 			{
+				MainView main = MainView.Self;
+				if (main == null)
+				{
+					eventArgs.Handled = true;
+					return;
+				}
+				if (eventArgs.MouseButton == SKMouseButton.Right)
+				{
+					double scaleX = 1.0;
+					double scaleY = 1.0;
+					if (CanvasSize.Width > 0 && Width > 0)
+					{
+						scaleX = Width / CanvasSize.Width;
+					}
+					if (CanvasSize.Height > 0 && Height > 0)
+					{
+						scaleY = Height / CanvasSize.Height;
+					}
+					double pageX = PagePosition(this, true) + (eventArgs.Location.X * scaleX);
+					double pageY = PagePosition(this, false) + (eventArgs.Location.Y * scaleY);
+					main.ShowRulerUnitsMenu(pageX, pageY);
+					eventArgs.Handled = true;
+					return;
+				}
 				int orientation = 2;
 				if (m_horizontal)
 				{
 					orientation = 1;
 				}
-				MainView main = MainView.Self;
-				if (main != null)
-				{
-					main.BeginGuideCreation(orientation, m_canvas);
-				}
+				main.BeginGuideCreation(orientation, m_canvas);
 			}
 			eventArgs.Handled = true;
+		}
+
+		private static double PagePosition(Microsoft.Maui.Controls.VisualElement element, bool horizontal)
+		{
+			double total = 0.0;
+			Microsoft.Maui.Controls.Element current = element;
+			for (int guard = 0; guard < 100; guard++)
+			{
+				Microsoft.Maui.Controls.VisualElement visual = current as Microsoft.Maui.Controls.VisualElement;
+				if (visual == null)
+				{
+					break;
+				}
+				if (horizontal)
+				{
+					total += visual.X;
+				}
+				else
+				{
+					total += visual.Y;
+				}
+				current = current.Parent;
+			}
+			return total;
+		}
+
+		private double PixelsPerUnit()
+		{
+			MainView main = MainView.Self;
+			eRulerUnits units = eRulerUnits.Pixels;
+			if (main != null)
+			{
+				units = main.Workspace().RulerUnits();
+			}
+			if (units == eRulerUnits.Millimeters)
+			{
+				return 96.0 / 25.4;
+			}
+			if (units == eRulerUnits.Centimeters)
+			{
+				return 96.0 / 2.54;
+			}
+			if (units == eRulerUnits.Percent)
+			{
+				float content = m_canvas.ContentWidth();
+				if (!m_horizontal)
+				{
+					content = m_canvas.ContentHeight();
+				}
+				if (content < 1.0f)
+				{
+					return 1.0;
+				}
+				return content / 100.0;
+			}
+			return 1.0;
 		}
 
 		private static int NiceStep(float zoom)
@@ -101,19 +177,21 @@ namespace Bitmute.UI
 				thickness = info.Width;
 			}
 
-			int step = NiceStep(zoom);
+			double pixelsPerUnit = PixelsPerUnit();
+			double unitZoom = zoom * pixelsPerUnit;
+			int step = NiceStep((float)unitZoom);
 			int minorStep = step / 10;
 			if (minorStep < 1)
 			{
 				minorStep = 1;
 			}
 
-			int firstPosition = (int)(Math.Floor((-offset / zoom) / minorStep) * minorStep);
-			int lastPosition = (int)Math.Ceiling((length - offset) / zoom);
+			int firstPosition = (int)(Math.Floor((-offset / unitZoom) / minorStep) * minorStep);
+			int lastPosition = (int)Math.Ceiling((length - offset) / unitZoom);
 
 			for (int position = firstPosition; position <= lastPosition; position = position + minorStep)
 			{
-				float screen = offset + (position * zoom);
+				float screen = offset + (float)(position * unitZoom);
 				if (screen < -1.0f || screen > length + 1.0f)
 				{
 					continue;

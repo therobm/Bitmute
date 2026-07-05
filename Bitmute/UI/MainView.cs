@@ -3649,6 +3649,64 @@ namespace Bitmute.UI
 			}
 		}
 
+		public void ShowRulerUnitsMenu(double anchorX, double anchorY)
+		{
+			VerticalStackLayout menu = new VerticalStackLayout();
+			menu.Padding = new Thickness(4.0);
+			menu.Add(BuildRulerUnitRow("Pixels", OnRulerUnitsPixels));
+			menu.Add(BuildRulerUnitRow("Millimeters", OnRulerUnitsMillimeters));
+			menu.Add(BuildRulerUnitRow("Centimeters", OnRulerUnitsCentimeters));
+			menu.Add(BuildRulerUnitRow("Percent", OnRulerUnitsPercent));
+			ShowPulldown(menu, anchorX, anchorY, 130.0, 100.0);
+		}
+
+		private Label BuildRulerUnitRow(string text, EventHandler<TappedEventArgs> handler)
+		{
+			Label row = new Label();
+			row.Text = text;
+			row.FontSize = UiConstants.ComponentFontSize;
+			row.Padding = new Thickness(8.0, 3.0, 8.0, 3.0);
+			row.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			TapGestureRecognizer tap = new TapGestureRecognizer();
+			tap.Tapped += handler;
+			row.GestureRecognizers.Add(tap);
+			return row;
+		}
+
+		private void ApplyRulerUnits(eRulerUnits units)
+		{
+			m_workspaceState.SetRulerUnits(units);
+			ClosePulldown();
+			for (int index = 0; index < m_documents.Count; index++)
+			{
+				DocumentWindow window = m_documents[index] as DocumentWindow;
+				if (window != null)
+				{
+					window.RefreshChrome();
+				}
+			}
+		}
+
+		private void OnRulerUnitsPixels(object sender, TappedEventArgs eventArgs)
+		{
+			ApplyRulerUnits(eRulerUnits.Pixels);
+		}
+
+		private void OnRulerUnitsMillimeters(object sender, TappedEventArgs eventArgs)
+		{
+			ApplyRulerUnits(eRulerUnits.Millimeters);
+		}
+
+		private void OnRulerUnitsCentimeters(object sender, TappedEventArgs eventArgs)
+		{
+			ApplyRulerUnits(eRulerUnits.Centimeters);
+		}
+
+		private void OnRulerUnitsPercent(object sender, TappedEventArgs eventArgs)
+		{
+			ApplyRulerUnits(eRulerUnits.Percent);
+		}
+
 		public void OpenBrushOptionsAt(double anchorX, double anchorY)
 		{
 			Tool tool = CurrentTool();
