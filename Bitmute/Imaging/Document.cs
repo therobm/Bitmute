@@ -65,6 +65,7 @@ namespace Bitmute.Imaging
 		private int m_floatOriginalOffsetX;
 		private int m_floatOriginalOffsetY;
 		private byte[] m_floatSourceMask;
+		private SKRectI m_floatSourceMaskRect;
 		private SKRectI m_floatSourceBounds;
 
 		private sealed unsafe class CompositeBandWorker
@@ -294,6 +295,7 @@ namespace Bitmute.Imaging
 			m_floatOriginalOffsetX = 0;
 			m_floatOriginalOffsetY = 0;
 			m_floatSourceMask = null;
+			m_floatSourceMaskRect = SKRectI.Empty;
 			m_floatSourceBounds = SKRectI.Empty;
 		}
 
@@ -308,13 +310,16 @@ namespace Bitmute.Imaging
 			moving.Erase(SKColors.Transparent);
 			SKRectI bounds = selection.Bounds();
 			byte[] mask = selection.Mask();
+			int maskOriginX = selection.MaskOriginX();
+			int maskOriginY = selection.MaskOriginY();
+			int maskStride = selection.MaskWidth();
 			byte* sourceBase = (byte*)source.GetPixels().ToPointer();
 			int sourceRowBytes = source.RowBytes;
 			byte* movingBase = (byte*)moving.GetPixels().ToPointer();
 			int movingRowBytes = moving.RowBytes;
 			for (int y = bounds.Top; y < bounds.Bottom; y++)
 			{
-				int maskRow = y * m_width;
+				int maskRow = ((y - maskOriginY) * maskStride) - maskOriginX;
 				for (int x = bounds.Left; x < bounds.Right; x++)
 				{
 					int coverage = mask[maskRow + x];
@@ -355,11 +360,14 @@ namespace Bitmute.Imaging
 			int height = remainder.Height;
 			SKRectI bounds = selection.Bounds();
 			byte[] mask = selection.Mask();
+			int maskOriginX = selection.MaskOriginX();
+			int maskOriginY = selection.MaskOriginY();
+			int maskStride = selection.MaskWidth();
 			byte* remainderBase = (byte*)remainder.GetPixels().ToPointer();
 			int remainderRowBytes = remainder.RowBytes;
 			for (int y = bounds.Top; y < bounds.Bottom; y++)
 			{
-				int maskRow = y * m_width;
+				int maskRow = ((y - maskOriginY) * maskStride) - maskOriginX;
 				for (int x = bounds.Left; x < bounds.Right; x++)
 				{
 					int coverage = mask[maskRow + x];
@@ -528,6 +536,7 @@ namespace Bitmute.Imaging
 			layer.SetBitmap(holed);
 			previous.Dispose();
 			m_floatSourceMask = selection.MaskCopy();
+			m_floatSourceMaskRect = new SKRectI(selection.MaskOriginX(), selection.MaskOriginY(), selection.MaskOriginX() + selection.MaskWidth(), selection.MaskOriginY() + selection.MaskHeight());
 			m_floatSourceBounds = selection.Bounds();
 			m_floatDeltaX = 0;
 			m_floatDeltaY = 0;
@@ -544,7 +553,7 @@ namespace Bitmute.Imaging
 			}
 			m_floatDeltaX = totalDeltaX;
 			m_floatDeltaY = totalDeltaY;
-			m_selection.SetShifted(m_floatSourceMask, m_floatSourceBounds, m_floatDeltaX, m_floatDeltaY);
+			m_selection.SetShifted(m_floatSourceMask, m_floatSourceMaskRect, m_floatSourceBounds, m_floatDeltaX, m_floatDeltaY);
 		}
 
 		public void CommitFloatingSelection()
@@ -559,6 +568,7 @@ namespace Bitmute.Imaging
 				m_floatBitmap = null;
 				m_floatOriginalBitmap = null;
 				m_floatSourceMask = null;
+				m_floatSourceMaskRect = SKRectI.Empty;
 				m_floatSourceBounds = SKRectI.Empty;
 				m_floatActive = false;
 				MarkComposeDirtyAll();
@@ -574,6 +584,7 @@ namespace Bitmute.Imaging
 			m_floatBitmap = null;
 			m_floatOriginalBitmap = null;
 			m_floatSourceMask = null;
+			m_floatSourceMaskRect = SKRectI.Empty;
 			m_floatSourceBounds = SKRectI.Empty;
 			m_floatActive = false;
 			MarkComposeDirtyAll();
@@ -597,11 +608,12 @@ namespace Bitmute.Imaging
 			{
 				m_floatOriginalBitmap.Dispose();
 			}
-			m_selection.SelectMask(m_floatSourceMask, m_floatSourceBounds);
+			m_selection.SelectMaskPlaced(m_floatSourceMask, m_floatSourceMaskRect, m_floatSourceBounds);
 			m_floatBitmap.Dispose();
 			m_floatBitmap = null;
 			m_floatOriginalBitmap = null;
 			m_floatSourceMask = null;
+			m_floatSourceMaskRect = SKRectI.Empty;
 			m_floatSourceBounds = SKRectI.Empty;
 			m_floatActive = false;
 			MarkComposeDirtyAll();
@@ -782,6 +794,9 @@ namespace Bitmute.Imaging
 				return;
 			}
 			byte[] mask = m_selection.Mask();
+			int maskOriginX = m_selection.MaskOriginX();
+			int maskOriginY = m_selection.MaskOriginY();
+			int maskStride = m_selection.MaskWidth();
 			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
 			int rowBytes = bitmap.RowBytes;
 			byte fillRed = fill.Red;
@@ -790,7 +805,7 @@ namespace Bitmute.Imaging
 			byte fillAlpha = fill.Alpha;
 			for (int canvasY = top; canvasY < bottom; canvasY++)
 			{
-				int maskRow = canvasY * m_width;
+				int maskRow = ((canvasY - maskOriginY) * maskStride) - maskOriginX;
 				byte* row = basePointer + ((canvasY - offsetY) * rowBytes);
 				for (int canvasX = left; canvasX < right; canvasX++)
 				{
@@ -1001,12 +1016,12 @@ namespace Bitmute.Imaging
 			MarkComposeDirtyAll();
 		}
 
-		public void RestoreSelection(byte[] mask, SKRectI bounds, bool active)
+		public void RestoreSelection(byte[] mask, SKRectI maskRect, SKRectI bounds, bool active)
 		{
 			m_selection = new Selection(m_width, m_height);
-			if (active && mask != null && mask.Length == m_width * m_height)
+			if (active && mask != null && mask.Length == maskRect.Width * maskRect.Height)
 			{
-				m_selection.SelectMask(mask, bounds);
+				m_selection.SelectMaskPlaced(mask, maskRect, bounds);
 			}
 		}
 

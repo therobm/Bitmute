@@ -126,9 +126,7 @@ namespace Bitmute.Tools
 			int targetAlpha;
 			ReadPixel(basePointer, rowBytes, seedX, seedY, premultiplied, out targetRed, out targetGreen, out targetBlue, out targetAlpha);
 			int tolerance = state.FillTolerance();
-			int documentWidth = document.Width();
-			int documentHeight = document.Height();
-			byte[] mask = new byte[documentWidth * documentHeight];
+			byte[] mask = new byte[width * height];
 			bool anySelected = false;
 
 			if (contiguous)
@@ -159,13 +157,8 @@ namespace Bitmute.Tools
 					{
 						continue;
 					}
-					int canvasX = pixelX + offsetX;
-					int canvasY = pixelY + offsetY;
-					if (canvasX >= 0 && canvasY >= 0 && canvasX < documentWidth && canvasY < documentHeight)
-					{
-						mask[(canvasY * documentWidth) + canvasX] = 255;
-						anySelected = true;
-					}
+					mask[index] = 255;
+					anySelected = true;
 					if (pixelX > 0)
 					{
 						pending.Push(index - 1);
@@ -188,19 +181,9 @@ namespace Bitmute.Tools
 			{
 				for (int pixelY = 0; pixelY < height; pixelY++)
 				{
-					int canvasY = pixelY + offsetY;
-					if (canvasY < 0 || canvasY >= documentHeight)
-					{
-						continue;
-					}
-					int maskRow = canvasY * documentWidth;
+					int maskRow = pixelY * width;
 					for (int pixelX = 0; pixelX < width; pixelX++)
 					{
-						int canvasX = pixelX + offsetX;
-						if (canvasX < 0 || canvasX >= documentWidth)
-						{
-							continue;
-						}
 						int currentRed;
 						int currentGreen;
 						int currentBlue;
@@ -210,7 +193,7 @@ namespace Bitmute.Tools
 						{
 							continue;
 						}
-						mask[maskRow + canvasX] = 255;
+						mask[maskRow + pixelX] = 255;
 						anySelected = true;
 					}
 				}
@@ -227,9 +210,9 @@ namespace Bitmute.Tools
 			}
 			if (state.WandAntiAlias())
 			{
-				SmoothMaskBoundary(mask, documentWidth, documentHeight);
+				SmoothMaskBoundary(mask, width, height);
 			}
-			document.Selection().ApplyMask(mask);
+			document.Selection().ApplyMask(mask, new SKRectI(offsetX, offsetY, offsetX + width, offsetY + height));
 			return false;
 		}
 

@@ -1775,33 +1775,35 @@ namespace Bitmute.UI
 		{
 			m_antEdges.Clear();
 			byte[] mask = selection.Mask();
-			int maskWidth = selection.Width();
-			int maskHeight = selection.Height();
+			int maskOriginX = selection.MaskOriginX();
+			int maskOriginY = selection.MaskOriginY();
+			int maskWidth = selection.MaskWidth();
+			int maskHeight = selection.MaskHeight();
 			for (int y = bounds.Top; y < bounds.Bottom; y++)
 			{
-				int rowStart = y * maskWidth;
+				int rowStart = ((y - maskOriginY) * maskWidth) - maskOriginX;
 				for (int x = bounds.Left; x < bounds.Right; x++)
 				{
 					if (mask[rowStart + x] < 128)
 					{
 						continue;
 					}
-					bool leftSelected = x > 0 && mask[rowStart + x - 1] >= 128;
+					bool leftSelected = x > maskOriginX && mask[rowStart + x - 1] >= 128;
 					if (!leftSelected)
 					{
 						m_antEdges.Add(new AntEdge(true, x, y));
 					}
-					bool rightSelected = x < maskWidth - 1 && mask[rowStart + x + 1] >= 128;
+					bool rightSelected = x < maskOriginX + maskWidth - 1 && mask[rowStart + x + 1] >= 128;
 					if (!rightSelected)
 					{
 						m_antEdges.Add(new AntEdge(true, x + 1, y));
 					}
-					bool upSelected = y > 0 && mask[rowStart + x - maskWidth] >= 128;
+					bool upSelected = y > maskOriginY && mask[rowStart + x - maskWidth] >= 128;
 					if (!upSelected)
 					{
 						m_antEdges.Add(new AntEdge(false, y, x));
 					}
-					bool downSelected = y < maskHeight - 1 && mask[rowStart + x + maskWidth] >= 128;
+					bool downSelected = y < maskOriginY + maskHeight - 1 && mask[rowStart + x + maskWidth] >= 128;
 					if (!downSelected)
 					{
 						m_antEdges.Add(new AntEdge(false, y + 1, x));

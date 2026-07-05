@@ -123,20 +123,32 @@ namespace Bitmute.Imaging
 			}
 			Selection selection = document.Selection();
 			byte[] state;
+			int gridOriginX;
+			int gridOriginY;
+			int gridWidth;
+			int gridHeight;
 			if (selection.IsActive())
 			{
 				state = selection.Mask();
+				gridOriginX = selection.MaskOriginX();
+				gridOriginY = selection.MaskOriginY();
+				gridWidth = selection.MaskWidth();
+				gridHeight = selection.MaskHeight();
 			}
 			else
 			{
-				state = new byte[canvasWidth * canvasHeight];
+				gridOriginX = 0;
+				gridOriginY = 0;
+				gridWidth = canvasWidth;
+				gridHeight = canvasHeight;
+				state = new byte[gridWidth * gridHeight];
 				for (int index = 0; index < state.Length; index++)
 				{
 					state[index] = 255;
 				}
 			}
-			int[] distance = new int[canvasWidth * canvasHeight];
-			ComputeDistance(state, canvasWidth, canvasHeight, distance);
+			int[] distance = new int[gridWidth * gridHeight];
+			ComputeDistance(state, gridWidth, gridHeight, distance);
 			int insideLimit;
 			int outsideLimit;
 			if (position == 0)
@@ -165,20 +177,20 @@ namespace Bitmute.Imaging
 			byte colorGreen = color.Green;
 			byte colorBlue = color.Blue;
 			byte colorAlpha = color.Alpha;
-			int minX = canvasWidth;
-			int minY = canvasHeight;
-			int maxX = -1;
-			int maxY = -1;
-			for (int canvasY = 0; canvasY < canvasHeight; canvasY++)
+			int minX = int.MaxValue;
+			int minY = int.MaxValue;
+			int maxX = int.MinValue;
+			int maxY = int.MinValue;
+			for (int canvasY = gridOriginY; canvasY < gridOriginY + gridHeight; canvasY++)
 			{
 				int bitmapY = canvasY - offsetY;
 				if (bitmapY < 0 || bitmapY >= bitmapHeight)
 				{
 					continue;
 				}
-				int row = canvasY * canvasWidth;
+				int row = ((canvasY - gridOriginY) * gridWidth) - gridOriginX;
 				byte* rowPointer = basePointer + (bitmapY * rowBytes);
-				for (int canvasX = 0; canvasX < canvasWidth; canvasX++)
+				for (int canvasX = gridOriginX; canvasX < gridOriginX + gridWidth; canvasX++)
 				{
 					int index = row + canvasX;
 					int limit;
@@ -226,7 +238,7 @@ namespace Bitmute.Imaging
 					}
 				}
 			}
-			if (maxX < minX || maxY < minY)
+			if (maxX == int.MinValue)
 			{
 				return;
 			}

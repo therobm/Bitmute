@@ -521,13 +521,15 @@ namespace Bitmute.UI
 			int sourceStride = sourceBitmap.RowBytes;
 			int resultStride = result.RowBytes;
 			byte[] selectionMask = selection.Mask();
-			int selectionWidth = selection.Width();
+			int selectionOriginX = selection.MaskOriginX();
+			int selectionOriginY = selection.MaskOriginY();
+			int selectionStride = selection.MaskWidth();
 			byte* sourceBase = (byte*)sourceBitmap.GetPixels().ToPointer();
 			byte* resultBase = (byte*)result.GetPixels().ToPointer();
 			for (int row = 0; row < height; row++)
 			{
 				int canvasY = bounds.Top + row;
-				int selectionRow = canvasY * selectionWidth;
+				int selectionRow = ((canvasY - selectionOriginY) * selectionStride) - selectionOriginX;
 				byte* resultRow = resultBase + ((long)row * resultStride);
 				for (int column = 0; column < width; column++)
 				{
@@ -574,11 +576,13 @@ namespace Bitmute.UI
 				int bitmapHeight = bitmap.Height;
 				int stride = bitmap.RowBytes;
 				byte[] selectionMask = selection.Mask();
-				int selectionWidth = selection.Width();
+				int selectionOriginX = selection.MaskOriginX();
+				int selectionOriginY = selection.MaskOriginY();
+				int selectionStride = selection.MaskWidth();
 				byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
 				for (int canvasY = bounds.Top; canvasY < bounds.Bottom; canvasY++)
 				{
-					int selectionRow = canvasY * selectionWidth;
+					int selectionRow = ((canvasY - selectionOriginY) * selectionStride) - selectionOriginX;
 					for (int canvasX = bounds.Left; canvasX < bounds.Right; canvasX++)
 					{
 						int coverage = selectionMask[selectionRow + canvasX];
@@ -654,6 +658,22 @@ namespace Bitmute.UI
 			if (hasSelection)
 			{
 				bounds = selection.Bounds();
+				if (bounds.Left < 0)
+				{
+					bounds.Left = 0;
+				}
+				if (bounds.Top < 0)
+				{
+					bounds.Top = 0;
+				}
+				if (bounds.Right > document.Width())
+				{
+					bounds.Right = document.Width();
+				}
+				if (bounds.Bottom > document.Height())
+				{
+					bounds.Bottom = document.Height();
+				}
 			}
 			if (bounds.Width <= 0 || bounds.Height <= 0)
 			{
@@ -686,17 +706,21 @@ namespace Bitmute.UI
 			int sourceRowBytes = composite.RowBytes;
 			int targetRowBytes = copied.RowBytes;
 			byte[] mask = null;
-			int maskWidth = 0;
+			int maskOriginX = 0;
+			int maskOriginY = 0;
+			int maskStride = 0;
 			if (useSelection)
 			{
 				mask = selection.Mask();
-				maskWidth = selection.Width();
+				maskOriginX = selection.MaskOriginX();
+				maskOriginY = selection.MaskOriginY();
+				maskStride = selection.MaskWidth();
 			}
 			for (int y = 0; y < bounds.Height; y++)
 			{
 				byte* sourceRow = sourceBase + ((long)(bounds.Top + y) * sourceRowBytes) + (bounds.Left * 4);
 				byte* targetRow = targetBase + ((long)y * targetRowBytes);
-				int maskRow = (bounds.Top + y) * maskWidth;
+				int maskRow = ((bounds.Top + y - maskOriginY) * maskStride) - maskOriginX;
 				for (int x = 0; x < bounds.Width; x++)
 				{
 					int sourceOffset = x * 4;
@@ -996,8 +1020,10 @@ namespace Bitmute.UI
 		{
 			Selection selection = document.Selection();
 			byte[] mask = selection.Mask();
-			int maskWidth = selection.Width();
-			int maskHeight = selection.Height();
+			int maskOriginX = selection.MaskOriginX();
+			int maskOriginY = selection.MaskOriginY();
+			int maskStride = selection.MaskWidth();
+			int maskRows = selection.MaskHeight();
 			SkiaSharp.SKBitmap bitmap = layer.Bitmap();
 			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
 			int rowBytes = bitmap.RowBytes;
@@ -1009,15 +1035,15 @@ namespace Bitmute.UI
 			{
 				byte* row = basePointer + ((long)y * rowBytes);
 				int canvasY = y + offsetY;
-				bool rowInside = canvasY >= 0 && canvasY < maskHeight;
-				int maskRow = canvasY * maskWidth;
+				bool rowInside = canvasY >= maskOriginY && canvasY < maskOriginY + maskRows;
+				int maskRow = ((canvasY - maskOriginY) * maskStride) - maskOriginX;
 				for (int x = 0; x < bitmapWidth; x++)
 				{
 					int coverage = 0;
 					if (rowInside)
 					{
 						int canvasX = x + offsetX;
-						if (canvasX >= 0 && canvasX < maskWidth)
+						if (canvasX >= maskOriginX && canvasX < maskOriginX + maskStride)
 						{
 							coverage = mask[maskRow + canvasX];
 						}
@@ -1043,40 +1069,32 @@ namespace Bitmute.UI
 				return;
 			}
 			Layer layer = layers[layerIndex];
-			int canvasWidth = document.Width();
-			int canvasHeight = document.Height();
-			byte[] mask = new byte[canvasWidth * canvasHeight];
 			SkiaSharp.SKBitmap bitmap = layer.Bitmap();
+			int bitmapWidth = bitmap.Width;
+			int bitmapHeight = bitmap.Height;
+			byte[] mask = new byte[bitmapWidth * bitmapHeight];
 			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
 			int rowBytes = bitmap.RowBytes;
 			int offsetX = layer.OffsetX();
 			int offsetY = layer.OffsetY();
-			int minX = canvasWidth;
-			int minY = canvasHeight;
-			int maxX = -1;
-			int maxY = -1;
-			for (int y = 0; y < bitmap.Height; y++)
+			int minX = int.MaxValue;
+			int minY = int.MaxValue;
+			int maxX = int.MinValue;
+			int maxY = int.MinValue;
+			for (int y = 0; y < bitmapHeight; y++)
 			{
 				int canvasY = y + offsetY;
-				if (canvasY < 0 || canvasY >= canvasHeight)
-				{
-					continue;
-				}
 				byte* row = basePointer + ((long)y * rowBytes);
-				int maskRow = canvasY * canvasWidth;
-				for (int x = 0; x < bitmap.Width; x++)
+				int maskRow = y * bitmapWidth;
+				for (int x = 0; x < bitmapWidth; x++)
 				{
-					int canvasX = x + offsetX;
-					if (canvasX < 0 || canvasX >= canvasWidth)
-					{
-						continue;
-					}
 					byte alpha = row[(x * 4) + 3];
 					if (alpha == 0)
 					{
 						continue;
 					}
-					mask[maskRow + canvasX] = alpha;
+					mask[maskRow + x] = alpha;
+					int canvasX = x + offsetX;
 					if (canvasX < minX)
 					{
 						minX = canvasX;
@@ -1095,12 +1113,13 @@ namespace Bitmute.UI
 					}
 				}
 			}
-			if (maxX < 0)
+			if (maxX == int.MinValue)
 			{
 				SetStatusMessage("Layer has no pixels to select");
 				return;
 			}
-			document.Selection().SelectMask(mask, new SkiaSharp.SKRectI(minX, minY, maxX + 1, maxY + 1));
+			SkiaSharp.SKRectI layerRect = new SkiaSharp.SKRectI(offsetX, offsetY, offsetX + bitmapWidth, offsetY + bitmapHeight);
+			document.Selection().SelectMaskPlaced(mask, layerRect, new SkiaSharp.SKRectI(minX, minY, maxX + 1, maxY + 1));
 			canvas.InvalidateSurface();
 		}
 
@@ -1128,22 +1147,6 @@ namespace Bitmute.UI
 			int top = layer.OffsetY() + content.Top;
 			int right = layer.OffsetX() + content.Right;
 			int bottom = layer.OffsetY() + content.Bottom;
-			if (left < 0)
-			{
-				left = 0;
-			}
-			if (top < 0)
-			{
-				top = 0;
-			}
-			if (right > document.Width())
-			{
-				right = document.Width();
-			}
-			if (bottom > document.Height())
-			{
-				bottom = document.Height();
-			}
 			if (right <= left || bottom <= top)
 			{
 				return;

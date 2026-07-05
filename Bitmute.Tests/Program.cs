@@ -124,6 +124,7 @@ namespace Bitmute.Tests
 			TestEllipseDragScratchReuse();
 			TestSetShiftedPartialClip();
 			TestShiftTranslatableFlags();
+			TestOffCanvasSelection();
 			s_failures = s_failures + FilterRenderTests.RunAll();
 			s_failures = s_failures + FilterBlurTests.RunAll();
 			s_failures = s_failures + FilterNoiseTests.RunAll();
@@ -1715,10 +1716,10 @@ namespace Bitmute.Tests
 			baseAdd[5] = 200;
 			sel.SelectMask(baseAdd, new SKRectI(1, 1, 2, 2));
 			sel.BeginOperation(eSelectionMode.Add);
-			byte[] regionAdd = new byte[16];
-			regionAdd[5] = 120;
-			regionAdd[6] = 90;
-			sel.ApplyMask(regionAdd);
+			byte[] regionAdd = new byte[2];
+			regionAdd[0] = 120;
+			regionAdd[1] = 90;
+			sel.ApplyMask(regionAdd, new SKRectI(1, 1, 3, 2));
 			Check(sel.Coverage(1, 1) == 200, "union keeps max of base and new");
 			Check(sel.Coverage(2, 1) == 90, "union takes new where base empty");
 
@@ -1727,10 +1728,10 @@ namespace Bitmute.Tests
 			baseSubtract[6] = 40;
 			sel.SelectMask(baseSubtract, new SKRectI(1, 1, 3, 2));
 			sel.BeginOperation(eSelectionMode.Subtract);
-			byte[] regionSubtract = new byte[16];
-			regionSubtract[5] = 120;
-			regionSubtract[6] = 90;
-			sel.ApplyMask(regionSubtract);
+			byte[] regionSubtract = new byte[2];
+			regionSubtract[0] = 120;
+			regionSubtract[1] = 90;
+			sel.ApplyMask(regionSubtract, new SKRectI(1, 1, 3, 2));
 			Check(sel.Coverage(1, 1) == 80, "subtract is base minus new");
 			Check(sel.Coverage(2, 1) == 0, "subtract clamps at zero");
 
@@ -1738,10 +1739,10 @@ namespace Bitmute.Tests
 			baseIntersect[5] = 200;
 			sel.SelectMask(baseIntersect, new SKRectI(1, 1, 2, 2));
 			sel.BeginOperation(eSelectionMode.Intersect);
-			byte[] regionIntersect = new byte[16];
-			regionIntersect[5] = 120;
-			regionIntersect[6] = 90;
-			sel.ApplyMask(regionIntersect);
+			byte[] regionIntersect = new byte[2];
+			regionIntersect[0] = 120;
+			regionIntersect[1] = 90;
+			sel.ApplyMask(regionIntersect, new SKRectI(1, 1, 3, 2));
 			Check(sel.Coverage(1, 1) == 120, "intersect takes min");
 			Check(sel.Coverage(2, 1) == 0, "intersect zero where base empty");
 		}
@@ -2797,17 +2798,19 @@ namespace Bitmute.Tests
 			Selection sel = new Selection(48, 48);
 			sel.SelectRect(new SKRectI(4, 4, 12, 12));
 			byte[] source = sel.MaskCopy();
+			SKRectI sourceRect = new SKRectI(sel.MaskOriginX(), sel.MaskOriginY(), sel.MaskOriginX() + sel.MaskWidth(), sel.MaskOriginY() + sel.MaskHeight());
 			SKRectI sourceBounds = sel.Bounds();
-			sel.SetShifted(source, sourceBounds, 10, 10);
+			sel.SetShifted(source, sourceRect, sourceBounds, 10, 10);
 			Check(sel.Coverage(18, 18) == 255, "first shift placed mask");
 			Check(sel.Coverage(5, 5) == 0, "first shift cleared origin");
-			sel.SetShifted(source, sourceBounds, 30, 30);
+			sel.SetShifted(source, sourceRect, sourceBounds, 30, 30);
 			Check(sel.Coverage(38, 38) == 255, "second shift placed mask");
 			Check(sel.Coverage(18, 18) == 0, "second shift cleared intermediate position");
 			Check(sel.Bounds() == new SKRectI(34, 34, 42, 42), "shifted bounds track placement (" + sel.Bounds() + ")");
-			sel.SetShifted(source, sourceBounds, 100, 100);
-			Check(!sel.IsActive(), "shift fully off canvas deactivates");
-			sel.SetShifted(source, sourceBounds, 0, 0);
+			sel.SetShifted(source, sourceRect, sourceBounds, 100, 100);
+			Check(sel.IsActive() && sel.Bounds() == new SKRectI(104, 104, 112, 112), "shift fully off canvas keeps the selection active (" + sel.Bounds() + ")");
+			Check(sel.Coverage(105, 105) == 255, "off-canvas shifted mask readable");
+			sel.SetShifted(source, sourceRect, sourceBounds, 0, 0);
 			Check(sel.Coverage(5, 5) == 255 && sel.Bounds() == new SKRectI(4, 4, 12, 12), "shift back after off-canvas restores original");
 		}
 
@@ -3329,51 +3332,76 @@ namespace Bitmute.Tests
 			sel.BeginOperation(eSelectionMode.Replace, 2);
 			sel.ApplyRect(new SKRectI(6, 8, 20, 22));
 			byte[] source = sel.MaskCopy();
+			SKRectI sourceRect = new SKRectI(sel.MaskOriginX(), sel.MaskOriginY(), sel.MaskOriginX() + sel.MaskWidth(), sel.MaskOriginY() + sel.MaskHeight());
 			SKRectI sourceBounds = sel.Bounds();
-			sel.SetShifted(source, sourceBounds, -10, -12);
-			int minX = 48;
-			int minY = 40;
-			int maxX = -1;
-			int maxY = -1;
+			sel.SetShifted(source, sourceRect, sourceBounds, -10, -12);
 			bool masksMatch = true;
-			for (int y = 0; y < 40; y++)
+			for (int y = -24; y < 40; y++)
 			{
-				for (int x = 0; x < 48; x++)
+				for (int x = -24; x < 48; x++)
 				{
 					int expected = 0;
 					int sourceX = x + 10;
 					int sourceY = y + 12;
 					if (sourceX >= sourceBounds.Left && sourceX < sourceBounds.Right && sourceY >= sourceBounds.Top && sourceY < sourceBounds.Bottom)
 					{
-						expected = source[(sourceY * 48) + sourceX];
+						expected = source[((sourceY - sourceRect.Top) * sourceRect.Width) + (sourceX - sourceRect.Left)];
 					}
 					if (sel.Coverage(x, y) != expected)
 					{
 						masksMatch = false;
 					}
-					if (expected > 0)
-					{
-						if (x < minX)
-						{
-							minX = x;
-						}
-						if (x > maxX)
-						{
-							maxX = x;
-						}
-						if (y < minY)
-						{
-							minY = y;
-						}
-						if (y > maxY)
-						{
-							maxY = y;
-						}
-					}
 				}
 			}
-			Check(masksMatch, "partially clipped shift mask matches reference");
-			Check(sel.Bounds() == new SKRectI(minX, minY, maxX + 1, maxY + 1), "partially clipped shift bounds tight (" + sel.Bounds() + ")");
+			Check(masksMatch, "off-canvas shift mask matches reference incl. negative coords");
+			SKRectI expectedBounds = new SKRectI(sourceBounds.Left - 10, sourceBounds.Top - 12, sourceBounds.Right - 10, sourceBounds.Bottom - 12);
+			Check(sel.Bounds() == expectedBounds, "off-canvas shift keeps the full shifted bounds (" + sel.Bounds() + ")");
+		}
+
+		private static void TestOffCanvasSelection()
+		{
+			Selection sel = new Selection(40, 40);
+			sel.BeginOperation(eSelectionMode.Replace);
+			sel.ApplyRect(new SKRectI(-10, -10, 10, 10));
+			Check(sel.IsActive(), "off-canvas rect selects");
+			Check(sel.Bounds() == new SKRectI(-10, -10, 10, 10), "off-canvas rect keeps full bounds (" + sel.Bounds() + ")");
+			Check(sel.Coverage(-10, -10) == 255 && sel.IsSelected(-5, -5) && sel.IsSelected(5, 5), "off-canvas rect coverage at negative coords");
+			Check(!sel.IsSelected(10, 10) && !sel.IsSelected(-11, -11), "off-canvas rect excludes outside");
+			sel.BeginOperation(eSelectionMode.Add);
+			sel.ApplyRect(new SKRectI(30, 30, 50, 50));
+			Check(sel.Coverage(-5, -5) == 255 && sel.Coverage(35, 35) == 255 && sel.Coverage(45, 45) == 255, "add beyond canvas grows and keeps prior region");
+			Check(sel.Bounds() == new SKRectI(-10, -10, 50, 50), "union bounds span both regions (" + sel.Bounds() + ")");
+			sel.Invert();
+			Check(!sel.IsSelected(-5, -5) && !sel.IsSelected(45, 45), "invert clears off-canvas");
+			Check(!sel.IsSelected(5, 5), "invert flips previously selected canvas pixels");
+			Check(sel.IsSelected(20, 20), "invert selects previously unselected canvas pixels");
+
+			Document doc = new Document("w", 32, 32);
+			Layer layer = doc.ActiveLayer();
+			layer.SetOffset(-8, -8);
+			MagicWandTool wand = new MagicWandTool();
+			ToolState state = new ToolState();
+			wand.OnPressed(doc, 0, 0, state);
+			Selection wandSel = doc.Selection();
+			Check(wandSel.IsActive(), "wand selects on an offset layer");
+			Check(wandSel.IsSelected(-8, -8) && wandSel.IsSelected(-1, -1) && wandSel.IsSelected(23, 23), "wand selects off-canvas layer pixels");
+			Check(!wandSel.IsSelected(24, 24), "wand stops at the layer extent");
+			Check(wandSel.Bounds() == new SKRectI(-8, -8, 24, 24), "wand bounds cover the layer extent (" + wandSel.Bounds() + ")");
+
+			string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "bitmute_offcanvas_selection.bitmute");
+			bool wrote = BitmuteFile.Write(path, doc);
+			Check(wrote, "off-canvas selection write");
+			Document back = BitmuteFile.Read(path);
+			if (back == null)
+			{
+				Check(false, "off-canvas selection read returned null");
+				return;
+			}
+			Selection backSel = back.Selection();
+			Check(backSel.IsActive(), "off-canvas selection round-trips active");
+			Check(backSel.Bounds() == new SKRectI(-8, -8, 24, 24), "off-canvas selection bounds round-trip (" + backSel.Bounds() + ")");
+			Check(backSel.IsSelected(-8, -8) && backSel.IsSelected(23, 23) && !backSel.IsSelected(24, 24), "off-canvas selection mask round-trips");
+			System.IO.File.Delete(path);
 		}
 
 		private static void TestShiftTranslatableFlags()
@@ -3381,21 +3409,19 @@ namespace Bitmute.Tests
 			Selection sel = new Selection(64, 64);
 			sel.SelectRect(new SKRectI(10, 10, 24, 24));
 			byte[] source = sel.MaskCopy();
+			SKRectI sourceRect = new SKRectI(sel.MaskOriginX(), sel.MaskOriginY(), sel.MaskOriginX() + sel.MaskWidth(), sel.MaskOriginY() + sel.MaskHeight());
 			SKRectI sourceBounds = sel.Bounds();
-			sel.SetShifted(source, sourceBounds, 5, 5);
+			sel.SetShifted(source, sourceRect, sourceBounds, 5, 5);
 			Check(sel.LastChangeWasTranslatableShift(), "in-canvas shift is translatable");
 			Check(sel.ShiftStepX() == 5 && sel.ShiftStepY() == 5, "first shift step is the full delta");
-			sel.SetShifted(source, sourceBounds, 8, 3);
+			sel.SetShifted(source, sourceRect, sourceBounds, 8, 3);
 			Check(sel.LastChangeWasTranslatableShift(), "second in-canvas shift is translatable");
 			Check(sel.ShiftStepX() == 3 && sel.ShiftStepY() == -2, "second shift step is relative to the first");
-			sel.SetShifted(source, sourceBounds, 55, 55);
-			Check(!sel.LastChangeWasTranslatableShift(), "fully clipped shift is not translatable");
-			sel.SetShifted(source, sourceBounds, 45, 45);
-			Check(!sel.LastChangeWasTranslatableShift(), "partially clipped shift is not translatable");
-			sel.SetShifted(source, sourceBounds, 20, 20);
-			Check(!sel.LastChangeWasTranslatableShift(), "unclipped shift after a partially clipped one is not translatable");
-			sel.SetShifted(source, sourceBounds, 22, 22);
-			Check(sel.LastChangeWasTranslatableShift(), "unclipped shift after an unclipped one is translatable again");
+			sel.SetShifted(source, sourceRect, sourceBounds, 55, 55);
+			Check(sel.LastChangeWasTranslatableShift(), "off-canvas shift stays translatable");
+			Check(sel.ShiftStepX() == 47 && sel.ShiftStepY() == 52, "off-canvas shift step is relative to the previous shift");
+			sel.SetShifted(source, sourceRect, sourceBounds, 20, 20);
+			Check(sel.LastChangeWasTranslatableShift(), "shift back onto the canvas is translatable");
 			sel.BeginOperation(eSelectionMode.Replace);
 			sel.ApplyRect(new SKRectI(2, 2, 8, 8));
 			Check(!sel.LastChangeWasTranslatableShift(), "rect apply clears the shift flag");

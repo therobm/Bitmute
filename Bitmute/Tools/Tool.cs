@@ -125,13 +125,17 @@ namespace Bitmute.Tools
 			byte alpha = color.Alpha;
 			bool clip = selection != null && selection.IsActive();
 			byte[] selectionMask = null;
-			int selectionWidth = 0;
-			int selectionHeight = 0;
+			int selectionOriginX = 0;
+			int selectionOriginY = 0;
+			int selectionStride = 0;
+			int selectionMaskHeight = 0;
 			if (clip)
 			{
 				selectionMask = selection.Mask();
-				selectionWidth = selection.Width();
-				selectionHeight = selection.Height();
+				selectionOriginX = selection.MaskOriginX();
+				selectionOriginY = selection.MaskOriginY();
+				selectionStride = selection.MaskWidth();
+				selectionMaskHeight = selection.MaskHeight();
 			}
 			int radiusSquared = radius * radius;
 			for (int offsetY = -radius; offsetY <= radius; offsetY++)
@@ -142,12 +146,12 @@ namespace Bitmute.Tools
 				{
 					continue;
 				}
-				if (clip && (canvasY < 0 || canvasY >= selectionHeight))
+				if (clip && (canvasY < selectionOriginY || canvasY >= selectionOriginY + selectionMaskHeight))
 				{
 					continue;
 				}
 				int offsetYSquared = offsetY * offsetY;
-				int selectionRow = canvasY * selectionWidth;
+				int selectionRow = ((canvasY - selectionOriginY) * selectionStride) - selectionOriginX;
 				byte* rowStart = pixels + (bitmapY * rowBytes);
 				for (int offsetX = -radius; offsetX <= radius; offsetX++)
 				{
@@ -159,7 +163,7 @@ namespace Bitmute.Tools
 					int coverage = 255;
 					if (clip)
 					{
-						if (canvasX < 0 || canvasX >= selectionWidth)
+						if (canvasX < selectionOriginX || canvasX >= selectionOriginX + selectionStride)
 						{
 							continue;
 						}
@@ -208,11 +212,17 @@ namespace Bitmute.Tools
 			Selection selection = document.Selection();
 			bool clip = selection.IsActive();
 			byte[] mask = null;
-			int documentWidth = document.Width();
-			int documentHeight = document.Height();
+			int maskOriginX = 0;
+			int maskOriginY = 0;
+			int maskStride = 0;
+			int maskRows = 0;
 			if (clip)
 			{
 				mask = selection.Mask();
+				maskOriginX = selection.MaskOriginX();
+				maskOriginY = selection.MaskOriginY();
+				maskStride = selection.MaskWidth();
+				maskRows = selection.MaskHeight();
 			}
 			for (int tempY = 0; tempY < tempHeight; tempY++)
 			{
@@ -222,7 +232,7 @@ namespace Bitmute.Tools
 				{
 					continue;
 				}
-				if (clip && (canvasY < 0 || canvasY >= documentHeight))
+				if (clip && (canvasY < maskOriginY || canvasY >= maskOriginY + maskRows))
 				{
 					continue;
 				}
@@ -244,11 +254,11 @@ namespace Bitmute.Tools
 					}
 					if (clip)
 					{
-						if (canvasX < 0 || canvasX >= documentWidth)
+						if (canvasX < maskOriginX || canvasX >= maskOriginX + maskStride)
 						{
 							continue;
 						}
-						int coverage = mask[(canvasY * documentWidth) + canvasX];
+						int coverage = mask[((canvasY - maskOriginY) * maskStride) + (canvasX - maskOriginX)];
 						if (coverage == 0)
 						{
 							continue;

@@ -161,14 +161,21 @@ namespace Bitmute.Tools
 				document.Selection().ApplyRect(SKRectI.Empty);
 				return;
 			}
-			int documentWidth = document.Width();
-			int documentHeight = document.Height();
-			byte[] mask = new byte[documentWidth * documentHeight];
-
-			int minPolyY = documentHeight;
-			int maxPolyY = -1;
-			for (int i = 0; i < count; i++)
+			int minPolyX = m_verticesX[0];
+			int maxPolyX = m_verticesX[0];
+			int minPolyY = m_verticesY[0];
+			int maxPolyY = m_verticesY[0];
+			for (int i = 1; i < count; i++)
 			{
+				int vertexX = m_verticesX[i];
+				if (vertexX < minPolyX)
+				{
+					minPolyX = vertexX;
+				}
+				if (vertexX > maxPolyX)
+				{
+					maxPolyX = vertexX;
+				}
 				int vertexY = m_verticesY[i];
 				if (vertexY < minPolyY)
 				{
@@ -179,19 +186,16 @@ namespace Bitmute.Tools
 					maxPolyY = vertexY;
 				}
 			}
-			int scanTop = minPolyY;
-			if (scanTop < 0)
-			{
-				scanTop = 0;
-			}
-			int scanBottom = maxPolyY;
-			if (scanBottom > documentHeight - 1)
-			{
-				scanBottom = documentHeight - 1;
-			}
+			int regionLeft = minPolyX - 1;
+			int regionTop = minPolyY - 1;
+			int regionRight = maxPolyX + 2;
+			int regionBottom = maxPolyY + 2;
+			int regionWidth = regionRight - regionLeft;
+			int regionHeight = regionBottom - regionTop;
+			byte[] mask = new byte[regionWidth * regionHeight];
 
 			double[] crossings = new double[count];
-			for (int pixelY = scanTop; pixelY <= scanBottom; pixelY++)
+			for (int pixelY = minPolyY; pixelY <= maxPolyY; pixelY++)
 			{
 				double scanLine = pixelY + 0.5;
 				int crossCount = 0;
@@ -220,15 +224,15 @@ namespace Bitmute.Tools
 				{
 					int spanLeft = (int)Math.Ceiling(crossings[k] - 0.5);
 					int spanRight = (int)Math.Floor(crossings[k + 1] - 0.5);
-					if (spanLeft < 0)
+					if (spanLeft < regionLeft)
 					{
-						spanLeft = 0;
+						spanLeft = regionLeft;
 					}
-					if (spanRight > documentWidth - 1)
+					if (spanRight > regionRight - 1)
 					{
-						spanRight = documentWidth - 1;
+						spanRight = regionRight - 1;
 					}
-					int rowStart = pixelY * documentWidth;
+					int rowStart = ((pixelY - regionTop) * regionWidth) - regionLeft;
 					for (int pixelX = spanLeft; pixelX <= spanRight; pixelX++)
 					{
 						mask[rowStart + pixelX] = 255;
@@ -238,9 +242,9 @@ namespace Bitmute.Tools
 
 			if (state.SelectionAntiAlias())
 			{
-				SmoothMaskBoundary(mask, documentWidth, documentHeight);
+				SmoothMaskBoundary(mask, regionWidth, regionHeight);
 			}
-			document.Selection().ApplyMask(mask);
+			document.Selection().ApplyMask(mask, new SKRectI(regionLeft, regionTop, regionRight, regionBottom));
 		}
 
 		public override bool OnPressed(Document document, int x, int y, ToolState state)

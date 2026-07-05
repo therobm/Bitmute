@@ -11,6 +11,7 @@ namespace Bitmute.Imaging
 		private int m_beforeActive;
 		private List<Layer> m_beforeLayers;
 		private byte[] m_beforeMask;
+		private SKRectI m_beforeMaskRect;
 		private SKRectI m_beforeBounds;
 		private bool m_beforeSelActive;
 		private int m_afterWidth;
@@ -18,8 +19,14 @@ namespace Bitmute.Imaging
 		private int m_afterActive;
 		private List<Layer> m_afterLayers;
 		private byte[] m_afterMask;
+		private SKRectI m_afterMaskRect;
 		private SKRectI m_afterBounds;
 		private bool m_afterSelActive;
+
+		private static SKRectI SelectionMaskRect(Selection selection)
+		{
+			return new SKRectI(selection.MaskOriginX(), selection.MaskOriginY(), selection.MaskOriginX() + selection.MaskWidth(), selection.MaskOriginY() + selection.MaskHeight());
+		}
 
 		public DocumentStateCommand(string label)
 		{
@@ -40,6 +47,7 @@ namespace Bitmute.Imaging
 			Selection selection = document.Selection();
 			m_beforeSelActive = selection.IsActive();
 			m_beforeBounds = selection.Bounds();
+			m_beforeMaskRect = SelectionMaskRect(selection);
 			if (m_beforeSelActive)
 			{
 				m_beforeMask = selection.MaskCopy();
@@ -59,6 +67,7 @@ namespace Bitmute.Imaging
 			Selection selection = document.Selection();
 			m_afterSelActive = selection.IsActive();
 			m_afterBounds = selection.Bounds();
+			m_afterMaskRect = SelectionMaskRect(selection);
 			if (m_afterSelActive)
 			{
 				m_afterMask = selection.MaskCopy();
@@ -72,13 +81,13 @@ namespace Bitmute.Imaging
 		public override void ApplyBefore(Document document)
 		{
 			document.ReplaceLayers(m_beforeLayers, m_beforeWidth, m_beforeHeight, m_beforeActive);
-			document.RestoreSelection(m_beforeMask, m_beforeBounds, m_beforeSelActive);
+			document.RestoreSelection(m_beforeMask, m_beforeMaskRect, m_beforeBounds, m_beforeSelActive);
 		}
 
 		public override void ApplyAfter(Document document)
 		{
 			document.ReplaceLayers(m_afterLayers, m_afterWidth, m_afterHeight, m_afterActive);
-			document.RestoreSelection(m_afterMask, m_afterBounds, m_afterSelActive);
+			document.RestoreSelection(m_afterMask, m_afterMaskRect, m_afterBounds, m_afterSelActive);
 		}
 	}
 }

@@ -435,10 +435,13 @@ namespace Bitmute.Storage
 		{
 			ZipArchiveEntry entry = archive.CreateEntry("selection.dat");
 			Stream stream = entry.Open();
-			WriteInt32(stream, document.Width());
-			WriteInt32(stream, document.Height());
-			byte[] mask = document.Selection().Mask();
-			stream.Write(mask, 0, mask.Length);
+			Selection selection = document.Selection();
+			WriteInt32(stream, selection.MaskWidth());
+			WriteInt32(stream, selection.MaskHeight());
+			WriteInt32(stream, selection.MaskOriginX());
+			WriteInt32(stream, selection.MaskOriginY());
+			byte[] mask = selection.Mask();
+			stream.Write(mask, 0, selection.MaskWidth() * selection.MaskHeight());
 			stream.Dispose();
 		}
 
@@ -577,23 +580,43 @@ namespace Bitmute.Storage
 			{
 				return;
 			}
+			long entryLength = entry.Length;
 			Stream stream = entry.Open();
 			int maskWidth = ReadInt32(stream);
 			int maskHeight = ReadInt32(stream);
-			if (maskWidth != document.Width() || maskHeight != document.Height())
+			int count = maskWidth * maskHeight;
+			bool legacyFormat = entryLength == 8 + (long)count;
+			if (legacyFormat)
 			{
+				if (maskWidth != document.Width() || maskHeight != document.Height())
+				{
+					stream.Dispose();
+					return;
+				}
+				byte[] legacyMask = new byte[count];
+				ReadExact(stream, legacyMask, legacyMask.Length);
 				stream.Dispose();
+				SKRectI legacyBounds = ComputeMaskBounds(legacyMask, maskWidth, maskHeight);
+				if (legacyBounds.Width <= 0 || legacyBounds.Height <= 0)
+				{
+					return;
+				}
+				document.Selection().SelectMask(legacyMask, legacyBounds);
 				return;
 			}
-			byte[] mask = new byte[maskWidth * maskHeight];
+			int originX = ReadInt32(stream);
+			int originY = ReadInt32(stream);
+			byte[] mask = new byte[count];
 			ReadExact(stream, mask, mask.Length);
 			stream.Dispose();
-			SKRectI bounds = ComputeMaskBounds(mask, maskWidth, maskHeight);
-			if (bounds.Width <= 0 || bounds.Height <= 0)
+			SKRectI localBounds = ComputeMaskBounds(mask, maskWidth, maskHeight);
+			if (localBounds.Width <= 0 || localBounds.Height <= 0)
 			{
 				return;
 			}
-			document.Selection().SelectMask(mask, bounds);
+			SKRectI maskRect = new SKRectI(originX, originY, originX + maskWidth, originY + maskHeight);
+			SKRectI bounds = new SKRectI(localBounds.Left + originX, localBounds.Top + originY, localBounds.Right + originX, localBounds.Bottom + originY);
+			document.Selection().SelectMaskPlaced(mask, maskRect, bounds);
 		}
 
 		private static Document ReadArchive(ZipArchive archive)

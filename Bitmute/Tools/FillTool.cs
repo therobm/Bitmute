@@ -86,13 +86,17 @@ namespace Bitmute.Tools
 			Selection selection = document.Selection();
 			bool clip = selection.IsActive();
 			byte[] selectionMask = null;
-			int selectionWidth = 0;
-			int selectionHeight = 0;
+			int selectionOriginX = 0;
+			int selectionOriginY = 0;
+			int selectionStride = 0;
+			int selectionRows = 0;
 			if (clip)
 			{
 				selectionMask = selection.Mask();
-				selectionWidth = selection.Width();
-				selectionHeight = selection.Height();
+				selectionOriginX = selection.MaskOriginX();
+				selectionOriginY = selection.MaskOriginY();
+				selectionStride = selection.MaskWidth();
+				selectionRows = selection.MaskHeight();
 			}
 			int rowBytes = bitmap.RowBytes;
 			byte* pixels = (byte*)bitmap.GetPixels().ToPointer();
@@ -138,11 +142,11 @@ namespace Bitmute.Tools
 				{
 					int canvasX = pixelX + offsetX;
 					int canvasY = pixelY + offsetY;
-					if (canvasX < 0 || canvasY < 0 || canvasX >= selectionWidth || canvasY >= selectionHeight)
+					if (canvasX < selectionOriginX || canvasY < selectionOriginY || canvasX >= selectionOriginX + selectionStride || canvasY >= selectionOriginY + selectionRows)
 					{
 						continue;
 					}
-					coverage = selectionMask[(canvasY * selectionWidth) + canvasX];
+					coverage = selectionMask[((canvasY - selectionOriginY) * selectionStride) + (canvasX - selectionOriginX)];
 					if (coverage == 0)
 					{
 						continue;
@@ -189,11 +193,11 @@ namespace Bitmute.Tools
 				}
 			}
 
-			DilateEdge(pixels, rowBytes, filled, width, height, offsetX, offsetY, clip, selectionMask, selectionWidth, selectionHeight, fillRed, fillGreen, fillBlue, fillAlpha, minFilledX, minFilledY, maxFilledX, maxFilledY);
+			DilateEdge(pixels, rowBytes, filled, width, height, offsetX, offsetY, clip, selectionMask, selectionOriginX, selectionOriginY, selectionStride, selectionRows, fillRed, fillGreen, fillBlue, fillAlpha, minFilledX, minFilledY, maxFilledX, maxFilledY);
 			return true;
 		}
 
-		private unsafe void DilateEdge(byte* pixels, int rowBytes, bool[] filled, int width, int height, int offsetX, int offsetY, bool clip, byte[] selectionMask, int selectionWidth, int selectionHeight, byte fillRed, byte fillGreen, byte fillBlue, byte fillAlpha, int minFilledX, int minFilledY, int maxFilledX, int maxFilledY)
+		private unsafe void DilateEdge(byte* pixels, int rowBytes, bool[] filled, int width, int height, int offsetX, int offsetY, bool clip, byte[] selectionMask, int selectionOriginX, int selectionOriginY, int selectionStride, int selectionRows, byte fillRed, byte fillGreen, byte fillBlue, byte fillAlpha, int minFilledX, int minFilledY, int maxFilledX, int maxFilledY)
 		{
 			int scanLeft = minFilledX - 1;
 			int scanTop = minFilledY - 1;
@@ -229,11 +233,11 @@ namespace Bitmute.Tools
 					{
 						int canvasX = pixelX + offsetX;
 						int canvasY = pixelY + offsetY;
-						if (canvasX < 0 || canvasY < 0 || canvasX >= selectionWidth || canvasY >= selectionHeight)
+						if (canvasX < selectionOriginX || canvasY < selectionOriginY || canvasX >= selectionOriginX + selectionStride || canvasY >= selectionOriginY + selectionRows)
 						{
 							continue;
 						}
-						coverage = selectionMask[(canvasY * selectionWidth) + canvasX];
+						coverage = selectionMask[((canvasY - selectionOriginY) * selectionStride) + (canvasX - selectionOriginX)];
 						if (coverage == 0)
 						{
 							continue;

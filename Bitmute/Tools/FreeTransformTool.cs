@@ -44,6 +44,7 @@ namespace Bitmute.Tools
 		private bool m_compositeMode;
 		private bool m_isBackground;
 		private byte[] m_savedMask;
+		private SKRectI m_savedMaskRect;
 		private SKRectI m_savedBounds;
 		private int m_pickRadius;
 
@@ -522,8 +523,10 @@ namespace Bitmute.Tools
 			SKBitmap piece = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
 			piece.Erase(SKColors.Transparent);
 			byte[] selectionMask = selection.Mask();
-			int selectionWidth = selection.Width();
-			int selectionHeight = selection.Height();
+			int selectionOriginX = selection.MaskOriginX();
+			int selectionOriginY = selection.MaskOriginY();
+			int selectionStride = selection.MaskWidth();
+			int selectionRows = selection.MaskHeight();
 			int sourceWidth = source.Width;
 			int sourceHeight = source.Height;
 			int sourceStride = source.RowBytes;
@@ -532,14 +535,14 @@ namespace Bitmute.Tools
 			byte* pieceBase = (byte*)piece.GetPixels().ToPointer();
 			for (int canvasY = bounds.Top; canvasY < bounds.Bottom; canvasY++)
 			{
-				if (canvasY < 0 || canvasY >= selectionHeight)
+				if (canvasY < selectionOriginY || canvasY >= selectionOriginY + selectionRows)
 				{
 					continue;
 				}
-				int selectionRow = canvasY * selectionWidth;
+				int selectionRow = ((canvasY - selectionOriginY) * selectionStride) - selectionOriginX;
 				for (int canvasX = bounds.Left; canvasX < bounds.Right; canvasX++)
 				{
-					if (canvasX < 0 || canvasX >= selectionWidth)
+					if (canvasX < selectionOriginX || canvasX >= selectionOriginX + selectionStride)
 					{
 						continue;
 					}
@@ -576,22 +579,24 @@ namespace Bitmute.Tools
 		{
 			SKBitmap remainder = source.Copy();
 			byte[] selectionMask = selection.Mask();
-			int selectionWidth = selection.Width();
-			int selectionHeight = selection.Height();
+			int selectionOriginX = selection.MaskOriginX();
+			int selectionOriginY = selection.MaskOriginY();
+			int selectionStride = selection.MaskWidth();
+			int selectionRows = selection.MaskHeight();
 			int remainderWidth = remainder.Width;
 			int remainderHeight = remainder.Height;
 			int remainderStride = remainder.RowBytes;
 			byte* remainderBase = (byte*)remainder.GetPixels().ToPointer();
 			for (int canvasY = bounds.Top; canvasY < bounds.Bottom; canvasY++)
 			{
-				if (canvasY < 0 || canvasY >= selectionHeight)
+				if (canvasY < selectionOriginY || canvasY >= selectionOriginY + selectionRows)
 				{
 					continue;
 				}
-				int selectionRow = canvasY * selectionWidth;
+				int selectionRow = ((canvasY - selectionOriginY) * selectionStride) - selectionOriginX;
 				for (int canvasX = bounds.Left; canvasX < bounds.Right; canvasX++)
 				{
-					if (canvasX < 0 || canvasX >= selectionWidth)
+					if (canvasX < selectionOriginX || canvasX >= selectionOriginX + selectionStride)
 					{
 						continue;
 					}
@@ -724,7 +729,7 @@ namespace Bitmute.Tools
 			layer.SetOffset(m_oldOffsetX, m_oldOffsetY);
 			if (m_hasSelection && m_savedMask != null)
 			{
-				m_document.Selection().SelectMask(m_savedMask, m_savedBounds);
+				m_document.Selection().SelectMaskPlaced(m_savedMask, m_savedMaskRect, m_savedBounds);
 			}
 			m_document.MarkComposeDirtyAll();
 		}
@@ -841,6 +846,7 @@ namespace Bitmute.Tools
 				m_compositeMode = true;
 				SKRectI bounds = selection.Bounds();
 				m_savedMask = selection.MaskCopy();
+				m_savedMaskRect = new SKRectI(selection.MaskOriginX(), selection.MaskOriginY(), selection.MaskOriginX() + selection.MaskWidth(), selection.MaskOriginY() + selection.MaskHeight());
 				m_savedBounds = bounds;
 				m_sourceBitmap = ExtractSelection(m_originalLayerBitmap, m_oldOffsetX, m_oldOffsetY, selection, bounds);
 				m_sourceOffsetX = bounds.Left;

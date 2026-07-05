@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Bitmute.Imaging;
 using SkiaSharp;
 
@@ -504,11 +504,15 @@ namespace Bitmute.Tools
 			int minCanvasY = (int)System.Math.Floor(centerY) - radius - 1;
 			int maxCanvasY = (int)System.Math.Ceiling(centerY) + radius + 1;
 			byte[] selectionMask = null;
-			int selectionWidth = 0;
+			int selectionOriginX = 0;
+			int selectionOriginY = 0;
+			int selectionStride = 0;
 			if (clip)
 			{
 				selectionMask = selection.Mask();
-				selectionWidth = selection.Width();
+				selectionOriginX = selection.MaskOriginX();
+				selectionOriginY = selection.MaskOriginY();
+				selectionStride = selection.MaskWidth();
 				SKRectI selectionBounds = selection.Bounds();
 				if (minCanvasX < selectionBounds.Left)
 				{
@@ -543,7 +547,7 @@ namespace Bitmute.Tools
 					continue;
 				}
 				double offsetY = canvasY - centerY;
-				int selectionRow = canvasY * selectionWidth;
+				int selectionRow = ((canvasY - selectionOriginY) * selectionStride) - selectionOriginX;
 				for (int canvasX = minCanvasX; canvasX <= maxCanvasX; canvasX++)
 				{
 					double tip = TipCoverage(canvasX - centerX, offsetY);
@@ -791,11 +795,15 @@ namespace Bitmute.Tools
 			int minCanvasY = (int)System.Math.Floor(centerY) - radius - 1;
 			int maxCanvasY = (int)System.Math.Ceiling(centerY) + radius + 1;
 			byte[] selectionMask = null;
-			int selectionWidth = 0;
+			int selectionOriginX = 0;
+			int selectionOriginY = 0;
+			int selectionStride = 0;
 			if (clip)
 			{
 				selectionMask = selection.Mask();
-				selectionWidth = selection.Width();
+				selectionOriginX = selection.MaskOriginX();
+				selectionOriginY = selection.MaskOriginY();
+				selectionStride = selection.MaskWidth();
 				SKRectI selectionBounds = selection.Bounds();
 				if (minCanvasX < selectionBounds.Left)
 				{
@@ -828,7 +836,7 @@ namespace Bitmute.Tools
 					continue;
 				}
 				double offsetY = canvasY - centerY;
-				int selectionRow = canvasY * selectionWidth;
+				int selectionRow = ((canvasY - selectionOriginY) * selectionStride) - selectionOriginX;
 				for (int canvasX = minCanvasX; canvasX <= maxCanvasX; canvasX++)
 				{
 					double tip = TipCoverage(canvasX - centerX, offsetY);
@@ -888,7 +896,7 @@ namespace Bitmute.Tools
 					continue;
 				}
 				double offsetY = canvasY - centerY;
-				int selectionRow = canvasY * selectionWidth;
+				int selectionRow = ((canvasY - selectionOriginY) * selectionStride) - selectionOriginX;
 				for (int canvasX = minCanvasX; canvasX <= maxCanvasX; canvasX++)
 				{
 					double tip = TipCoverage(canvasX - centerX, offsetY);
