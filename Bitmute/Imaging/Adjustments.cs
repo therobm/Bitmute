@@ -24,39 +24,47 @@ namespace Bitmute.Imaging
 			}
 		}
 
-		public static void BrightnessContrast(SKBitmap bitmap, int brightness, int contrast)
+		public static unsafe void BrightnessContrast(SKBitmap bitmap, int brightness, int contrast)
 		{
 			int width = bitmap.Width;
 			int height = bitmap.Height;
+			int rowBytes = bitmap.RowBytes;
 			double brightnessOffset = brightness * 2.55;
 			double contrastMapped = contrast * 2.55;
 			double factor = (259.0 * (contrastMapped + 255.0)) / (255.0 * (259.0 - contrastMapped));
+			byte[] table = new byte[256];
+			for (int value = 0; value < 256; value++)
+			{
+				double mapped = factor * ((value + brightnessOffset) - 128.0) + 128.0;
+				table[value] = ClampByte(mapped);
+			}
+			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
 			for (int y = 0; y < height; y++)
 			{
+				byte* row = basePointer + ((long)y * rowBytes);
 				for (int x = 0; x < width; x++)
 				{
-					SKColor color = bitmap.GetPixel(x, y);
-					double red = color.Red + brightnessOffset;
-					double green = color.Green + brightnessOffset;
-					double blue = color.Blue + brightnessOffset;
-					red = factor * (red - 128.0) + 128.0;
-					green = factor * (green - 128.0) + 128.0;
-					blue = factor * (blue - 128.0) + 128.0;
-					SKColor adjusted = new SKColor(ClampByte(red), ClampByte(green), ClampByte(blue), color.Alpha);
-					bitmap.SetPixel(x, y, adjusted);
+					byte* pixel = row + (x * 4);
+					pixel[0] = table[pixel[0]];
+					pixel[1] = table[pixel[1]];
+					pixel[2] = table[pixel[2]];
 				}
 			}
 		}
 
-		public static void HueSaturationLightness(SKBitmap bitmap, int hue, int saturation, int lightness)
+		public static unsafe void HueSaturationLightness(SKBitmap bitmap, int hue, int saturation, int lightness)
 		{
 			int width = bitmap.Width;
 			int height = bitmap.Height;
+			int rowBytes = bitmap.RowBytes;
+			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
 			for (int y = 0; y < height; y++)
 			{
+				byte* row = basePointer + ((long)y * rowBytes);
 				for (int x = 0; x < width; x++)
 				{
-					SKColor color = bitmap.GetPixel(x, y);
+					byte* pixel = row + (x * 4);
+					SKColor color = new SKColor(pixel[0], pixel[1], pixel[2], pixel[3]);
 					float h;
 					float s;
 					float l;
@@ -96,66 +104,83 @@ namespace Bitmute.Imaging
 					{
 						l = 100.0f;
 					}
-					SKColor adjusted = SKColor.FromHsl(h, s, l, color.Alpha);
-					bitmap.SetPixel(x, y, adjusted);
+					SKColor adjusted = SKColor.FromHsl(h, s, l, pixel[3]);
+					pixel[0] = adjusted.Red;
+					pixel[1] = adjusted.Green;
+					pixel[2] = adjusted.Blue;
 				}
 			}
 		}
 
-		public static void Desaturate(SKBitmap bitmap)
+		public static unsafe void Desaturate(SKBitmap bitmap)
 		{
 			int width = bitmap.Width;
 			int height = bitmap.Height;
+			int rowBytes = bitmap.RowBytes;
+			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
 			for (int y = 0; y < height; y++)
 			{
+				byte* row = basePointer + ((long)y * rowBytes);
 				for (int x = 0; x < width; x++)
 				{
-					SKColor color = bitmap.GetPixel(x, y);
-					double luminance = 0.299 * color.Red + 0.587 * color.Green + 0.114 * color.Blue;
+					byte* pixel = row + (x * 4);
+					double luminance = 0.299 * pixel[0] + 0.587 * pixel[1] + 0.114 * pixel[2];
 					byte gray = ClampByte(luminance);
-					SKColor adjusted = new SKColor(gray, gray, gray, color.Alpha);
-					bitmap.SetPixel(x, y, adjusted);
+					pixel[0] = gray;
+					pixel[1] = gray;
+					pixel[2] = gray;
 				}
 			}
 		}
 
-		public static void Posterize(SKBitmap bitmap, int levels)
+		public static unsafe void Posterize(SKBitmap bitmap, int levels)
 		{
 			int width = bitmap.Width;
 			int height = bitmap.Height;
+			int rowBytes = bitmap.RowBytes;
+			byte[] table = new byte[256];
+			for (int value = 0; value < 256; value++)
+			{
+				table[value] = PosterizeChannel((byte)value, levels);
+			}
+			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
 			for (int y = 0; y < height; y++)
 			{
+				byte* row = basePointer + ((long)y * rowBytes);
 				for (int x = 0; x < width; x++)
 				{
-					SKColor color = bitmap.GetPixel(x, y);
-					byte red = PosterizeChannel(color.Red, levels);
-					byte green = PosterizeChannel(color.Green, levels);
-					byte blue = PosterizeChannel(color.Blue, levels);
-					SKColor adjusted = new SKColor(red, green, blue, color.Alpha);
-					bitmap.SetPixel(x, y, adjusted);
+					byte* pixel = row + (x * 4);
+					pixel[0] = table[pixel[0]];
+					pixel[1] = table[pixel[1]];
+					pixel[2] = table[pixel[2]];
 				}
 			}
 		}
 
-		public static void Threshold(SKBitmap bitmap, int cutoff)
+		public static unsafe void Threshold(SKBitmap bitmap, int cutoff)
 		{
 			int width = bitmap.Width;
 			int height = bitmap.Height;
+			int rowBytes = bitmap.RowBytes;
+			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
 			for (int y = 0; y < height; y++)
 			{
+				byte* row = basePointer + ((long)y * rowBytes);
 				for (int x = 0; x < width; x++)
 				{
-					SKColor color = bitmap.GetPixel(x, y);
-					double luminance = 0.299 * color.Red + 0.587 * color.Green + 0.114 * color.Blue;
+					byte* pixel = row + (x * 4);
+					double luminance = 0.299 * pixel[0] + 0.587 * pixel[1] + 0.114 * pixel[2];
 					if (luminance >= cutoff)
 					{
-						SKColor white = new SKColor(255, 255, 255, color.Alpha);
-						bitmap.SetPixel(x, y, white);
+						pixel[0] = 255;
+						pixel[1] = 255;
+						pixel[2] = 255;
 					}
 					else
 					{
-						SKColor black = new SKColor(0, 0, 0, color.Alpha);
-						bitmap.SetPixel(x, y, black);
+						pixel[0] = 0;
+						pixel[1] = 0;
+						pixel[2] = 0;
 					}
 				}
 			}
@@ -168,53 +193,56 @@ namespace Bitmute.Imaging
 			SKBitmap bufferA = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
 			SKBitmap bufferB = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
 			Premultiply(bitmap, bufferA);
-			BoxBlurCopy(bufferA, bufferB, radius);
-			BoxBlurCopy(bufferB, bufferA, radius);
-			BoxBlurCopy(bufferA, bufferB, radius);
-			Unpremultiply(bufferB, bitmap);
+			BoxBlurHorizontal(bufferA, bufferB, radius);
+			BoxBlurVertical(bufferB, bufferA, radius);
+			BoxBlurHorizontal(bufferA, bufferB, radius);
+			BoxBlurVertical(bufferB, bufferA, radius);
+			BoxBlurHorizontal(bufferA, bufferB, radius);
+			BoxBlurVertical(bufferB, bufferA, radius);
+			Unpremultiply(bufferA, bitmap);
 			bufferA.Dispose();
 			bufferB.Dispose();
 		}
 
-		public static void AddNoise(SKBitmap bitmap, int amount, bool monochrome)
+		public static unsafe void AddNoise(SKBitmap bitmap, int amount, bool monochrome)
 		{
 			int width = bitmap.Width;
 			int height = bitmap.Height;
+			int rowBytes = bitmap.RowBytes;
 			Random random = new Random(12345);
+			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
 			for (int y = 0; y < height; y++)
 			{
+				byte* row = basePointer + ((long)y * rowBytes);
 				for (int x = 0; x < width; x++)
 				{
-					SKColor color = bitmap.GetPixel(x, y);
-					byte red;
-					byte green;
-					byte blue;
+					byte* pixel = row + (x * 4);
 					if (monochrome)
 					{
 						double n = (random.NextDouble() * 2.0 - 1.0) * amount * 1.28;
-						red = ClampByte(color.Red + n);
-						green = ClampByte(color.Green + n);
-						blue = ClampByte(color.Blue + n);
+						pixel[0] = ClampByte(pixel[0] + n);
+						pixel[1] = ClampByte(pixel[1] + n);
+						pixel[2] = ClampByte(pixel[2] + n);
 					}
 					else
 					{
 						double nRed = (random.NextDouble() * 2.0 - 1.0) * amount * 1.28;
 						double nGreen = (random.NextDouble() * 2.0 - 1.0) * amount * 1.28;
 						double nBlue = (random.NextDouble() * 2.0 - 1.0) * amount * 1.28;
-						red = ClampByte(color.Red + nRed);
-						green = ClampByte(color.Green + nGreen);
-						blue = ClampByte(color.Blue + nBlue);
+						pixel[0] = ClampByte(pixel[0] + nRed);
+						pixel[1] = ClampByte(pixel[1] + nGreen);
+						pixel[2] = ClampByte(pixel[2] + nBlue);
 					}
-					SKColor adjusted = new SKColor(red, green, blue, color.Alpha);
-					bitmap.SetPixel(x, y, adjusted);
 				}
 			}
 		}
 
-		public static void Pixelate(SKBitmap bitmap, int cellSize)
+		public static unsafe void Pixelate(SKBitmap bitmap, int cellSize)
 		{
 			int width = bitmap.Width;
 			int height = bitmap.Height;
+			int rowBytes = bitmap.RowBytes;
+			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
 			for (int blockY = 0; blockY < height; blockY += cellSize)
 			{
 				for (int blockX = 0; blockX < width; blockX += cellSize)
@@ -236,13 +264,14 @@ namespace Bitmute.Imaging
 					int count = 0;
 					for (int y = blockY; y < endY; y++)
 					{
+						byte* row = basePointer + ((long)y * rowBytes);
 						for (int x = blockX; x < endX; x++)
 						{
-							SKColor color = bitmap.GetPixel(x, y);
-							sumRed += color.Red;
-							sumGreen += color.Green;
-							sumBlue += color.Blue;
-							sumAlpha += color.Alpha;
+							byte* pixel = row + (x * 4);
+							sumRed += pixel[0];
+							sumGreen += pixel[1];
+							sumBlue += pixel[2];
+							sumAlpha += pixel[3];
 							count++;
 						}
 					}
@@ -250,42 +279,56 @@ namespace Bitmute.Imaging
 					byte avgGreen = ClampByte((int)(sumGreen / count));
 					byte avgBlue = ClampByte((int)(sumBlue / count));
 					byte avgAlpha = ClampByte((int)(sumAlpha / count));
-					SKColor average = new SKColor(avgRed, avgGreen, avgBlue, avgAlpha);
 					for (int y = blockY; y < endY; y++)
 					{
+						byte* row = basePointer + ((long)y * rowBytes);
 						for (int x = blockX; x < endX; x++)
 						{
-							bitmap.SetPixel(x, y, average);
+							byte* pixel = row + (x * 4);
+							pixel[0] = avgRed;
+							pixel[1] = avgGreen;
+							pixel[2] = avgBlue;
+							pixel[3] = avgAlpha;
 						}
 					}
 				}
 			}
 		}
 
-		public static void UnsharpMask(SKBitmap bitmap, int amount, int radius)
+		public static unsafe void UnsharpMask(SKBitmap bitmap, int amount, int radius)
 		{
 			int width = bitmap.Width;
 			int height = bitmap.Height;
+			int rowBytes = bitmap.RowBytes;
+			SKBitmap scratch = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
 			SKBitmap blurred = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-			BoxBlurCopy(bitmap, blurred, radius);
+			BoxBlurHorizontal(bitmap, scratch, radius);
+			BoxBlurVertical(scratch, blurred, radius);
+			int blurredStride = blurred.RowBytes;
 			double strength = amount / 100.0;
+			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
+			byte* blurredBase = (byte*)blurred.GetPixels().ToPointer();
 			for (int y = 0; y < height; y++)
 			{
+				byte* row = basePointer + ((long)y * rowBytes);
+				byte* blurredRow = blurredBase + ((long)y * blurredStride);
 				for (int x = 0; x < width; x++)
 				{
-					SKColor color = bitmap.GetPixel(x, y);
-					SKColor blur = blurred.GetPixel(x, y);
-					double red = color.Red + strength * (color.Red - blur.Red);
-					double green = color.Green + strength * (color.Green - blur.Green);
-					double blue = color.Blue + strength * (color.Blue - blur.Blue);
-					SKColor adjusted = new SKColor(ClampByte(red), ClampByte(green), ClampByte(blue), color.Alpha);
-					bitmap.SetPixel(x, y, adjusted);
+					byte* pixel = row + (x * 4);
+					byte* blurPixel = blurredRow + (x * 4);
+					double red = pixel[0] + strength * (pixel[0] - blurPixel[0]);
+					double green = pixel[1] + strength * (pixel[1] - blurPixel[1]);
+					double blue = pixel[2] + strength * (pixel[2] - blurPixel[2]);
+					pixel[0] = ClampByte(red);
+					pixel[1] = ClampByte(green);
+					pixel[2] = ClampByte(blue);
 				}
 			}
+			scratch.Dispose();
 			blurred.Dispose();
 		}
 
-		private static unsafe void BoxBlurCopy(SKBitmap source, SKBitmap destination, int radius)
+		private static unsafe void CopyRows(SKBitmap source, SKBitmap destination)
 		{
 			int width = source.Width;
 			int height = source.Height;
@@ -293,31 +336,33 @@ namespace Bitmute.Imaging
 			int destinationStride = destination.RowBytes;
 			byte* sourceBase = (byte*)source.GetPixels().ToPointer();
 			byte* destinationBase = (byte*)destination.GetPixels().ToPointer();
+			long rowLength = (long)width * 4;
+			for (int y = 0; y < height; y++)
+			{
+				byte* sourceRow = sourceBase + ((long)y * sourceStride);
+				byte* destinationRow = destinationBase + ((long)y * destinationStride);
+				Buffer.MemoryCopy(sourceRow, destinationRow, rowLength, rowLength);
+			}
+		}
+
+		private static unsafe void BoxBlurHorizontal(SKBitmap source, SKBitmap destination, int radius)
+		{
 			if (radius <= 0)
 			{
-				for (int y = 0; y < height; y++)
-				{
-					byte* sourceRow = sourceBase + (long)y * sourceStride;
-					byte* destinationRow = destinationBase + (long)y * destinationStride;
-					for (int x = 0; x < width; x++)
-					{
-						int pixelOffset = x * 4;
-						destinationRow[pixelOffset + 0] = sourceRow[pixelOffset + 0];
-						destinationRow[pixelOffset + 1] = sourceRow[pixelOffset + 1];
-						destinationRow[pixelOffset + 2] = sourceRow[pixelOffset + 2];
-						destinationRow[pixelOffset + 3] = sourceRow[pixelOffset + 3];
-					}
-				}
+				CopyRows(source, destination);
 				return;
 			}
+			int width = source.Width;
+			int height = source.Height;
+			int sourceStride = source.RowBytes;
+			int destinationStride = destination.RowBytes;
+			byte* sourceBase = (byte*)source.GetPixels().ToPointer();
+			byte* destinationBase = (byte*)destination.GetPixels().ToPointer();
 			int windowLength = 2 * radius + 1;
-			SKBitmap temporary = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-			int temporaryStride = temporary.RowBytes;
-			byte* temporaryBase = (byte*)temporary.GetPixels().ToPointer();
 			for (int y = 0; y < height; y++)
 			{
 				byte* sourceRow = sourceBase + (long)y * sourceStride;
-				byte* temporaryRow = temporaryBase + (long)y * temporaryStride;
+				byte* destinationRow = destinationBase + (long)y * destinationStride;
 				long sumRed = 0;
 				long sumGreen = 0;
 				long sumBlue = 0;
@@ -342,10 +387,10 @@ namespace Bitmute.Imaging
 				for (int x = 0; x < width; x++)
 				{
 					int pixelOffset = x * 4;
-					temporaryRow[pixelOffset + 0] = (byte)(sumRed / windowLength);
-					temporaryRow[pixelOffset + 1] = (byte)(sumGreen / windowLength);
-					temporaryRow[pixelOffset + 2] = (byte)(sumBlue / windowLength);
-					temporaryRow[pixelOffset + 3] = (byte)(sumAlpha / windowLength);
+					destinationRow[pixelOffset + 0] = (byte)(sumRed / windowLength);
+					destinationRow[pixelOffset + 1] = (byte)(sumGreen / windowLength);
+					destinationRow[pixelOffset + 2] = (byte)(sumBlue / windowLength);
+					destinationRow[pixelOffset + 3] = (byte)(sumAlpha / windowLength);
 					int leavingX = x - radius;
 					if (leavingX < 0)
 					{
@@ -372,6 +417,22 @@ namespace Bitmute.Imaging
 					sumAlpha += sourceRow[enteringOffset + 3] - sourceRow[leavingOffset + 3];
 				}
 			}
+		}
+
+		private static unsafe void BoxBlurVertical(SKBitmap source, SKBitmap destination, int radius)
+		{
+			if (radius <= 0)
+			{
+				CopyRows(source, destination);
+				return;
+			}
+			int width = source.Width;
+			int height = source.Height;
+			int sourceStride = source.RowBytes;
+			int destinationStride = destination.RowBytes;
+			byte* sourceBase = (byte*)source.GetPixels().ToPointer();
+			byte* destinationBase = (byte*)destination.GetPixels().ToPointer();
+			int windowLength = 2 * radius + 1;
 			for (int x = 0; x < width; x++)
 			{
 				int pixelOffset = x * 4;
@@ -390,7 +451,7 @@ namespace Bitmute.Imaging
 					{
 						sampleY = height - 1;
 					}
-					byte* sampleRow = temporaryBase + (long)sampleY * temporaryStride;
+					byte* sampleRow = sourceBase + (long)sampleY * sourceStride;
 					sumRed += sampleRow[pixelOffset + 0];
 					sumGreen += sampleRow[pixelOffset + 1];
 					sumBlue += sampleRow[pixelOffset + 2];
@@ -398,7 +459,6 @@ namespace Bitmute.Imaging
 				}
 				for (int y = 0; y < height; y++)
 				{
-					byte* temporaryRow = temporaryBase + (long)y * temporaryStride;
 					byte* destinationRow = destinationBase + (long)y * destinationStride;
 					destinationRow[pixelOffset + 0] = (byte)(sumRed / windowLength);
 					destinationRow[pixelOffset + 1] = (byte)(sumGreen / windowLength);
@@ -422,15 +482,14 @@ namespace Bitmute.Imaging
 					{
 						enteringY = height - 1;
 					}
-					byte* leavingRow = temporaryBase + (long)leavingY * temporaryStride;
-					byte* enteringRow = temporaryBase + (long)enteringY * temporaryStride;
+					byte* leavingRow = sourceBase + (long)leavingY * sourceStride;
+					byte* enteringRow = sourceBase + (long)enteringY * sourceStride;
 					sumRed += enteringRow[pixelOffset + 0] - leavingRow[pixelOffset + 0];
 					sumGreen += enteringRow[pixelOffset + 1] - leavingRow[pixelOffset + 1];
 					sumBlue += enteringRow[pixelOffset + 2] - leavingRow[pixelOffset + 2];
 					sumAlpha += enteringRow[pixelOffset + 3] - leavingRow[pixelOffset + 3];
 				}
 			}
-			temporary.Dispose();
 		}
 
 		private static unsafe void Premultiply(SKBitmap source, SKBitmap destination)

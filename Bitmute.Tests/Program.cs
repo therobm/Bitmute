@@ -94,6 +94,15 @@ namespace Bitmute.Tests
 			TestSpreadDilatesBeforeBlur();
 			TestBevelOppositeSides();
 			TestFeatherActive();
+			TestBrightnessContrastMatchesReference();
+			TestHueSaturationLightnessMatchesReference();
+			TestDesaturateMatchesReference();
+			TestPosterizeMatchesReference();
+			TestThresholdMatchesReference();
+			TestAddNoiseMatchesReference();
+			TestPixelateMatchesReference();
+			TestUnsharpMaskMatchesReference();
+			TestGaussianBlurMatchesReference();
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");
@@ -1904,6 +1913,498 @@ namespace Bitmute.Tests
 			Check(center.Alpha == 0, "bevel leaves the flat body center untouched");
 			bevel.Dispose();
 			source.Dispose();
+		}
+
+		private static SKBitmap BuildAdjustmentTestBitmap()
+		{
+			SKBitmap bitmap = new SKBitmap(41, 29, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			Random random = new Random(777);
+			for (int y = 0; y < bitmap.Height; y++)
+			{
+				for (int x = 0; x < bitmap.Width; x++)
+				{
+					byte red = (byte)random.Next(256);
+					byte green = (byte)random.Next(256);
+					byte blue = (byte)random.Next(256);
+					byte alpha = (byte)random.Next(256);
+					bitmap.SetPixel(x, y, new SKColor(red, green, blue, alpha));
+				}
+			}
+			bitmap.SetPixel(0, 0, new SKColor(0, 0, 0, 0));
+			bitmap.SetPixel(1, 0, new SKColor(255, 255, 255, 255));
+			bitmap.SetPixel(2, 0, new SKColor(0, 0, 0, 255));
+			bitmap.SetPixel(3, 0, new SKColor(255, 0, 0, 128));
+			bitmap.SetPixel(4, 0, new SKColor(17, 200, 90, 1));
+			return bitmap;
+		}
+
+		private static bool AdjustmentBitmapsEqual(SKBitmap first, SKBitmap second)
+		{
+			for (int y = 0; y < first.Height; y++)
+			{
+				for (int x = 0; x < first.Width; x++)
+				{
+					SKColor a = first.GetPixel(x, y);
+					SKColor b = second.GetPixel(x, y);
+					if (a.Red != b.Red || a.Green != b.Green || a.Blue != b.Blue || a.Alpha != b.Alpha)
+					{
+						Console.WriteLine("  mismatch at " + x + "," + y + " got " + a + " expected " + b);
+						return false;
+					}
+				}
+			}
+			return true;
+		}
+
+		private static byte ReferenceClampByte(double value)
+		{
+			if (value < 0.0)
+			{
+				return 0;
+			}
+			if (value > 255.0)
+			{
+				return 255;
+			}
+			return (byte)Math.Round(value);
+		}
+
+		private static void TestBrightnessContrastMatchesReference()
+		{
+			int[] brightnessValues = new int[] { 0, 40, -60, 100 };
+			int[] contrastValues = new int[] { 0, 55, -35, -100 };
+			for (int i = 0; i < brightnessValues.Length; i++)
+			{
+				SKBitmap actual = BuildAdjustmentTestBitmap();
+				SKBitmap expected = BuildAdjustmentTestBitmap();
+				Adjustments.BrightnessContrast(actual, brightnessValues[i], contrastValues[i]);
+				double brightnessOffset = brightnessValues[i] * 2.55;
+				double contrastMapped = contrastValues[i] * 2.55;
+				double factor = (259.0 * (contrastMapped + 255.0)) / (255.0 * (259.0 - contrastMapped));
+				for (int y = 0; y < expected.Height; y++)
+				{
+					for (int x = 0; x < expected.Width; x++)
+					{
+						SKColor color = expected.GetPixel(x, y);
+						double red = factor * ((color.Red + brightnessOffset) - 128.0) + 128.0;
+						double green = factor * ((color.Green + brightnessOffset) - 128.0) + 128.0;
+						double blue = factor * ((color.Blue + brightnessOffset) - 128.0) + 128.0;
+						expected.SetPixel(x, y, new SKColor(ReferenceClampByte(red), ReferenceClampByte(green), ReferenceClampByte(blue), color.Alpha));
+					}
+				}
+				Check(AdjustmentBitmapsEqual(actual, expected), "brightness/contrast " + brightnessValues[i] + "/" + contrastValues[i] + " matches reference");
+				actual.Dispose();
+				expected.Dispose();
+			}
+		}
+
+		private static void TestHueSaturationLightnessMatchesReference()
+		{
+			int[] hueValues = new int[] { 0, 120, -200, 359 };
+			int[] saturationValues = new int[] { 0, 80, -100, 50 };
+			int[] lightnessValues = new int[] { 0, 30, -45, 100 };
+			for (int i = 0; i < hueValues.Length; i++)
+			{
+				SKBitmap actual = BuildAdjustmentTestBitmap();
+				SKBitmap expected = BuildAdjustmentTestBitmap();
+				Adjustments.HueSaturationLightness(actual, hueValues[i], saturationValues[i], lightnessValues[i]);
+				for (int y = 0; y < expected.Height; y++)
+				{
+					for (int x = 0; x < expected.Width; x++)
+					{
+						SKColor color = expected.GetPixel(x, y);
+						float h;
+						float s;
+						float l;
+						color.ToHsl(out h, out s, out l);
+						h = h + hueValues[i];
+						for (;;)
+						{
+							if (h >= 0.0f)
+							{
+								break;
+							}
+							h = h + 360.0f;
+						}
+						for (;;)
+						{
+							if (h < 360.0f)
+							{
+								break;
+							}
+							h = h - 360.0f;
+						}
+						s = s * (1.0f + (saturationValues[i] / 100.0f));
+						if (s < 0.0f)
+						{
+							s = 0.0f;
+						}
+						if (s > 100.0f)
+						{
+							s = 100.0f;
+						}
+						l = l + lightnessValues[i];
+						if (l < 0.0f)
+						{
+							l = 0.0f;
+						}
+						if (l > 100.0f)
+						{
+							l = 100.0f;
+						}
+						expected.SetPixel(x, y, SKColor.FromHsl(h, s, l, color.Alpha));
+					}
+				}
+				Check(AdjustmentBitmapsEqual(actual, expected), "hue/sat/light " + hueValues[i] + "/" + saturationValues[i] + "/" + lightnessValues[i] + " matches reference");
+				actual.Dispose();
+				expected.Dispose();
+			}
+		}
+
+		private static void TestDesaturateMatchesReference()
+		{
+			SKBitmap actual = BuildAdjustmentTestBitmap();
+			SKBitmap expected = BuildAdjustmentTestBitmap();
+			Adjustments.Desaturate(actual);
+			for (int y = 0; y < expected.Height; y++)
+			{
+				for (int x = 0; x < expected.Width; x++)
+				{
+					SKColor color = expected.GetPixel(x, y);
+					byte gray = ReferenceClampByte(0.299 * color.Red + 0.587 * color.Green + 0.114 * color.Blue);
+					expected.SetPixel(x, y, new SKColor(gray, gray, gray, color.Alpha));
+				}
+			}
+			Check(AdjustmentBitmapsEqual(actual, expected), "desaturate matches reference");
+			actual.Dispose();
+			expected.Dispose();
+		}
+
+		private static void TestPosterizeMatchesReference()
+		{
+			int[] levelValues = new int[] { 2, 4, 7, 255 };
+			for (int i = 0; i < levelValues.Length; i++)
+			{
+				SKBitmap actual = BuildAdjustmentTestBitmap();
+				SKBitmap expected = BuildAdjustmentTestBitmap();
+				Adjustments.Posterize(actual, levelValues[i]);
+				for (int y = 0; y < expected.Height; y++)
+				{
+					for (int x = 0; x < expected.Width; x++)
+					{
+						SKColor color = expected.GetPixel(x, y);
+						byte red = ReferencePosterizeChannel(color.Red, levelValues[i]);
+						byte green = ReferencePosterizeChannel(color.Green, levelValues[i]);
+						byte blue = ReferencePosterizeChannel(color.Blue, levelValues[i]);
+						expected.SetPixel(x, y, new SKColor(red, green, blue, color.Alpha));
+					}
+				}
+				Check(AdjustmentBitmapsEqual(actual, expected), "posterize " + levelValues[i] + " matches reference");
+				actual.Dispose();
+				expected.Dispose();
+			}
+		}
+
+		private static byte ReferencePosterizeChannel(byte channel, int levels)
+		{
+			double normalized = channel / 255.0;
+			double stepped = Math.Round(normalized * (levels - 1));
+			double result = Math.Round(stepped / (levels - 1) * 255.0);
+			return ReferenceClampByte(result);
+		}
+
+		private static void TestThresholdMatchesReference()
+		{
+			int[] cutoffValues = new int[] { 0, 90, 128, 255 };
+			for (int i = 0; i < cutoffValues.Length; i++)
+			{
+				SKBitmap actual = BuildAdjustmentTestBitmap();
+				SKBitmap expected = BuildAdjustmentTestBitmap();
+				Adjustments.Threshold(actual, cutoffValues[i]);
+				for (int y = 0; y < expected.Height; y++)
+				{
+					for (int x = 0; x < expected.Width; x++)
+					{
+						SKColor color = expected.GetPixel(x, y);
+						double luminance = 0.299 * color.Red + 0.587 * color.Green + 0.114 * color.Blue;
+						if (luminance >= cutoffValues[i])
+						{
+							expected.SetPixel(x, y, new SKColor(255, 255, 255, color.Alpha));
+						}
+						else
+						{
+							expected.SetPixel(x, y, new SKColor(0, 0, 0, color.Alpha));
+						}
+					}
+				}
+				Check(AdjustmentBitmapsEqual(actual, expected), "threshold " + cutoffValues[i] + " matches reference");
+				actual.Dispose();
+				expected.Dispose();
+			}
+		}
+
+		private static void TestAddNoiseMatchesReference()
+		{
+			bool[] monochromeValues = new bool[] { true, false };
+			for (int i = 0; i < monochromeValues.Length; i++)
+			{
+				SKBitmap actual = BuildAdjustmentTestBitmap();
+				SKBitmap expected = BuildAdjustmentTestBitmap();
+				Adjustments.AddNoise(actual, 40, monochromeValues[i]);
+				Random random = new Random(12345);
+				for (int y = 0; y < expected.Height; y++)
+				{
+					for (int x = 0; x < expected.Width; x++)
+					{
+						SKColor color = expected.GetPixel(x, y);
+						byte red;
+						byte green;
+						byte blue;
+						if (monochromeValues[i])
+						{
+							double n = (random.NextDouble() * 2.0 - 1.0) * 40 * 1.28;
+							red = ReferenceClampByte(color.Red + n);
+							green = ReferenceClampByte(color.Green + n);
+							blue = ReferenceClampByte(color.Blue + n);
+						}
+						else
+						{
+							double nRed = (random.NextDouble() * 2.0 - 1.0) * 40 * 1.28;
+							double nGreen = (random.NextDouble() * 2.0 - 1.0) * 40 * 1.28;
+							double nBlue = (random.NextDouble() * 2.0 - 1.0) * 40 * 1.28;
+							red = ReferenceClampByte(color.Red + nRed);
+							green = ReferenceClampByte(color.Green + nGreen);
+							blue = ReferenceClampByte(color.Blue + nBlue);
+						}
+						expected.SetPixel(x, y, new SKColor(red, green, blue, color.Alpha));
+					}
+				}
+				Check(AdjustmentBitmapsEqual(actual, expected), "add noise monochrome=" + monochromeValues[i] + " matches reference");
+				actual.Dispose();
+				expected.Dispose();
+			}
+		}
+
+		private static void TestPixelateMatchesReference()
+		{
+			int[] cellValues = new int[] { 1, 5, 16 };
+			for (int i = 0; i < cellValues.Length; i++)
+			{
+				SKBitmap actual = BuildAdjustmentTestBitmap();
+				SKBitmap expected = BuildAdjustmentTestBitmap();
+				Adjustments.Pixelate(actual, cellValues[i]);
+				int cellSize = cellValues[i];
+				for (int blockY = 0; blockY < expected.Height; blockY += cellSize)
+				{
+					for (int blockX = 0; blockX < expected.Width; blockX += cellSize)
+					{
+						int endY = blockY + cellSize;
+						if (endY > expected.Height)
+						{
+							endY = expected.Height;
+						}
+						int endX = blockX + cellSize;
+						if (endX > expected.Width)
+						{
+							endX = expected.Width;
+						}
+						long sumRed = 0;
+						long sumGreen = 0;
+						long sumBlue = 0;
+						long sumAlpha = 0;
+						int count = 0;
+						for (int y = blockY; y < endY; y++)
+						{
+							for (int x = blockX; x < endX; x++)
+							{
+								SKColor color = expected.GetPixel(x, y);
+								sumRed += color.Red;
+								sumGreen += color.Green;
+								sumBlue += color.Blue;
+								sumAlpha += color.Alpha;
+								count++;
+							}
+						}
+						SKColor average = new SKColor((byte)(sumRed / count), (byte)(sumGreen / count), (byte)(sumBlue / count), (byte)(sumAlpha / count));
+						for (int y = blockY; y < endY; y++)
+						{
+							for (int x = blockX; x < endX; x++)
+							{
+								expected.SetPixel(x, y, average);
+							}
+						}
+					}
+				}
+				Check(AdjustmentBitmapsEqual(actual, expected), "pixelate " + cellValues[i] + " matches reference");
+				actual.Dispose();
+				expected.Dispose();
+			}
+		}
+
+		private static void ReferenceBoxBlur(SKBitmap source, SKBitmap destination, int radius)
+		{
+			int width = source.Width;
+			int height = source.Height;
+			if (radius <= 0)
+			{
+				for (int y = 0; y < height; y++)
+				{
+					for (int x = 0; x < width; x++)
+					{
+						destination.SetPixel(x, y, source.GetPixel(x, y));
+					}
+				}
+				return;
+			}
+			int windowLength = 2 * radius + 1;
+			SKBitmap horizontal = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			for (int y = 0; y < height; y++)
+			{
+				for (int x = 0; x < width; x++)
+				{
+					long sumRed = 0;
+					long sumGreen = 0;
+					long sumBlue = 0;
+					long sumAlpha = 0;
+					for (int offset = -radius; offset <= radius; offset++)
+					{
+						int sampleX = x + offset;
+						if (sampleX < 0)
+						{
+							sampleX = 0;
+						}
+						if (sampleX > width - 1)
+						{
+							sampleX = width - 1;
+						}
+						SKColor sample = source.GetPixel(sampleX, y);
+						sumRed += sample.Red;
+						sumGreen += sample.Green;
+						sumBlue += sample.Blue;
+						sumAlpha += sample.Alpha;
+					}
+					horizontal.SetPixel(x, y, new SKColor((byte)(sumRed / windowLength), (byte)(sumGreen / windowLength), (byte)(sumBlue / windowLength), (byte)(sumAlpha / windowLength)));
+				}
+			}
+			for (int y = 0; y < height; y++)
+			{
+				for (int x = 0; x < width; x++)
+				{
+					long sumRed = 0;
+					long sumGreen = 0;
+					long sumBlue = 0;
+					long sumAlpha = 0;
+					for (int offset = -radius; offset <= radius; offset++)
+					{
+						int sampleY = y + offset;
+						if (sampleY < 0)
+						{
+							sampleY = 0;
+						}
+						if (sampleY > height - 1)
+						{
+							sampleY = height - 1;
+						}
+						SKColor sample = horizontal.GetPixel(x, sampleY);
+						sumRed += sample.Red;
+						sumGreen += sample.Green;
+						sumBlue += sample.Blue;
+						sumAlpha += sample.Alpha;
+					}
+					destination.SetPixel(x, y, new SKColor((byte)(sumRed / windowLength), (byte)(sumGreen / windowLength), (byte)(sumBlue / windowLength), (byte)(sumAlpha / windowLength)));
+				}
+			}
+			horizontal.Dispose();
+		}
+
+		private static void TestUnsharpMaskMatchesReference()
+		{
+			SKBitmap actual = BuildAdjustmentTestBitmap();
+			SKBitmap expected = BuildAdjustmentTestBitmap();
+			Adjustments.UnsharpMask(actual, 120, 3);
+			SKBitmap blurred = new SKBitmap(expected.Width, expected.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			ReferenceBoxBlur(expected, blurred, 3);
+			double strength = 120 / 100.0;
+			for (int y = 0; y < expected.Height; y++)
+			{
+				for (int x = 0; x < expected.Width; x++)
+				{
+					SKColor color = expected.GetPixel(x, y);
+					SKColor blur = blurred.GetPixel(x, y);
+					double red = color.Red + strength * (color.Red - blur.Red);
+					double green = color.Green + strength * (color.Green - blur.Green);
+					double blue = color.Blue + strength * (color.Blue - blur.Blue);
+					expected.SetPixel(x, y, new SKColor(ReferenceClampByte(red), ReferenceClampByte(green), ReferenceClampByte(blue), color.Alpha));
+				}
+			}
+			Check(AdjustmentBitmapsEqual(actual, expected), "unsharp mask matches reference");
+			actual.Dispose();
+			expected.Dispose();
+			blurred.Dispose();
+		}
+
+		private static void TestGaussianBlurMatchesReference()
+		{
+			int[] radiusValues = new int[] { 0, 2, 6 };
+			for (int i = 0; i < radiusValues.Length; i++)
+			{
+				SKBitmap actual = BuildAdjustmentTestBitmap();
+				SKBitmap expected = BuildAdjustmentTestBitmap();
+				Adjustments.GaussianBlur(actual, radiusValues[i]);
+				int width = expected.Width;
+				int height = expected.Height;
+				SKBitmap premultiplied = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				for (int y = 0; y < height; y++)
+				{
+					for (int x = 0; x < width; x++)
+					{
+						SKColor color = expected.GetPixel(x, y);
+						byte red = (byte)(((color.Red * color.Alpha) + 127) / 255);
+						byte green = (byte)(((color.Green * color.Alpha) + 127) / 255);
+						byte blue = (byte)(((color.Blue * color.Alpha) + 127) / 255);
+						premultiplied.SetPixel(x, y, new SKColor(red, green, blue, color.Alpha));
+					}
+				}
+				SKBitmap blurA = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				SKBitmap blurB = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				ReferenceBoxBlur(premultiplied, blurA, radiusValues[i]);
+				ReferenceBoxBlur(blurA, blurB, radiusValues[i]);
+				ReferenceBoxBlur(blurB, blurA, radiusValues[i]);
+				for (int y = 0; y < height; y++)
+				{
+					for (int x = 0; x < width; x++)
+					{
+						SKColor color = blurA.GetPixel(x, y);
+						if (color.Alpha == 0)
+						{
+							expected.SetPixel(x, y, new SKColor(0, 0, 0, 0));
+							continue;
+						}
+						int red = ((color.Red * 255) + (color.Alpha / 2)) / color.Alpha;
+						int green = ((color.Green * 255) + (color.Alpha / 2)) / color.Alpha;
+						int blue = ((color.Blue * 255) + (color.Alpha / 2)) / color.Alpha;
+						if (red > 255)
+						{
+							red = 255;
+						}
+						if (green > 255)
+						{
+							green = 255;
+						}
+						if (blue > 255)
+						{
+							blue = 255;
+						}
+						expected.SetPixel(x, y, new SKColor((byte)red, (byte)green, (byte)blue, color.Alpha));
+					}
+				}
+				Check(AdjustmentBitmapsEqual(actual, expected), "gaussian blur radius " + radiusValues[i] + " matches reference");
+				actual.Dispose();
+				expected.Dispose();
+				premultiplied.Dispose();
+				blurA.Dispose();
+				blurB.Dispose();
+			}
 		}
 	}
 }
