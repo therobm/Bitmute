@@ -4,6 +4,14 @@ using SkiaSharp;
 
 namespace Bitmute.Imaging
 {
+	public enum eRulerUnits
+	{
+		Pixels,
+		Millimeters,
+		Centimeters,
+		Percent
+	}
+
 	public class Document
 	{
 		private static int s_maxUndoDepth = 100;
@@ -44,6 +52,7 @@ namespace Bitmute.Imaging
 		private SKRectI m_strokeDirtyRect;
 		private bool m_strokeDirtyValid;
 		private bool m_dirty;
+		private eRulerUnits m_rulerUnits;
 		private string m_sourcePath;
 		private Guides m_guides;
 		private DocumentStateCommand m_pendingDocEdit;
@@ -1110,6 +1119,17 @@ namespace Bitmute.Imaging
 		public int Height()
 		{
 			return m_height;
+		}
+
+		public eRulerUnits RulerUnits()
+		{
+			return m_rulerUnits;
+		}
+
+		public void SetRulerUnits(eRulerUnits units)
+		{
+			m_rulerUnits = units;
+			m_dirty = true;
 		}
 
 		public string Title()

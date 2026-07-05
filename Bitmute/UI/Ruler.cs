@@ -85,21 +85,16 @@ namespace Bitmute.UI
 
 		private double PixelsPerUnit()
 		{
-			MainView main = MainView.Self;
-			eRulerUnits units = eRulerUnits.Pixels;
-			if (main != null)
-			{
-				units = main.Workspace().RulerUnits();
-			}
-			if (units == eRulerUnits.Millimeters)
+			Bitmute.Imaging.eRulerUnits units = m_canvas.CurrentDocument().RulerUnits();
+			if (units == Bitmute.Imaging.eRulerUnits.Millimeters)
 			{
 				return 96.0 / 25.4;
 			}
-			if (units == eRulerUnits.Centimeters)
+			if (units == Bitmute.Imaging.eRulerUnits.Centimeters)
 			{
 				return 96.0 / 2.54;
 			}
-			if (units == eRulerUnits.Percent)
+			if (units == Bitmute.Imaging.eRulerUnits.Percent)
 			{
 				float content = m_canvas.ContentWidth();
 				if (!m_horizontal)

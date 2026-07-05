@@ -219,6 +219,7 @@ namespace Bitmute.Storage
 			writer.WriteNumber("width", document.Width());
 			writer.WriteNumber("height", document.Height());
 			writer.WriteNumber("activeLayerIndex", document.ActiveLayerIndex());
+			writer.WriteNumber("rulerUnits", (int)document.RulerUnits());
 			writer.WriteStartArray("layers");
 			List<Layer> layers = document.Layers();
 			for (int index = 0; index < layers.Count; index++)
@@ -669,6 +670,11 @@ namespace Bitmute.Storage
 			}
 			document.SetActiveLayerIndex(document.Layers().Count - 1);
 			document.SetActiveLayerIndex(ReadInt(root, "activeLayerIndex", 0));
+			int storedRulerUnits = ReadInt(root, "rulerUnits", 0);
+			if (storedRulerUnits >= 0 && storedRulerUnits <= 3)
+			{
+				document.SetRulerUnits((eRulerUnits)storedRulerUnits);
+			}
 			bool hasSelection = ReadBool(root, "hasSelection", false);
 			System.Text.Json.JsonElement guidesElement;
 			if (root.TryGetProperty("guides", out guidesElement))

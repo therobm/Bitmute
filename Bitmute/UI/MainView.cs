@@ -3681,11 +3681,16 @@ namespace Bitmute.UI
 
 		private void ApplyRulerUnits(eRulerUnits units)
 		{
-			m_workspaceState.SetRulerUnits(units);
 			ClosePulldown();
-			for (int index = 0; index < m_documents.Count; index++)
+			Document document = ActiveDocument();
+			if (document == null)
 			{
-				DocumentWindow window = m_documents[index] as DocumentWindow;
+				return;
+			}
+			document.SetRulerUnits(units);
+			if (m_activeDocumentWindow != null)
+			{
+				DocumentWindow window = m_activeDocumentWindow as DocumentWindow;
 				if (window != null)
 				{
 					window.RefreshChrome();
