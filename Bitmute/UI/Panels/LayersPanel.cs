@@ -316,6 +316,12 @@ namespace Bitmute.UI.Panels
 			return (state & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
 		}
 
+		private static bool AltHeld()
+		{
+			Windows.UI.Core.CoreVirtualKeyStates state = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Menu);
+			return (state & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
+		}
+
 		private void OnThumbnailTapped(object sender, TappedEventArgs eventArgs)
 		{
 			Document document = Doc();
@@ -333,7 +339,14 @@ namespace Bitmute.UI.Panels
 						MainView main = MainView.Self;
 						if (main != null)
 						{
-							main.SelectLayerPixels(layerIndex);
+							if (AltHeld())
+							{
+								main.SelectLayerBounds(layerIndex);
+							}
+							else
+							{
+								main.SelectLayerPixels(layerIndex);
+							}
 						}
 						return;
 					}

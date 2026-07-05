@@ -625,6 +625,12 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			copied = CropToContent(copied);
+			if (copied == null)
+			{
+				SetStatusMessage("Nothing to copy");
+				return;
+			}
 			if (s_clipboardBitmap != null)
 			{
 				s_clipboardBitmap.Dispose();
@@ -632,6 +638,123 @@ namespace Bitmute.UI
 			s_clipboardBitmap = copied;
 			SetStatusMessage("Copied");
 			await CopyToSystemClipboard(copied);
+		}
+
+		public async void DoCopyMerged()
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			SkiaSharp.SKRectI bounds = new SkiaSharp.SKRectI(0, 0, document.Width(), document.Height());
+			Selection selection = document.Selection();
+			bool hasSelection = selection.IsActive();
+			if (hasSelection)
+			{
+				bounds = selection.Bounds();
+			}
+			if (bounds.Width <= 0 || bounds.Height <= 0)
+			{
+				return;
+			}
+			SkiaSharp.SKBitmap composite = new SkiaSharp.SKBitmap(document.Width(), document.Height(), SkiaSharp.SKColorType.Rgba8888, SkiaSharp.SKAlphaType.Premul);
+			document.CompositeInto(composite);
+			SkiaSharp.SKBitmap copied = ExtractMergedRegion(composite, bounds, selection, hasSelection);
+			composite.Dispose();
+			copied = CropToContent(copied);
+			if (copied == null)
+			{
+				SetStatusMessage("Nothing to copy");
+				return;
+			}
+			if (s_clipboardBitmap != null)
+			{
+				s_clipboardBitmap.Dispose();
+			}
+			s_clipboardBitmap = copied;
+			SetStatusMessage("Copied merged");
+			await CopyToSystemClipboard(copied);
+		}
+
+		private unsafe SkiaSharp.SKBitmap ExtractMergedRegion(SkiaSharp.SKBitmap composite, SkiaSharp.SKRectI bounds, Selection selection, bool useSelection)
+		{
+			SkiaSharp.SKBitmap copied = new SkiaSharp.SKBitmap(bounds.Width, bounds.Height, SkiaSharp.SKColorType.Rgba8888, SkiaSharp.SKAlphaType.Unpremul);
+			byte* sourceBase = (byte*)composite.GetPixels().ToPointer();
+			byte* targetBase = (byte*)copied.GetPixels().ToPointer();
+			int sourceRowBytes = composite.RowBytes;
+			int targetRowBytes = copied.RowBytes;
+			byte[] mask = null;
+			int maskWidth = 0;
+			if (useSelection)
+			{
+				mask = selection.Mask();
+				maskWidth = selection.Width();
+			}
+			for (int y = 0; y < bounds.Height; y++)
+			{
+				byte* sourceRow = sourceBase + ((long)(bounds.Top + y) * sourceRowBytes) + (bounds.Left * 4);
+				byte* targetRow = targetBase + ((long)y * targetRowBytes);
+				int maskRow = (bounds.Top + y) * maskWidth;
+				for (int x = 0; x < bounds.Width; x++)
+				{
+					int sourceOffset = x * 4;
+					int alpha = sourceRow[sourceOffset + 3];
+					int red = 0;
+					int green = 0;
+					int blue = 0;
+					if (alpha > 0)
+					{
+						red = ((sourceRow[sourceOffset + 0] * 255) + (alpha / 2)) / alpha;
+						green = ((sourceRow[sourceOffset + 1] * 255) + (alpha / 2)) / alpha;
+						blue = ((sourceRow[sourceOffset + 2] * 255) + (alpha / 2)) / alpha;
+						if (red > 255)
+						{
+							red = 255;
+						}
+						if (green > 255)
+						{
+							green = 255;
+						}
+						if (blue > 255)
+						{
+							blue = 255;
+						}
+					}
+					if (useSelection)
+					{
+						int coverage = mask[maskRow + bounds.Left + x];
+						alpha = ((alpha * coverage) + 127) / 255;
+					}
+					int targetOffset = x * 4;
+					targetRow[targetOffset + 0] = (byte)red;
+					targetRow[targetOffset + 1] = (byte)green;
+					targetRow[targetOffset + 2] = (byte)blue;
+					targetRow[targetOffset + 3] = (byte)alpha;
+				}
+			}
+			return copied;
+		}
+
+		private static SkiaSharp.SKBitmap CropToContent(SkiaSharp.SKBitmap source)
+		{
+			if (source == null)
+			{
+				return null;
+			}
+			SkiaSharp.SKRectI content = PixelRegion.ComputeContentBounds(source);
+			if (content.Width <= 0 || content.Height <= 0)
+			{
+				source.Dispose();
+				return null;
+			}
+			if (content.Left == 0 && content.Top == 0 && content.Width == source.Width && content.Height == source.Height)
+			{
+				return source;
+			}
+			SkiaSharp.SKBitmap cropped = PixelRegion.ExtractRegion(source, content);
+			source.Dispose();
+			return cropped;
 		}
 
 		private async System.Threading.Tasks.Task CopyToSystemClipboard(SkiaSharp.SKBitmap bitmap)
@@ -726,6 +849,12 @@ namespace Bitmute.UI
 			SkiaSharp.SKBitmap copied = ExtractSelection(document, layer);
 			if (copied == null)
 			{
+				return;
+			}
+			copied = CropToContent(copied);
+			if (copied == null)
+			{
+				SetStatusMessage("Nothing to cut");
 				return;
 			}
 			if (s_clipboardBitmap != null)
@@ -971,6 +1100,48 @@ namespace Bitmute.UI
 				return;
 			}
 			document.Selection().SelectMask(mask, new SkiaSharp.SKRectI(minX, minY, maxX + 1, maxY + 1));
+			canvas.InvalidateSurface();
+		}
+
+		public void SelectLayerBounds(int layerIndex)
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			List<Layer> layers = document.Layers();
+			if (layerIndex < 0 || layerIndex >= layers.Count)
+			{
+				return;
+			}
+			Layer layer = layers[layerIndex];
+			int left = layer.OffsetX();
+			int top = layer.OffsetY();
+			int right = left + layer.Bitmap().Width;
+			int bottom = top + layer.Bitmap().Height;
+			if (left < 0)
+			{
+				left = 0;
+			}
+			if (top < 0)
+			{
+				top = 0;
+			}
+			if (right > document.Width())
+			{
+				right = document.Width();
+			}
+			if (bottom > document.Height())
+			{
+				bottom = document.Height();
+			}
+			if (right <= left || bottom <= top)
+			{
+				return;
+			}
+			document.Selection().SelectRect(new SkiaSharp.SKRectI(left, top, right, bottom));
 			canvas.InvalidateSurface();
 		}
 
