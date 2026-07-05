@@ -126,7 +126,7 @@ namespace Bitmute.UI.Dialogs
 			body.Add(BuildTaglineLabel());
 			body.Add(BuildRepoLinkLabel());
 			body.Add(BuildDimLabel(".NET " + Environment.Version.ToString() + "  ·  SkiaSharp 4.148", 11.0));
-			body.Add(BuildDimLabel("MIT License · © 2026 Rob M", 11.0));
+			body.Add(BuildDimLabel("Apache 2.0 License · © 2026 Rob M", 11.0));
 
 			Button okButton = PrimaryButton("OK", OnOkClicked);
 			ComposeDialog("About Bitmute", body, BuildSingleButtonRow(okButton));
