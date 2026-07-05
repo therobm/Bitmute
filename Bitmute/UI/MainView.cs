@@ -1879,6 +1879,11 @@ namespace Bitmute.UI
 			}
 			m_nativeWindow = nativeWindow;
 			nativeWindow.AppWindow.Closing += OnAppWindowClosing;
+			string iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Resources", "AppIcon", "icon.ico");
+			if (System.IO.File.Exists(iconPath))
+			{
+				nativeWindow.AppWindow.SetIcon(iconPath);
+			}
 			m_appCloseHooked = true;
 		}
 

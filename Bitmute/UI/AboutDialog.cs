@@ -42,11 +42,37 @@ namespace Bitmute.UI
 			return label;
 		}
 
-		private Label BuildTitleLabel()
+		private View BuildHeader()
 		{
-			Label label = BuildCenteredLabel("Bitmute", 20.0);
-			label.FontAttributes = FontAttributes.Bold;
-			return label;
+			Image icon = new Image();
+			icon.Source = "bitmuteicon.png";
+			icon.WidthRequest = 48.0;
+			icon.HeightRequest = 48.0;
+			icon.VerticalOptions = LayoutOptions.Center;
+
+			Label title = new Label();
+			title.Text = "Bitmute";
+			title.FontSize = 20.0;
+			title.FontAttributes = FontAttributes.Bold;
+			title.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+
+			Label version = new Label();
+			version.Text = "Version " + BuildVersionText();
+			version.FontSize = 12.0;
+			version.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+
+			VerticalStackLayout text = new VerticalStackLayout();
+			text.Spacing = 2.0;
+			text.VerticalOptions = LayoutOptions.Center;
+			text.Add(title);
+			text.Add(version);
+
+			HorizontalStackLayout header = new HorizontalStackLayout();
+			header.Spacing = 12.0;
+			header.HorizontalOptions = LayoutOptions.Center;
+			header.Add(icon);
+			header.Add(text);
+			return header;
 		}
 
 		private Label BuildTaglineLabel()
@@ -96,8 +122,7 @@ namespace Bitmute.UI
 			VerticalStackLayout body = new VerticalStackLayout();
 			body.Spacing = 8.0;
 			body.WidthRequest = BodyWidth;
-			body.Add(BuildTitleLabel());
-			body.Add(BuildCenteredLabel("Version " + BuildVersionText(), 12.0));
+			body.Add(BuildHeader());
 			body.Add(BuildTaglineLabel());
 			body.Add(BuildRepoLinkLabel());
 			body.Add(BuildDimLabel(".NET " + Environment.Version.ToString() + "  ·  SkiaSharp 4.148", 11.0));

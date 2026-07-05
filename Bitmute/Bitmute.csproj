@@ -36,6 +36,8 @@
 	<ItemGroup>
 		<MauiIcon Include="Resources\AppIcon\icon.png" />
 
+		<Content Include="Resources\AppIcon\icon.ico" CopyToOutputDirectory="PreserveNewest" />
+
 		<MauiSplashScreen Include="Resources\Splash\splashscreen.png" Color="#2B2B2B" />
 
 		<MauiImage Include="Resources\Images\*" />
