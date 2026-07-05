@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Bitmute.Imaging;
+using Bitmute.Storage;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Shapes;
@@ -88,6 +90,323 @@ namespace Bitmute.UI
 			return button;
 		}
 
+		public List<MenuBarItem> GetMenuItems(string title)
+		{
+			List<MenuBarItem> items = new List<MenuBarItem>();
+			if (title == "File")
+			{
+				items.Add(new MenuBarItem("New", eMenuAction.NewDocument, "Ctrl+N"));
+				items.Add(new MenuBarItem("Open…", eMenuAction.OpenFile, "Ctrl+O"));
+				items.Add(new MenuBarItem("Save", eMenuAction.Save, "Ctrl+S"));
+				items.Add(new MenuBarItem("Save As…", eMenuAction.SaveAs, "Ctrl+Shift+S"));
+				items.Add(new MenuBarItem("Export As…", eMenuAction.ExportAs, "Ctrl+Alt+Shift+S"));
+				if (RecentFiles.List().Count > 0)
+				{
+					MenuBarItem openRecent = new MenuBarItem("Open Recent", eMenuAction.OpenRecentMenu);
+					openRecent.m_submenu = true;
+					items.Add(openRecent);
+				}
+				items.Add(new MenuBarItem("Exit", eMenuAction.Exit));
+				return items;
+			}
+			if (title == "Edit")
+			{
+				items.Add(new MenuBarItem("Undo", eMenuAction.Undo, "Ctrl+Z"));
+				items.Add(new MenuBarItem("Redo", eMenuAction.Redo, "Ctrl+Y"));
+				items.Add(new MenuBarItem("Cut", eMenuAction.Cut, "Ctrl+X"));
+				items.Add(new MenuBarItem("Copy", eMenuAction.Copy, "Ctrl+C"));
+				items.Add(new MenuBarItem("Paste", eMenuAction.Paste, "Ctrl+V"));
+				MenuBarItem transform = new MenuBarItem("Transform", eMenuAction.TransformMenu);
+				transform.m_submenu = true;
+				items.Add(transform);
+				items.Add(new MenuBarItem("Stroke…", eMenuAction.StrokeDialog));
+				items.Add(new MenuBarItem("Preferences…", eMenuAction.Preferences));
+				return items;
+			}
+			if (title == "Image")
+			{
+				MenuBarItem adjustments = new MenuBarItem("Adjustments", eMenuAction.AdjustmentsMenu);
+				adjustments.m_submenu = true;
+				items.Add(adjustments);
+				MenuBarItem imageSeparator = new MenuBarItem("", eMenuAction.None);
+				imageSeparator.m_separator = true;
+				items.Add(imageSeparator);
+				items.Add(new MenuBarItem("Image Size…", eMenuAction.ImageSize, "Ctrl+Alt+I"));
+				items.Add(new MenuBarItem("Canvas Size…", eMenuAction.CanvasSize));
+				items.Add(new MenuBarItem("Flip Horizontal", eMenuAction.FlipHorizontal));
+				items.Add(new MenuBarItem("Flip Vertical", eMenuAction.FlipVertical));
+				items.Add(new MenuBarItem("Rotate 90° CW", eMenuAction.Rotate90Clockwise));
+				items.Add(new MenuBarItem("Rotate 180°", eMenuAction.Rotate180));
+				items.Add(new MenuBarItem("Rotate 90° CCW", eMenuAction.Rotate90CounterClockwise));
+				items.Add(new MenuBarItem("Rotate Arbitrary…", eMenuAction.RotateArbitrary));
+				items.Add(new MenuBarItem("Crop to Selection", eMenuAction.CropToSelection));
+				items.Add(new MenuBarItem("Trim", eMenuAction.Trim));
+				return items;
+			}
+			if (title == "Layer")
+			{
+				Document layerDocument = m_main.ActiveDocument();
+				bool hasDocument = layerDocument != null;
+				bool hasActiveLayer = false;
+				if (hasDocument)
+				{
+					hasActiveLayer = layerDocument.ActiveLayer() != null;
+				}
+				MenuBarItem newLayer = new MenuBarItem("New Layer", eMenuAction.NewLayer);
+				newLayer.m_enabled = hasDocument;
+				items.Add(newLayer);
+				MenuBarItem deleteLayer = new MenuBarItem("Delete Layer", eMenuAction.DeleteLayer);
+				deleteLayer.m_enabled = hasDocument;
+				items.Add(deleteLayer);
+				MenuBarItem layerSeparatorOne = new MenuBarItem("", eMenuAction.None);
+				layerSeparatorOne.m_separator = true;
+				items.Add(layerSeparatorOne);
+				MenuBarItem mergeDown = new MenuBarItem("Merge Down", eMenuAction.MergeDown, "Ctrl+E");
+				mergeDown.m_enabled = m_main.CanMergeDown();
+				items.Add(mergeDown);
+				items.Add(new MenuBarItem("Merge Visible", eMenuAction.MergeVisible, "Ctrl+Shift+E"));
+				items.Add(new MenuBarItem("Flatten Image", eMenuAction.FlattenImage));
+				MenuBarItem layerSeparatorTwo = new MenuBarItem("", eMenuAction.None);
+				layerSeparatorTwo.m_separator = true;
+				items.Add(layerSeparatorTwo);
+				MenuBarItem layerStyle = new MenuBarItem("Layer Style…", eMenuAction.LayerStyle);
+				layerStyle.m_enabled = hasActiveLayer;
+				items.Add(layerStyle);
+				MenuBarItem layerProperties = new MenuBarItem("Layer Properties…", eMenuAction.LayerProperties);
+				layerProperties.m_enabled = hasActiveLayer;
+				items.Add(layerProperties);
+				MenuBarItem rasterizeText = new MenuBarItem("Rasterize Text", eMenuAction.RasterizeText);
+				rasterizeText.m_enabled = m_main.ActiveLayerIsText();
+				items.Add(rasterizeText);
+				return items;
+			}
+			if (title == "Select")
+			{
+				items.Add(new MenuBarItem("All", eMenuAction.SelectAll, "Ctrl+A"));
+				items.Add(new MenuBarItem("Deselect", eMenuAction.Deselect, "Ctrl+D"));
+				items.Add(new MenuBarItem("Invert", eMenuAction.InvertSelection, "Ctrl+Shift+I"));
+				MenuBarItem feather = new MenuBarItem("Feather…", eMenuAction.FeatherSelection);
+				Document selectDocument = m_main.ActiveDocument();
+				feather.m_enabled = selectDocument != null && selectDocument.Selection().IsActive();
+				items.Add(feather);
+				return items;
+			}
+			if (title == "Filter")
+			{
+				string lastFilterLabel = "Last Filter";
+
+				string lastFilterId = m_main.GetLastFilterID();
+				string lastFiltername = m_main.GetLastFilterName();
+				if (lastFiltername.Length > 0)
+				{
+					lastFilterLabel = "Last Filter: " + lastFiltername;
+				}
+				MenuBarItem lastFilter = new MenuBarItem(lastFilterLabel, eMenuAction.LastFilter, "Ctrl+F");
+				lastFilter.m_enabled = lastFilterId.Length > 0;
+				items.Add(lastFilter);
+				MenuBarItem filterSeparator = new MenuBarItem("", eMenuAction.None);
+				filterSeparator.m_separator = true;
+				items.Add(filterSeparator);
+				MenuBarItem blur = new MenuBarItem("Blur", eMenuAction.FilterBlurMenu);
+				blur.m_submenu = true;
+				items.Add(blur);
+				MenuBarItem distort = new MenuBarItem("Distort", eMenuAction.FilterDistortMenu);
+				distort.m_submenu = true;
+				items.Add(distort);
+				MenuBarItem noise = new MenuBarItem("Noise", eMenuAction.FilterNoiseMenu);
+				noise.m_submenu = true;
+				items.Add(noise);
+				MenuBarItem pixelate = new MenuBarItem("Pixelate", eMenuAction.FilterPixelateMenu);
+				pixelate.m_submenu = true;
+				items.Add(pixelate);
+				MenuBarItem render = new MenuBarItem("Render", eMenuAction.FilterRenderMenu);
+				render.m_submenu = true;
+				items.Add(render);
+				MenuBarItem sharpen = new MenuBarItem("Sharpen", eMenuAction.FilterSharpenMenu);
+				sharpen.m_submenu = true;
+				items.Add(sharpen);
+				MenuBarItem stylize = new MenuBarItem("Stylize", eMenuAction.FilterStylizeMenu);
+				stylize.m_submenu = true;
+				items.Add(stylize);
+				MenuBarItem video = new MenuBarItem("Video", eMenuAction.FilterVideoMenu);
+				video.m_submenu = true;
+				items.Add(video);
+				return items;
+			}
+			if (title == "View")
+			{
+				items.Add(new MenuBarItem("Zoom In", eMenuAction.ZoomIn, "Ctrl++"));
+				items.Add(new MenuBarItem("Zoom Out", eMenuAction.ZoomOut, "Ctrl+-"));
+				items.Add(new MenuBarItem("Fit on Screen", eMenuAction.FitOnScreen, "Ctrl+0"));
+				MenuBarItem rulers = new MenuBarItem("Rulers", eMenuAction.ToggleRulers, "Ctrl+R");
+				rulers.m_checked = m_main.RulersEnabled();
+				items.Add(rulers);
+				MenuBarItem grid = new MenuBarItem("Grid", eMenuAction.ToggleGrid);
+				grid.m_checked = m_main.GridEnabled();
+				items.Add(grid);
+				MenuBarItem snap = new MenuBarItem("Snap", eMenuAction.ToggleSnap);
+				snap.m_checked = m_main.SnapEnabled();
+				items.Add(snap);
+				MenuBarItem snapTo = new MenuBarItem("Snap To", eMenuAction.SnapToMenu);
+				snapTo.m_submenu = true;
+				items.Add(snapTo);
+				MenuBarItem lockGuides = new MenuBarItem("Lock Guides", eMenuAction.ToggleLockGuides);
+				lockGuides.m_checked = m_main.GuidesLocked();
+				items.Add(lockGuides);
+				items.Add(new MenuBarItem("Clear Guides", eMenuAction.ClearGuides));
+				return items;
+			}
+			if (title == "Window")
+			{
+				items.Add(new MenuBarItem("Cascade", eMenuAction.CascadeWindows));
+				items.Add(new MenuBarItem("Tile", eMenuAction.TileWindows));
+				MenuBarItem navigator = new MenuBarItem("Navigator", eMenuAction.ToggleNavigatorPanel);
+				navigator.m_checked = m_main.NavigatorPanelVisible();
+				items.Add(navigator);
+				MenuBarItem swatches = new MenuBarItem("Swatches", eMenuAction.ToggleSwatchesPanel);
+				swatches.m_checked = m_main.SwatchesPanelVisible();
+				items.Add(swatches);
+				MenuBarItem layersPanel = new MenuBarItem("Layers", eMenuAction.ToggleLayersPanel);
+				layersPanel.m_checked = m_main.LayersPanelVisible();
+				items.Add(layersPanel);
+				return items;
+			}
+			items.Add(new MenuBarItem("About Bitmute", eMenuAction.AboutBitmute));
+			return items;
+		}
+
+
+		public List<MenuBarItem> GetSubmenuItems(eMenuAction parent)
+		{
+			List<MenuBarItem> items = new List<MenuBarItem>();
+			if (parent == eMenuAction.OpenRecentMenu)
+			{
+				List<string> recent = RecentFiles.List();
+				int recentCount = recent.Count;
+				if (recentCount > 12)
+				{
+					recentCount = 12;
+				}
+				for (int index = 0; index < recentCount; index++)
+				{
+					MenuBarItem recentItem = new MenuBarItem(System.IO.Path.GetFileName(recent[index]), eMenuAction.OpenRecent);
+					recentItem.m_argument = recent[index];
+					items.Add(recentItem);
+				}
+				return items;
+			}
+			if (parent == eMenuAction.TransformMenu)
+			{
+				items.Add(new MenuBarItem("Free Transform", eMenuAction.FreeTransform, "Ctrl+T"));
+				items.Add(new MenuBarItem("Scale", eMenuAction.TransformScale));
+				items.Add(new MenuBarItem("Rotate", eMenuAction.TransformRotate));
+				items.Add(new MenuBarItem("Skew", eMenuAction.TransformSkew));
+				items.Add(new MenuBarItem("Distort", eMenuAction.TransformDistort));
+				items.Add(new MenuBarItem("Perspective", eMenuAction.TransformPerspective));
+				items.Add(new MenuBarItem("Flip Horizontal (Layer)", eMenuAction.FlipLayerHorizontal));
+				items.Add(new MenuBarItem("Flip Vertical (Layer)", eMenuAction.FlipLayerVertical));
+				return items;
+			}
+			if (parent == eMenuAction.SnapToMenu)
+			{
+				MenuBarItem snapGuides = new MenuBarItem("Snap Guides", eMenuAction.ToggleSnapGuides);
+				snapGuides.m_checked = m_main.SnapTargetGuides();
+				items.Add(snapGuides);
+				MenuBarItem snapGrid = new MenuBarItem("Snap Grid", eMenuAction.ToggleSnapGrid);
+				snapGrid.m_checked = m_main.SnapTargetGrid();
+				items.Add(snapGrid);
+				MenuBarItem snapEdges = new MenuBarItem("Snap Edges", eMenuAction.ToggleSnapEdges);
+				snapEdges.m_checked = m_main.SnapTargetEdges();
+				items.Add(snapEdges);
+				MenuBarItem snapLayers = new MenuBarItem("Snap Layers", eMenuAction.ToggleSnapLayers);
+				snapLayers.m_checked = m_main.SnapTargetLayerBounds();
+				items.Add(snapLayers);
+				return items;
+			}
+			if (parent == eMenuAction.AdjustmentsMenu)
+			{
+				items.Add(new MenuBarItem("Brightness/Contrast…", eMenuAction.BrightnessContrast));
+				items.Add(new MenuBarItem("Hue/Saturation…", eMenuAction.HueSaturation));
+				MenuBarItem adjustSeparatorOne = new MenuBarItem("", eMenuAction.None);
+				adjustSeparatorOne.m_separator = true;
+				items.Add(adjustSeparatorOne);
+				items.Add(new MenuBarItem("Desaturate", eMenuAction.Desaturate));
+				items.Add(new MenuBarItem("Invert Colors", eMenuAction.InvertColors, "Ctrl+I"));
+				MenuBarItem adjustSeparatorTwo = new MenuBarItem("", eMenuAction.None);
+				adjustSeparatorTwo.m_separator = true;
+				items.Add(adjustSeparatorTwo);
+				items.Add(new MenuBarItem("Posterize…", eMenuAction.Posterize));
+				items.Add(new MenuBarItem("Threshold…", eMenuAction.Threshold));
+				return items;
+			}
+			if (parent == eMenuAction.FilterBlurMenu)
+			{
+				items.Add(new MenuBarItem("Average", eMenuAction.AverageBlur));
+				items.Add(new MenuBarItem("Blur", eMenuAction.Blur));
+				items.Add(new MenuBarItem("Blur More", eMenuAction.BlurMore));
+				items.Add(new MenuBarItem("Box Blur…", eMenuAction.BoxBlur));
+				items.Add(new MenuBarItem("Gaussian Blur…", eMenuAction.GaussianBlur));
+				items.Add(new MenuBarItem("Motion Blur…", eMenuAction.MotionBlur));
+				items.Add(new MenuBarItem("Radial Blur…", eMenuAction.RadialBlur));
+				return items;
+			}
+			if (parent == eMenuAction.FilterSharpenMenu)
+			{
+				items.Add(new MenuBarItem("Sharpen", eMenuAction.Sharpen));
+				items.Add(new MenuBarItem("Sharpen Edges", eMenuAction.SharpenEdges));
+				items.Add(new MenuBarItem("Sharpen More", eMenuAction.SharpenMore));
+				items.Add(new MenuBarItem("Unsharp Mask…", eMenuAction.UnsharpMask));
+				return items;
+			}
+			if (parent == eMenuAction.FilterNoiseMenu)
+			{
+				items.Add(new MenuBarItem("Add Noise…", eMenuAction.AddNoise));
+				items.Add(new MenuBarItem("Despeckle", eMenuAction.Despeckle));
+				items.Add(new MenuBarItem("Median…", eMenuAction.Median));
+				return items;
+			}
+			if (parent == eMenuAction.FilterPixelateMenu)
+			{
+				items.Add(new MenuBarItem("Crystallize…", eMenuAction.Crystallize));
+				items.Add(new MenuBarItem("Facet", eMenuAction.Facet));
+				items.Add(new MenuBarItem("Fragment", eMenuAction.Fragment));
+				items.Add(new MenuBarItem("Mosaic…", eMenuAction.Pixelate));
+				items.Add(new MenuBarItem("Pointillize…", eMenuAction.Pointillize));
+				return items;
+			}
+			if (parent == eMenuAction.FilterRenderMenu)
+			{
+				items.Add(new MenuBarItem("Clouds", eMenuAction.Clouds));
+				items.Add(new MenuBarItem("Difference Clouds", eMenuAction.DifferenceClouds));
+				return items;
+			}
+			if (parent == eMenuAction.FilterStylizeMenu)
+			{
+				items.Add(new MenuBarItem("Diffuse…", eMenuAction.Diffuse));
+				items.Add(new MenuBarItem("Emboss…", eMenuAction.Emboss));
+				items.Add(new MenuBarItem("Find Edges", eMenuAction.FindEdges));
+				items.Add(new MenuBarItem("Solarize", eMenuAction.Solarize));
+				return items;
+			}
+			if (parent == eMenuAction.FilterVideoMenu)
+			{
+				items.Add(new MenuBarItem("De-Interlace…", eMenuAction.DeInterlace));
+				return items;
+			}
+			if (parent == eMenuAction.FilterDistortMenu)
+			{
+				items.Add(new MenuBarItem("Pinch…", eMenuAction.Pinch));
+				items.Add(new MenuBarItem("Polar Coordinates…", eMenuAction.PolarCoordinates));
+				items.Add(new MenuBarItem("Ripple…", eMenuAction.Ripple));
+				items.Add(new MenuBarItem("Shear…", eMenuAction.Shear));
+				items.Add(new MenuBarItem("Spherize…", eMenuAction.Spherize));
+				items.Add(new MenuBarItem("Twirl…", eMenuAction.Twirl));
+				items.Add(new MenuBarItem("Wave…", eMenuAction.Wave));
+				return items;
+			}
+			return items;
+		}
+
 		private int FindMenuButtonIndex(object sender)
 		{
 			for (int index = 0; index < m_menuButtons.Length; index++)
@@ -158,7 +477,7 @@ namespace Bitmute.UI
 			m_submenuBorder = null;
 
 			string title = m_titles[index];
-			List<MenuBarItem> items = m_main.GetMenuItems(title);
+			List<MenuBarItem> items = GetMenuItems(title);
 
 			double dropdownX = m_menuButtons[index].Bounds.X;
 			double overlayWidth = m_overlay.Width;
@@ -206,7 +525,7 @@ namespace Bitmute.UI
 		private void OpenSubmenu(MenuBarItem parentItem, Border parentRow)
 		{
 			CloseSubmenu();
-			List<MenuBarItem> children = m_main.GetSubmenuItems(parentItem.m_action);
+			List<MenuBarItem> children = GetSubmenuItems(parentItem.m_action);
 			if (children.Count == 0)
 			{
 				return;
