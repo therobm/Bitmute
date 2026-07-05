@@ -46,6 +46,15 @@ namespace Bitmute.Tools
 			return m_active && m_verticesX.Count > 0;
 		}
 
+		public void FinalizePending(Document document, ToolState state)
+		{
+			if (!m_active || m_verticesX.Count < MinimumVertices)
+			{
+				return;
+			}
+			Finalize(document, state);
+		}
+
 		public int VertexCount()
 		{
 			return m_verticesX.Count;

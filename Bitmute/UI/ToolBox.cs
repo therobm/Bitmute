@@ -71,6 +71,16 @@ namespace Bitmute.UI
 			return m_freeTransformTool;
 		}
 
+		public CropTool Crop()
+		{
+			return (CropTool)m_tools[eTool.Crop];
+		}
+
+		public LassoTool Lasso()
+		{
+			return (LassoTool)m_tools[eTool.Lasso];
+		}
+
 		public eTool PreviousTool()
 		{
 			return m_previousTool;

@@ -2462,6 +2462,115 @@ namespace Bitmute.UI
 			RefreshTransformCanvas();
 		}
 
+		public bool CropArmed()
+		{
+			if (m_toolState == null || m_toolBox == null)
+			{
+				return false;
+			}
+			return m_toolState.Tool() == eTool.Crop && m_toolBox.Crop().HasPreview();
+		}
+
+		public void CommitCrop()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			m_toolBox.Crop().CommitPending(document);
+			FinishCanvasOp(canvas, document);
+		}
+
+		public void CancelCrop()
+		{
+			m_toolBox.Crop().CancelPending();
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.InvalidateSurface();
+			}
+		}
+
+		public bool LassoArmed()
+		{
+			if (m_toolState == null || m_toolBox == null)
+			{
+				return false;
+			}
+			return m_toolState.Tool() == eTool.Lasso && m_toolBox.Lasso().HasPreview();
+		}
+
+		public void FinalizeLasso()
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			m_toolBox.Lasso().FinalizePending(canvas.CurrentDocument(), m_toolState);
+			canvas.InvalidateSurface();
+		}
+
+		public void CancelLasso()
+		{
+			m_toolBox.Lasso().Reset();
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.InvalidateSurface();
+			}
+		}
+
+		public bool CommitArmedOperation()
+		{
+			if (IsTextEditActive())
+			{
+				return false;
+			}
+			if (TransformActive())
+			{
+				CommitTransform();
+				return true;
+			}
+			if (CropArmed())
+			{
+				CommitCrop();
+				return true;
+			}
+			if (LassoArmed())
+			{
+				FinalizeLasso();
+				return true;
+			}
+			return false;
+		}
+
+		public bool CancelArmedOperation()
+		{
+			if (IsTextEditActive())
+			{
+				return false;
+			}
+			if (TransformActive())
+			{
+				CancelTransform();
+				return true;
+			}
+			if (CropArmed())
+			{
+				CancelCrop();
+				return true;
+			}
+			if (LassoArmed())
+			{
+				CancelLasso();
+				return true;
+			}
+			return false;
+		}
+
 		private void RefreshTransformCanvas()
 		{
 			CanvasView canvas = ActiveCanvas();
@@ -3237,15 +3346,7 @@ namespace Bitmute.UI
 				return;
 			}
 			eventArgs.Handled = true;
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			if (!TransformActive())
-			{
-				return;
-			}
-			CommitTransform();
+			CommitArmedOperation();
 		}
 
 		private void FocusKeyboardSinkDeferred()

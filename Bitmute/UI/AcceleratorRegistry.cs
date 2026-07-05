@@ -415,21 +415,16 @@ namespace Bitmute.UI
 			args.Handled = true;
 		}
 
-		private void OnAcceleratorCommitTransform(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		private void OnAcceleratorCommitArmed(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
-			if (m_main.IsTextEditActive())
+			bool committed = m_main.CommitArmedOperation();
+			if (committed)
 			{
-				return;
+				args.Handled = true;
 			}
-			if (!m_main.TransformActive())
-			{
-				return;
-			}
-			m_main.CommitTransform();
-			args.Handled = true;
 		}
 
-		private void OnAcceleratorCancelTransform(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		private void OnAcceleratorCancelArmed(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
 			if (m_main.IsTextEditActive())
 			{
@@ -441,12 +436,11 @@ namespace Bitmute.UI
 				args.Handled = true;
 				return;
 			}
-			if (!m_main.TransformActive())
+			bool cancelled = m_main.CancelArmedOperation();
+			if (cancelled)
 			{
-				return;
+				args.Handled = true;
 			}
-			m_main.CancelTransform();
-			args.Handled = true;
 		}
 
 		private void OnAcceleratorSwapColors(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
@@ -528,8 +522,8 @@ namespace Bitmute.UI
 			AddAccelerator(element, Windows.System.VirtualKey.R, OnAcceleratorRulers);
 			AddAccelerator(element, Windows.System.VirtualKey.T, OnAcceleratorTransform);
 			AddAccelerator(element, Windows.System.VirtualKey.F, OnAcceleratorLastFilter);
-			AddBareAccelerator(element, Windows.System.VirtualKey.Enter, OnAcceleratorCommitTransform);
-			AddBareAccelerator(element, Windows.System.VirtualKey.Escape, OnAcceleratorCancelTransform);
+			AddBareAccelerator(element, Windows.System.VirtualKey.Enter, OnAcceleratorCommitArmed);
+			AddBareAccelerator(element, Windows.System.VirtualKey.Escape, OnAcceleratorCancelArmed);
 			AddBareAccelerator(element, Windows.System.VirtualKey.X, OnAcceleratorSwapColors);
 			AddBareAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDelete);
 			AddAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDeleteBackground);
