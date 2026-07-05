@@ -75,6 +75,7 @@ namespace Bitmute.UI
 		private Label m_statusCursorLabel;
 		private string[] m_menuTitles;
 		private bool m_acceleratorsHooked;
+		private AcceleratorRegistry m_acceleratorRegistry;
 		private int m_untitledCount;
 		private int m_cascadeCount;
 		private int m_topZIndex;
@@ -485,7 +486,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void OpenSizeDialog(bool canvasMode)
+		public void OpenSizeDialog(bool canvasMode)
 		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas == null)
@@ -616,6 +617,11 @@ namespace Bitmute.UI
 			return m_adjustments.HasLastFilter();
 		}
 
+		public void ApplyLastFilter()
+		{
+			m_adjustments.ApplyLast();
+		}
+
 		public string LastFilterLabel()
 		{
 			return m_adjustments.LastFilterLabel();
@@ -675,7 +681,7 @@ namespace Bitmute.UI
 			canvas.MarkComposeDirty();
 		}
 
-		private void DoSelectAll()
+		public void DoSelectAll()
 		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas == null)
@@ -689,7 +695,7 @@ namespace Bitmute.UI
 			canvas.Redraw();
 		}
 
-		private void DoDeselect()
+		public void DoDeselect()
 		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas == null)
@@ -703,7 +709,7 @@ namespace Bitmute.UI
 			canvas.Redraw();
 		}
 
-		private void DoInvertSelection()
+		public void DoInvertSelection()
 		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas == null)
@@ -717,7 +723,7 @@ namespace Bitmute.UI
 			canvas.Redraw();
 		}
 
-		private void DoUndo()
+		public void DoUndo()
 		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas == null)
@@ -732,7 +738,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void DoRedo()
+		public void DoRedo()
 		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas == null)
@@ -756,7 +762,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void DoZoomIn()
+		public void DoZoomIn()
 		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas != null)
@@ -765,7 +771,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void DoZoomOut()
+		public void DoZoomOut()
 		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas != null)
@@ -774,7 +780,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void DoFit()
+		public void DoFit()
 		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas != null)
@@ -910,7 +916,7 @@ namespace Bitmute.UI
 			layer.Bitmap().Erase(SkiaSharp.SKColors.Transparent);
 		}
 
-		private async void DoCopy()
+		public async void DoCopy()
 		{
 			Document document = ActiveDocument();
 			if (document == null)
@@ -1013,7 +1019,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private async void DoCut()
+		public async void DoCut()
 		{
 			Document document = ActiveDocument();
 			if (document == null)
@@ -1048,7 +1054,7 @@ namespace Bitmute.UI
 			SetStatusMessage("Cut");
 		}
 
-		private async void DoPaste()
+		public async void DoPaste()
 		{
 			Document document = ActiveDocument();
 			if (document == null)
@@ -1319,7 +1325,7 @@ namespace Bitmute.UI
 			RefreshLayerThumbnails();
 		}
 
-		private void ToggleRulers()
+		public void ToggleRulers()
 		{
 			m_workspaceState.SetRulersEnabled(!m_workspaceState.RulersEnabled());
 			for (int index = 0; index < m_documents.Count; index++)
@@ -1332,7 +1338,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void DoInvert()
+		public void DoInvert()
 		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas == null)
@@ -1772,6 +1778,7 @@ namespace Bitmute.UI
 			m_toolBox = new ToolBox();
 			m_toolState = m_toolBox.State();
 			m_adjustments = new AdjustmentRegistry(this, m_toolState);
+			m_acceleratorRegistry = new AcceleratorRegistry(this, m_toolState);
 			m_guideCreateOrientation = 0;
 			m_guideCreateCanvas = null;
 			m_workspaceState = new WorkspaceState();
@@ -1929,38 +1936,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			AddAccelerator(element, Windows.System.VirtualKey.N, OnAcceleratorNew);
-			AddAccelerator(element, Windows.System.VirtualKey.O, OnAcceleratorOpen);
-			AddAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorSave);
-			AddAccelerator(element, Windows.System.VirtualKey.Z, OnAcceleratorUndo);
-			AddAccelerator(element, Windows.System.VirtualKey.Y, OnAcceleratorRedo);
-			AddAccelerator(element, Windows.System.VirtualKey.A, OnAcceleratorSelectAll);
-			AddAccelerator(element, Windows.System.VirtualKey.D, OnAcceleratorDeselect);
-			AddAccelerator(element, Windows.System.VirtualKey.C, OnAcceleratorCopy);
-			AddAccelerator(element, Windows.System.VirtualKey.V, OnAcceleratorPaste);
-			AddAccelerator(element, Windows.System.VirtualKey.X, OnAcceleratorCut);
-			AddAccelerator(element, Windows.System.VirtualKey.Number0, OnAcceleratorFit);
-			AddAccelerator(element, Windows.System.VirtualKey.Add, OnAcceleratorZoomIn);
-			AddAccelerator(element, Windows.System.VirtualKey.Subtract, OnAcceleratorZoomOut);
-			AddAccelerator(element, (Windows.System.VirtualKey)187, OnAcceleratorZoomIn);
-			AddAccelerator(element, (Windows.System.VirtualKey)189, OnAcceleratorZoomOut);
-			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorSaveAs);
-			AddAccelerator(element, Windows.System.VirtualKey.E, OnAcceleratorMergeSelected);
-			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.E, OnAcceleratorMergeVisible);
-			AddCtrlAltShiftAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorExport);
-			AddCtrlAltAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorImageSize);
-			AddAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorInvertColors);
-			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorInvertSelection);
-			AddAccelerator(element, Windows.System.VirtualKey.R, OnAcceleratorRulers);
-			AddAccelerator(element, Windows.System.VirtualKey.T, OnAcceleratorTransform);
-			AddAccelerator(element, Windows.System.VirtualKey.F, OnAcceleratorLastFilter);
-			AddBareAccelerator(element, Windows.System.VirtualKey.Enter, OnAcceleratorCommitTransform);
-			AddBareAccelerator(element, Windows.System.VirtualKey.Escape, OnAcceleratorCancelTransform);
-			AddBareAccelerator(element, Windows.System.VirtualKey.X, OnAcceleratorSwapColors);
-			AddBareAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDelete);
-			AddAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDeleteBackground);
-			AddAltAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDeleteForeground);
-			element.KeyboardAcceleratorPlacementMode = Microsoft.UI.Xaml.Input.KeyboardAcceleratorPlacementMode.Hidden;
+			m_acceleratorRegistry.Hook(element);
 			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerPressedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGlobalPointerPressed), true);
 			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerMovedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGlobalPointerMoved), true);
 			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerReleasedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGlobalPointerReleased), true);
@@ -2070,106 +2046,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void AddAccelerator(Microsoft.UI.Xaml.UIElement element, Windows.System.VirtualKey key, Windows.Foundation.TypedEventHandler<Microsoft.UI.Xaml.Input.KeyboardAccelerator, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs> handler)
-		{
-			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
-			accelerator.Key = key;
-			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.Control;
-			accelerator.Invoked += handler;
-			element.KeyboardAccelerators.Add(accelerator);
-		}
-
-		private void AddBareAccelerator(Microsoft.UI.Xaml.UIElement element, Windows.System.VirtualKey key, Windows.Foundation.TypedEventHandler<Microsoft.UI.Xaml.Input.KeyboardAccelerator, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs> handler)
-		{
-			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
-			accelerator.Key = key;
-			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.None;
-			accelerator.Invoked += handler;
-			element.KeyboardAccelerators.Add(accelerator);
-		}
-
-		private void AddAltAccelerator(Microsoft.UI.Xaml.UIElement element, Windows.System.VirtualKey key, Windows.Foundation.TypedEventHandler<Microsoft.UI.Xaml.Input.KeyboardAccelerator, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs> handler)
-		{
-			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
-			accelerator.Key = key;
-			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.Menu;
-			accelerator.Invoked += handler;
-			element.KeyboardAccelerators.Add(accelerator);
-		}
-
-		private void AddCtrlShiftAccelerator(Microsoft.UI.Xaml.UIElement element, Windows.System.VirtualKey key, Windows.Foundation.TypedEventHandler<Microsoft.UI.Xaml.Input.KeyboardAccelerator, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs> handler)
-		{
-			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
-			accelerator.Key = key;
-			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.Control | Windows.System.VirtualKeyModifiers.Shift;
-			accelerator.Invoked += handler;
-			element.KeyboardAccelerators.Add(accelerator);
-		}
-
-		private void AddCtrlAltAccelerator(Microsoft.UI.Xaml.UIElement element, Windows.System.VirtualKey key, Windows.Foundation.TypedEventHandler<Microsoft.UI.Xaml.Input.KeyboardAccelerator, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs> handler)
-		{
-			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
-			accelerator.Key = key;
-			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.Control | Windows.System.VirtualKeyModifiers.Menu;
-			accelerator.Invoked += handler;
-			element.KeyboardAccelerators.Add(accelerator);
-		}
-
-		private void AddCtrlAltShiftAccelerator(Microsoft.UI.Xaml.UIElement element, Windows.System.VirtualKey key, Windows.Foundation.TypedEventHandler<Microsoft.UI.Xaml.Input.KeyboardAccelerator, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs> handler)
-		{
-			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
-			accelerator.Key = key;
-			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.Control | Windows.System.VirtualKeyModifiers.Menu | Windows.System.VirtualKeyModifiers.Shift;
-			accelerator.Invoked += handler;
-			element.KeyboardAccelerators.Add(accelerator);
-		}
-
-		private void OnAcceleratorSwapColors(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			if (m_toolPalette != null)
-			{
-				m_toolPalette.SwapColors();
-			}
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorDelete(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			DoClearSelection();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorDeleteForeground(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			SKColor foreground = m_toolState.Foreground();
-			FillSelectionWith(new SKColor(foreground.Red, foreground.Green, foreground.Blue, 255), true);
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorDeleteBackground(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			SKColor background = m_toolState.Background();
-			FillSelectionWith(new SKColor(background.Red, background.Green, background.Blue, 255), true);
-			args.Handled = true;
-		}
-
-		private void DoClearSelection()
+		public void DoClearSelection()
 		{
 			Document document = ActiveDocument();
 			if (document == null)
@@ -2190,7 +2067,7 @@ namespace Bitmute.UI
 			FillSelectionWith(fill, false);
 		}
 
-		private void FillSelectionWith(SKColor fill, bool fillLayerWhenEmpty)
+		public void FillSelectionWith(SKColor fill, bool fillLayerWhenEmpty)
 		{
 			Document document = ActiveDocument();
 			if (document == null)
@@ -2229,180 +2106,6 @@ namespace Bitmute.UI
 				canvas.InvalidateSurface();
 			}
 			RefreshLayerThumbnails();
-		}
-
-		private void OnAcceleratorNew(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			ShowNewDocumentDialog();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorOpen(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			OpenImageFlow();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorSave(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			SaveImageFlow();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorUndo(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			DoUndo();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorRedo(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			DoRedo();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorSelectAll(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			DoSelectAll();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorDeselect(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			DoDeselect();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorCopy(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			DoCopy();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorPaste(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			DoPaste();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorCut(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			DoCut();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorFit(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			DoFit();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorZoomIn(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			DoZoomIn();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorZoomOut(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			DoZoomOut();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorSaveAs(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			SaveAsFlow();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorExport(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			OpenExportDialog();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorImageSize(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			OpenSizeDialog(false);
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorInvertSelection(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			DoInvertSelection();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorLastFilter(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			m_adjustments.ApplyLast();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorInvertColors(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			DoInvert();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorMergeSelected(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			MergeSelectedLayers();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorMergeVisible(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			DoMergeVisible();
-			args.Handled = true;
 		}
 
 		public void MergeSelectedLayers()
@@ -2445,7 +2148,7 @@ namespace Bitmute.UI
 			FinishLayerStructureChange(canvas);
 		}
 
-		private void DoMergeVisible()
+		public void DoMergeVisible()
 		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas == null)
@@ -2677,29 +2380,31 @@ namespace Bitmute.UI
 			RequestDeleteActiveLayer();
 		}
 
-		private void OnAcceleratorRulers(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			ToggleRulers();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorTransform(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			BeginTransform(0);
-			args.Handled = true;
-		}
-
-		private bool TransformActive()
+		public bool TransformActive()
 		{
 			if (m_toolState == null || m_toolBox == null)
 			{
 				return false;
 			}
 			return m_toolState.Tool() == eTool.FreeTransform && m_toolBox.FreeTransform().HasPreview();
+		}
+
+		public void CommitTransform()
+		{
+			Document document = ActiveDocument();
+			if (document != null)
+			{
+				m_toolBox.FreeTransform().Commit(document);
+			}
+			EndTransformMode();
+			RefreshTransformCanvas();
+		}
+
+		public void CancelTransform()
+		{
+			m_toolBox.FreeTransform().Cancel();
+			EndTransformMode();
+			RefreshTransformCanvas();
 		}
 
 		private void RefreshTransformCanvas()
@@ -2711,48 +2416,6 @@ namespace Bitmute.UI
 				canvas.InvalidateSurface();
 			}
 			RefreshLayerThumbnails();
-		}
-
-		private void OnAcceleratorCommitTransform(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			if (!TransformActive())
-			{
-				return;
-			}
-			Document document = ActiveDocument();
-			if (document != null)
-			{
-				m_toolBox.FreeTransform().Commit(document);
-			}
-			EndTransformMode();
-			RefreshTransformCanvas();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorCancelTransform(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (IsTextEditActive())
-			{
-				return;
-			}
-			if (m_modalStack.Count > 0)
-			{
-				CloseModal();
-				args.Handled = true;
-				return;
-			}
-			if (!TransformActive())
-			{
-				return;
-			}
-			m_toolBox.FreeTransform().Cancel();
-			EndTransformMode();
-			RefreshTransformCanvas();
-			args.Handled = true;
 		}
 
 		private double WindowChromeWidth()
@@ -2899,7 +2562,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private async void OpenImageFlow()
+		public async void OpenImageFlow()
 		{
 			try
 			{
@@ -2954,7 +2617,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private async void SaveImageFlow()
+		public async void SaveImageFlow()
 		{
 			Document model = ActiveDocument();
 			if (model == null)
@@ -2974,7 +2637,7 @@ namespace Bitmute.UI
 			return System.IO.Path.GetFileNameWithoutExtension(title);
 		}
 
-		private async void SaveAsFlow()
+		public async void SaveAsFlow()
 		{
 			Document model = ActiveDocument();
 			if (model == null)
@@ -3036,7 +2699,7 @@ namespace Bitmute.UI
 			return true;
 		}
 
-		private void OpenExportDialog()
+		public void OpenExportDialog()
 		{
 			if (ActiveDocument() == null)
 			{
@@ -3409,6 +3072,11 @@ namespace Bitmute.UI
 			entry.m_x = targetX;
 			entry.m_y = targetY;
 			AbsoluteLayout.SetLayoutBounds(entry.m_content, new Rect(entry.m_x, entry.m_y, entry.m_width, AbsoluteLayout.AutoSize));
+		}
+
+		public bool HasOpenModal()
+		{
+			return m_modalStack.Count > 0;
 		}
 
 		public void CloseModal()
@@ -4063,6 +3731,14 @@ namespace Bitmute.UI
 			if (m_toolPalette != null)
 			{
 				m_toolPalette.RefreshColors();
+			}
+		}
+
+		public void SwapToolColors()
+		{
+			if (m_toolPalette != null)
+			{
+				m_toolPalette.SwapColors();
 			}
 		}
 
