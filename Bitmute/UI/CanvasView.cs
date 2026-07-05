@@ -9,7 +9,7 @@ using SkiaSharp.Views.Maui.Controls;
 
 namespace Bitmute.UI
 {
-	public class CanvasView : SKCanvasView
+	public class CanvasView : SKGLView
 	{
 		private struct AntEdge
 		{
@@ -42,6 +42,16 @@ namespace Bitmute.UI
 		private int m_channelCacheVersion = -1;
 		private int m_channelCacheKey = -1;
 		private SKPaint m_checkerPaint;
+		private SKSurface m_gpuComposite;
+		private GRRecordingContext m_gpuContext;
+		private int m_gpuWidth;
+		private int m_gpuHeight;
+		private int m_gpuResidentKey = -2;
+		private int m_gpuResidentVersion = -1;
+		private SKImage m_floatImage;
+		private SKBitmap m_floatImageSource;
+		private SKImage m_transformPreviewImage;
+		private SKBitmap m_transformPreviewSource;
 		private SKBitmap m_transformAbove;
 		private SKBitmap m_channelBitmap;
 		private float m_zoom;
@@ -150,7 +160,7 @@ namespace Bitmute.UI
 			return new SKRectI(left, top, right, bottom);
 		}
 
-		private void OnPaintSurface(object sender, SKPaintSurfaceEventArgs eventArgs)
+		private void OnPaintSurface(object sender, SKPaintGLSurfaceEventArgs eventArgs)
 		{
 			SKCanvas canvas = eventArgs.Surface.Canvas;
 			SKImageInfo info = eventArgs.Info;
@@ -162,11 +172,14 @@ namespace Bitmute.UI
 			}
 
 			bool recreated = EnsureComposite();
+			bool frameUpdatedFull = false;
+			SKRectI frameUpdatedRegion = SKRectI.Empty;
 			if (recreated || m_document.ComposeDirtyAll())
 			{
 				m_document.CompositeInto(m_composite);
 				m_document.ClearComposeDirty();
 				m_compositeVersion = m_compositeVersion + 1;
+				frameUpdatedFull = true;
 			}
 			else if (m_document.ComposeDirtyAny())
 			{
@@ -174,6 +187,7 @@ namespace Bitmute.UI
 				if (region.Width > 0 && region.Height > 0)
 				{
 					m_document.CompositeRegion(m_composite, region);
+					frameUpdatedRegion = region;
 				}
 				m_document.ClearComposeDirty();
 				m_compositeVersion = m_compositeVersion + 1;
@@ -290,14 +304,86 @@ namespace Bitmute.UI
 					displayBitmap = m_channelBitmap;
 				}
 			}
-			SKPixmap displayPixmap = displayBitmap.PeekPixels();
-			SKImage image = SKImage.FromPixels(displayPixmap);
+			int displayKey = -1;
+			if (!object.ReferenceEquals(displayBitmap, m_composite))
+			{
+				displayKey = m_channelCacheKey;
+			}
 			SKPaint imagePaint = new SKPaint();
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
-			canvas.DrawImage(image, destination, sampling, imagePaint);
+			GRRecordingContext frameContext = eventArgs.Surface.Context;
+			bool drewFromGpu = false;
+			if (frameContext != null)
+			{
+				if (m_gpuComposite == null || !object.ReferenceEquals(m_gpuContext, frameContext) || m_gpuWidth != displayBitmap.Width || m_gpuHeight != displayBitmap.Height)
+				{
+					if (m_gpuComposite != null)
+					{
+						m_gpuComposite.Dispose();
+						m_gpuComposite = null;
+					}
+					SKImageInfo gpuInfo = new SKImageInfo(displayBitmap.Width, displayBitmap.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
+					m_gpuComposite = SKSurface.Create(frameContext, true, gpuInfo);
+					m_gpuContext = frameContext;
+					m_gpuWidth = displayBitmap.Width;
+					m_gpuHeight = displayBitmap.Height;
+					m_gpuResidentKey = -2;
+					m_gpuResidentVersion = -1;
+				}
+				if (m_gpuComposite != null)
+				{
+					bool residentCurrent = m_gpuResidentKey == displayKey && m_gpuResidentVersion == m_compositeVersion;
+					if (!residentCurrent)
+					{
+						bool regionUploadValid = displayKey == -1 && m_gpuResidentKey == -1 && m_gpuResidentVersion == m_compositeVersion - 1 && !frameUpdatedFull && frameUpdatedRegion.Width > 0 && frameUpdatedRegion.Height > 0;
+						SKCanvas uploadCanvas = m_gpuComposite.Canvas;
+						SKPaint uploadPaint = new SKPaint();
+						uploadPaint.BlendMode = SKBlendMode.Src;
+						SKPixmap uploadPixmap = displayBitmap.PeekPixels();
+						if (regionUploadValid)
+						{
+							SKPixmap regionPixmap = new SKPixmap();
+							bool extracted = uploadPixmap.ExtractSubset(regionPixmap, frameUpdatedRegion);
+							if (extracted)
+							{
+								SKImage regionImage = SKImage.FromPixels(regionPixmap);
+								uploadCanvas.DrawImage(regionImage, frameUpdatedRegion.Left, frameUpdatedRegion.Top, sampling, uploadPaint);
+								regionImage.Dispose();
+							}
+							else
+							{
+								SKImage fullImage = SKImage.FromPixels(uploadPixmap);
+								uploadCanvas.DrawImage(fullImage, 0.0f, 0.0f, sampling, uploadPaint);
+								fullImage.Dispose();
+							}
+							regionPixmap.Dispose();
+						}
+						else
+						{
+							SKImage fullImage = SKImage.FromPixels(uploadPixmap);
+							uploadCanvas.DrawImage(fullImage, 0.0f, 0.0f, sampling, uploadPaint);
+							fullImage.Dispose();
+						}
+						uploadPixmap.Dispose();
+						uploadPaint.Dispose();
+						m_gpuResidentKey = displayKey;
+						m_gpuResidentVersion = m_compositeVersion;
+					}
+					SKImage residentSnapshot = m_gpuComposite.Snapshot();
+					canvas.DrawImage(residentSnapshot, destination, sampling, imagePaint);
+					residentSnapshot.Dispose();
+					drewFromGpu = true;
+				}
+			}
+			if (!drewFromGpu)
+			{
+				SKPixmap displayPixmap = displayBitmap.PeekPixels();
+				SKImage image = SKImage.FromPixels(displayPixmap);
+				canvas.DrawImage(image, destination, sampling, imagePaint);
+				image.Dispose();
+				displayPixmap.Dispose();
+			}
 			imagePaint.Dispose();
-			image.Dispose();
-			displayPixmap.Dispose();
 
 			SKPaint borderPaint = new SKPaint();
 			borderPaint.Style = SKPaintStyle.Stroke;
@@ -319,15 +405,57 @@ namespace Bitmute.UI
 			DrawToolOverlay(canvas);
 		}
 
+		public void ReleaseGpuResources()
+		{
+			if (m_gpuComposite != null)
+			{
+				m_gpuComposite.Dispose();
+				m_gpuComposite = null;
+			}
+			m_gpuContext = null;
+			m_gpuWidth = 0;
+			m_gpuHeight = 0;
+			m_gpuResidentKey = -2;
+			m_gpuResidentVersion = -1;
+			ReleaseFloatImage();
+			ReleaseTransformPreviewImage();
+			if (m_antTimer != null)
+			{
+				m_antTimer.Stop();
+			}
+		}
+
+		private void ReleaseFloatImage()
+		{
+			if (m_floatImage != null)
+			{
+				m_floatImage.Dispose();
+				m_floatImage = null;
+				m_floatImageSource = null;
+			}
+		}
+
+		private void ReleaseTransformPreviewImage()
+		{
+			if (m_transformPreviewImage != null)
+			{
+				m_transformPreviewImage.Dispose();
+				m_transformPreviewImage = null;
+				m_transformPreviewSource = null;
+			}
+		}
+
 		private void DrawFloatingOverlay(SKCanvas canvas)
 		{
 			if (!m_document.HasFloatingSelection())
 			{
+				ReleaseFloatImage();
 				return;
 			}
 			SKBitmap floatBitmap = m_document.FloatBitmap();
 			if (floatBitmap == null || floatBitmap.Width <= 0 || floatBitmap.Height <= 0)
 			{
+				ReleaseFloatImage();
 				return;
 			}
 			int layerIndex = m_document.FloatLayerIndex();
@@ -344,14 +472,18 @@ namespace Bitmute.UI
 			float screenRight = m_offsetX + ((canvasLeft + floatBitmap.Width) * m_zoom);
 			float screenBottom = m_offsetY + ((canvasTop + floatBitmap.Height) * m_zoom);
 			SKRect destination = new SKRect(screenLeft, screenTop, screenRight, screenBottom);
-			SKPixmap pixmap = floatBitmap.PeekPixels();
-			SKImage image = SKImage.FromPixels(pixmap);
+			if (m_floatImage == null || !object.ReferenceEquals(m_floatImageSource, floatBitmap))
+			{
+				ReleaseFloatImage();
+				SKPixmap pixmap = floatBitmap.PeekPixels();
+				m_floatImage = SKImage.FromPixels(pixmap);
+				m_floatImageSource = floatBitmap;
+				pixmap.Dispose();
+			}
 			SKPaint paint = new SKPaint();
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
-			canvas.DrawImage(image, destination, sampling, paint);
+			canvas.DrawImage(m_floatImage, destination, sampling, paint);
 			paint.Dispose();
-			image.Dispose();
-			pixmap.Dispose();
 		}
 
 		private void DrawGuides(SKCanvas canvas, float viewWidth, float viewHeight)
@@ -1032,6 +1164,7 @@ namespace Bitmute.UI
 		{
 			if (!transform.HasPreview())
 			{
+				ReleaseTransformPreviewImage();
 				return;
 			}
 			float x0 = m_offsetX + (float)(transform.CornerX(0) * m_zoom);
@@ -1053,17 +1186,21 @@ namespace Bitmute.UI
 				SKMatrix quadMatrix;
 				if (Bitmute.Imaging.TransformMath.QuadMatrix(screenQuad, previewBitmap.Width, previewBitmap.Height, out quadMatrix))
 				{
-					SKPixmap previewPixmap = previewBitmap.PeekPixels();
-					SKImage previewImage = SKImage.FromPixels(previewPixmap);
+					if (m_transformPreviewImage == null || !object.ReferenceEquals(m_transformPreviewSource, previewBitmap))
+					{
+						ReleaseTransformPreviewImage();
+						SKPixmap previewPixmap = previewBitmap.PeekPixels();
+						m_transformPreviewImage = SKImage.FromPixels(previewPixmap);
+						m_transformPreviewSource = previewBitmap;
+						previewPixmap.Dispose();
+					}
 					SKPaint previewPaint = new SKPaint();
 					SKSamplingOptions previewSampling = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None);
 					canvas.Save();
 					canvas.SetMatrix(quadMatrix);
-					canvas.DrawImage(previewImage, 0.0f, 0.0f, previewSampling, previewPaint);
+					canvas.DrawImage(m_transformPreviewImage, 0.0f, 0.0f, previewSampling, previewPaint);
 					canvas.Restore();
 					previewPaint.Dispose();
-					previewImage.Dispose();
-					previewPixmap.Dispose();
 				}
 			}
 			int aboveStart = transform.LayerIndex() + 1;
@@ -1252,14 +1389,26 @@ namespace Bitmute.UI
 			SKRectI region = new SKRectI(docLeft, docTop, docRight, docBottom);
 			m_document.CompositeRangeInto(m_transformAbove, region, startIndex, endExclusive);
 			SKPixmap pixmap = m_transformAbove.PeekPixels();
-			SKImage image = SKImage.FromPixels(pixmap);
-			SKRect srcRect = new SKRect(docLeft, docTop, docRight, docBottom);
+			SKPixmap regionPixmap = new SKPixmap();
+			bool extracted = pixmap.ExtractSubset(regionPixmap, region);
 			SKRect dstRect = new SKRect(m_offsetX + (docLeft * m_zoom), m_offsetY + (docTop * m_zoom), m_offsetX + (docRight * m_zoom), m_offsetY + (docBottom * m_zoom));
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
 			SKPaint paint = new SKPaint();
-			canvas.DrawImage(image, srcRect, dstRect, sampling, paint);
+			if (extracted)
+			{
+				SKImage regionImage = SKImage.FromPixels(regionPixmap);
+				canvas.DrawImage(regionImage, dstRect, sampling, paint);
+				regionImage.Dispose();
+			}
+			else
+			{
+				SKImage image = SKImage.FromPixels(pixmap);
+				SKRect srcRect = new SKRect(docLeft, docTop, docRight, docBottom);
+				canvas.DrawImage(image, srcRect, dstRect, sampling, paint);
+				image.Dispose();
+			}
 			paint.Dispose();
-			image.Dispose();
+			regionPixmap.Dispose();
 			pixmap.Dispose();
 		}
 

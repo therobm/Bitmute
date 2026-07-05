@@ -4121,6 +4121,10 @@ namespace Bitmute.UI
 			m_documents.Remove(panel);
 			m_workspace.Remove(panel);
 			DocumentWindow window = panel as DocumentWindow;
+			if (window != null && window.Canvas() != null)
+			{
+				window.Canvas().ReleaseGpuResources();
+			}
 			if (window != null && m_activeDocumentWindow == window)
 			{
 				m_activeDocumentWindow = null;
