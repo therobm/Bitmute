@@ -762,7 +762,8 @@ namespace Bitmute.UI
 				return;
 			}
 			document.BeginCanvasEdit("Paste");
-			Layer layer = document.AddLayer("Pasted");
+			int pastedNumber = document.Layers().Count + 1;
+			Layer layer = document.AddLayer("Layer " + pastedNumber);
 			if (layer == null)
 			{
 				document.EndCanvasEdit();
@@ -2849,6 +2850,11 @@ namespace Bitmute.UI
 		private void FocusKeyboardSinkDeferred()
 		{
 			FocusKeyboardSink();
+		}
+
+		public void RestoreKeyboardFocusDeferred()
+		{
+			Dispatcher.Dispatch(FocusKeyboardSinkDeferred);
 		}
 
 		public void OpenColorPicker(bool foreground)

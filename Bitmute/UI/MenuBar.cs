@@ -673,6 +673,7 @@ namespace Bitmute.UI
 					{
 						item.m_invoke();
 					}
+					m_main.RestoreKeyboardFocusDeferred();
 					return;
 				}
 			}

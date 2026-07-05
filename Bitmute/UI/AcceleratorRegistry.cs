@@ -216,6 +216,16 @@ namespace Bitmute.UI
 			args.Handled = true;
 		}
 
+		private void OnAcceleratorDuplicateLayer(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.DuplicateActiveLayer();
+			args.Handled = true;
+		}
+
 		private void OnAcceleratorMergeSelected(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
 			if (m_main.IsTextEditActive())
@@ -352,6 +362,7 @@ namespace Bitmute.UI
 			AddAccelerator(element, (Windows.System.VirtualKey)187, OnAcceleratorZoomIn);
 			AddAccelerator(element, (Windows.System.VirtualKey)189, OnAcceleratorZoomOut);
 			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorSaveAs);
+			AddAccelerator(element, Windows.System.VirtualKey.J, OnAcceleratorDuplicateLayer);
 			AddAccelerator(element, Windows.System.VirtualKey.E, OnAcceleratorMergeSelected);
 			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.E, OnAcceleratorMergeVisible);
 			AddCtrlAltShiftAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorExport);
