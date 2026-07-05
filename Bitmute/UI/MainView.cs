@@ -279,6 +279,10 @@ namespace Bitmute.UI
 				items.Add(new MenuBarItem("All", eMenuAction.SelectAll, "Ctrl+A"));
 				items.Add(new MenuBarItem("Deselect", eMenuAction.Deselect, "Ctrl+D"));
 				items.Add(new MenuBarItem("Invert", eMenuAction.InvertSelection, "Ctrl+Shift+I"));
+				MenuBarItem feather = new MenuBarItem("Feather…", eMenuAction.FeatherSelection);
+				Document selectDocument = ActiveDocument();
+				feather.m_enabled = selectDocument != null && selectDocument.Selection().IsActive();
+				items.Add(feather);
 				return items;
 			}
 			if (title == "Filter")
@@ -579,6 +583,11 @@ namespace Bitmute.UI
 			if (action == eMenuAction.InvertSelection)
 			{
 				DoInvertSelection();
+				return;
+			}
+			if (action == eMenuAction.FeatherSelection)
+			{
+				OpenAdjustment("feather");
 				return;
 			}
 			if (action == eMenuAction.InvertColors)
@@ -984,6 +993,11 @@ namespace Bitmute.UI
 				ShowModal(new AdjustmentDialog("Rotate Arbitrary", "rotate", new string[] { "Angle" }, new int[] { -180 }, new int[] { 180 }, new int[] { 0 }), 360.0, 170.0);
 				return;
 			}
+			if (id == "feather")
+			{
+				ShowModal(new AdjustmentDialog("Feather Selection", "feather", new string[] { "Radius" }, new int[] { 1 }, new int[] { 100 }, new int[] { 4 }), 360.0, 170.0);
+				return;
+			}
 			if (id == "bc")
 			{
 				ShowModal(new AdjustmentDialog("Brightness/Contrast", "bc", new string[] { "Brightness", "Contrast" }, new int[] { -100, -100 }, new int[] { 100, 100 }, new int[] { 0, 0 }), 360.0, 230.0);
@@ -1040,6 +1054,12 @@ namespace Bitmute.UI
 				document.RotateArbitrary(first, 2);
 				document.EndCanvasEdit();
 				FinishCanvasOp(canvas, document);
+				return;
+			}
+			if (id == "feather")
+			{
+				document.Selection().FeatherActive(first);
+				canvas.InvalidateSurface();
 				return;
 			}
 			Layer activeLayer = document.ActiveLayer();

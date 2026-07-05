@@ -93,6 +93,7 @@ namespace Bitmute.Tests
 			TestInnerGlowInsideOnly();
 			TestSpreadDilatesBeforeBlur();
 			TestBevelOppositeSides();
+			TestFeatherActive();
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");
@@ -1770,6 +1771,31 @@ namespace Bitmute.Tests
 			Check(sel.Coverage(0, 0) == 127, "coverage accessor exact value");
 			Check(sel.Coverage(-1, 0) == 0, "coverage out of bounds x is zero");
 			Check(sel.Coverage(0, 9) == 0, "coverage out of bounds y is zero");
+		}
+
+		private static void TestFeatherActive()
+		{
+			Document doc = new Document("t", 32, 32);
+			Selection sel = doc.Selection();
+			sel.SelectRect(new SKRectI(4, 4, 28, 28));
+			int generationBefore = sel.Generation();
+			sel.FeatherActive(2);
+			Check(sel.IsActive(), "feather active keeps selection active");
+			Check(sel.Generation() > generationBefore, "feather active bumps the generation");
+			bool hasPartial = false;
+			for (int y = 0; y < 32; y++)
+			{
+				for (int x = 0; x < 32; x++)
+				{
+					int cov = sel.Coverage(x, y);
+					if (cov > 0 && cov < 255)
+					{
+						hasPartial = true;
+					}
+				}
+			}
+			Check(hasPartial, "feather active produces a partial coverage band");
+			Check(sel.Coverage(16, 16) == 255, "feather active keeps the selection center solid");
 		}
 
 		private static void TestInnerGlowInsideOnly()

@@ -454,6 +454,19 @@ namespace Bitmute.Imaging
 			RecomputeFromMask();
 		}
 
+		public void FeatherActive(int radius)
+		{
+			if (!m_active || radius <= 0)
+			{
+				return;
+			}
+			int savedRadius = m_featherRadius;
+			m_featherRadius = radius;
+			FeatherRegion(m_mask, m_bounds);
+			m_featherRadius = savedRadius;
+			RecomputeFromMask();
+		}
+
 		public void SelectRect(SKRectI rect)
 		{
 			int left = rect.Left;

@@ -52,6 +52,7 @@ namespace Bitmute.UI
 		SelectAll,
 		Deselect,
 		InvertSelection,
+		FeatherSelection,
 		GaussianBlur,
 		UnsharpMask,
 		AddNoise,
