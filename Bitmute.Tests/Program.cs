@@ -113,6 +113,7 @@ namespace Bitmute.Tests
 			TestDabClampedToSelectionBounds();
 			TestFloodFillMatchesReference();
 			TestTrimAndResizeCanvas();
+			TestRowBandsCoverage();
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");
@@ -2898,6 +2899,59 @@ namespace Bitmute.Tests
 			Check(doc.Width() == 8 && doc.Height() == 4, "shrink resize dims");
 			Check(doc.ActiveLayer().Bitmap().GetPixel(5, 3) == new SKColor(30, 200, 90, 255), "top-left anchor shrink keeps surviving content");
 			Check(doc.ActiveLayer().Bitmap().GetPixel(0, 0).Alpha == 0, "top-left anchor shrink keeps empty corner transparent");
+		}
+
+		private sealed class BandCoverageCounter
+		{
+			public int[] m_visits;
+
+			public void Band(int start, int end)
+			{
+				for (int index = start; index < end; index++)
+				{
+					m_visits[index] = m_visits[index] + 1;
+				}
+			}
+		}
+
+		private static bool RowBandsCoversExactlyOnce(int start, int end)
+		{
+			BandCoverageCounter counter = new BandCoverageCounter();
+			counter.m_visits = new int[end];
+			RowBands.Run(start, end, counter.Band);
+			for (int index = start; index < end; index++)
+			{
+				if (counter.m_visits[index] != 1)
+				{
+					return false;
+				}
+			}
+			for (int index = 0; index < start; index++)
+			{
+				if (counter.m_visits[index] != 0)
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+
+		private static void TestRowBandsCoverage()
+		{
+			Check(RowBandsCoversExactlyOnce(0, 1), "row bands cover single row");
+			Check(RowBandsCoversExactlyOnce(0, 15), "row bands cover below-minimum span inline");
+			Check(RowBandsCoversExactlyOnce(0, 4096), "row bands cover large even span");
+			Check(RowBandsCoversExactlyOnce(0, 4097), "row bands cover large odd span");
+			Check(RowBandsCoversExactlyOnce(7, 3001), "row bands cover offset span");
+			BandCoverageCounter empty = new BandCoverageCounter();
+			empty.m_visits = new int[4];
+			RowBands.Run(2, 2, empty.Band);
+			Check(empty.m_visits[2] == 0, "row bands skip empty span");
+			int savedMax = RowBands.MaxBands();
+			RowBands.SetMaxBands(1);
+			Check(RowBandsCoversExactlyOnce(0, 4096), "row bands cover with single band forced");
+			RowBands.SetMaxBands(savedMax);
+			Check(RowBands.MaxBands() == savedMax, "max bands restored");
 		}
 	}
 }
