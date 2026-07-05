@@ -80,7 +80,7 @@ namespace Bitmute.UI
 
 		private bool IsFilterCategory(eMenuAction category)
 		{
-			return category == eMenuAction.FilterBlurMenu || category == eMenuAction.FilterDistortMenu || category == eMenuAction.FilterNoiseMenu || category == eMenuAction.FilterPixelateMenu || category == eMenuAction.FilterRenderMenu || category == eMenuAction.FilterSharpenMenu || category == eMenuAction.FilterStylizeMenu || category == eMenuAction.FilterVideoMenu;
+			return category == eMenuAction.FilterBlurMenu || category == eMenuAction.FilterDistortMenu || category == eMenuAction.FilterNoiseMenu || category == eMenuAction.FilterPixelateMenu || category == eMenuAction.FilterRenderMenu || category == eMenuAction.FilterSharpenMenu || category == eMenuAction.FilterStylizeMenu || category == eMenuAction.FilterVideoMenu || category == eMenuAction.FilterOtherMenu;
 		}
 
 		private void RecordLastFilter(Adjustment adjustment, int[] values)
@@ -650,7 +650,7 @@ namespace Bitmute.UI
 			AddInstant(eMenuAction.SharpenEdges, eMenuAction.FilterSharpenMenu, "Sharpen Edges", RunSharpenEdges);
 			AddInstant(eMenuAction.SharpenMore, eMenuAction.FilterSharpenMenu, "Sharpen More", RunSharpenMore);
 			AddDialog(eMenuAction.UnsharpMask, eMenuAction.FilterSharpenMenu, "Unsharp Mask", true, new string[] { "Amount", "Radius" }, new int[] { 0, 1 }, new int[] { 300, 30 }, new int[] { 100, 3 }, 360.0, 230.0, RunUnsharpMask);
-			AddDialog(eMenuAction.HighPass, eMenuAction.FilterSharpenMenu, "High Pass", true, new string[] { "Radius" }, new int[] { 1 }, new int[] { 30 }, new int[] { 5 }, 360.0, 200.0, RunHighPass);
+			AddDialog(eMenuAction.HighPass, eMenuAction.FilterOtherMenu, "High Pass", true, new string[] { "Radius" }, new int[] { 1 }, new int[] { 30 }, new int[] { 5 }, 360.0, 200.0, RunHighPass);
 
 			Adjustment diffuse = AddChoiceDialog(eMenuAction.Diffuse, eMenuAction.FilterStylizeMenu, "Diffuse", true, s_noLabels, s_noValues, s_noValues, s_noValues, new string[] { "Mode" }, new string[][] { new string[] { "Normal", "Darken Only", "Lighten Only" } }, new int[] { 0 }, 360.0, 200.0, RunDiffuse);
 			diffuse.m_skslSource = GpuFilterPreview.DiffuseSource;

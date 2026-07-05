@@ -118,7 +118,8 @@ namespace Bitmute.UI
 		Spherize,
 		Twirl,
 		Wave,
-		TogglePatternPreview
+		TogglePatternPreview,
+		FilterOtherMenu
 	}
 
 	public class MenuBarItem
