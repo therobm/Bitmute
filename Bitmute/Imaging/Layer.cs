@@ -88,6 +88,8 @@ namespace Bitmute.Imaging
 		private bool m_glowCacheDirty;
 		private bool m_innerGlowCacheDirty;
 		private bool m_bevelCacheDirty;
+		private SKRectI m_styleContentBounds;
+		private bool m_styleContentValid;
 
 		public static bool IsCustomBlend(eBlendMode blendMode)
 		{
@@ -512,6 +514,7 @@ namespace Bitmute.Imaging
 			m_glowCacheDirty = true;
 			m_innerGlowCacheDirty = true;
 			m_bevelCacheDirty = true;
+			m_styleContentValid = false;
 		}
 
 		private void DisposeStyleCache()
@@ -545,6 +548,16 @@ namespace Bitmute.Imaging
 
 		private void EnsureStyleCache()
 		{
+			bool anyDirty = m_shadowCacheDirty || m_glowCacheDirty || m_innerGlowCacheDirty || m_bevelCacheDirty || m_strokeCacheDirty;
+			if (!anyDirty)
+			{
+				return;
+			}
+			if (!m_styleContentValid)
+			{
+				m_styleContentBounds = PixelRegion.ComputeContentBounds(m_bitmap);
+				m_styleContentValid = true;
+			}
 			if (m_shadowCacheDirty)
 			{
 				if (m_cacheShadow != null)
@@ -558,7 +571,7 @@ namespace Bitmute.Imaging
 					int shadowOffsetX = (int)System.Math.Round(System.Math.Cos(radians) * m_layerStyle.m_shadowDistance);
 					int shadowOffsetY = (int)System.Math.Round(System.Math.Sin(radians) * m_layerStyle.m_shadowDistance);
 					byte shadowOpacity = (byte)((m_layerStyle.m_shadowOpacity * 255) / 100);
-					m_cacheShadow = LayerStyles.RenderDropShadow(m_bitmap, m_layerStyle.m_shadowColor, shadowOffsetX, shadowOffsetY, m_layerStyle.m_shadowSize, m_layerStyle.m_shadowSpread, shadowOpacity, out m_cacheShadowX, out m_cacheShadowY);
+					m_cacheShadow = LayerStyles.RenderDropShadow(m_bitmap, m_styleContentBounds, m_layerStyle.m_shadowColor, shadowOffsetX, shadowOffsetY, m_layerStyle.m_shadowSize, m_layerStyle.m_shadowSpread, shadowOpacity, out m_cacheShadowX, out m_cacheShadowY);
 				}
 				m_shadowCacheDirty = false;
 			}
@@ -572,7 +585,7 @@ namespace Bitmute.Imaging
 				if (m_layerStyle.m_hasOuterGlow)
 				{
 					byte glowOpacity = (byte)((m_layerStyle.m_glowOpacity * 255) / 100);
-					m_cacheGlow = LayerStyles.RenderOuterGlow(m_bitmap, m_layerStyle.m_glowColor, m_layerStyle.m_glowSize, m_layerStyle.m_glowSpread, glowOpacity, out m_cacheGlowX, out m_cacheGlowY);
+					m_cacheGlow = LayerStyles.RenderOuterGlow(m_bitmap, m_styleContentBounds, m_layerStyle.m_glowColor, m_layerStyle.m_glowSize, m_layerStyle.m_glowSpread, glowOpacity, out m_cacheGlowX, out m_cacheGlowY);
 				}
 				m_glowCacheDirty = false;
 			}
@@ -586,7 +599,7 @@ namespace Bitmute.Imaging
 				if (m_layerStyle.m_hasInnerGlow)
 				{
 					byte innerGlowOpacity = (byte)((m_layerStyle.m_innerGlowOpacity * 255) / 100);
-					m_cacheInnerGlow = LayerStyles.RenderInnerGlow(m_bitmap, m_layerStyle.m_innerGlowColor, m_layerStyle.m_innerGlowSize, m_layerStyle.m_innerGlowSpread, innerGlowOpacity, out m_cacheInnerGlowX, out m_cacheInnerGlowY);
+					m_cacheInnerGlow = LayerStyles.RenderInnerGlow(m_bitmap, m_styleContentBounds, m_layerStyle.m_innerGlowColor, m_layerStyle.m_innerGlowSize, m_layerStyle.m_innerGlowSpread, innerGlowOpacity, out m_cacheInnerGlowX, out m_cacheInnerGlowY);
 				}
 				m_innerGlowCacheDirty = false;
 			}
@@ -601,7 +614,7 @@ namespace Bitmute.Imaging
 				{
 					byte bevelHighlightOpacity = (byte)((m_layerStyle.m_bevelHighlightOpacity * 255) / 100);
 					byte bevelShadowOpacity = (byte)((m_layerStyle.m_bevelShadowOpacity * 255) / 100);
-					m_cacheBevel = LayerStyles.RenderBevel(m_bitmap, m_layerStyle.m_bevelDepth, m_layerStyle.m_bevelSize, m_layerStyle.m_bevelAngle, m_layerStyle.m_bevelHighlightColor, bevelHighlightOpacity, m_layerStyle.m_bevelShadowColor, bevelShadowOpacity, out m_cacheBevelX, out m_cacheBevelY);
+					m_cacheBevel = LayerStyles.RenderBevel(m_bitmap, m_styleContentBounds, m_layerStyle.m_bevelDepth, m_layerStyle.m_bevelSize, m_layerStyle.m_bevelAngle, m_layerStyle.m_bevelHighlightColor, bevelHighlightOpacity, m_layerStyle.m_bevelShadowColor, bevelShadowOpacity, out m_cacheBevelX, out m_cacheBevelY);
 				}
 				m_bevelCacheDirty = false;
 			}
@@ -615,7 +628,7 @@ namespace Bitmute.Imaging
 				if (m_layerStyle.m_hasStroke)
 				{
 					byte strokeOpacity = (byte)((m_layerStyle.m_strokeOpacity * 255) / 100);
-					m_cacheStroke = LayerStyles.RenderStroke(m_bitmap, m_layerStyle.m_strokeSize, m_layerStyle.m_strokePosition, m_layerStyle.m_strokeColor, strokeOpacity, out m_cacheStrokeX, out m_cacheStrokeY);
+					m_cacheStroke = LayerStyles.RenderStroke(m_bitmap, m_styleContentBounds, m_layerStyle.m_strokeSize, m_layerStyle.m_strokePosition, m_layerStyle.m_strokeColor, strokeOpacity, out m_cacheStrokeX, out m_cacheStrokeY);
 				}
 				m_strokeCacheDirty = false;
 			}

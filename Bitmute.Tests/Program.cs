@@ -93,6 +93,8 @@ namespace Bitmute.Tests
 			TestInnerGlowInsideOnly();
 			TestSpreadDilatesBeforeBlur();
 			TestBevelOppositeSides();
+			TestLayerStyleBoundingInvariance();
+			TestLayerStyleEmptyContent();
 			TestFeatherActive();
 			TestBrightnessContrastMatchesReference();
 			TestHueSaturationLightnessMatchesReference();
@@ -1212,10 +1214,10 @@ namespace Bitmute.Tests
 			int strokePlaceY;
 			SKColor blue = new SKColor(0, 0, 255, 255);
 			SKBitmap stroke = LayerStyles.RenderStroke(source, 2, 2, blue, out strokePlaceX, out strokePlaceY);
-			Check(strokePlaceX == -2 && strokePlaceY == -2, "stroke placement offset");
-			SKColor strokeBand = stroke.GetPixel(4, 9);
+			Check(strokePlaceX == 1 && strokePlaceY == 1, "stroke placement crops to the content reach");
+			SKColor strokeBand = stroke.GetPixel(2 - strokePlaceX, 7 - strokePlaceY);
 			Check(strokeBand.Blue == 255 && strokeBand.Alpha == 255, "outside stroke band is opaque color");
-			SKColor strokeInside = stroke.GetPixel(9, 9);
+			SKColor strokeInside = stroke.GetPixel(7 - strokePlaceX, 7 - strokePlaceY);
 			Check(strokeInside.Alpha == 0, "outside stroke leaves interior clear");
 			SKColor strokeFar = stroke.GetPixel(0, 0);
 			Check(strokeFar.Alpha == 0, "outside stroke far corner is clear");
@@ -1225,11 +1227,10 @@ namespace Bitmute.Tests
 			int shadowPlaceY;
 			SKColor black = new SKColor(0, 0, 0, 255);
 			SKBitmap shadow = LayerStyles.RenderDropShadow(source, black, 4, 4, 0, 255, out shadowPlaceX, out shadowPlaceY);
-			Check(shadowPlaceX == 0 && shadowPlaceY == 0, "shadow placement offset");
-			SKColor shadowPixel = shadow.GetPixel(10, 10);
+			Check(shadowPlaceX == 8 && shadowPlaceY == 8, "shadow placement crops to the offset content");
+			SKColor shadowPixel = shadow.GetPixel(10 - shadowPlaceX, 10 - shadowPlaceY);
 			Check(shadowPixel.Alpha == 255 && shadowPixel.Red == 0 && shadowPixel.Green == 0 && shadowPixel.Blue == 0, "drop shadow is offset opaque black");
-			SKColor shadowClear = shadow.GetPixel(2, 2);
-			Check(shadowClear.Alpha == 0, "drop shadow origin area is clear");
+			Check(shadow.Width == 8 && shadow.Height == 8, "drop shadow crop covers only the offset content");
 			shadow.Dispose();
 
 			int glowPlaceX;
@@ -1900,10 +1901,9 @@ namespace Bitmute.Tests
 			int hardPlaceY;
 			SKColor yellow = new SKColor(255, 255, 0, 255);
 			SKBitmap hard = LayerStyles.RenderOuterGlow(source, yellow, 4, 100, 255, out hardPlaceX, out hardPlaceY);
-			SKColor dilatedBand = hard.GetPixel(4, 12);
+			SKColor dilatedBand = hard.GetPixel(0 - hardPlaceX, 8 - hardPlaceY);
 			Check(dilatedBand.Alpha == 255, "spread 100 dilates the silhouette to a hard opaque band");
-			SKColor beyondBand = hard.GetPixel(3, 12);
-			Check(beyondBand.Alpha == 0, "spread 100 has a hard edge with no blur beyond the dilation");
+			Check(hardPlaceX == 0 && hard.Width == 16, "spread 100 has a hard edge with no blur beyond the dilation");
 			hard.Dispose();
 			int softPlaceX;
 			int softPlaceY;
@@ -1936,17 +1936,153 @@ namespace Bitmute.Tests
 			SKColor white = new SKColor(255, 255, 255, 255);
 			SKColor black = new SKColor(0, 0, 0, 255);
 			SKBitmap bevel = LayerStyles.RenderBevel(source, 100, 3, 0, white, 255, black, 255, out placeX, out placeY);
-			Check(placeX == 0 && placeY == 0, "bevel placement is the source origin");
-			SKColor leftBand = bevel.GetPixel(5, 10);
+			Check(placeX == 3 && placeY == 3, "bevel placement crops to the content reach");
+			SKColor leftBand = bevel.GetPixel(5 - placeX, 10 - placeY);
 			Check(leftBand.Alpha > 0 && leftBand.Red == 255 && leftBand.Green == 255 && leftBand.Blue == 255, "bevel angle 0 lights the left edge with the highlight color");
-			SKColor rightBand = bevel.GetPixel(14, 10);
+			SKColor rightBand = bevel.GetPixel(14 - placeX, 10 - placeY);
 			Check(rightBand.Alpha > 0 && rightBand.Red == 0 && rightBand.Green == 0 && rightBand.Blue == 0, "bevel angle 0 shades the right edge with the shadow color");
-			SKColor outside = bevel.GetPixel(2, 10);
+			SKColor outside = bevel.GetPixel(3 - placeX, 10 - placeY);
 			Check(outside.Alpha == 0, "bevel writes nothing outside the body alpha");
-			SKColor center = bevel.GetPixel(10, 10);
+			SKColor center = bevel.GetPixel(10 - placeX, 10 - placeY);
 			Check(center.Alpha == 0, "bevel leaves the flat body center untouched");
 			bevel.Dispose();
 			source.Dispose();
+		}
+
+		private static void DrawStyleTestContent(SKBitmap bitmap, int originX, int originY)
+		{
+			for (int y = 0; y < 8; y++)
+			{
+				for (int x = 0; x < 10; x++)
+				{
+					if (x >= 6 && y < 3)
+					{
+						continue;
+					}
+					byte alpha = 255;
+					if (y == 7)
+					{
+						alpha = 90;
+					}
+					bitmap.SetPixel(originX + x, originY + y, new SKColor((byte)(20 * x), (byte)(30 * y), 200, alpha));
+				}
+			}
+		}
+
+		private static SKColor StyleLayerPixel(SKBitmap effect, int placeX, int placeY, int contentOriginX, int contentOriginY, int dx, int dy)
+		{
+			if (effect == null)
+			{
+				return new SKColor(0, 0, 0, 0);
+			}
+			int x = (contentOriginX + dx) - placeX;
+			int y = (contentOriginY + dy) - placeY;
+			if (x < 0 || y < 0 || x >= effect.Width || y >= effect.Height)
+			{
+				return new SKColor(0, 0, 0, 0);
+			}
+			return effect.GetPixel(x, y);
+		}
+
+		private static int CompareStyleEffects(SKBitmap first, int firstPlaceX, int firstPlaceY, int firstOriginX, int firstOriginY, SKBitmap second, int secondPlaceX, int secondPlaceY, int secondOriginX, int secondOriginY, int reach)
+		{
+			int mismatches = 0;
+			for (int dy = -reach; dy < 8 + reach; dy++)
+			{
+				for (int dx = -reach; dx < 10 + reach; dx++)
+				{
+					SKColor firstColor = StyleLayerPixel(first, firstPlaceX, firstPlaceY, firstOriginX, firstOriginY, dx, dy);
+					SKColor secondColor = StyleLayerPixel(second, secondPlaceX, secondPlaceY, secondOriginX, secondOriginY, dx, dy);
+					if (firstColor.Alpha == 0 && secondColor.Alpha == 0)
+					{
+						continue;
+					}
+					if (firstColor != secondColor)
+					{
+						mismatches = mismatches + 1;
+					}
+				}
+			}
+			return mismatches;
+		}
+
+		private static void TestLayerStyleBoundingInvariance()
+		{
+			SKBitmap small = new SKBitmap(40, 36, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			small.Erase(SKColors.Transparent);
+			DrawStyleTestContent(small, 14, 13);
+			SKBitmap large = new SKBitmap(120, 90, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			large.Erase(SKColors.Transparent);
+			DrawStyleTestContent(large, 50, 41);
+
+			int smallPlaceX;
+			int smallPlaceY;
+			int largePlaceX;
+			int largePlaceY;
+			SKColor styleColor = new SKColor(255, 128, 0, 255);
+			SKColor darkColor = new SKColor(0, 0, 0, 255);
+			SKColor lightColor = new SKColor(255, 255, 255, 255);
+
+			SKBitmap smallShadow = LayerStyles.RenderDropShadow(small, styleColor, 3, 2, 4, 30, 200, out smallPlaceX, out smallPlaceY);
+			SKBitmap largeShadow = LayerStyles.RenderDropShadow(large, styleColor, 3, 2, 4, 30, 200, out largePlaceX, out largePlaceY);
+			int shadowMismatch = CompareStyleEffects(smallShadow, smallPlaceX, smallPlaceY, 14, 13, largeShadow, largePlaceX, largePlaceY, 50, 41, 14);
+			Check(shadowMismatch == 0, "drop shadow output is placement invariant (" + shadowMismatch + " mismatches)");
+			smallShadow.Dispose();
+			largeShadow.Dispose();
+
+			SKBitmap smallGlow = LayerStyles.RenderOuterGlow(small, styleColor, 5, 40, 220, out smallPlaceX, out smallPlaceY);
+			SKBitmap largeGlow = LayerStyles.RenderOuterGlow(large, styleColor, 5, 40, 220, out largePlaceX, out largePlaceY);
+			int glowMismatch = CompareStyleEffects(smallGlow, smallPlaceX, smallPlaceY, 14, 13, largeGlow, largePlaceX, largePlaceY, 50, 41, 14);
+			Check(glowMismatch == 0, "outer glow output is placement invariant (" + glowMismatch + " mismatches)");
+			smallGlow.Dispose();
+			largeGlow.Dispose();
+
+			SKBitmap smallInner = LayerStyles.RenderInnerGlow(small, styleColor, 5, 20, 220, out smallPlaceX, out smallPlaceY);
+			SKBitmap largeInner = LayerStyles.RenderInnerGlow(large, styleColor, 5, 20, 220, out largePlaceX, out largePlaceY);
+			int innerMismatch = CompareStyleEffects(smallInner, smallPlaceX, smallPlaceY, 14, 13, largeInner, largePlaceX, largePlaceY, 50, 41, 14);
+			Check(innerMismatch == 0, "inner glow output is placement invariant (" + innerMismatch + " mismatches)");
+			smallInner.Dispose();
+			largeInner.Dispose();
+
+			SKBitmap smallBevel = LayerStyles.RenderBevel(small, 100, 5, 45, lightColor, 255, darkColor, 255, out smallPlaceX, out smallPlaceY);
+			SKBitmap largeBevel = LayerStyles.RenderBevel(large, 100, 5, 45, lightColor, 255, darkColor, 255, out largePlaceX, out largePlaceY);
+			int bevelMismatch = CompareStyleEffects(smallBevel, smallPlaceX, smallPlaceY, 14, 13, largeBevel, largePlaceX, largePlaceY, 50, 41, 14);
+			Check(bevelMismatch == 0, "bevel output is placement invariant (" + bevelMismatch + " mismatches)");
+			smallBevel.Dispose();
+			largeBevel.Dispose();
+
+			for (int position = 0; position <= 2; position++)
+			{
+				SKBitmap smallStroke = LayerStyles.RenderStroke(small, 3, position, styleColor, 230, out smallPlaceX, out smallPlaceY);
+				SKBitmap largeStroke = LayerStyles.RenderStroke(large, 3, position, styleColor, 230, out largePlaceX, out largePlaceY);
+				int strokeMismatch = CompareStyleEffects(smallStroke, smallPlaceX, smallPlaceY, 14, 13, largeStroke, largePlaceX, largePlaceY, 50, 41, 14);
+				Check(strokeMismatch == 0, "stroke position " + position + " output is placement invariant (" + strokeMismatch + " mismatches)");
+				smallStroke.Dispose();
+				largeStroke.Dispose();
+			}
+
+			small.Dispose();
+			large.Dispose();
+		}
+
+		private static void TestLayerStyleEmptyContent()
+		{
+			SKBitmap empty = new SKBitmap(24, 24, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			empty.Erase(SKColors.Transparent);
+			int placeX;
+			int placeY;
+			SKColor color = new SKColor(255, 0, 0, 255);
+			SKBitmap shadow = LayerStyles.RenderDropShadow(empty, color, 4, 4, 3, 0, 255, out placeX, out placeY);
+			Check(shadow == null, "drop shadow on an empty layer renders nothing");
+			SKBitmap glow = LayerStyles.RenderOuterGlow(empty, color, 4, 0, 255, out placeX, out placeY);
+			Check(glow == null, "outer glow on an empty layer renders nothing");
+			SKBitmap inner = LayerStyles.RenderInnerGlow(empty, color, 4, 0, 255, out placeX, out placeY);
+			Check(inner == null, "inner glow on an empty layer renders nothing");
+			SKBitmap bevel = LayerStyles.RenderBevel(empty, 100, 4, 45, color, 255, color, 255, out placeX, out placeY);
+			Check(bevel == null, "bevel on an empty layer renders nothing");
+			SKBitmap stroke = LayerStyles.RenderStroke(empty, 3, 2, color, 255, out placeX, out placeY);
+			Check(stroke == null, "stroke on an empty layer renders nothing");
+			empty.Dispose();
 		}
 
 		private static SKBitmap BuildAdjustmentTestBitmap()

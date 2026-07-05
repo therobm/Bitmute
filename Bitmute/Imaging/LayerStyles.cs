@@ -5,11 +5,19 @@ namespace Bitmute.Imaging
 {
 	public static class LayerStyles
 	{
+		private static byte[] s_alphaPool;
+		private static byte[] s_statePool;
+		private static byte[] s_planePool;
+		private static int[] s_distancePool;
+		private static double[] s_blurPoolA;
+		private static double[] s_blurPoolB;
+
 		private sealed unsafe class StampAlphaWorker
 		{
 			public byte* m_sourceBase;
 			public int m_sourceRowBytes;
-			public int m_sourceWidth;
+			public int m_contentLeft;
+			public int m_contentRight;
 			public byte[] m_destAlpha;
 			public int m_destWidth;
 			public int m_destHeight;
@@ -27,7 +35,7 @@ namespace Bitmute.Imaging
 					}
 					byte* sourceRow = m_sourceBase + (sourceY * m_sourceRowBytes);
 					int destRow = destY * m_destWidth;
-					for (int sourceX = 0; sourceX < m_sourceWidth; sourceX++)
+					for (int sourceX = m_contentLeft; sourceX < m_contentRight; sourceX++)
 					{
 						int destX = sourceX + m_stampX;
 						if (destX < 0 || destX >= m_destWidth)
@@ -212,19 +220,80 @@ namespace Bitmute.Imaging
 			return bitmap;
 		}
 
-		private static unsafe void StampAlpha(SKBitmap source, byte[] destAlpha, int destWidth, int destHeight, int stampX, int stampY)
+		private static byte[] AlphaPool(int count)
 		{
-			int sourceHeight = source.Height;
+			if (s_alphaPool == null || s_alphaPool.Length < count)
+			{
+				s_alphaPool = new byte[count];
+			}
+			return s_alphaPool;
+		}
+
+		private static byte[] StatePool(int count)
+		{
+			if (s_statePool == null || s_statePool.Length < count)
+			{
+				s_statePool = new byte[count];
+			}
+			return s_statePool;
+		}
+
+		private static byte[] PlanePool(int count)
+		{
+			if (s_planePool == null || s_planePool.Length < count)
+			{
+				s_planePool = new byte[count];
+			}
+			return s_planePool;
+		}
+
+		private static int[] DistancePool(int count)
+		{
+			if (s_distancePool == null || s_distancePool.Length < count)
+			{
+				s_distancePool = new int[count];
+			}
+			return s_distancePool;
+		}
+
+		private static SKRectI CropPlane(SKRectI plane, SKRectI support)
+		{
+			int left = support.Left;
+			if (left < plane.Left)
+			{
+				left = plane.Left;
+			}
+			int top = support.Top;
+			if (top < plane.Top)
+			{
+				top = plane.Top;
+			}
+			int right = support.Right;
+			if (right > plane.Right)
+			{
+				right = plane.Right;
+			}
+			int bottom = support.Bottom;
+			if (bottom > plane.Bottom)
+			{
+				bottom = plane.Bottom;
+			}
+			return new SKRectI(left, top, right, bottom);
+		}
+
+		private static unsafe void StampAlpha(SKBitmap source, SKRectI content, byte[] destAlpha, int destWidth, int destHeight, int stampX, int stampY)
+		{
 			StampAlphaWorker worker = new StampAlphaWorker();
 			worker.m_sourceBase = (byte*)source.GetPixels().ToPointer();
 			worker.m_sourceRowBytes = source.RowBytes;
-			worker.m_sourceWidth = source.Width;
+			worker.m_contentLeft = content.Left;
+			worker.m_contentRight = content.Right;
 			worker.m_destAlpha = destAlpha;
 			worker.m_destWidth = destWidth;
 			worker.m_destHeight = destHeight;
 			worker.m_stampX = stampX;
 			worker.m_stampY = stampY;
-			RowBands.Run(0, sourceHeight, worker.Band);
+			RowBands.Run(content.Top, content.Bottom, worker.Band);
 		}
 
 		private static void BoxBlurHorizontal(double[] sourceAlpha, double[] destAlpha, int width, int height, int radius)
@@ -261,8 +330,16 @@ namespace Bitmute.Imaging
 				return;
 			}
 			int count = width * height;
-			double[] bufferA = new double[count];
-			double[] bufferB = new double[count];
+			if (s_blurPoolA == null || s_blurPoolA.Length < count)
+			{
+				s_blurPoolA = new double[count];
+			}
+			if (s_blurPoolB == null || s_blurPoolB.Length < count)
+			{
+				s_blurPoolB = new double[count];
+			}
+			double[] bufferA = s_blurPoolA;
+			double[] bufferB = s_blurPoolB;
 			for (int index = 0; index < count; index++)
 			{
 				bufferA[index] = alpha[index];
@@ -315,7 +392,8 @@ namespace Bitmute.Imaging
 		private static void ComputeDistance(byte[] state, int width, int height, int[] distance)
 		{
 			int infinity = 1 << 29;
-			for (int index = 0; index < distance.Length; index++)
+			int count = width * height;
+			for (int index = 0; index < count; index++)
 			{
 				distance[index] = infinity;
 			}
@@ -389,8 +467,9 @@ namespace Bitmute.Imaging
 			{
 				return;
 			}
-			byte[] state = new byte[alpha.Length];
-			for (int index = 0; index < state.Length; index++)
+			int count = width * height;
+			byte[] state = StatePool(count);
+			for (int index = 0; index < count; index++)
 			{
 				if (alpha[index] >= 128)
 				{
@@ -401,14 +480,14 @@ namespace Bitmute.Imaging
 					state[index] = 0;
 				}
 			}
-			int[] distance = new int[alpha.Length];
+			int[] distance = DistancePool(count);
 			ComputeDistance(state, width, height, distance);
 			DilateAlphaWorker worker = new DilateAlphaWorker();
 			worker.m_alpha = alpha;
 			worker.m_state = state;
 			worker.m_distance = distance;
 			worker.m_radius = radius;
-			RowBands.Run(0, alpha.Length, worker.Band);
+			RowBands.Run(0, count, worker.Band);
 		}
 
 		private static int SpreadPixels(int size, int spread)
@@ -430,8 +509,20 @@ namespace Bitmute.Imaging
 			return RenderDropShadow(source, color, offsetX, offsetY, blurRadius, 0, opacity, out placeX, out placeY);
 		}
 
-		public static unsafe SKBitmap RenderDropShadow(SKBitmap source, SKColor color, int offsetX, int offsetY, int blurRadius, int spread, byte opacity, out int placeX, out int placeY)
+		public static SKBitmap RenderDropShadow(SKBitmap source, SKColor color, int offsetX, int offsetY, int blurRadius, int spread, byte opacity, out int placeX, out int placeY)
 		{
+			SKRectI content = PixelRegion.ComputeContentBounds(source);
+			return RenderDropShadow(source, content, color, offsetX, offsetY, blurRadius, spread, opacity, out placeX, out placeY);
+		}
+
+		public static unsafe SKBitmap RenderDropShadow(SKBitmap source, SKRectI content, SKColor color, int offsetX, int offsetY, int blurRadius, int spread, byte opacity, out int placeX, out int placeY)
+		{
+			placeX = 0;
+			placeY = 0;
+			if (content.Width <= 0 || content.Height <= 0)
+			{
+				return null;
+			}
 			int sourceWidth = source.Width;
 			int sourceHeight = source.Height;
 			int left = 0;
@@ -460,14 +551,23 @@ namespace Bitmute.Imaging
 				bottom = shiftedBottom;
 			}
 			bottom = bottom + blurRadius;
-			placeX = left;
-			placeY = top;
-			int resultWidth = right - left;
-			int resultHeight = bottom - top;
-			SKBitmap result = CreateResult(resultWidth, resultHeight);
-			byte[] alpha = new byte[resultWidth * resultHeight];
-			StampAlpha(source, alpha, resultWidth, resultHeight, offsetX - left, offsetY - top);
 			int spreadRadius = SpreadPixels(blurRadius, spread);
+			int reach = spreadRadius + (3 * (blurRadius - spreadRadius));
+			SKRectI support = new SKRectI(content.Left + offsetX - reach, content.Top + offsetY - reach, content.Right + offsetX + reach, content.Bottom + offsetY + reach);
+			SKRectI crop = CropPlane(new SKRectI(left, top, right, bottom), support);
+			if (crop.Width <= 0 || crop.Height <= 0)
+			{
+				return null;
+			}
+			placeX = crop.Left;
+			placeY = crop.Top;
+			int resultWidth = crop.Width;
+			int resultHeight = crop.Height;
+			SKBitmap result = CreateResult(resultWidth, resultHeight);
+			int count = resultWidth * resultHeight;
+			byte[] alpha = AlphaPool(count);
+			Array.Clear(alpha, 0, count);
+			StampAlpha(source, content, alpha, resultWidth, resultHeight, offsetX - crop.Left, offsetY - crop.Top);
 			DilateAlpha(alpha, resultWidth, resultHeight, spreadRadius);
 			BlurAlpha(alpha, resultWidth, resultHeight, blurRadius - spreadRadius);
 			WriteColoredAlpha(result, alpha, color, opacity);
@@ -479,35 +579,77 @@ namespace Bitmute.Imaging
 			return RenderOuterGlow(source, color, size, 0, opacity, out placeX, out placeY);
 		}
 
-		public static unsafe SKBitmap RenderOuterGlow(SKBitmap source, SKColor color, int size, int spread, byte opacity, out int placeX, out int placeY)
+		public static SKBitmap RenderOuterGlow(SKBitmap source, SKColor color, int size, int spread, byte opacity, out int placeX, out int placeY)
 		{
+			SKRectI content = PixelRegion.ComputeContentBounds(source);
+			return RenderOuterGlow(source, content, color, size, spread, opacity, out placeX, out placeY);
+		}
+
+		public static unsafe SKBitmap RenderOuterGlow(SKBitmap source, SKRectI content, SKColor color, int size, int spread, byte opacity, out int placeX, out int placeY)
+		{
+			placeX = 0;
+			placeY = 0;
+			if (content.Width <= 0 || content.Height <= 0)
+			{
+				return null;
+			}
 			int sourceWidth = source.Width;
 			int sourceHeight = source.Height;
-			placeX = -size;
-			placeY = -size;
-			int resultWidth = sourceWidth + (2 * size);
-			int resultHeight = sourceHeight + (2 * size);
-			SKBitmap result = CreateResult(resultWidth, resultHeight);
-			byte[] alpha = new byte[resultWidth * resultHeight];
-			StampAlpha(source, alpha, resultWidth, resultHeight, size, size);
 			int spreadRadius = SpreadPixels(size, spread);
+			int reach = spreadRadius + (3 * (size - spreadRadius));
+			SKRectI support = new SKRectI(content.Left - reach, content.Top - reach, content.Right + reach, content.Bottom + reach);
+			SKRectI crop = CropPlane(new SKRectI(-size, -size, sourceWidth + size, sourceHeight + size), support);
+			if (crop.Width <= 0 || crop.Height <= 0)
+			{
+				return null;
+			}
+			placeX = crop.Left;
+			placeY = crop.Top;
+			int resultWidth = crop.Width;
+			int resultHeight = crop.Height;
+			SKBitmap result = CreateResult(resultWidth, resultHeight);
+			int count = resultWidth * resultHeight;
+			byte[] alpha = AlphaPool(count);
+			Array.Clear(alpha, 0, count);
+			StampAlpha(source, content, alpha, resultWidth, resultHeight, -crop.Left, -crop.Top);
 			DilateAlpha(alpha, resultWidth, resultHeight, spreadRadius);
 			BlurAlpha(alpha, resultWidth, resultHeight, size - spreadRadius);
 			WriteColoredAlpha(result, alpha, color, opacity);
 			return result;
 		}
 
-		public static unsafe SKBitmap RenderInnerGlow(SKBitmap source, SKColor color, int size, int spread, byte opacity, out int placeX, out int placeY)
+		public static SKBitmap RenderInnerGlow(SKBitmap source, SKColor color, int size, int spread, byte opacity, out int placeX, out int placeY)
 		{
-			int width = source.Width;
-			int height = source.Height;
+			SKRectI content = PixelRegion.ComputeContentBounds(source);
+			return RenderInnerGlow(source, content, color, size, spread, opacity, out placeX, out placeY);
+		}
+
+		public static unsafe SKBitmap RenderInnerGlow(SKBitmap source, SKRectI content, SKColor color, int size, int spread, byte opacity, out int placeX, out int placeY)
+		{
 			placeX = 0;
 			placeY = 0;
+			if (content.Width <= 0 || content.Height <= 0)
+			{
+				return null;
+			}
+			int spreadRadius = SpreadPixels(size, spread);
+			int reach = (3 * (size - spreadRadius)) + 1;
+			SKRectI support = new SKRectI(content.Left - reach, content.Top - reach, content.Right + reach, content.Bottom + reach);
+			SKRectI crop = CropPlane(new SKRectI(0, 0, source.Width, source.Height), support);
+			if (crop.Width <= 0 || crop.Height <= 0)
+			{
+				return null;
+			}
+			placeX = crop.Left;
+			placeY = crop.Top;
+			int width = crop.Width;
+			int height = crop.Height;
 			SKBitmap result = CreateResult(width, height);
 			int count = width * height;
-			byte[] body = new byte[count];
-			StampAlpha(source, body, width, height, 0, 0);
-			byte[] state = new byte[count];
+			byte[] body = AlphaPool(count);
+			Array.Clear(body, 0, count);
+			StampAlpha(source, content, body, width, height, -crop.Left, -crop.Top);
+			byte[] state = StatePool(count);
 			for (int index = 0; index < count; index++)
 			{
 				if (body[index] >= 128)
@@ -519,10 +661,9 @@ namespace Bitmute.Imaging
 					state[index] = 0;
 				}
 			}
-			int[] distance = new int[count];
+			int[] distance = DistancePool(count);
 			ComputeDistance(state, width, height, distance);
-			int spreadRadius = SpreadPixels(size, spread);
-			byte[] halo = new byte[count];
+			byte[] halo = PlanePool(count);
 			for (int index = 0; index < count; index++)
 			{
 				if (state[index] == 0)
@@ -547,17 +688,42 @@ namespace Bitmute.Imaging
 			return result;
 		}
 
-		public static unsafe SKBitmap RenderBevel(SKBitmap source, int depth, int size, int angle, SKColor highlightColor, byte highlightOpacity, SKColor shadowColor, byte shadowOpacity, out int placeX, out int placeY)
+		public static SKBitmap RenderBevel(SKBitmap source, int depth, int size, int angle, SKColor highlightColor, byte highlightOpacity, SKColor shadowColor, byte shadowOpacity, out int placeX, out int placeY)
 		{
-			int width = source.Width;
-			int height = source.Height;
+			SKRectI content = PixelRegion.ComputeContentBounds(source);
+			return RenderBevel(source, content, depth, size, angle, highlightColor, highlightOpacity, shadowColor, shadowOpacity, out placeX, out placeY);
+		}
+
+		public static unsafe SKBitmap RenderBevel(SKBitmap source, SKRectI content, int depth, int size, int angle, SKColor highlightColor, byte highlightOpacity, SKColor shadowColor, byte shadowOpacity, out int placeX, out int placeY)
+		{
 			placeX = 0;
 			placeY = 0;
+			if (content.Width <= 0 || content.Height <= 0)
+			{
+				return null;
+			}
+			int rampSize = size;
+			if (rampSize < 1)
+			{
+				rampSize = 1;
+			}
+			int reach = (3 * (rampSize / 4)) + 1;
+			SKRectI support = new SKRectI(content.Left - reach, content.Top - reach, content.Right + reach, content.Bottom + reach);
+			SKRectI crop = CropPlane(new SKRectI(0, 0, source.Width, source.Height), support);
+			if (crop.Width <= 0 || crop.Height <= 0)
+			{
+				return null;
+			}
+			placeX = crop.Left;
+			placeY = crop.Top;
+			int width = crop.Width;
+			int height = crop.Height;
 			SKBitmap result = CreateResult(width, height);
 			int count = width * height;
-			byte[] body = new byte[count];
-			StampAlpha(source, body, width, height, 0, 0);
-			byte[] state = new byte[count];
+			byte[] body = AlphaPool(count);
+			Array.Clear(body, 0, count);
+			StampAlpha(source, content, body, width, height, -crop.Left, -crop.Top);
+			byte[] state = StatePool(count);
 			for (int index = 0; index < count; index++)
 			{
 				if (body[index] >= 128)
@@ -569,14 +735,9 @@ namespace Bitmute.Imaging
 					state[index] = 0;
 				}
 			}
-			int[] distance = new int[count];
+			int[] distance = DistancePool(count);
 			ComputeDistance(state, width, height, distance);
-			int rampSize = size;
-			if (rampSize < 1)
-			{
-				rampSize = 1;
-			}
-			byte[] heightField = new byte[count];
+			byte[] heightField = PlanePool(count);
 			for (int index = 0; index < count; index++)
 			{
 				if (state[index] == 0)
@@ -680,19 +841,40 @@ namespace Bitmute.Imaging
 			return RenderStroke(source, size, position, color, 255, out placeX, out placeY);
 		}
 
-		public static unsafe SKBitmap RenderStroke(SKBitmap source, int size, int position, SKColor color, byte opacity, out int placeX, out int placeY)
+		public static SKBitmap RenderStroke(SKBitmap source, int size, int position, SKColor color, byte opacity, out int placeX, out int placeY)
 		{
+			SKRectI content = PixelRegion.ComputeContentBounds(source);
+			return RenderStroke(source, content, size, position, color, opacity, out placeX, out placeY);
+		}
+
+		public static unsafe SKBitmap RenderStroke(SKBitmap source, SKRectI content, int size, int position, SKColor color, byte opacity, out int placeX, out int placeY)
+		{
+			placeX = 0;
+			placeY = 0;
+			if (content.Width <= 0 || content.Height <= 0)
+			{
+				return null;
+			}
 			int sourceWidth = source.Width;
 			int sourceHeight = source.Height;
-			placeX = -size;
-			placeY = -size;
-			int resultWidth = sourceWidth + (2 * size);
-			int resultHeight = sourceHeight + (2 * size);
+			int reach = size + 1;
+			SKRectI support = new SKRectI(content.Left - reach, content.Top - reach, content.Right + reach, content.Bottom + reach);
+			SKRectI crop = CropPlane(new SKRectI(-size, -size, sourceWidth + size, sourceHeight + size), support);
+			if (crop.Width <= 0 || crop.Height <= 0)
+			{
+				return null;
+			}
+			placeX = crop.Left;
+			placeY = crop.Top;
+			int resultWidth = crop.Width;
+			int resultHeight = crop.Height;
 			SKBitmap result = CreateResult(resultWidth, resultHeight);
-			byte[] alpha = new byte[resultWidth * resultHeight];
-			StampAlpha(source, alpha, resultWidth, resultHeight, size, size);
-			byte[] state = new byte[resultWidth * resultHeight];
-			for (int index = 0; index < state.Length; index++)
+			int count = resultWidth * resultHeight;
+			byte[] alpha = AlphaPool(count);
+			Array.Clear(alpha, 0, count);
+			StampAlpha(source, content, alpha, resultWidth, resultHeight, -crop.Left, -crop.Top);
+			byte[] state = StatePool(count);
+			for (int index = 0; index < count; index++)
 			{
 				if (alpha[index] >= 128)
 				{
@@ -703,7 +885,7 @@ namespace Bitmute.Imaging
 					state[index] = 0;
 				}
 			}
-			int[] distance = new int[resultWidth * resultHeight];
+			int[] distance = DistancePool(count);
 			ComputeDistance(state, resultWidth, resultHeight, distance);
 			int insideLimit;
 			int outsideLimit;
