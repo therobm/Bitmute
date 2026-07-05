@@ -8,6 +8,7 @@ namespace Bitmute.UI.Dialogs
 	{
 		private const int UndoDepthMinimum = 10;
 		private const int UndoDepthMaximum = 500;
+		private const double SectionIndent = 10.0;
 
 		private IntSlider m_undoDepthField;
 		private RadioPicker m_themePicker;
@@ -87,6 +88,10 @@ namespace Bitmute.UI.Dialogs
 			clearRecentButton.WidthRequest = 150.0;
 			clearRecentButton.HorizontalOptions = LayoutOptions.Start;
 
+			m_undoDepthField.Margin = new Thickness(SectionIndent, 0.0, 0.0, 0.0);
+			clearRecentButton.Margin = new Thickness(SectionIndent, 0.0, 0.0, 0.0);
+			m_themePicker.Margin = new Thickness(SectionIndent, 0.0, 0.0, 0.0);
+
 			AddField(new SectionHeader("General"));
 			AddField(m_undoDepthField);
 			AddField(clearRecentButton);
@@ -95,7 +100,7 @@ namespace Bitmute.UI.Dialogs
 
 			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
 			Button okButton = PrimaryButton("OK", OnOkClicked);
-			ComposeFields("Preferences", ButtonRow(cancelButton, okButton), 340.0);
+			ComposeFields("Preferences", ButtonRow(cancelButton, okButton), 340.0 - (2.0 * UiConstants.DialogPadding));
 		}
 	}
 }
