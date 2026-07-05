@@ -35,6 +35,7 @@ namespace Bitmute.UI
 		private Label m_brushRoundnessValue;
 		private Slider m_brushAngleSlider;
 		private Label m_brushAngleValue;
+		private BrushTipEditor m_brushTipEditor;
 		private Label m_brushModeLabel;
 		private Picker m_brushModePicker;
 		private Label m_brushAirbrushLabel;
@@ -549,7 +550,7 @@ namespace Bitmute.UI
 				anchorX = m_optionsRow.X + m_brushSettingsButton.X;
 			}
 			double anchorY = UiConstants.MenuBarHeight + 1.0 + UiConstants.OptionsBarHeight + 1.0;
-			m_main.ShowPulldown(BuildBrushSettingsContent(), anchorX, anchorY, 288.0, 188.0);
+			m_main.ShowPulldown(BuildBrushSettingsContent(), anchorX, anchorY, 288.0, 320.0);
 		}
 
 		public void OpenBrushSettingsAt(double anchorX, double anchorY)
@@ -558,7 +559,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			m_main.ShowPulldown(BuildBrushSettingsContent(), anchorX, anchorY, 288.0, 188.0);
+			m_main.ShowPulldown(BuildBrushSettingsContent(), anchorX, anchorY, 288.0, 320.0);
 		}
 
 		private View BuildBrushSettingsContent()
@@ -693,6 +694,11 @@ namespace Bitmute.UI
 			angleRow.Add(m_brushAngleSlider);
 			angleRow.Add(m_brushAngleValue);
 
+			m_brushTipEditor = new BrushTipEditor(m_toolState, OnBrushTipEditorChanged);
+			m_brushTipEditor.WidthRequest = 110.0;
+			m_brushTipEditor.HeightRequest = 110.0;
+			m_brushTipEditor.HorizontalOptions = LayoutOptions.Center;
+
 			VerticalStackLayout body = new VerticalStackLayout();
 			body.Spacing = 10.0;
 			body.Padding = new Thickness(12.0);
@@ -700,7 +706,20 @@ namespace Bitmute.UI
 			body.Add(spacingRow);
 			body.Add(roundnessRow);
 			body.Add(angleRow);
+			body.Add(m_brushTipEditor);
 			return body;
+		}
+
+		private void OnBrushTipEditorChanged(int roundness, int angle)
+		{
+			if (m_brushRoundnessSlider != null)
+			{
+				m_brushRoundnessSlider.Value = roundness;
+			}
+			if (m_brushAngleSlider != null)
+			{
+				m_brushAngleSlider.Value = angle;
+			}
 		}
 
 		private void OnBrushRoundnessPulldownChanged(object sender, ValueChangedEventArgs eventArgs)
@@ -715,6 +734,10 @@ namespace Bitmute.UI
 			{
 				m_brushRoundnessValue.Text = roundness + "%";
 			}
+			if (m_brushTipEditor != null)
+			{
+				m_brushTipEditor.RefreshPreview();
+			}
 		}
 
 		private void OnBrushAnglePulldownChanged(object sender, ValueChangedEventArgs eventArgs)
@@ -728,6 +751,10 @@ namespace Bitmute.UI
 			if (m_brushAngleValue != null)
 			{
 				m_brushAngleValue.Text = angle + "°";
+			}
+			if (m_brushTipEditor != null)
+			{
+				m_brushTipEditor.RefreshPreview();
 			}
 		}
 
