@@ -39,6 +39,8 @@ namespace Bitmute.UI
 		public const double FieldEntryWidth = 90.0;
 		public const double FieldValueWidth = 40.0;
 		public const double FieldPickerWidth = 130.0;
+		public const double FieldSwatchWidth = 44.0;
+		public const double FieldSwatchHeight = 20.0;
 
 		public const double DefaultDocumentWidth = 800.0;
 		public const double DefaultDocumentHeight = 600.0;
