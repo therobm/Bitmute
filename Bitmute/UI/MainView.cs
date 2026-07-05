@@ -196,7 +196,15 @@ namespace Bitmute.UI
 				items.Add(new MenuBarItem("Difference Clouds", eMenuAction.DifferenceClouds));
 				return items;
 			}
-			if (parent == eMenuAction.FilterDistortMenu || parent == eMenuAction.FilterStylizeMenu || parent == eMenuAction.FilterVideoMenu)
+			if (parent == eMenuAction.FilterStylizeMenu)
+			{
+				items.Add(new MenuBarItem("Diffuse…", eMenuAction.Diffuse));
+				items.Add(new MenuBarItem("Emboss…", eMenuAction.Emboss));
+				items.Add(new MenuBarItem("Find Edges", eMenuAction.FindEdges));
+				items.Add(new MenuBarItem("Solarize", eMenuAction.Solarize));
+				return items;
+			}
+			if (parent == eMenuAction.FilterDistortMenu || parent == eMenuAction.FilterVideoMenu)
 			{
 				MenuBarItem placeholder = new MenuBarItem("(none yet)", eMenuAction.None);
 				placeholder.m_enabled = false;
@@ -773,6 +781,26 @@ namespace Bitmute.UI
 				RunInstantFilter("sharpenmore");
 				return;
 			}
+			if (action == eMenuAction.Diffuse)
+			{
+				OpenAdjustment("diffuse");
+				return;
+			}
+			if (action == eMenuAction.Emboss)
+			{
+				OpenAdjustment("emboss");
+				return;
+			}
+			if (action == eMenuAction.FindEdges)
+			{
+				RunInstantFilter("findedges");
+				return;
+			}
+			if (action == eMenuAction.Solarize)
+			{
+				RunInstantFilter("solarize");
+				return;
+			}
 			if (action == eMenuAction.FlipHorizontal)
 			{
 				DoCanvasOp("fliph");
@@ -1083,6 +1111,14 @@ namespace Bitmute.UI
 			{
 				return true;
 			}
+			if (id == "diffuse")
+			{
+				return true;
+			}
+			if (id == "emboss")
+			{
+				return true;
+			}
 			return false;
 		}
 
@@ -1171,6 +1207,22 @@ namespace Bitmute.UI
 			if (id == "sharpenmore")
 			{
 				return "Sharpen More";
+			}
+			if (id == "diffuse")
+			{
+				return "Diffuse";
+			}
+			if (id == "emboss")
+			{
+				return "Emboss";
+			}
+			if (id == "findedges")
+			{
+				return "Find Edges";
+			}
+			if (id == "solarize")
+			{
+				return "Solarize";
 			}
 			return "";
 		}
@@ -1312,6 +1364,22 @@ namespace Bitmute.UI
 			{
 				FilterSharpen.SharpenMore(bitmap);
 			}
+			else if (id == "diffuse")
+			{
+				FilterStylize.Diffuse(bitmap, values[0], m_filterSeed);
+			}
+			else if (id == "emboss")
+			{
+				FilterStylize.Emboss(bitmap, values[0], values[1], values[2]);
+			}
+			else if (id == "findedges")
+			{
+				FilterStylize.FindEdges(bitmap);
+			}
+			else if (id == "solarize")
+			{
+				FilterStylize.Solarize(bitmap);
+			}
 		}
 
 		private void BeginAdjustmentPreview(string id)
@@ -1416,6 +1484,16 @@ namespace Bitmute.UI
 			if (id == "pointillize")
 			{
 				ShowModal(new AdjustmentDialog("Pointillize", "pointillize", new string[] { "Cell Size" }, new int[] { 3 }, new int[] { 200 }, new int[] { 5 }), 360.0, 200.0);
+				return;
+			}
+			if (id == "diffuse")
+			{
+				ShowModal(new AdjustmentDialog("Diffuse", "diffuse", new string[0], new int[0], new int[0], new int[0], new string[] { "Mode" }, new string[][] { new string[] { "Normal", "Darken Only", "Lighten Only" } }, new int[] { 0 }), 360.0, 200.0);
+				return;
+			}
+			if (id == "emboss")
+			{
+				ShowModal(new AdjustmentDialog("Emboss", "emboss", new string[] { "Angle", "Height", "Amount" }, new int[] { -180, 1, 1 }, new int[] { 180, 10, 500 }, new int[] { 135, 3, 100 }), 360.0, 260.0);
 				return;
 			}
 		}

@@ -104,7 +104,11 @@ namespace Bitmute.UI
 		Pointillize,
 		Sharpen,
 		SharpenEdges,
-		SharpenMore
+		SharpenMore,
+		Diffuse,
+		Emboss,
+		FindEdges,
+		Solarize
 	}
 
 	public class MenuBarItem
