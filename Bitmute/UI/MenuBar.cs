@@ -66,7 +66,7 @@ namespace Bitmute.UI
 		{
 			Label label = new Label();
 			label.Text = m_titles[index];
-			label.FontSize = 12.0;
+			label.FontSize = UiConstants.PanelFontSize;
 			label.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			label.VerticalOptions = LayoutOptions.Center;
 
@@ -311,7 +311,7 @@ namespace Bitmute.UI
 
 			Label label = new Label();
 			label.Text = text;
-			label.FontSize = 12.0;
+			label.FontSize = UiConstants.PanelFontSize;
 			label.VerticalOptions = LayoutOptions.Center;
 			label.LineBreakMode = LineBreakMode.TailTruncation;
 			label.MaxLines = 1;
@@ -330,7 +330,7 @@ namespace Bitmute.UI
 			{
 				Label accelLabel = new Label();
 				accelLabel.Text = accelerator;
-				accelLabel.FontSize = 12.0;
+				accelLabel.FontSize = UiConstants.PanelFontSize;
 				accelLabel.VerticalOptions = LayoutOptions.Center;
 				if (enabled)
 				{

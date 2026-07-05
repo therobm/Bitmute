@@ -42,7 +42,7 @@ namespace Bitmute.UI
 		{
 			Label name = new Label();
 			name.Text = label;
-			name.FontSize = 12.0;
+			name.FontSize = UiConstants.PanelFontSize;
 			name.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			name.VerticalOptions = LayoutOptions.Center;
 

@@ -13,12 +13,12 @@ namespace Bitmute.UI
 			Label caption = new Label();
 			caption.Text = "Name";
 			caption.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			caption.FontSize = 12.0;
+			caption.FontSize = UiConstants.PanelFontSize;
 			caption.WidthRequest = 70.0;
 			caption.VerticalOptions = LayoutOptions.Center;
 
 			m_nameEntry = new Entry();
-			m_nameEntry.FontSize = 12.0;
+			m_nameEntry.FontSize = UiConstants.PanelFontSize;
 			m_nameEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_nameEntry.Text = currentName;
 

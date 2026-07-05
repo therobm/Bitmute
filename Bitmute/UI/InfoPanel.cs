@@ -24,7 +24,7 @@ namespace Bitmute.UI
 		{
 			Label caption = new Label();
 			caption.Text = text;
-			caption.FontSize = 11.0;
+			caption.FontSize = UiConstants.ComponentFontSize;
 			caption.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			caption.VerticalOptions = LayoutOptions.Center;
 			return caption;
@@ -34,7 +34,7 @@ namespace Bitmute.UI
 		{
 			Label value = new Label();
 			value.Text = DashValue;
-			value.FontSize = 12.0;
+			value.FontSize = UiConstants.PanelFontSize;
 			value.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			value.VerticalOptions = LayoutOptions.Center;
 			return value;

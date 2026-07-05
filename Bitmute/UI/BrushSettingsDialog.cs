@@ -41,12 +41,12 @@ namespace Bitmute.UI
 			Label tipLabel = new Label();
 			tipLabel.Text = "Tip";
 			tipLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			tipLabel.FontSize = 12.0;
+			tipLabel.FontSize = UiConstants.PanelFontSize;
 			tipLabel.WidthRequest = 60.0;
 			tipLabel.VerticalOptions = LayoutOptions.Center;
 
 			m_tipPicker = new Picker();
-			m_tipPicker.FontSize = 12.0;
+			m_tipPicker.FontSize = UiConstants.PanelFontSize;
 			m_tipPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_tipPicker.Items.Add("Round");
 			m_tipPicker.Items.Add("Square");
@@ -69,7 +69,7 @@ namespace Bitmute.UI
 			Label spacingLabel = new Label();
 			spacingLabel.Text = "Spacing";
 			spacingLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			spacingLabel.FontSize = 12.0;
+			spacingLabel.FontSize = UiConstants.PanelFontSize;
 			spacingLabel.WidthRequest = 60.0;
 			spacingLabel.VerticalOptions = LayoutOptions.Center;
 
@@ -84,7 +84,7 @@ namespace Bitmute.UI
 			m_spacingValue = new Label();
 			m_spacingValue.Text = spacing + "%";
 			m_spacingValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			m_spacingValue.FontSize = 12.0;
+			m_spacingValue.FontSize = UiConstants.PanelFontSize;
 			m_spacingValue.WidthRequest = 44.0;
 			m_spacingValue.VerticalOptions = LayoutOptions.Center;
 

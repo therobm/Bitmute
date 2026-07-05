@@ -328,7 +328,7 @@ namespace Bitmute.UI
 			m_thumbnail.Touch += OnTouch;
 
 			m_zoomLabel = new Label();
-			m_zoomLabel.FontSize = 12.0;
+			m_zoomLabel.FontSize = UiConstants.PanelFontSize;
 			m_zoomLabel.HorizontalOptions = LayoutOptions.Center;
 			m_zoomLabel.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			m_zoomLabel.Text = "";

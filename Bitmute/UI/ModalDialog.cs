@@ -34,13 +34,13 @@ namespace Bitmute.UI
 		{
 			Label titleLabel = new Label();
 			titleLabel.Text = text;
-			titleLabel.FontSize = 12.0;
+			titleLabel.FontSize = UiConstants.PanelFontSize;
 			titleLabel.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			titleLabel.VerticalOptions = LayoutOptions.Center;
 
 			Button closeButton = new Button();
 			closeButton.Text = "✕";
-			closeButton.FontSize = 11.0;
+			closeButton.FontSize = UiConstants.ComponentFontSize;
 			closeButton.WidthRequest = 40.0;
 			closeButton.HeightRequest = 30.0;
 			closeButton.CornerRadius = 0;
@@ -70,7 +70,7 @@ namespace Bitmute.UI
 		{
 			Button button = new Button();
 			button.Text = text;
-			button.FontSize = 12.0;
+			button.FontSize = UiConstants.PanelFontSize;
 			button.WidthRequest = 88.0;
 			button.HeightRequest = 26.0;
 			button.Padding = new Thickness(0.0);

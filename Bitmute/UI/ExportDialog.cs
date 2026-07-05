@@ -23,7 +23,7 @@ namespace Bitmute.UI
 			Label caption = new Label();
 			caption.Text = label;
 			caption.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			caption.FontSize = 12.0;
+			caption.FontSize = UiConstants.PanelFontSize;
 			caption.WidthRequest = 110.0;
 			caption.VerticalOptions = LayoutOptions.Center;
 
@@ -108,7 +108,7 @@ namespace Bitmute.UI
 			m_quality = DefaultQuality;
 
 			m_formatPicker = new Picker();
-			m_formatPicker.FontSize = 12.0;
+			m_formatPicker.FontSize = UiConstants.PanelFontSize;
 			m_formatPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_formatPicker.Items.Add("PNG");
 			m_formatPicker.Items.Add("JPEG");

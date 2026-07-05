@@ -58,7 +58,7 @@ namespace Bitmute.UI
 		private Entry BuildChannelEntry()
 		{
 			Entry entry = new Entry();
-			entry.FontSize = 12.0;
+			entry.FontSize = UiConstants.PanelFontSize;
 			entry.WidthRequest = 48.0;
 			entry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			entry.Keyboard = Keyboard.Numeric;
@@ -71,7 +71,7 @@ namespace Bitmute.UI
 			Label caption = new Label();
 			caption.Text = label;
 			caption.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			caption.FontSize = 12.0;
+			caption.FontSize = UiConstants.PanelFontSize;
 			caption.WidthRequest = 16.0;
 			caption.VerticalOptions = LayoutOptions.Center;
 
@@ -371,7 +371,7 @@ namespace Bitmute.UI
 
 			Button closeButton = new Button();
 			closeButton.Text = "✕";
-			closeButton.FontSize = 12.0;
+			closeButton.FontSize = UiConstants.PanelFontSize;
 			closeButton.WidthRequest = UiConstants.CloseButtonSize;
 			closeButton.HeightRequest = UiConstants.CloseButtonSize;
 			closeButton.Padding = new Thickness(0.0);
@@ -427,7 +427,7 @@ namespace Bitmute.UI
 			m_blueEntry = BuildChannelEntry();
 
 			m_hexEntry = new Entry();
-			m_hexEntry.FontSize = 12.0;
+			m_hexEntry.FontSize = UiConstants.PanelFontSize;
 			m_hexEntry.WidthRequest = 80.0;
 			m_hexEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_hexEntry.Completed += OnHexCompleted;
@@ -473,7 +473,7 @@ namespace Bitmute.UI
 
 			Button okButton = new Button();
 			okButton.Text = "OK";
-			okButton.FontSize = 12.0;
+			okButton.FontSize = UiConstants.PanelFontSize;
 			okButton.WidthRequest = 80.0;
 			okButton.ThemeBg(UiConstants.AccentLight, UiConstants.AccentDark);
 			okButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
@@ -481,7 +481,7 @@ namespace Bitmute.UI
 
 			Button cancelButton = new Button();
 			cancelButton.Text = "Cancel";
-			cancelButton.FontSize = 12.0;
+			cancelButton.FontSize = UiConstants.PanelFontSize;
 			cancelButton.WidthRequest = 80.0;
 			cancelButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
 			cancelButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);

@@ -34,7 +34,7 @@ namespace Bitmute.UI
 		{
 			Label widthLabel = new Label();
 			widthLabel.Text = "Width";
-			widthLabel.FontSize = 12.0;
+			widthLabel.FontSize = UiConstants.PanelFontSize;
 			widthLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			widthLabel.VerticalOptions = LayoutOptions.Center;
 			widthLabel.WidthRequest = 70.0;
@@ -49,13 +49,13 @@ namespace Bitmute.UI
 
 			Label positionLabel = new Label();
 			positionLabel.Text = "Position";
-			positionLabel.FontSize = 12.0;
+			positionLabel.FontSize = UiConstants.PanelFontSize;
 			positionLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			positionLabel.VerticalOptions = LayoutOptions.Center;
 			positionLabel.WidthRequest = 70.0;
 
 			m_positionPicker = new Picker();
-			m_positionPicker.FontSize = 12.0;
+			m_positionPicker.FontSize = UiConstants.PanelFontSize;
 			m_positionPicker.WidthRequest = 130.0;
 			m_positionPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_positionPicker.VerticalOptions = LayoutOptions.Center;
@@ -71,7 +71,7 @@ namespace Bitmute.UI
 
 			Label colorNote = new Label();
 			colorNote.Text = "Strokes with the foreground color";
-			colorNote.FontSize = 11.0;
+			colorNote.FontSize = UiConstants.ComponentFontSize;
 			colorNote.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 
 			VerticalStackLayout body = new VerticalStackLayout();

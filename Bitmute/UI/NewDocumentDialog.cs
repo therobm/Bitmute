@@ -19,7 +19,7 @@ namespace Bitmute.UI
 		private Entry BuildNumericEntry(int initial)
 		{
 			Entry entry = new Entry();
-			entry.FontSize = 12.0;
+			entry.FontSize = UiConstants.PanelFontSize;
 			entry.WidthRequest = 90.0;
 			entry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			entry.Keyboard = Keyboard.Numeric;
@@ -32,7 +32,7 @@ namespace Bitmute.UI
 			Label caption = new Label();
 			caption.Text = label;
 			caption.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			caption.FontSize = 12.0;
+			caption.FontSize = UiConstants.PanelFontSize;
 			caption.WidthRequest = 70.0;
 			caption.VerticalOptions = LayoutOptions.Center;
 
@@ -88,7 +88,7 @@ namespace Bitmute.UI
 		public NewDocumentDialog()
 		{
 			m_nameEntry = new Entry();
-			m_nameEntry.FontSize = 12.0;
+			m_nameEntry.FontSize = UiConstants.PanelFontSize;
 			m_nameEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_nameEntry.Text = "Untitled";
 
@@ -96,7 +96,7 @@ namespace Bitmute.UI
 			m_heightEntry = BuildNumericEntry(DefaultHeight);
 
 			m_backgroundPicker = new Picker();
-			m_backgroundPicker.FontSize = 12.0;
+			m_backgroundPicker.FontSize = UiConstants.PanelFontSize;
 			m_backgroundPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_backgroundPicker.Items.Add("White");
 			m_backgroundPicker.Items.Add("Transparent");

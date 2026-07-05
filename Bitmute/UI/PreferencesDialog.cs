@@ -20,7 +20,7 @@ namespace Bitmute.UI
 		{
 			Label header = new Label();
 			header.Text = text;
-			header.FontSize = 12.0;
+			header.FontSize = UiConstants.PanelFontSize;
 			header.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			return header;
 		}
@@ -30,7 +30,7 @@ namespace Bitmute.UI
 			Label caption = new Label();
 			caption.Text = label;
 			caption.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			caption.FontSize = 12.0;
+			caption.FontSize = UiConstants.PanelFontSize;
 			caption.WidthRequest = 90.0;
 			caption.VerticalOptions = LayoutOptions.Center;
 
@@ -50,7 +50,7 @@ namespace Bitmute.UI
 		{
 			RadioButton radio = new RadioButton();
 			radio.Content = text;
-			radio.FontSize = 12.0;
+			radio.FontSize = UiConstants.PanelFontSize;
 			radio.GroupName = ThemeGroupName;
 			radio.VerticalOptions = LayoutOptions.Center;
 			radio.SetAppThemeColor(RadioButton.TextColorProperty, UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);

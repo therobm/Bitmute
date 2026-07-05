@@ -460,7 +460,7 @@ namespace Bitmute.UI
 				swatch.VerticalOptions = LayoutOptions.Center;
 				Label name = new Label();
 				name.Text = m_gradientTypeNames[index];
-				name.FontSize = 12.0;
+				name.FontSize = UiConstants.ComponentFontSize;
 				name.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 				name.VerticalOptions = LayoutOptions.Center;
 				row.Add(swatch);
@@ -553,12 +553,12 @@ namespace Bitmute.UI
 			Label tipLabel = new Label();
 			tipLabel.Text = "Tip";
 			tipLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			tipLabel.FontSize = 12.0;
+			tipLabel.FontSize = UiConstants.ComponentFontSize;
 			tipLabel.WidthRequest = 60.0;
 			tipLabel.VerticalOptions = LayoutOptions.Center;
 
 			m_brushTipPicker = new Picker();
-			m_brushTipPicker.FontSize = 12.0;
+			m_brushTipPicker.FontSize = UiConstants.ComponentFontSize;
 			m_brushTipPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_brushTipPicker.Items.Add("Round");
 			m_brushTipPicker.Items.Add("Square");
@@ -581,7 +581,7 @@ namespace Bitmute.UI
 			Label spacingLabel = new Label();
 			spacingLabel.Text = "Spacing";
 			spacingLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			spacingLabel.FontSize = 12.0;
+			spacingLabel.FontSize = UiConstants.ComponentFontSize;
 			spacingLabel.WidthRequest = 60.0;
 			spacingLabel.VerticalOptions = LayoutOptions.Center;
 
@@ -596,7 +596,7 @@ namespace Bitmute.UI
 			m_brushSpacingValue = new Label();
 			m_brushSpacingValue.Text = m_toolState.BrushSpacing() + "%";
 			m_brushSpacingValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			m_brushSpacingValue.FontSize = 12.0;
+			m_brushSpacingValue.FontSize = UiConstants.ComponentFontSize;
 			m_brushSpacingValue.WidthRequest = 44.0;
 			m_brushSpacingValue.VerticalOptions = LayoutOptions.Center;
 
@@ -855,7 +855,7 @@ namespace Bitmute.UI
 		{
 			Label label = new Label();
 			label.Text = labelText;
-			label.FontSize = 12.0;
+			label.FontSize = UiConstants.ComponentFontSize;
 			label.WidthRequest = 96.0;
 			label.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			label.VerticalOptions = LayoutOptions.Center;
@@ -915,14 +915,14 @@ namespace Bitmute.UI
 
 			Label title = new Label();
 			title.Text = "Character";
-			title.FontSize = 12.0;
+			title.FontSize = UiConstants.ComponentFontSize;
 			title.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			title.VerticalOptions = LayoutOptions.Center;
 			title.HorizontalOptions = LayoutOptions.Start;
 
 			Label close = new Label();
 			close.Text = "✕";
-			close.FontSize = 12.0;
+			close.FontSize = UiConstants.ComponentFontSize;
 			close.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			close.VerticalOptions = LayoutOptions.Center;
 			close.HorizontalOptions = LayoutOptions.End;
@@ -1094,7 +1094,7 @@ namespace Bitmute.UI
 
 			m_optionsToolLabel = new Label();
 			m_optionsToolLabel.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			m_optionsToolLabel.FontSize = 12.0;
+			m_optionsToolLabel.FontSize = UiConstants.ComponentFontSize;
 			m_optionsToolLabel.VerticalOptions = LayoutOptions.Center;
 			Grid.SetColumn(m_optionsToolLabel, 0);
 			bar.Add(m_optionsToolLabel);
@@ -1102,7 +1102,7 @@ namespace Bitmute.UI
 			m_brushSizeLabel = new Label();
 			m_brushSizeLabel.Text = "Size";
 			m_brushSizeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_brushSizeLabel.FontSize = 12.0;
+			m_brushSizeLabel.FontSize = UiConstants.ComponentFontSize;
 			m_brushSizeLabel.VerticalOptions = LayoutOptions.Center;
 
 			m_brushSizeField = new SliderField(1, 100, m_toolState.BrushSize(), " px", OnBrushSizeValue);
@@ -1111,7 +1111,7 @@ namespace Bitmute.UI
 			m_brushHardnessLabel = new Label();
 			m_brushHardnessLabel.Text = "Hardness";
 			m_brushHardnessLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_brushHardnessLabel.FontSize = 12.0;
+			m_brushHardnessLabel.FontSize = UiConstants.ComponentFontSize;
 			m_brushHardnessLabel.VerticalOptions = LayoutOptions.Center;
 			m_brushHardnessLabel.IsVisible = false;
 
@@ -1122,7 +1122,7 @@ namespace Bitmute.UI
 			m_brushOpacityLabel = new Label();
 			m_brushOpacityLabel.Text = "Opacity";
 			m_brushOpacityLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_brushOpacityLabel.FontSize = 12.0;
+			m_brushOpacityLabel.FontSize = UiConstants.ComponentFontSize;
 			m_brushOpacityLabel.VerticalOptions = LayoutOptions.Center;
 			m_brushOpacityLabel.IsVisible = false;
 
@@ -1133,7 +1133,7 @@ namespace Bitmute.UI
 			m_brushFlowLabel = new Label();
 			m_brushFlowLabel.Text = "Flow";
 			m_brushFlowLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_brushFlowLabel.FontSize = 12.0;
+			m_brushFlowLabel.FontSize = UiConstants.ComponentFontSize;
 			m_brushFlowLabel.VerticalOptions = LayoutOptions.Center;
 			m_brushFlowLabel.IsVisible = false;
 
@@ -1144,7 +1144,7 @@ namespace Bitmute.UI
 			m_brushSmoothingLabel = new Label();
 			m_brushSmoothingLabel.Text = "Smoothing";
 			m_brushSmoothingLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_brushSmoothingLabel.FontSize = 12.0;
+			m_brushSmoothingLabel.FontSize = UiConstants.ComponentFontSize;
 			m_brushSmoothingLabel.VerticalOptions = LayoutOptions.Center;
 			m_brushSmoothingLabel.IsVisible = false;
 
@@ -1155,7 +1155,7 @@ namespace Bitmute.UI
 			m_brushStrengthLabel = new Label();
 			m_brushStrengthLabel.Text = "Strength";
 			m_brushStrengthLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_brushStrengthLabel.FontSize = 12.0;
+			m_brushStrengthLabel.FontSize = UiConstants.ComponentFontSize;
 			m_brushStrengthLabel.VerticalOptions = LayoutOptions.Center;
 			m_brushStrengthLabel.IsVisible = false;
 
@@ -1166,12 +1166,14 @@ namespace Bitmute.UI
 			m_brushModeLabel = new Label();
 			m_brushModeLabel.Text = "Mode";
 			m_brushModeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_brushModeLabel.FontSize = 12.0;
+			m_brushModeLabel.FontSize = UiConstants.ComponentFontSize;
 			m_brushModeLabel.VerticalOptions = LayoutOptions.Center;
 			m_brushModeLabel.IsVisible = false;
 
 			m_brushModePicker = new Picker();
-			m_brushModePicker.FontSize = 12.0;
+			m_brushModePicker.FontSize = UiConstants.ComponentFontSize;
+			m_brushModePicker.HeightRequest = UiConstants.ComponentHeight;
+			m_brushModePicker.Margin = new Thickness(0);
 			m_brushModePicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_brushModePicker.WidthRequest = 110.0;
 			m_brushModePicker.VerticalOptions = LayoutOptions.Center;
@@ -1186,7 +1188,7 @@ namespace Bitmute.UI
 
 			m_brushSettingsButton = new Button();
 			m_brushSettingsButton.Text = "Brush Settings";
-			m_brushSettingsButton.FontSize = 12.0;
+			m_brushSettingsButton.FontSize = UiConstants.ComponentFontSize;
 			m_brushSettingsButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
 			m_brushSettingsButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
 			m_brushSettingsButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
@@ -1197,7 +1199,7 @@ namespace Bitmute.UI
 			m_brushAirbrushLabel = new Label();
 			m_brushAirbrushLabel.Text = "Airbrush";
 			m_brushAirbrushLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_brushAirbrushLabel.FontSize = 12.0;
+			m_brushAirbrushLabel.FontSize = UiConstants.ComponentFontSize;
 			m_brushAirbrushLabel.VerticalOptions = LayoutOptions.Center;
 			m_brushAirbrushLabel.IsVisible = false;
 
@@ -1210,7 +1212,7 @@ namespace Bitmute.UI
 			m_cloneAlignedLabel = new Label();
 			m_cloneAlignedLabel.Text = "Aligned";
 			m_cloneAlignedLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_cloneAlignedLabel.FontSize = 12.0;
+			m_cloneAlignedLabel.FontSize = UiConstants.ComponentFontSize;
 			m_cloneAlignedLabel.VerticalOptions = LayoutOptions.Center;
 			m_cloneAlignedLabel.IsVisible = false;
 
@@ -1223,12 +1225,12 @@ namespace Bitmute.UI
 			m_spongeModeLabel = new Label();
 			m_spongeModeLabel.Text = "Mode";
 			m_spongeModeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_spongeModeLabel.FontSize = 12.0;
+			m_spongeModeLabel.FontSize = UiConstants.ComponentFontSize;
 			m_spongeModeLabel.VerticalOptions = LayoutOptions.Center;
 			m_spongeModeLabel.IsVisible = false;
 
 			m_spongeModePicker = new Picker();
-			m_spongeModePicker.FontSize = 12.0;
+			m_spongeModePicker.FontSize = UiConstants.ComponentFontSize;
 			m_spongeModePicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_spongeModePicker.WidthRequest = 110.0;
 			m_spongeModePicker.VerticalOptions = LayoutOptions.Center;
@@ -1241,12 +1243,12 @@ namespace Bitmute.UI
 			m_colorReplaceModeLabel = new Label();
 			m_colorReplaceModeLabel.Text = "Mode";
 			m_colorReplaceModeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_colorReplaceModeLabel.FontSize = 12.0;
+			m_colorReplaceModeLabel.FontSize = UiConstants.ComponentFontSize;
 			m_colorReplaceModeLabel.VerticalOptions = LayoutOptions.Center;
 			m_colorReplaceModeLabel.IsVisible = false;
 
 			m_colorReplaceModePicker = new Picker();
-			m_colorReplaceModePicker.FontSize = 12.0;
+			m_colorReplaceModePicker.FontSize = UiConstants.ComponentFontSize;
 			m_colorReplaceModePicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_colorReplaceModePicker.WidthRequest = 120.0;
 			m_colorReplaceModePicker.VerticalOptions = LayoutOptions.Center;
@@ -1261,7 +1263,7 @@ namespace Bitmute.UI
 			m_colorReplaceToleranceLabel = new Label();
 			m_colorReplaceToleranceLabel.Text = "Tolerance";
 			m_colorReplaceToleranceLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_colorReplaceToleranceLabel.FontSize = 12.0;
+			m_colorReplaceToleranceLabel.FontSize = UiConstants.ComponentFontSize;
 			m_colorReplaceToleranceLabel.VerticalOptions = LayoutOptions.Center;
 			m_colorReplaceToleranceLabel.IsVisible = false;
 
@@ -1272,12 +1274,12 @@ namespace Bitmute.UI
 			m_dodgeBurnRangeLabel = new Label();
 			m_dodgeBurnRangeLabel.Text = "Range";
 			m_dodgeBurnRangeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_dodgeBurnRangeLabel.FontSize = 12.0;
+			m_dodgeBurnRangeLabel.FontSize = UiConstants.ComponentFontSize;
 			m_dodgeBurnRangeLabel.VerticalOptions = LayoutOptions.Center;
 			m_dodgeBurnRangeLabel.IsVisible = false;
 
 			m_dodgeBurnRangePicker = new Picker();
-			m_dodgeBurnRangePicker.FontSize = 12.0;
+			m_dodgeBurnRangePicker.FontSize = UiConstants.ComponentFontSize;
 			m_dodgeBurnRangePicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_dodgeBurnRangePicker.WidthRequest = 110.0;
 			m_dodgeBurnRangePicker.VerticalOptions = LayoutOptions.Center;
@@ -1291,7 +1293,7 @@ namespace Bitmute.UI
 			m_dodgeBurnExposureLabel = new Label();
 			m_dodgeBurnExposureLabel.Text = "Exposure";
 			m_dodgeBurnExposureLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_dodgeBurnExposureLabel.FontSize = 12.0;
+			m_dodgeBurnExposureLabel.FontSize = UiConstants.ComponentFontSize;
 			m_dodgeBurnExposureLabel.VerticalOptions = LayoutOptions.Center;
 			m_dodgeBurnExposureLabel.IsVisible = false;
 
@@ -1302,13 +1304,13 @@ namespace Bitmute.UI
 			m_gradientTypeLabel = new Label();
 			m_gradientTypeLabel.Text = "Type";
 			m_gradientTypeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_gradientTypeLabel.FontSize = 12.0;
+			m_gradientTypeLabel.FontSize = UiConstants.ComponentFontSize;
 			m_gradientTypeLabel.VerticalOptions = LayoutOptions.Center;
 			m_gradientTypeLabel.IsVisible = false;
 
 			m_gradientTypeNames = new string[] { "Linear", "Radial", "Angle", "Reflected", "Diamond" };
 			m_gradientTypeButton = new Button();
-			m_gradientTypeButton.FontSize = 12.0;
+			m_gradientTypeButton.FontSize = UiConstants.ComponentFontSize;
 			m_gradientTypeButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
 			m_gradientTypeButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
 			m_gradientTypeButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
@@ -1320,7 +1322,7 @@ namespace Bitmute.UI
 			m_gradientReverseLabel = new Label();
 			m_gradientReverseLabel.Text = "Reverse";
 			m_gradientReverseLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_gradientReverseLabel.FontSize = 12.0;
+			m_gradientReverseLabel.FontSize = UiConstants.ComponentFontSize;
 			m_gradientReverseLabel.VerticalOptions = LayoutOptions.Center;
 			m_gradientReverseLabel.IsVisible = false;
 
@@ -1333,7 +1335,7 @@ namespace Bitmute.UI
 			m_gradientTransparentLabel = new Label();
 			m_gradientTransparentLabel.Text = "To Transparent";
 			m_gradientTransparentLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_gradientTransparentLabel.FontSize = 12.0;
+			m_gradientTransparentLabel.FontSize = UiConstants.ComponentFontSize;
 			m_gradientTransparentLabel.VerticalOptions = LayoutOptions.Center;
 			m_gradientTransparentLabel.IsVisible = false;
 
@@ -1346,7 +1348,7 @@ namespace Bitmute.UI
 			m_lineAntiAliasLabel = new Label();
 			m_lineAntiAliasLabel.Text = "Anti-alias";
 			m_lineAntiAliasLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_lineAntiAliasLabel.FontSize = 12.0;
+			m_lineAntiAliasLabel.FontSize = UiConstants.ComponentFontSize;
 			m_lineAntiAliasLabel.VerticalOptions = LayoutOptions.Center;
 			m_lineAntiAliasLabel.IsVisible = false;
 
@@ -1357,7 +1359,7 @@ namespace Bitmute.UI
 
 			m_selectModeNewButton = new Button();
 			m_selectModeNewButton.Text = "New";
-			m_selectModeNewButton.FontSize = 12.0;
+			m_selectModeNewButton.FontSize = UiConstants.ComponentFontSize;
 			m_selectModeNewButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
 			m_selectModeNewButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
 			m_selectModeNewButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
@@ -1367,7 +1369,7 @@ namespace Bitmute.UI
 
 			m_selectModeAddButton = new Button();
 			m_selectModeAddButton.Text = "Add";
-			m_selectModeAddButton.FontSize = 12.0;
+			m_selectModeAddButton.FontSize = UiConstants.ComponentFontSize;
 			m_selectModeAddButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
 			m_selectModeAddButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
 			m_selectModeAddButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
@@ -1377,7 +1379,7 @@ namespace Bitmute.UI
 
 			m_selectModeSubtractButton = new Button();
 			m_selectModeSubtractButton.Text = "Sub";
-			m_selectModeSubtractButton.FontSize = 12.0;
+			m_selectModeSubtractButton.FontSize = UiConstants.ComponentFontSize;
 			m_selectModeSubtractButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
 			m_selectModeSubtractButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
 			m_selectModeSubtractButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
@@ -1387,7 +1389,7 @@ namespace Bitmute.UI
 
 			m_selectModeIntersectButton = new Button();
 			m_selectModeIntersectButton.Text = "Sect";
-			m_selectModeIntersectButton.FontSize = 12.0;
+			m_selectModeIntersectButton.FontSize = UiConstants.ComponentFontSize;
 			m_selectModeIntersectButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
 			m_selectModeIntersectButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
 			m_selectModeIntersectButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
@@ -1400,7 +1402,7 @@ namespace Bitmute.UI
 			m_selectionFeatherLabel = new Label();
 			m_selectionFeatherLabel.Text = "Feather";
 			m_selectionFeatherLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_selectionFeatherLabel.FontSize = 12.0;
+			m_selectionFeatherLabel.FontSize = UiConstants.ComponentFontSize;
 			m_selectionFeatherLabel.VerticalOptions = LayoutOptions.Center;
 			m_selectionFeatherLabel.IsVisible = false;
 
@@ -1411,7 +1413,7 @@ namespace Bitmute.UI
 			m_selectionAntiAliasLabel = new Label();
 			m_selectionAntiAliasLabel.Text = "Anti-alias";
 			m_selectionAntiAliasLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_selectionAntiAliasLabel.FontSize = 12.0;
+			m_selectionAntiAliasLabel.FontSize = UiConstants.ComponentFontSize;
 			m_selectionAntiAliasLabel.VerticalOptions = LayoutOptions.Center;
 			m_selectionAntiAliasLabel.IsVisible = false;
 
@@ -1424,7 +1426,7 @@ namespace Bitmute.UI
 			m_toleranceLabel = new Label();
 			m_toleranceLabel.Text = "Tolerance";
 			m_toleranceLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_toleranceLabel.FontSize = 12.0;
+			m_toleranceLabel.FontSize = UiConstants.ComponentFontSize;
 			m_toleranceLabel.VerticalOptions = LayoutOptions.Center;
 			m_toleranceLabel.IsVisible = false;
 
@@ -1435,7 +1437,7 @@ namespace Bitmute.UI
 			m_wandAntiAliasLabel = new Label();
 			m_wandAntiAliasLabel.Text = "Anti-alias";
 			m_wandAntiAliasLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_wandAntiAliasLabel.FontSize = 12.0;
+			m_wandAntiAliasLabel.FontSize = UiConstants.ComponentFontSize;
 			m_wandAntiAliasLabel.VerticalOptions = LayoutOptions.Center;
 			m_wandAntiAliasLabel.IsVisible = false;
 
@@ -1448,7 +1450,7 @@ namespace Bitmute.UI
 			m_wandContiguousLabel = new Label();
 			m_wandContiguousLabel.Text = "Contiguous";
 			m_wandContiguousLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_wandContiguousLabel.FontSize = 12.0;
+			m_wandContiguousLabel.FontSize = UiConstants.ComponentFontSize;
 			m_wandContiguousLabel.VerticalOptions = LayoutOptions.Center;
 			m_wandContiguousLabel.IsVisible = false;
 
@@ -1461,7 +1463,7 @@ namespace Bitmute.UI
 			m_wandSampleAllLabel = new Label();
 			m_wandSampleAllLabel.Text = "Sample All Layers";
 			m_wandSampleAllLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_wandSampleAllLabel.FontSize = 12.0;
+			m_wandSampleAllLabel.FontSize = UiConstants.ComponentFontSize;
 			m_wandSampleAllLabel.VerticalOptions = LayoutOptions.Center;
 			m_wandSampleAllLabel.IsVisible = false;
 
@@ -1474,7 +1476,7 @@ namespace Bitmute.UI
 			m_magneticWidthLabel = new Label();
 			m_magneticWidthLabel.Text = "Width";
 			m_magneticWidthLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_magneticWidthLabel.FontSize = 12.0;
+			m_magneticWidthLabel.FontSize = UiConstants.ComponentFontSize;
 			m_magneticWidthLabel.VerticalOptions = LayoutOptions.Center;
 			m_magneticWidthLabel.IsVisible = false;
 
@@ -1485,7 +1487,7 @@ namespace Bitmute.UI
 			m_magneticContrastLabel = new Label();
 			m_magneticContrastLabel.Text = "Contrast";
 			m_magneticContrastLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_magneticContrastLabel.FontSize = 12.0;
+			m_magneticContrastLabel.FontSize = UiConstants.ComponentFontSize;
 			m_magneticContrastLabel.VerticalOptions = LayoutOptions.Center;
 			m_magneticContrastLabel.IsVisible = false;
 
@@ -1496,7 +1498,7 @@ namespace Bitmute.UI
 			m_textFontLabel = new Label();
 			m_textFontLabel.Text = "Font";
 			m_textFontLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_textFontLabel.FontSize = 12.0;
+			m_textFontLabel.FontSize = UiConstants.ComponentFontSize;
 			m_textFontLabel.VerticalOptions = LayoutOptions.Center;
 			m_textFontLabel.IsVisible = false;
 
@@ -1504,7 +1506,7 @@ namespace Bitmute.UI
 			System.Array.Sort(m_fontFamilies);
 
 			m_textFontButton = new Button();
-			m_textFontButton.FontSize = 12.0;
+			m_textFontButton.FontSize = UiConstants.ComponentFontSize;
 			m_textFontButton.WidthRequest = 160.0;
 			m_textFontButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
 			m_textFontButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
@@ -1517,7 +1519,7 @@ namespace Bitmute.UI
 			m_textSizeLabel = new Label();
 			m_textSizeLabel.Text = "Size";
 			m_textSizeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_textSizeLabel.FontSize = 12.0;
+			m_textSizeLabel.FontSize = UiConstants.ComponentFontSize;
 			m_textSizeLabel.VerticalOptions = LayoutOptions.Center;
 			m_textSizeLabel.IsVisible = false;
 
@@ -1528,12 +1530,12 @@ namespace Bitmute.UI
 			m_textStyleLabel = new Label();
 			m_textStyleLabel.Text = "Style";
 			m_textStyleLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_textStyleLabel.FontSize = 12.0;
+			m_textStyleLabel.FontSize = UiConstants.ComponentFontSize;
 			m_textStyleLabel.VerticalOptions = LayoutOptions.Center;
 			m_textStyleLabel.IsVisible = false;
 
 			m_textStyleButton = new Button();
-			m_textStyleButton.FontSize = 12.0;
+			m_textStyleButton.FontSize = UiConstants.ComponentFontSize;
 			m_textStyleButton.WidthRequest = 110.0;
 			m_textStyleButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
 			m_textStyleButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
@@ -1546,12 +1548,12 @@ namespace Bitmute.UI
 			m_textAlignLabel = new Label();
 			m_textAlignLabel.Text = "Align";
 			m_textAlignLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_textAlignLabel.FontSize = 12.0;
+			m_textAlignLabel.FontSize = UiConstants.ComponentFontSize;
 			m_textAlignLabel.VerticalOptions = LayoutOptions.Center;
 			m_textAlignLabel.IsVisible = false;
 
 			m_textAlignPicker = new Picker();
-			m_textAlignPicker.FontSize = 12.0;
+			m_textAlignPicker.FontSize = UiConstants.ComponentFontSize;
 			m_textAlignPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_textAlignPicker.VerticalOptions = LayoutOptions.Center;
 			m_textAlignPicker.IsVisible = false;
@@ -1564,12 +1566,12 @@ namespace Bitmute.UI
 			m_textAntiAliasLabel = new Label();
 			m_textAntiAliasLabel.Text = "Anti-alias";
 			m_textAntiAliasLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_textAntiAliasLabel.FontSize = 12.0;
+			m_textAntiAliasLabel.FontSize = UiConstants.ComponentFontSize;
 			m_textAntiAliasLabel.VerticalOptions = LayoutOptions.Center;
 			m_textAntiAliasLabel.IsVisible = false;
 
 			m_textAntiAliasPicker = new Picker();
-			m_textAntiAliasPicker.FontSize = 12.0;
+			m_textAntiAliasPicker.FontSize = UiConstants.ComponentFontSize;
 			m_textAntiAliasPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_textAntiAliasPicker.VerticalOptions = LayoutOptions.Center;
 			m_textAntiAliasPicker.IsVisible = false;
@@ -1584,7 +1586,7 @@ namespace Bitmute.UI
 			m_textColorLabel = new Label();
 			m_textColorLabel.Text = "Color";
 			m_textColorLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_textColorLabel.FontSize = 12.0;
+			m_textColorLabel.FontSize = UiConstants.ComponentFontSize;
 			m_textColorLabel.VerticalOptions = LayoutOptions.Center;
 			m_textColorLabel.IsVisible = false;
 
@@ -1600,7 +1602,7 @@ namespace Bitmute.UI
 
 			m_textCharButton = new Button();
 			m_textCharButton.Text = "Character…";
-			m_textCharButton.FontSize = 12.0;
+			m_textCharButton.FontSize = UiConstants.ComponentFontSize;
 			m_textCharButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
 			m_textCharButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
 			m_textCharButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);

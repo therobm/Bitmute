@@ -81,7 +81,7 @@ namespace Bitmute.UI
 		{
 			Label label = new Label();
 			label.Text = text;
-			label.FontSize = 12.0;
+			label.FontSize = UiConstants.PanelFontSize;
 			label.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			label.VerticalOptions = LayoutOptions.Center;
 			label.WidthRequest = 72.0;
@@ -140,7 +140,7 @@ namespace Bitmute.UI
 		private Picker BuildModePicker(eBlendMode mode, EventHandler handler)
 		{
 			Picker picker = new Picker();
-			picker.FontSize = 12.0;
+			picker.FontSize = UiConstants.PanelFontSize;
 			picker.WidthRequest = 130.0;
 			picker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			picker.VerticalOptions = LayoutOptions.Center;
@@ -220,7 +220,7 @@ namespace Bitmute.UI
 			m_strokeSize = new SliderField(1, 100, m_style.m_strokeSize, " px", OnStrokeSizeChanged);
 			m_strokeSize.VerticalOptions = LayoutOptions.Center;
 			m_strokePosition = new Picker();
-			m_strokePosition.FontSize = 12.0;
+			m_strokePosition.FontSize = UiConstants.PanelFontSize;
 			m_strokePosition.WidthRequest = 130.0;
 			m_strokePosition.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_strokePosition.VerticalOptions = LayoutOptions.Center;

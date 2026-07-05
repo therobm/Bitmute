@@ -1914,7 +1914,7 @@ namespace Bitmute.UI
 			m_statusInfoLabel = new Label();
 			m_statusInfoLabel.Text = "100%      800 × 600 px";
 			m_statusInfoLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_statusInfoLabel.FontSize = 11.0;
+			m_statusInfoLabel.FontSize = UiConstants.ComponentFontSize;
 			m_statusInfoLabel.VerticalOptions = LayoutOptions.Center;
 			Grid.SetColumn(m_statusInfoLabel, 0);
 			bar.Add(m_statusInfoLabel);
@@ -1922,7 +1922,7 @@ namespace Bitmute.UI
 			m_statusCursorLabel = new Label();
 			m_statusCursorLabel.Text = "x: —   y: —";
 			m_statusCursorLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			m_statusCursorLabel.FontSize = 11.0;
+			m_statusCursorLabel.FontSize = UiConstants.ComponentFontSize;
 			m_statusCursorLabel.HorizontalOptions = LayoutOptions.End;
 			m_statusCursorLabel.VerticalOptions = LayoutOptions.Center;
 			Grid.SetColumn(m_statusCursorLabel, 1);
@@ -3076,7 +3076,7 @@ namespace Bitmute.UI
 		{
 			Label label = new Label();
 			label.Text = text;
-			label.FontSize = 12.0;
+			label.FontSize = UiConstants.PanelFontSize;
 			label.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			label.VerticalOptions = LayoutOptions.Center;
 

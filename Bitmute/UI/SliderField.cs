@@ -27,10 +27,14 @@ namespace Bitmute.UI
 			m_suffix = suffix;
 			m_onChanged = onChanged;
 
+			double fontSize = UiConstants.ComponentFontSize;
+			double height = fontSize*2;
+
+
 			m_valueEntry = new Entry();
-			m_valueEntry.FontSize = 12.0;
+			m_valueEntry.FontSize = fontSize;
 			m_valueEntry.WidthRequest = 52.0;
-			m_valueEntry.HeightRequest = 22.0;
+			m_valueEntry.HeightRequest = height;
 			m_valueEntry.Margin = new Thickness(0.0);
 			m_valueEntry.Keyboard = Keyboard.Numeric;
 			m_valueEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
@@ -45,7 +49,7 @@ namespace Bitmute.UI
 			arrow.FontSize = 10.0;
 			arrow.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			arrow.WidthRequest = 22.0;
-			arrow.HeightRequest = 22.0;
+			arrow.HeightRequest = height;
 			arrow.HorizontalTextAlignment = TextAlignment.Center;
 			arrow.VerticalTextAlignment = TextAlignment.Center;
 			arrow.VerticalOptions = LayoutOptions.Fill;
@@ -63,7 +67,7 @@ namespace Bitmute.UI
 			chip.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
 			chip.ThemeStroke(UiConstants.DividerLight, UiConstants.DividerDark);
 			chip.StrokeThickness = 1.0;
-			chip.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(2.0) };
+			chip.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(0.0) };
 			chip.VerticalOptions = LayoutOptions.Center;
 			chip.Content = row;
 

@@ -77,7 +77,7 @@ namespace Bitmute.UI
 		private Entry BuildNumericEntry(int initial)
 		{
 			Entry entry = new Entry();
-			entry.FontSize = 12.0;
+			entry.FontSize = UiConstants.PanelFontSize;
 			entry.WidthRequest = 90.0;
 			entry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			entry.Keyboard = Keyboard.Numeric;
@@ -90,7 +90,7 @@ namespace Bitmute.UI
 			Label caption = new Label();
 			caption.Text = label;
 			caption.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			caption.FontSize = 12.0;
+			caption.FontSize = UiConstants.PanelFontSize;
 			caption.WidthRequest = 90.0;
 			caption.VerticalOptions = LayoutOptions.Center;
 
@@ -119,7 +119,7 @@ namespace Bitmute.UI
 			if (canvasMode)
 			{
 				m_horizontalAnchor = new Picker();
-				m_horizontalAnchor.FontSize = 12.0;
+				m_horizontalAnchor.FontSize = UiConstants.PanelFontSize;
 				m_horizontalAnchor.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 				m_horizontalAnchor.Items.Add("Left");
 				m_horizontalAnchor.Items.Add("Center");
@@ -127,7 +127,7 @@ namespace Bitmute.UI
 				m_horizontalAnchor.SelectedIndex = 1;
 
 				m_verticalAnchor = new Picker();
-				m_verticalAnchor.FontSize = 12.0;
+				m_verticalAnchor.FontSize = UiConstants.PanelFontSize;
 				m_verticalAnchor.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 				m_verticalAnchor.Items.Add("Top");
 				m_verticalAnchor.Items.Add("Middle");
@@ -140,7 +140,7 @@ namespace Bitmute.UI
 			else
 			{
 				m_interpolation = new Picker();
-				m_interpolation.FontSize = 12.0;
+				m_interpolation.FontSize = UiConstants.PanelFontSize;
 				m_interpolation.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 				m_interpolation.Items.Add("Nearest");
 				m_interpolation.Items.Add("Bilinear");

@@ -126,7 +126,7 @@ namespace Bitmute.UI
 		{
 			Label caption = new Label();
 			caption.Text = label;
-			caption.FontSize = 12.0;
+			caption.FontSize = UiConstants.PanelFontSize;
 			caption.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			caption.WidthRequest = 96.0;
 			caption.VerticalOptions = LayoutOptions.Center;
@@ -142,7 +142,7 @@ namespace Bitmute.UI
 
 			Label value = new Label();
 			value.Text = initial.ToString();
-			value.FontSize = 12.0;
+			value.FontSize = UiConstants.PanelFontSize;
 			value.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			value.WidthRequest = 40.0;
 			value.HorizontalTextAlignment = TextAlignment.End;
@@ -174,7 +174,7 @@ namespace Bitmute.UI
 
 			Label caption = new Label();
 			caption.Text = "Preview";
-			caption.FontSize = 12.0;
+			caption.FontSize = UiConstants.PanelFontSize;
 			caption.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			caption.VerticalOptions = LayoutOptions.Center;
 

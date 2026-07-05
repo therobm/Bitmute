@@ -206,13 +206,13 @@ namespace Bitmute.UI
 			{
 				fxGlyph.Text = "fx";
 			}
-			fxGlyph.FontSize = 11.0;
+			fxGlyph.FontSize = UiConstants.ComponentFontSize;
 			fxGlyph.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			fxGlyph.VerticalOptions = LayoutOptions.Center;
 
 			Label name = new Label();
 			name.Text = layer.Name();
-			name.FontSize = 12.0;
+			name.FontSize = UiConstants.PanelFontSize;
 			name.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			name.VerticalOptions = LayoutOptions.Center;
 
@@ -221,7 +221,7 @@ namespace Bitmute.UI
 			{
 				lockGlyph.Text = "L";
 			}
-			lockGlyph.FontSize = 11.0;
+			lockGlyph.FontSize = UiConstants.ComponentFontSize;
 			lockGlyph.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			lockGlyph.VerticalOptions = LayoutOptions.Center;
 			lockGlyph.HorizontalOptions = LayoutOptions.End;
@@ -744,7 +744,7 @@ namespace Bitmute.UI
 
 			Label opacityLabel = new Label();
 			opacityLabel.Text = "Opacity";
-			opacityLabel.FontSize = 11.0;
+			opacityLabel.FontSize = UiConstants.ComponentFontSize;
 			opacityLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			opacityLabel.VerticalOptions = LayoutOptions.Center;
 
@@ -763,12 +763,15 @@ namespace Bitmute.UI
 
 			Label blendLabel = new Label();
 			blendLabel.Text = "Blend";
-			blendLabel.FontSize = 11.0;
+			blendLabel.FontSize = UiConstants.ComponentFontSize;
 			blendLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			blendLabel.VerticalOptions = LayoutOptions.Center;
 
 			m_blendPicker = new Picker();
-			m_blendPicker.FontSize = 11.0;
+			m_blendPicker.FontSize = UiConstants.ComponentFontSize;
+			m_blendPicker.FontSize = UiConstants.ComponentFontSize;
+			m_blendPicker.HeightRequest = UiConstants.ComponentHeight;
+			m_blendPicker.Margin = new Thickness(0);
 			m_blendPicker.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_blendPicker.Items.Add("Normal");
 			m_blendPicker.Items.Add("Dissolve");
@@ -811,7 +814,7 @@ namespace Bitmute.UI
 
 			Label lockLabel = new Label();
 			lockLabel.Text = "Lock";
-			lockLabel.FontSize = 11.0;
+			lockLabel.FontSize = UiConstants.ComponentFontSize;
 			lockLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			lockLabel.VerticalOptions = LayoutOptions.Center;
 

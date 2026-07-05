@@ -91,7 +91,7 @@ namespace Bitmute.UI
 		{
 			Label label = new Label();
 			label.Text = text;
-			label.FontSize = 11.0;
+			label.FontSize = UiConstants.ComponentFontSize;
 			label.HorizontalOptions = LayoutOptions.Center;
 			label.VerticalOptions = LayoutOptions.Center;
 			label.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
@@ -284,7 +284,7 @@ namespace Bitmute.UI
 
 			Label recentLabel = new Label();
 			recentLabel.Text = "Recent";
-			recentLabel.FontSize = 11.0;
+			recentLabel.FontSize = UiConstants.ComponentFontSize;
 			recentLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 
 			m_recentHost = new FlexLayout();

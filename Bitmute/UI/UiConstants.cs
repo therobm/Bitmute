@@ -24,6 +24,10 @@ namespace Bitmute.UI
 		public const double MinimizedPadding = 8.0;
 		public const double RulerThickness = 18.0;
 
+		public const double PanelFontSize = 11;
+		public const double ComponentFontSize = 8;
+		public const double ComponentHeight = ComponentFontSize * 2;
+
 		public const double DefaultDocumentWidth = 800.0;
 		public const double DefaultDocumentHeight = 600.0;
 		public const double DefaultDocumentWindowWidth = 560.0;

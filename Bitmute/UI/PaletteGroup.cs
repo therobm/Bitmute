@@ -23,7 +23,7 @@ namespace Bitmute.UI
 		{
 			Label label = new Label();
 			label.Text = m_tabNames[index];
-			label.FontSize = 12.0;
+			label.FontSize = UiConstants.PanelFontSize;
 			label.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			label.VerticalOptions = LayoutOptions.Center;
 			label.HorizontalOptions = LayoutOptions.Center;
@@ -99,7 +99,7 @@ namespace Bitmute.UI
 		{
 			Label button = new Label();
 			button.Text = glyph;
-			button.FontSize = 11.0;
+			button.FontSize = UiConstants.ComponentFontSize;
 			button.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			button.WidthRequest = 20.0;
 			button.HeightRequest = UiConstants.PaletteTabHeight;
@@ -258,7 +258,7 @@ namespace Bitmute.UI
 			else
 			{
 				m_placeholder = new Label();
-				m_placeholder.FontSize = 12.0;
+				m_placeholder.FontSize = UiConstants.PanelFontSize;
 				m_placeholder.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 				m_placeholder.HorizontalOptions = LayoutOptions.Center;
 				m_placeholder.VerticalOptions = LayoutOptions.Center;

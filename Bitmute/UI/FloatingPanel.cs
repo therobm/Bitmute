@@ -32,7 +32,7 @@ namespace Bitmute.UI
 		{
 			Button button = new Button();
 			button.Text = text;
-			button.FontSize = 12.0;
+			button.FontSize = UiConstants.PanelFontSize;
 			button.WidthRequest = UiConstants.CloseButtonSize;
 			button.HeightRequest = UiConstants.CloseButtonSize;
 			button.Padding = new Thickness(0.0);

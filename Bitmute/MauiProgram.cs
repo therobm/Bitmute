@@ -7,6 +7,7 @@ using SkiaSharp.Views.Maui.Controls.Hosting;
 using Microsoft.Maui.Platform;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui;
 
 namespace Bitmute
 {
@@ -22,6 +23,24 @@ namespace Bitmute
 
 #if DEBUG
 			builder.Logging.AddDebug();
+#endif
+
+#if WINDOWS
+			Microsoft.Maui.Handlers.EntryHandler.Mapper.AppendToMapping("Compact", (handler, view) =>
+			{
+				handler.PlatformView.MinHeight = 0;
+				handler.PlatformView.Padding = new Microsoft.UI.Xaml.Thickness(1, 0, 1, 0);
+
+				handler.PlatformView.CornerRadius = new Microsoft.UI.Xaml.CornerRadius(0); 
+				handler.PlatformView.BorderThickness = new Microsoft.UI.Xaml.Thickness(0); 
+
+			});
+			Microsoft.Maui.Handlers.PickerHandler.Mapper.AppendToMapping("Compact", (handler, view) =>
+			{
+				handler.PlatformView.MinHeight = 0;
+				handler.PlatformView.Padding = new Microsoft.UI.Xaml.Thickness(6, 0, 0, 0);
+				handler.PlatformView.CornerRadius = new Microsoft.UI.Xaml.CornerRadius(0);
+			});
 #endif
 
 			return builder.Build();
