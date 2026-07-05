@@ -47,7 +47,6 @@ namespace Bitmute.UI
 		private AbsoluteLayout m_overlay;
 		private MenuBar m_menuBar;
 		private OptionsBar m_optionsBar;
-		private TextEditSession m_textEditSession;
 		private List<DocumentWindow> m_documents;
 		private DocumentWindow m_activeDocumentWindow;
 		private ToolPalette m_toolPalette;
@@ -1840,7 +1839,6 @@ namespace Bitmute.UI
 			m_optionsBar = new OptionsBar(this, m_toolState);
 			View optionsBar = m_optionsBar.Root();
 			View middle = BuildMiddle();
-			m_textEditSession = new TextEditSession(this, m_toolState, m_workspace);
 			View statusBar = BuildStatusBar();
 
 			Grid root = new Grid();
@@ -3040,6 +3038,10 @@ namespace Bitmute.UI
 			DocumentWindow window = panel as DocumentWindow;
 			if (window != null)
 			{
+				if (m_activeDocumentWindow != null && m_activeDocumentWindow != window)
+				{
+					m_activeDocumentWindow.CommitTextEdit();
+				}
 				m_activeDocumentWindow = window;
 				RefreshDocumentTitleBars();
 				RefreshPanels();
@@ -3285,7 +3287,7 @@ namespace Bitmute.UI
 				}
 				m_layerStyleSnapshot = null;
 			}
-			if (m_modalStack.Count == 0 && m_textEditSession != null)
+			if (m_modalStack.Count == 0)
 			{
 				Dispatcher.Dispatch(FocusKeyboardSinkDeferred);
 			}
@@ -3297,7 +3299,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			if (m_textEditSession != null && m_textEditSession.IsActive())
+			if (IsTextEditActive())
 			{
 				return;
 			}
@@ -3818,106 +3820,133 @@ namespace Bitmute.UI
 			return new Color(color.Red / 255.0f, color.Green / 255.0f, color.Blue / 255.0f, color.Alpha / 255.0f);
 		}
 
+		public AbsoluteLayout WorkspaceLayout()
+		{
+			return m_workspace;
+		}
+
+		private TextEditSession ActiveTextSession()
+		{
+			if (m_activeDocumentWindow == null)
+			{
+				return null;
+			}
+			return m_activeDocumentWindow.TextSessionOrNull();
+		}
+
 		public bool IsTextEditActive()
 		{
-			if (m_textEditSession == null)
+			TextEditSession session = ActiveTextSession();
+			if (session == null)
 			{
 				return false;
 			}
-			return m_textEditSession.IsActive();
+			return session.IsActive();
 		}
 
 		public CanvasView TextEditCanvas()
 		{
-			if (m_textEditSession == null)
+			TextEditSession session = ActiveTextSession();
+			if (session == null)
 			{
 				return null;
 			}
-			return m_textEditSession.EditCanvas();
+			return session.EditCanvas();
 		}
 
 		public Bitmute.Imaging.Layer TextEditLayer()
 		{
-			if (m_textEditSession == null)
+			TextEditSession session = ActiveTextSession();
+			if (session == null)
 			{
 				return null;
 			}
-			return m_textEditSession.EditLayer();
+			return session.EditLayer();
 		}
 
 		public int TextCaretIndex()
 		{
-			if (m_textEditSession == null)
+			TextEditSession session = ActiveTextSession();
+			if (session == null)
 			{
 				return 0;
 			}
-			return m_textEditSession.CaretIndex();
+			return session.CaretIndex();
 		}
 
 		public int TextSelectionStart()
 		{
-			if (m_textEditSession == null)
+			TextEditSession session = ActiveTextSession();
+			if (session == null)
 			{
 				return 0;
 			}
-			return m_textEditSession.SelectionStart();
+			return session.SelectionStart();
 		}
 
 		public int TextSelectionLength()
 		{
-			if (m_textEditSession == null)
+			TextEditSession session = ActiveTextSession();
+			if (session == null)
 			{
 				return 0;
 			}
-			return m_textEditSession.SelectionLength();
+			return session.SelectionLength();
 		}
 
 		public bool CaretVisible()
 		{
-			if (m_textEditSession == null)
+			TextEditSession session = ActiveTextSession();
+			if (session == null)
 			{
 				return false;
 			}
-			return m_textEditSession.CaretVisible();
+			return session.CaretVisible();
 		}
 
 		public void PlaceText(CanvasView canvas, int x, int y, float deviceX, float deviceY)
 		{
-			if (m_textEditSession != null)
+			DocumentWindow window = canvas.OwnerWindow();
+			if (window == null)
 			{
-				m_textEditSession.PlaceText(canvas, x, y, deviceX, deviceY);
+				return;
 			}
+			window.TextSession().PlaceText(x, y, deviceX, deviceY);
 		}
 
 		public void BeginTextEditForLayer(Bitmute.Imaging.Layer layer)
 		{
-			if (m_textEditSession != null)
+			if (m_activeDocumentWindow == null)
 			{
-				m_textEditSession.BeginForLayer(layer);
+				return;
 			}
+			m_activeDocumentWindow.TextSession().BeginForLayer(layer);
 		}
 
 		public void CommitTextEdit()
 		{
-			if (m_textEditSession != null)
+			TextEditSession session = ActiveTextSession();
+			if (session != null)
 			{
-				m_textEditSession.Commit();
+				session.Commit();
 			}
 		}
 
 		public void DoRasterizeText()
 		{
-			if (m_textEditSession != null)
+			if (m_activeDocumentWindow == null)
 			{
-				m_textEditSession.Rasterize();
+				return;
 			}
+			m_activeDocumentWindow.TextSession().Rasterize();
 		}
 
 		public void RefreshTextEditStyle()
 		{
-			if (m_textEditSession != null)
+			TextEditSession session = ActiveTextSession();
+			if (session != null)
 			{
-				m_textEditSession.RefreshStyle();
+				session.RefreshStyle();
 			}
 		}
 
@@ -4042,11 +4071,6 @@ namespace Bitmute.UI
 			{
 				m_layersPanel.Refresh();
 			}
-		}
-
-		public DocumentWindow ActiveDocumentWindow()
-		{
-			return m_activeDocumentWindow;
 		}
 
 		public ToolState CurrentToolState()

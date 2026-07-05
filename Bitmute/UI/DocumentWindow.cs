@@ -11,6 +11,7 @@ namespace Bitmute.UI
 	{
 		private Document m_document;
 		private CanvasView m_canvas;
+		private TextEditSession m_textSession;
 		private Entry m_zoomEntry;
 		private string m_baseTitle;
 		private Ruler m_topRuler;
@@ -232,6 +233,33 @@ namespace Bitmute.UI
 		public Document DocumentModel()
 		{
 			return m_document;
+		}
+
+		public TextEditSession TextSession()
+		{
+			if (m_textSession == null)
+			{
+				m_textSession = new TextEditSession(this);
+			}
+			return m_textSession;
+		}
+
+		public TextEditSession TextSessionOrNull()
+		{
+			return m_textSession;
+		}
+
+		public bool IsTextEditActive()
+		{
+			return m_textSession != null && m_textSession.IsActive();
+		}
+
+		public void CommitTextEdit()
+		{
+			if (m_textSession != null)
+			{
+				m_textSession.Commit();
+			}
 		}
 	}
 }

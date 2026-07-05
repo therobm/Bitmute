@@ -12,8 +12,9 @@ namespace Bitmute.UI
 		private MainView m_main;
 		private ToolState m_toolState;
 		private AbsoluteLayout m_host;
+		private DocumentWindow m_window;
+		private CanvasView m_canvas;
 		private Editor m_textEditor;
-		private CanvasView m_textEditCanvas;
 		private Bitmute.Imaging.Layer m_textEditLayer;
 		private bool m_textEditActive;
 		private bool m_textEditorKeyHooked;
@@ -55,15 +56,9 @@ namespace Bitmute.UI
 
 		private void PositionTextEditor()
 		{
-			double editorX = 8.0;
-			double editorY = 8.0;
-			DocumentWindow window = m_main.ActiveDocumentWindow();
-			if (window != null)
-			{
-				Rect bounds = AbsoluteLayout.GetLayoutBounds(window);
-				editorX = bounds.X + UiConstants.PanelBorderThickness + 8.0;
-				editorY = bounds.Y + UiConstants.TitleBarHeight + UiConstants.PanelBorderThickness + 8.0;
-			}
+			Rect bounds = AbsoluteLayout.GetLayoutBounds(m_window);
+			double editorX = bounds.X + UiConstants.PanelBorderThickness + 8.0;
+			double editorY = bounds.Y + UiConstants.TitleBarHeight + UiConstants.PanelBorderThickness + 8.0;
 			AbsoluteLayout.SetLayoutBounds(m_textEditor, new Rect(editorX, editorY, 200.0, 40.0));
 			AbsoluteLayout.SetLayoutFlags(m_textEditor, AbsoluteLayoutFlags.None);
 		}
@@ -125,11 +120,8 @@ namespace Bitmute.UI
 			string normalized = raw.Replace('\r', '\n');
 			m_textEditLayer.SetTextString(normalized);
 			m_textEditLayer.RenderText();
-			if (m_textEditCanvas != null)
-			{
-				m_textEditCanvas.MarkComposeDirty();
-				m_textEditCanvas.InvalidateSurface();
-			}
+			m_canvas.MarkComposeDirty();
+			m_canvas.InvalidateSurface();
 		}
 
 		private void ApplyToolStateToLayer(Layer layer)
@@ -187,30 +179,29 @@ namespace Bitmute.UI
 		private void OnCaretTick(object sender, System.EventArgs eventArgs)
 		{
 			m_caretVisible = !m_caretVisible;
-			if (m_textEditCanvas != null)
-			{
-				m_textEditCanvas.InvalidateSurface();
-			}
+			m_canvas.InvalidateSurface();
 		}
 
-		public TextEditSession(MainView main, ToolState toolState, AbsoluteLayout host)
+		public TextEditSession(DocumentWindow window)
 		{
-			m_main = main;
-			m_toolState = toolState;
-			m_host = host;
+			m_window = window;
+			m_canvas = window.Canvas();
+			m_main = MainView.Self;
+			m_toolState = m_main.CurrentToolState();
+			m_host = m_main.WorkspaceLayout();
 			m_textEditActive = false;
 			m_textEditorKeyHooked = false;
 			m_caretVisible = false;
 		}
 
-		public void PlaceText(CanvasView canvas, int x, int y, float deviceX, float deviceY)
+		public void PlaceText(int x, int y, float deviceX, float deviceY)
 		{
-			Document document = canvas.CurrentDocument();
+			Document document = m_window.DocumentModel();
 			if (document == null)
 			{
 				return;
 			}
-			if (m_textEditActive && m_textEditLayer != null && ReferenceEquals(m_textEditCanvas, canvas))
+			if (m_textEditActive && m_textEditLayer != null)
 			{
 				int caretIndex = TextRasterizer.CaretIndexAtPoint(m_textEditLayer, x, y);
 				if (m_textEditor != null)
@@ -220,15 +211,14 @@ namespace Bitmute.UI
 					m_textEditor.Focus();
 				}
 				m_caretVisible = true;
-				canvas.InvalidateSurface();
+				m_canvas.InvalidateSurface();
 				return;
 			}
-			Commit();
 			Layer active = document.ActiveLayer();
 			bool editExisting = active != null && active.IsText();
 			if (editExisting)
 			{
-				Begin(canvas, active, false);
+				Begin(active, false);
 				return;
 			}
 			Layer layer = document.AddLayer("Text");
@@ -239,18 +229,16 @@ namespace Bitmute.UI
 			layer.SetTextPosition(x, y);
 			ApplyToolStateToLayer(layer);
 			m_main.RefreshLayersPanel();
-			Begin(canvas, layer, true);
+			Begin(layer, true);
 		}
 
 		public void BeginForLayer(Bitmute.Imaging.Layer layer)
 		{
-			DocumentWindow window = m_main.ActiveWindow();
-			if (window == null || layer == null)
+			if (layer == null)
 			{
 				return;
 			}
-			CanvasView canvas = window.Canvas();
-			Document document = window.DocumentModel();
+			Document document = m_window.DocumentModel();
 			if (document == null)
 			{
 				return;
@@ -267,12 +255,11 @@ namespace Bitmute.UI
 			{
 				m_main.SelectTool(eTool.Text);
 			}
-			Begin(canvas, layer, false);
+			Begin(layer, false);
 		}
 
-		public void Begin(CanvasView canvas, Layer layer, bool isNew)
+		public void Begin(Layer layer, bool isNew)
 		{
-			m_textEditCanvas = canvas;
 			m_textEditLayer = layer;
 			m_textEditActive = true;
 			m_textPreEditWasNew = isNew;
@@ -296,7 +283,7 @@ namespace Bitmute.UI
 
 			LoadTextStyleFromLayer(layer);
 
-			Document document = canvas.CurrentDocument();
+			Document document = m_window.DocumentModel();
 			if (document != null)
 			{
 				document.BeginStroke();
@@ -315,8 +302,8 @@ namespace Bitmute.UI
 			m_textEditor.Focus();
 
 			layer.RenderText();
-			canvas.MarkComposeDirty();
-			canvas.InvalidateSurface();
+			m_canvas.MarkComposeDirty();
+			m_canvas.InvalidateSurface();
 			StartCaretBlink();
 		}
 
@@ -329,14 +316,13 @@ namespace Bitmute.UI
 			m_textEditActive = false;
 			StopCaretBlink();
 			Layer layer = m_textEditLayer;
-			CanvasView canvas = m_textEditCanvas;
 			if (m_textEditor != null && m_host.Contains(m_textEditor))
 			{
 				m_host.Remove(m_textEditor);
 			}
-			if (layer != null && canvas != null)
+			if (layer != null)
 			{
-				Document document = canvas.CurrentDocument();
+				Document document = m_window.DocumentModel();
 				ApplyToolStateToLayer(layer);
 				layer.RenderText();
 				if (layer.Text().Length == 0 && m_textPreEditWasNew)
@@ -369,12 +355,11 @@ namespace Bitmute.UI
 					}
 					layer.SetName(name);
 				}
-				canvas.MarkComposeDirty();
-				canvas.InvalidateSurface();
+				m_canvas.MarkComposeDirty();
+				m_canvas.InvalidateSurface();
 				m_main.RefreshLayersPanel();
 			}
 			m_textEditLayer = null;
-			m_textEditCanvas = null;
 			m_main.RestoreKeyboardFocusDeferred();
 		}
 
@@ -387,14 +372,13 @@ namespace Bitmute.UI
 			m_textEditActive = false;
 			StopCaretBlink();
 			Layer layer = m_textEditLayer;
-			CanvasView canvas = m_textEditCanvas;
 			if (m_textEditor != null && m_host.Contains(m_textEditor))
 			{
 				m_host.Remove(m_textEditor);
 			}
-			if (layer != null && canvas != null)
+			if (layer != null)
 			{
-				Document document = canvas.CurrentDocument();
+				Document document = m_window.DocumentModel();
 				layer.SetTextString(m_textPreEditString);
 				layer.SetTextStyle(m_textPreEditSize, m_textPreEditFont, m_textPreEditBold, m_textPreEditItalic, m_textPreEditColor, m_textPreEditAlign, m_textPreEditAntiAlias);
 				layer.SetTextCharacter(m_textPreEditLeadingAuto, m_textPreEditLeading, m_textPreEditTracking, m_textPreEditHorizontalScale, m_textPreEditVerticalScale, m_textPreEditBaselineShift, m_textPreEditFauxBold, m_textPreEditFauxItalic, m_textPreEditKerningAuto);
@@ -411,24 +395,18 @@ namespace Bitmute.UI
 						}
 					}
 				}
-				canvas.MarkComposeDirty();
-				canvas.InvalidateSurface();
+				m_canvas.MarkComposeDirty();
+				m_canvas.InvalidateSurface();
 				m_main.RefreshLayersPanel();
 			}
 			m_textEditLayer = null;
-			m_textEditCanvas = null;
 			m_main.RestoreKeyboardFocusDeferred();
 		}
 
 		public void Rasterize()
 		{
 			Commit();
-			DocumentWindow window = m_main.ActiveWindow();
-			if (window == null)
-			{
-				return;
-			}
-			Document document = window.DocumentModel();
+			Document document = m_window.DocumentModel();
 			Layer layer = document.ActiveLayer();
 			if (layer == null || !layer.IsText())
 			{
@@ -437,21 +415,21 @@ namespace Bitmute.UI
 			}
 			layer.RenderText();
 			layer.RasterizeText();
-			window.Canvas().MarkComposeDirty();
-			window.Canvas().InvalidateSurface();
+			m_canvas.MarkComposeDirty();
+			m_canvas.InvalidateSurface();
 			m_main.RefreshLayersPanel();
 		}
 
 		public void RefreshStyle()
 		{
-			if (!m_textEditActive || m_textEditLayer == null || m_textEditCanvas == null)
+			if (!m_textEditActive || m_textEditLayer == null)
 			{
 				return;
 			}
 			ApplyToolStateToLayer(m_textEditLayer);
 			m_textEditLayer.RenderText();
-			m_textEditCanvas.MarkComposeDirty();
-			m_textEditCanvas.InvalidateSurface();
+			m_canvas.MarkComposeDirty();
+			m_canvas.InvalidateSurface();
 		}
 
 		public bool IsActive()
@@ -461,7 +439,7 @@ namespace Bitmute.UI
 
 		public CanvasView EditCanvas()
 		{
-			return m_textEditCanvas;
+			return m_canvas;
 		}
 
 		public Bitmute.Imaging.Layer EditLayer()
