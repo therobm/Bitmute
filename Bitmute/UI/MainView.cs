@@ -1304,54 +1304,105 @@ namespace Bitmute.UI
 				{
 					return null;
 				}
-				SkiaSharp.SKBitmap result = new SkiaSharp.SKBitmap(width, height, SkiaSharp.SKColorType.Rgba8888, SkiaSharp.SKAlphaType.Unpremul);
-				result.Erase(SkiaSharp.SKColors.Transparent);
-				for (int row = 0; row < height; row++)
-				{
-					for (int column = 0; column < width; column++)
-					{
-						int canvasX = bounds.Left + column;
-						int canvasY = bounds.Top + row;
-						int coverage = selection.Coverage(canvasX, canvasY);
-						if (coverage > 0)
-						{
-							SkiaSharp.SKColor pixel = layer.GetPixelCanvas(canvasX, canvasY);
-							if (coverage < 255)
-							{
-								pixel = new SkiaSharp.SKColor(pixel.Red, pixel.Green, pixel.Blue, (byte)(((pixel.Alpha * coverage) + 127) / 255));
-							}
-							result.SetPixel(column, row, pixel);
-						}
-					}
-				}
+				SkiaSharp.SKBitmap result = ExtractSelectionRaw(layer, selection, bounds, width, height);
 				return result;
 			}
 			return layer.Bitmap().Copy();
 		}
 
-		private void EraseSelection(Document document, Layer layer)
+		private unsafe SkiaSharp.SKBitmap ExtractSelectionRaw(Layer layer, Selection selection, SkiaSharp.SKRectI bounds, int width, int height)
+		{
+			SkiaSharp.SKBitmap result = new SkiaSharp.SKBitmap(width, height, SkiaSharp.SKColorType.Rgba8888, SkiaSharp.SKAlphaType.Unpremul);
+			result.Erase(SkiaSharp.SKColors.Transparent);
+			SkiaSharp.SKBitmap sourceBitmap = layer.Bitmap();
+			int layerOffsetX = layer.OffsetX();
+			int layerOffsetY = layer.OffsetY();
+			int sourceWidth = sourceBitmap.Width;
+			int sourceHeight = sourceBitmap.Height;
+			int sourceStride = sourceBitmap.RowBytes;
+			int resultStride = result.RowBytes;
+			byte[] selectionMask = selection.Mask();
+			int selectionWidth = selection.Width();
+			byte* sourceBase = (byte*)sourceBitmap.GetPixels().ToPointer();
+			byte* resultBase = (byte*)result.GetPixels().ToPointer();
+			for (int row = 0; row < height; row++)
+			{
+				int canvasY = bounds.Top + row;
+				int selectionRow = canvasY * selectionWidth;
+				byte* resultRow = resultBase + ((long)row * resultStride);
+				for (int column = 0; column < width; column++)
+				{
+					int canvasX = bounds.Left + column;
+					int coverage = selectionMask[selectionRow + canvasX];
+					if (coverage == 0)
+					{
+						continue;
+					}
+					int bitmapX = canvasX - layerOffsetX;
+					int bitmapY = canvasY - layerOffsetY;
+					if (bitmapX < 0 || bitmapY < 0 || bitmapX >= sourceWidth || bitmapY >= sourceHeight)
+					{
+						continue;
+					}
+					byte* sourcePixel = sourceBase + ((long)bitmapY * sourceStride) + (bitmapX * 4);
+					byte* resultPixel = resultRow + (column * 4);
+					resultPixel[0] = sourcePixel[0];
+					resultPixel[1] = sourcePixel[1];
+					resultPixel[2] = sourcePixel[2];
+					if (coverage < 255)
+					{
+						resultPixel[3] = (byte)(((sourcePixel[3] * coverage) + 127) / 255);
+					}
+					else
+					{
+						resultPixel[3] = sourcePixel[3];
+					}
+				}
+			}
+			return result;
+		}
+
+		private unsafe void EraseSelection(Document document, Layer layer)
 		{
 			Selection selection = document.Selection();
 			if (selection != null && selection.IsActive())
 			{
 				SkiaSharp.SKRectI bounds = selection.Bounds();
+				SkiaSharp.SKBitmap bitmap = layer.Bitmap();
+				int layerOffsetX = layer.OffsetX();
+				int layerOffsetY = layer.OffsetY();
+				int bitmapWidth = bitmap.Width;
+				int bitmapHeight = bitmap.Height;
+				int stride = bitmap.RowBytes;
+				byte[] selectionMask = selection.Mask();
+				int selectionWidth = selection.Width();
+				byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
 				for (int canvasY = bounds.Top; canvasY < bounds.Bottom; canvasY++)
 				{
+					int selectionRow = canvasY * selectionWidth;
 					for (int canvasX = bounds.Left; canvasX < bounds.Right; canvasX++)
 					{
-						int coverage = selection.Coverage(canvasX, canvasY);
+						int coverage = selectionMask[selectionRow + canvasX];
 						if (coverage == 0)
 						{
 							continue;
 						}
-						if (coverage == 255)
+						int bitmapX = canvasX - layerOffsetX;
+						int bitmapY = canvasY - layerOffsetY;
+						if (bitmapX < 0 || bitmapY < 0 || bitmapX >= bitmapWidth || bitmapY >= bitmapHeight)
 						{
-							layer.SetPixelCanvas(canvasX, canvasY, SkiaSharp.SKColors.Transparent);
 							continue;
 						}
-						SkiaSharp.SKColor pixel = layer.GetPixelCanvas(canvasX, canvasY);
-						byte reducedAlpha = (byte)(((pixel.Alpha * (255 - coverage)) + 127) / 255);
-						layer.SetPixelCanvas(canvasX, canvasY, new SkiaSharp.SKColor(pixel.Red, pixel.Green, pixel.Blue, reducedAlpha));
+						byte* pixel = basePointer + ((long)bitmapY * stride) + (bitmapX * 4);
+						if (coverage == 255)
+						{
+							pixel[0] = 0;
+							pixel[1] = 0;
+							pixel[2] = 0;
+							pixel[3] = 0;
+							continue;
+						}
+						pixel[3] = (byte)(((pixel[3] * (255 - coverage)) + 127) / 255);
 					}
 				}
 				return;
@@ -1389,9 +1440,11 @@ namespace Bitmute.UI
 		{
 			try
 			{
-				SkiaSharp.SKImage image = SkiaSharp.SKImage.FromBitmap(bitmap);
+				SkiaSharp.SKPixmap pixmap = bitmap.PeekPixels();
+				SkiaSharp.SKImage image = SkiaSharp.SKImage.FromPixels(pixmap);
 				SkiaSharp.SKData data = image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
 				image.Dispose();
+				pixmap.Dispose();
 				if (data == null)
 				{
 					return;

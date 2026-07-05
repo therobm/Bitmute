@@ -111,6 +111,8 @@ namespace Bitmute.Tests
 			TestSelectionFeatherScratchReuse();
 			TestSetShiftedClearsResidue();
 			TestDabClampedToSelectionBounds();
+			TestFloodFillMatchesReference();
+			TestTrimAndResizeCanvas();
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");
@@ -2685,6 +2687,217 @@ namespace Bitmute.Tests
 			}
 			Check(clipMatchesUnclipped, "pixels inside full-coverage selection match unclipped dab");
 			unclippedLayer.Dispose();
+		}
+
+		private static void PaintFillFixture(Layer layer)
+		{
+			layer.Bitmap().Erase(new SKColor(255, 255, 255, 255));
+			for (int y = 6; y < 26; y++)
+			{
+				for (int x = 6; x < 26; x++)
+				{
+					bool border = x == 6 || x == 25 || y == 6 || y == 25;
+					if (border)
+					{
+						layer.Bitmap().SetPixel(x, y, new SKColor(0, 0, 0, 255));
+					}
+					else
+					{
+						layer.Bitmap().SetPixel(x, y, new SKColor(250, 252, 249, 255));
+					}
+				}
+			}
+		}
+
+		private static SKColor ReferenceCoverageBlend(SKColor current, SKColor fill, int coverage)
+		{
+			if (coverage >= 255)
+			{
+				return fill;
+			}
+			int inverse = 255 - coverage;
+			byte red = (byte)(((current.Red * inverse) + (fill.Red * coverage) + 127) / 255);
+			byte green = (byte)(((current.Green * inverse) + (fill.Green * coverage) + 127) / 255);
+			byte blue = (byte)(((current.Blue * inverse) + (fill.Blue * coverage) + 127) / 255);
+			byte alpha = (byte)(((current.Alpha * inverse) + (fill.Alpha * coverage) + 127) / 255);
+			return new SKColor(red, green, blue, alpha);
+		}
+
+		private static bool ReferenceMatch(SKColor left, SKColor right, int tolerance)
+		{
+			int deltaRed = left.Red - right.Red;
+			if (deltaRed < 0)
+			{
+				deltaRed = -deltaRed;
+			}
+			int deltaGreen = left.Green - right.Green;
+			if (deltaGreen < 0)
+			{
+				deltaGreen = -deltaGreen;
+			}
+			int deltaBlue = left.Blue - right.Blue;
+			if (deltaBlue < 0)
+			{
+				deltaBlue = -deltaBlue;
+			}
+			int deltaAlpha = left.Alpha - right.Alpha;
+			if (deltaAlpha < 0)
+			{
+				deltaAlpha = -deltaAlpha;
+			}
+			return deltaRed <= tolerance && deltaGreen <= tolerance && deltaBlue <= tolerance && deltaAlpha <= tolerance;
+		}
+
+		private static void ReferenceFloodFill(SKBitmap bitmap, int seedX, int seedY, SKColor fill, int tolerance, Selection selection, int offsetX, int offsetY)
+		{
+			int width = bitmap.Width;
+			int height = bitmap.Height;
+			SKColor target = bitmap.GetPixel(seedX, seedY);
+			bool[] filled = new bool[width * height];
+			System.Collections.Generic.Stack<int> pending = new System.Collections.Generic.Stack<int>();
+			pending.Push((seedY * width) + seedX);
+			for (;;)
+			{
+				if (pending.Count == 0)
+				{
+					break;
+				}
+				int index = pending.Pop();
+				int pixelX = index % width;
+				int pixelY = index / width;
+				int coverage = 255;
+				if (selection.IsActive())
+				{
+					coverage = selection.Coverage(pixelX + offsetX, pixelY + offsetY);
+					if (coverage == 0)
+					{
+						continue;
+					}
+				}
+				SKColor current = bitmap.GetPixel(pixelX, pixelY);
+				if (!ReferenceMatch(current, target, tolerance))
+				{
+					continue;
+				}
+				if (filled[index])
+				{
+					continue;
+				}
+				bitmap.SetPixel(pixelX, pixelY, ReferenceCoverageBlend(current, fill, coverage));
+				filled[index] = true;
+				if (pixelX > 0)
+				{
+					pending.Push(index - 1);
+				}
+				if (pixelX < width - 1)
+				{
+					pending.Push(index + 1);
+				}
+				if (pixelY > 0)
+				{
+					pending.Push(index - width);
+				}
+				if (pixelY < height - 1)
+				{
+					pending.Push(index + width);
+				}
+			}
+			for (int pixelY = 0; pixelY < height; pixelY++)
+			{
+				for (int pixelX = 0; pixelX < width; pixelX++)
+				{
+					int index = (pixelY * width) + pixelX;
+					if (filled[index])
+					{
+						continue;
+					}
+					if (selection.IsActive() && selection.Coverage(pixelX + offsetX, pixelY + offsetY) == 0)
+					{
+						continue;
+					}
+					bool nextToFilled = (pixelX > 0 && filled[index - 1]) || (pixelX < width - 1 && filled[index + 1]) || (pixelY > 0 && filled[index - width]) || (pixelY < height - 1 && filled[index + width]);
+					if (!nextToFilled)
+					{
+						continue;
+					}
+					int coverage = 255;
+					if (selection.IsActive())
+					{
+						coverage = selection.Coverage(pixelX + offsetX, pixelY + offsetY);
+					}
+					SKColor current = bitmap.GetPixel(pixelX, pixelY);
+					bitmap.SetPixel(pixelX, pixelY, ReferenceCoverageBlend(current, fill, coverage));
+				}
+			}
+		}
+
+		private static void TestFloodFillMatchesReference()
+		{
+			Document doc = new Document("t", 32, 32);
+			Layer layer = doc.ActiveLayer();
+			layer.SetOffset(3, 2);
+			PaintFillFixture(layer);
+			byte[] mask = new byte[32 * 32];
+			for (int y = 5; y < 28; y++)
+			{
+				for (int x = 5; x < 20; x++)
+				{
+					mask[(y * 32) + x] = 200;
+				}
+			}
+			doc.Selection().SelectMask(mask, new SKRectI(5, 5, 20, 28));
+			ToolState state = new ToolState();
+			state.SetForeground(new SKColor(200, 30, 30, 255));
+			state.SetFillTolerance(6);
+			FillTool tool = new FillTool();
+			bool changed = tool.OnPressed(doc, 15, 15, state);
+			Check(changed, "flood fill reports change");
+			Document referenceDoc = new Document("r", 32, 32);
+			Layer referenceLayer = referenceDoc.ActiveLayer();
+			referenceLayer.SetOffset(3, 2);
+			PaintFillFixture(referenceLayer);
+			referenceDoc.Selection().SelectMask(mask, new SKRectI(5, 5, 20, 28));
+			ReferenceFloodFill(referenceLayer.Bitmap(), 15 - 3, 15 - 2, new SKColor(200, 30, 30, 255), 6, referenceDoc.Selection(), 3, 2);
+			Check(AdjustmentBitmapsEqual(layer.Bitmap(), referenceLayer.Bitmap()), "flood fill with offset layer and partial selection matches reference");
+			Document plainDoc = new Document("p", 32, 32);
+			Layer plainLayer = plainDoc.ActiveLayer();
+			PaintFillFixture(plainLayer);
+			FillTool plainTool = new FillTool();
+			bool plainChanged = plainTool.OnPressed(plainDoc, 15, 15, state);
+			Check(plainChanged, "plain flood fill reports change");
+			Document plainReference = new Document("q", 32, 32);
+			Layer plainReferenceLayer = plainReference.ActiveLayer();
+			PaintFillFixture(plainReferenceLayer);
+			ReferenceFloodFill(plainReferenceLayer.Bitmap(), 15, 15, new SKColor(200, 30, 30, 255), 6, plainReference.Selection(), 0, 0);
+			Check(AdjustmentBitmapsEqual(plainLayer.Bitmap(), plainReferenceLayer.Bitmap()), "plain flood fill matches reference");
+			SKColor outside = plainLayer.Bitmap().GetPixel(2, 2);
+			Check(outside == new SKColor(255, 255, 255, 255), "flood fill stays inside the border");
+		}
+
+		private static void TestTrimAndResizeCanvas()
+		{
+			Document doc = new Document("t", 40, 30);
+			Layer layer = doc.ActiveLayer();
+			layer.Bitmap().Erase(new SKColor(0, 0, 0, 0));
+			for (int y = 8; y < 14; y++)
+			{
+				for (int x = 12; x < 22; x++)
+				{
+					layer.Bitmap().SetPixel(x, y, new SKColor(30, 200, 90, 255));
+				}
+			}
+			doc.Trim();
+			Check(doc.Width() == 10 && doc.Height() == 6, "trim shrinks canvas to content (" + doc.Width() + "x" + doc.Height() + ")");
+			Check(doc.ActiveLayer().Bitmap().GetPixel(0, 0) == new SKColor(30, 200, 90, 255), "trim keeps content at origin");
+			Check(doc.ActiveLayer().Bitmap().GetPixel(9, 5) == new SKColor(30, 200, 90, 255), "trim keeps content at far corner");
+			doc.ResizeCanvas(20, 12, 0, 0);
+			Check(doc.Width() == 20 && doc.Height() == 12, "resize canvas grows dims");
+			Check(doc.ActiveLayer().Bitmap().GetPixel(5, 3) == new SKColor(30, 200, 90, 255), "center anchor places old content centered");
+			Check(doc.ActiveLayer().Bitmap().GetPixel(1, 1).Alpha == 0, "resize margin transparent");
+			doc.ResizeCanvas(8, 4, -1, -1);
+			Check(doc.Width() == 8 && doc.Height() == 4, "shrink resize dims");
+			Check(doc.ActiveLayer().Bitmap().GetPixel(5, 3) == new SKColor(30, 200, 90, 255), "top-left anchor shrink keeps surviving content");
+			Check(doc.ActiveLayer().Bitmap().GetPixel(0, 0).Alpha == 0, "top-left anchor shrink keeps empty corner transparent");
 		}
 	}
 }

@@ -507,63 +507,107 @@ namespace Bitmute.Tools
 			m_cornerY[neighbor] = m_pressQuadY[neighbor] + mirrorY;
 		}
 
-		private SKBitmap ExtractSelection(SKBitmap source, int layerOffsetX, int layerOffsetY, Selection selection, SKRectI bounds)
+		private unsafe SKBitmap ExtractSelection(SKBitmap source, int layerOffsetX, int layerOffsetY, Selection selection, SKRectI bounds)
 		{
 			int width = bounds.Right - bounds.Left;
 			int height = bounds.Bottom - bounds.Top;
 			SKBitmap piece = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
 			piece.Erase(SKColors.Transparent);
+			byte[] selectionMask = selection.Mask();
+			int selectionWidth = selection.Width();
+			int selectionHeight = selection.Height();
+			int sourceWidth = source.Width;
+			int sourceHeight = source.Height;
+			int sourceStride = source.RowBytes;
+			int pieceStride = piece.RowBytes;
+			byte* sourceBase = (byte*)source.GetPixels().ToPointer();
+			byte* pieceBase = (byte*)piece.GetPixels().ToPointer();
 			for (int canvasY = bounds.Top; canvasY < bounds.Bottom; canvasY++)
 			{
+				if (canvasY < 0 || canvasY >= selectionHeight)
+				{
+					continue;
+				}
+				int selectionRow = canvasY * selectionWidth;
 				for (int canvasX = bounds.Left; canvasX < bounds.Right; canvasX++)
 				{
-					int coverage = selection.Coverage(canvasX, canvasY);
+					if (canvasX < 0 || canvasX >= selectionWidth)
+					{
+						continue;
+					}
+					int coverage = selectionMask[selectionRow + canvasX];
 					if (coverage == 0)
 					{
 						continue;
 					}
 					int bitmapX = canvasX - layerOffsetX;
 					int bitmapY = canvasY - layerOffsetY;
-					if (bitmapX < 0 || bitmapY < 0 || bitmapX >= source.Width || bitmapY >= source.Height)
+					if (bitmapX < 0 || bitmapY < 0 || bitmapX >= sourceWidth || bitmapY >= sourceHeight)
 					{
 						continue;
 					}
-					SKColor sourcePixel = source.GetPixel(bitmapX, bitmapY);
+					byte* sourcePixel = sourceBase + ((long)bitmapY * sourceStride) + (bitmapX * 4);
+					byte* piecePixel = pieceBase + ((long)(canvasY - bounds.Top) * pieceStride) + ((canvasX - bounds.Left) * 4);
+					piecePixel[0] = sourcePixel[0];
+					piecePixel[1] = sourcePixel[1];
+					piecePixel[2] = sourcePixel[2];
 					if (coverage < 255)
 					{
-						sourcePixel = new SKColor(sourcePixel.Red, sourcePixel.Green, sourcePixel.Blue, (byte)(((sourcePixel.Alpha * coverage) + 127) / 255));
+						piecePixel[3] = (byte)(((sourcePixel[3] * coverage) + 127) / 255);
 					}
-					piece.SetPixel(canvasX - bounds.Left, canvasY - bounds.Top, sourcePixel);
+					else
+					{
+						piecePixel[3] = sourcePixel[3];
+					}
 				}
 			}
 			return piece;
 		}
 
-		private SKBitmap CopyWithSelectionCleared(SKBitmap source, int layerOffsetX, int layerOffsetY, Selection selection, SKRectI bounds)
+		private unsafe SKBitmap CopyWithSelectionCleared(SKBitmap source, int layerOffsetX, int layerOffsetY, Selection selection, SKRectI bounds)
 		{
 			SKBitmap remainder = source.Copy();
+			byte[] selectionMask = selection.Mask();
+			int selectionWidth = selection.Width();
+			int selectionHeight = selection.Height();
+			int remainderWidth = remainder.Width;
+			int remainderHeight = remainder.Height;
+			int remainderStride = remainder.RowBytes;
+			byte* remainderBase = (byte*)remainder.GetPixels().ToPointer();
 			for (int canvasY = bounds.Top; canvasY < bounds.Bottom; canvasY++)
 			{
+				if (canvasY < 0 || canvasY >= selectionHeight)
+				{
+					continue;
+				}
+				int selectionRow = canvasY * selectionWidth;
 				for (int canvasX = bounds.Left; canvasX < bounds.Right; canvasX++)
 				{
-					int coverage = selection.Coverage(canvasX, canvasY);
+					if (canvasX < 0 || canvasX >= selectionWidth)
+					{
+						continue;
+					}
+					int coverage = selectionMask[selectionRow + canvasX];
 					if (coverage == 0)
 					{
 						continue;
 					}
 					int bitmapX = canvasX - layerOffsetX;
 					int bitmapY = canvasY - layerOffsetY;
-					if (bitmapX < 0 || bitmapY < 0 || bitmapX >= remainder.Width || bitmapY >= remainder.Height)
+					if (bitmapX < 0 || bitmapY < 0 || bitmapX >= remainderWidth || bitmapY >= remainderHeight)
 					{
 						continue;
 					}
+					byte* remainderPixel = remainderBase + ((long)bitmapY * remainderStride) + (bitmapX * 4);
 					if (coverage >= 255)
 					{
-						remainder.SetPixel(bitmapX, bitmapY, SKColors.Transparent);
+						remainderPixel[0] = 0;
+						remainderPixel[1] = 0;
+						remainderPixel[2] = 0;
+						remainderPixel[3] = 0;
 						continue;
 					}
-					SKColor remainderPixel = remainder.GetPixel(bitmapX, bitmapY);
-					remainder.SetPixel(bitmapX, bitmapY, new SKColor(remainderPixel.Red, remainderPixel.Green, remainderPixel.Blue, (byte)(((remainderPixel.Alpha * (255 - coverage)) + 127) / 255)));
+					remainderPixel[3] = (byte)(((remainderPixel[3] * (255 - coverage)) + 127) / 255);
 				}
 			}
 			return remainder;

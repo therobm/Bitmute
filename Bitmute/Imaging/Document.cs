@@ -2211,14 +2211,7 @@ namespace Bitmute.Imaging
 			{
 				Layer layer = m_layers[index];
 				SKBitmap baked = BakeLayerToCanvas(layer);
-				SKBitmap destination = new SKBitmap(trimWidth, trimHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-				for (int y = 0; y < trimHeight; y++)
-				{
-					for (int x = 0; x < trimWidth; x++)
-					{
-						destination.SetPixel(x, y, baked.GetPixel(unionLeft + x, unionTop + y));
-					}
-				}
+				SKBitmap destination = PixelRegion.ExtractRegion(baked, new SKRectI(unionLeft, unionTop, unionRight, unionBottom));
 				layer.SetBitmap(destination);
 				layer.SetOffset(0, 0);
 			}
@@ -2255,31 +2248,13 @@ namespace Bitmute.Imaging
 			{
 				dy = (newHeight - m_height) / 2;
 			}
-			int sourceWidth = m_width;
-			int sourceHeight = m_height;
 			for (int index = 0; index < m_layers.Count; index++)
 			{
 				Layer layer = m_layers[index];
 				SKBitmap baked = BakeLayerToCanvas(layer);
 				SKBitmap destination = new SKBitmap(newWidth, newHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
 				destination.Erase(SKColors.Transparent);
-				for (int y = 0; y < sourceHeight; y++)
-				{
-					int destinationY = y + dy;
-					if (destinationY < 0 || destinationY >= newHeight)
-					{
-						continue;
-					}
-					for (int x = 0; x < sourceWidth; x++)
-					{
-						int destinationX = x + dx;
-						if (destinationX < 0 || destinationX >= newWidth)
-						{
-							continue;
-						}
-						destination.SetPixel(destinationX, destinationY, baked.GetPixel(x, y));
-					}
-				}
+				PixelRegion.ApplyRegion(destination, baked, dx, dy);
 				layer.SetBitmap(destination);
 				layer.SetOffset(0, 0);
 			}

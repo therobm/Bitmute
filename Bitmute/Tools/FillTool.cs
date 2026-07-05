@@ -6,53 +6,56 @@ namespace Bitmute.Tools
 {
 	public class FillTool : Tool
 	{
-		private static SKColor BlendByCoverage(SKColor current, SKColor fill, int coverage)
+		private static unsafe void BlendPixelByCoverage(byte* pixel, byte fillRed, byte fillGreen, byte fillBlue, byte fillAlpha, int coverage)
 		{
 			if (coverage >= 255)
 			{
-				return fill;
+				pixel[0] = fillRed;
+				pixel[1] = fillGreen;
+				pixel[2] = fillBlue;
+				pixel[3] = fillAlpha;
+				return;
 			}
 			int inverse = 255 - coverage;
-			byte red = (byte)(((current.Red * inverse) + (fill.Red * coverage) + 127) / 255);
-			byte green = (byte)(((current.Green * inverse) + (fill.Green * coverage) + 127) / 255);
-			byte blue = (byte)(((current.Blue * inverse) + (fill.Blue * coverage) + 127) / 255);
-			byte alpha = (byte)(((current.Alpha * inverse) + (fill.Alpha * coverage) + 127) / 255);
-			return new SKColor(red, green, blue, alpha);
+			pixel[0] = (byte)(((pixel[0] * inverse) + (fillRed * coverage) + 127) / 255);
+			pixel[1] = (byte)(((pixel[1] * inverse) + (fillGreen * coverage) + 127) / 255);
+			pixel[2] = (byte)(((pixel[2] * inverse) + (fillBlue * coverage) + 127) / 255);
+			pixel[3] = (byte)(((pixel[3] * inverse) + (fillAlpha * coverage) + 127) / 255);
 		}
 
-		private static bool ColorMatch(SKColor left, SKColor right, int tolerance)
+		private static unsafe bool PixelMatch(byte* pixel, int targetRed, int targetGreen, int targetBlue, int targetAlpha, int tolerance)
 		{
-			int deltaRed = left.Red - right.Red;
-			int deltaGreen = left.Green - right.Green;
-			int deltaBlue = left.Blue - right.Blue;
-			int deltaAlpha = left.Alpha - right.Alpha;
+			int deltaRed = pixel[0] - targetRed;
 			if (deltaRed < 0)
 			{
 				deltaRed = -deltaRed;
-			}
-			if (deltaGreen < 0)
-			{
-				deltaGreen = -deltaGreen;
-			}
-			if (deltaBlue < 0)
-			{
-				deltaBlue = -deltaBlue;
-			}
-			if (deltaAlpha < 0)
-			{
-				deltaAlpha = -deltaAlpha;
 			}
 			if (deltaRed > tolerance)
 			{
 				return false;
 			}
+			int deltaGreen = pixel[1] - targetGreen;
+			if (deltaGreen < 0)
+			{
+				deltaGreen = -deltaGreen;
+			}
 			if (deltaGreen > tolerance)
 			{
 				return false;
 			}
+			int deltaBlue = pixel[2] - targetBlue;
+			if (deltaBlue < 0)
+			{
+				deltaBlue = -deltaBlue;
+			}
 			if (deltaBlue > tolerance)
 			{
 				return false;
+			}
+			int deltaAlpha = pixel[3] - targetAlpha;
+			if (deltaAlpha < 0)
+			{
+				deltaAlpha = -deltaAlpha;
 			}
 			if (deltaAlpha > tolerance)
 			{
@@ -61,7 +64,7 @@ namespace Bitmute.Tools
 			return true;
 		}
 
-		public override bool OnPressed(Document document, int x, int y, ToolState state)
+		public override unsafe bool OnPressed(Document document, int x, int y, ToolState state)
 		{
 			Layer layer = document.ActiveLayer();
 			if (layer == null)
@@ -81,14 +84,39 @@ namespace Bitmute.Tools
 			}
 
 			Selection selection = document.Selection();
-			SKColor target = bitmap.GetPixel(seedX, seedY);
+			bool clip = selection.IsActive();
+			byte[] selectionMask = null;
+			int selectionWidth = 0;
+			int selectionHeight = 0;
+			if (clip)
+			{
+				selectionMask = selection.Mask();
+				selectionWidth = selection.Width();
+				selectionHeight = selection.Height();
+			}
+			int rowBytes = bitmap.RowBytes;
+			byte* pixels = (byte*)bitmap.GetPixels().ToPointer();
+			byte* seedPixel = pixels + ((long)seedY * rowBytes) + (seedX * 4);
+			int targetRed = seedPixel[0];
+			int targetGreen = seedPixel[1];
+			int targetBlue = seedPixel[2];
+			int targetAlpha = seedPixel[3];
 			SKColor fill = state.Foreground();
+			byte fillRed = fill.Red;
+			byte fillGreen = fill.Green;
+			byte fillBlue = fill.Blue;
+			byte fillAlpha = fill.Alpha;
 			int tolerance = state.FillTolerance();
-			if (ColorMatch(target, fill, 0))
+			bool seedIsFillColor = targetRed == fillRed && targetGreen == fillGreen && targetBlue == fillBlue && targetAlpha == fillAlpha;
+			if (seedIsFillColor)
 			{
 				return false;
 			}
 
+			int minFilledX = seedX;
+			int maxFilledX = seedX;
+			int minFilledY = seedY;
+			int maxFilledY = seedY;
 			bool[] filled = new bool[width * height];
 			Stack<int> pending = new Stack<int>();
 			pending.Push((seedY * width) + seedX);
@@ -99,28 +127,50 @@ namespace Bitmute.Tools
 					break;
 				}
 				int index = pending.Pop();
+				if (filled[index])
+				{
+					continue;
+				}
 				int pixelX = index % width;
 				int pixelY = index / width;
 				int coverage = 255;
-				if (selection.IsActive())
+				if (clip)
 				{
-					coverage = selection.Coverage(pixelX + offsetX, pixelY + offsetY);
+					int canvasX = pixelX + offsetX;
+					int canvasY = pixelY + offsetY;
+					if (canvasX < 0 || canvasY < 0 || canvasX >= selectionWidth || canvasY >= selectionHeight)
+					{
+						continue;
+					}
+					coverage = selectionMask[(canvasY * selectionWidth) + canvasX];
 					if (coverage == 0)
 					{
 						continue;
 					}
 				}
-				SKColor current = bitmap.GetPixel(pixelX, pixelY);
-				if (!ColorMatch(current, target, tolerance))
+				byte* current = pixels + ((long)pixelY * rowBytes) + (pixelX * 4);
+				if (!PixelMatch(current, targetRed, targetGreen, targetBlue, targetAlpha, tolerance))
 				{
 					continue;
 				}
-				if (filled[index])
-				{
-					continue;
-				}
-				bitmap.SetPixel(pixelX, pixelY, BlendByCoverage(current, fill, coverage));
+				BlendPixelByCoverage(current, fillRed, fillGreen, fillBlue, fillAlpha, coverage);
 				filled[index] = true;
+				if (pixelX < minFilledX)
+				{
+					minFilledX = pixelX;
+				}
+				if (pixelX > maxFilledX)
+				{
+					maxFilledX = pixelX;
+				}
+				if (pixelY < minFilledY)
+				{
+					minFilledY = pixelY;
+				}
+				if (pixelY > maxFilledY)
+				{
+					maxFilledY = pixelY;
+				}
 				if (pixelX > 0)
 				{
 					pending.Push(index - 1);
@@ -139,45 +189,64 @@ namespace Bitmute.Tools
 				}
 			}
 
-			DilateEdge(bitmap, filled, width, height, offsetX, offsetY, selection, fill);
+			DilateEdge(pixels, rowBytes, filled, width, height, offsetX, offsetY, clip, selectionMask, selectionWidth, selectionHeight, fillRed, fillGreen, fillBlue, fillAlpha, minFilledX, minFilledY, maxFilledX, maxFilledY);
 			return true;
 		}
 
-		private void DilateEdge(SKBitmap bitmap, bool[] filled, int width, int height, int offsetX, int offsetY, Selection selection, SKColor fill)
+		private unsafe void DilateEdge(byte* pixels, int rowBytes, bool[] filled, int width, int height, int offsetX, int offsetY, bool clip, byte[] selectionMask, int selectionWidth, int selectionHeight, byte fillRed, byte fillGreen, byte fillBlue, byte fillAlpha, int minFilledX, int minFilledY, int maxFilledX, int maxFilledY)
 		{
-			List<int> edge = new List<int>();
-			for (int pixelY = 0; pixelY < height; pixelY++)
+			int scanLeft = minFilledX - 1;
+			int scanTop = minFilledY - 1;
+			int scanRight = maxFilledX + 2;
+			int scanBottom = maxFilledY + 2;
+			if (scanLeft < 0)
 			{
-				for (int pixelX = 0; pixelX < width; pixelX++)
+				scanLeft = 0;
+			}
+			if (scanTop < 0)
+			{
+				scanTop = 0;
+			}
+			if (scanRight > width)
+			{
+				scanRight = width;
+			}
+			if (scanBottom > height)
+			{
+				scanBottom = height;
+			}
+			for (int pixelY = scanTop; pixelY < scanBottom; pixelY++)
+			{
+				for (int pixelX = scanLeft; pixelX < scanRight; pixelX++)
 				{
 					int index = (pixelY * width) + pixelX;
 					if (filled[index])
 					{
 						continue;
 					}
-					if (selection.IsActive() && selection.Coverage(pixelX + offsetX, pixelY + offsetY) == 0)
+					int coverage = 255;
+					if (clip)
+					{
+						int canvasX = pixelX + offsetX;
+						int canvasY = pixelY + offsetY;
+						if (canvasX < 0 || canvasY < 0 || canvasX >= selectionWidth || canvasY >= selectionHeight)
+						{
+							continue;
+						}
+						coverage = selectionMask[(canvasY * selectionWidth) + canvasX];
+						if (coverage == 0)
+						{
+							continue;
+						}
+					}
+					bool nextToFilled = (pixelX > 0 && filled[index - 1]) || (pixelX < width - 1 && filled[index + 1]) || (pixelY > 0 && filled[index - width]) || (pixelY < height - 1 && filled[index + width]);
+					if (!nextToFilled)
 					{
 						continue;
 					}
-					bool nextToFilled = (pixelX > 0 && filled[index - 1]) || (pixelX < width - 1 && filled[index + 1]) || (pixelY > 0 && filled[index - width]) || (pixelY < height - 1 && filled[index + width]);
-					if (nextToFilled)
-					{
-						edge.Add(index);
-					}
+					byte* current = pixels + ((long)pixelY * rowBytes) + (pixelX * 4);
+					BlendPixelByCoverage(current, fillRed, fillGreen, fillBlue, fillAlpha, coverage);
 				}
-			}
-			for (int position = 0; position < edge.Count; position++)
-			{
-				int index = edge[position];
-				int pixelX = index % width;
-				int pixelY = index / width;
-				int coverage = 255;
-				if (selection.IsActive())
-				{
-					coverage = selection.Coverage(pixelX + offsetX, pixelY + offsetY);
-				}
-				SKColor current = bitmap.GetPixel(pixelX, pixelY);
-				bitmap.SetPixel(pixelX, pixelY, BlendByCoverage(current, fill, coverage));
 			}
 		}
 
