@@ -9,31 +9,24 @@ namespace Bitmute.UI.Components
 	public class CheckField : ContentView
 	{
 		private Action<bool> m_onChanged;
-		private CheckBox m_check;
-		private bool m_updating;
+		private CheckMark m_check;
 
-		private void OnCheckChanged(object sender, CheckedChangedEventArgs eventArgs)
+		private void OnMarkChanged(bool value)
 		{
-			if (m_updating)
-			{
-				return;
-			}
 			if (m_onChanged != null)
 			{
-				m_onChanged(eventArgs.Value);
+				m_onChanged(value);
 			}
 		}
 
 		public bool Checked()
 		{
-			return m_check.IsChecked;
+			return m_check.Checked();
 		}
 
 		public void SetChecked(bool value)
 		{
-			m_updating = true;
-			m_check.IsChecked = value;
-			m_updating = false;
+			m_check.SetChecked(value);
 		}
 
 		public CheckField(string caption, bool initial, Action<bool> onChanged)
@@ -47,12 +40,8 @@ namespace Bitmute.UI.Components
 			captionLabel.WidthRequest = UiConstants.FieldCaptionWidth;
 			captionLabel.VerticalOptions = LayoutOptions.Center;
 
-			m_check = new CheckBox();
-			m_check.IsChecked = initial;
-			m_check.HorizontalOptions = LayoutOptions.Start;
+			m_check = new CheckMark(initial, OnMarkChanged);
 			m_check.VerticalOptions = LayoutOptions.Center;
-			m_check.SetAppThemeColor(CheckBox.ColorProperty, UiConstants.AccentLight, UiConstants.AccentDark);
-			m_check.CheckedChanged += OnCheckChanged;
 
 			Grid row = new Grid();
 			row.ColumnSpacing = UiConstants.DialogRowSpacing;

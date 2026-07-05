@@ -3,37 +3,58 @@ using System.Collections.Generic;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
+using Bitmute.UI.Components;
 
 namespace Bitmute.UI
 {
 	public abstract class MultiModal : ModalDialog
 	{
+		private sealed class SectionCheck
+		{
+			public MultiModal m_owner;
+			public int m_index;
+
+			public void Changed(bool value)
+			{
+				m_owner.OnSectionChecked(m_index, value);
+			}
+		}
+
 		private List<View> m_panels;
-		private List<Label> m_labels;
-		private List<CheckBox> m_checks;
+		private List<Border> m_rows;
 		private List<Action<bool>> m_checkedHandlers;
 		private VerticalStackLayout m_sectionList;
 		private ContentView m_panelHost;
+		private int m_selectedSection;
 
 		private void EnsureSections()
 		{
 			if (m_panels == null)
 			{
 				m_panels = new List<View>();
-				m_labels = new List<Label>();
-				m_checks = new List<CheckBox>();
+				m_rows = new List<Border>();
 				m_checkedHandlers = new List<Action<bool>>();
 				m_sectionList = new VerticalStackLayout();
-				m_sectionList.Spacing = UiConstants.DialogRowSpacing;
+				m_sectionList.Spacing = 2.0;
 				m_panelHost = new ContentView();
+				m_selectedSection = -1;
+			}
+		}
+
+		private void OnSectionChecked(int index, bool value)
+		{
+			Action<bool> handler = m_checkedHandlers[index];
+			if (handler != null)
+			{
+				handler(value);
 			}
 		}
 
 		private void OnSectionTapped(object sender, TappedEventArgs eventArgs)
 		{
-			for (int index = 0; index < m_labels.Count; index++)
+			for (int index = 0; index < m_rows.Count; index++)
 			{
-				if (ReferenceEquals(m_labels[index], sender))
+				if (ReferenceEquals(m_rows[index], sender))
 				{
 					SelectSection(index);
 					return;
@@ -41,23 +62,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void OnSectionChecked(object sender, CheckedChangedEventArgs eventArgs)
-		{
-			for (int index = 0; index < m_checks.Count; index++)
-			{
-				if (ReferenceEquals(m_checks[index], sender))
-				{
-					Action<bool> handler = m_checkedHandlers[index];
-					if (handler != null)
-					{
-						handler(eventArgs.Value);
-					}
-					return;
-				}
-			}
-		}
-
-		private void AddSectionRow(string name, View panel, CheckBox check, Action<bool> onChecked)
+		private void AddSectionRow(string name, View panel, CheckMark check, Action<bool> onChecked)
 		{
 			EnsureSections();
 
@@ -66,23 +71,27 @@ namespace Bitmute.UI
 			nameLabel.FontSize = UiConstants.PanelFontSize;
 			nameLabel.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
 			nameLabel.VerticalOptions = LayoutOptions.Center;
-			TapGestureRecognizer recognizer = new TapGestureRecognizer();
-			recognizer.Tapped += OnSectionTapped;
-			nameLabel.GestureRecognizers.Add(recognizer);
 
-			HorizontalStackLayout row = new HorizontalStackLayout();
-			row.Spacing = UiConstants.DialogRowSpacing;
+			HorizontalStackLayout rowContent = new HorizontalStackLayout();
+			rowContent.Spacing = UiConstants.DialogRowSpacing;
 			if (check != null)
 			{
 				check.VerticalOptions = LayoutOptions.Center;
-				check.CheckedChanged += OnSectionChecked;
-				row.Add(check);
+				rowContent.Add(check);
 			}
-			row.Add(nameLabel);
+			rowContent.Add(nameLabel);
+
+			Border row = new Border();
+			row.StrokeThickness = 0.0;
+			row.Padding = new Thickness(UiConstants.DialogRowSpacing, 4.0);
+			row.SetAppThemeColor(BackgroundColorProperty, Colors.Transparent, Colors.Transparent);
+			row.Content = rowContent;
+			TapGestureRecognizer recognizer = new TapGestureRecognizer();
+			recognizer.Tapped += OnSectionTapped;
+			row.GestureRecognizers.Add(recognizer);
 
 			m_panels.Add(panel);
-			m_labels.Add(nameLabel);
-			m_checks.Add(check);
+			m_rows.Add(row);
 			m_checkedHandlers.Add(onChecked);
 			m_sectionList.Add(row);
 		}
@@ -94,9 +103,11 @@ namespace Bitmute.UI
 
 		protected void AddSection(string name, View panel, bool initialChecked, Action<bool> onChecked)
 		{
-			CheckBox check = new CheckBox();
-			check.IsChecked = initialChecked;
-			check.SetAppThemeColor(CheckBox.ColorProperty, UiConstants.AccentLight, UiConstants.AccentDark);
+			EnsureSections();
+			SectionCheck adapter = new SectionCheck();
+			adapter.m_owner = this;
+			adapter.m_index = m_panels.Count;
+			CheckMark check = new CheckMark(initialChecked, adapter.Changed);
 			AddSectionRow(name, panel, check, onChecked);
 		}
 
@@ -106,6 +117,12 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			if (m_selectedSection >= 0 && m_selectedSection < m_rows.Count)
+			{
+				m_rows[m_selectedSection].SetAppThemeColor(BackgroundColorProperty, Colors.Transparent, Colors.Transparent);
+			}
+			m_selectedSection = index;
+			m_rows[index].SetAppThemeColor(BackgroundColorProperty, UiConstants.MenuOpenLight, UiConstants.MenuOpenDark);
 			m_panelHost.Content = m_panels[index];
 		}
 
@@ -115,9 +132,21 @@ namespace Bitmute.UI
 			m_sectionList.WidthRequest = listWidth;
 			m_panelHost.WidthRequest = panelWidth;
 
-			HorizontalStackLayout body = new HorizontalStackLayout();
-			body.Spacing = UiConstants.DialogRowSpacing * 2.0;
+			BoxView divider = new BoxView();
+			divider.WidthRequest = UiConstants.PanelBorderThickness;
+			divider.ThemeBg(UiConstants.DividerLight, UiConstants.DividerDark);
+			divider.VerticalOptions = LayoutOptions.Fill;
+
+			Grid body = new Grid();
+			body.ColumnSpacing = UiConstants.DialogRowSpacing;
+			body.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			body.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			body.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			Grid.SetColumn(m_sectionList, 0);
+			Grid.SetColumn(divider, 1);
+			Grid.SetColumn(m_panelHost, 2);
 			body.Add(m_sectionList);
+			body.Add(divider);
 			body.Add(m_panelHost);
 			ComposeDialog(title, body, buttonRow);
 		}
