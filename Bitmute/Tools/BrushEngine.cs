@@ -10,6 +10,14 @@ namespace Bitmute.Tools
 		private const long ParallelWorkThreshold = 262144;
 		private const long ParallelBoxAverageWorkThreshold = 16384;
 
+		private static byte[] s_coveragePool;
+		private static int s_coveragePoolWidth;
+		private static bool s_coverageDirtyValid;
+		private static int s_coverageDirtyLeft;
+		private static int s_coverageDirtyTop;
+		private static int s_coverageDirtyRight;
+		private static int s_coverageDirtyBottom;
+
 		private sealed class DabBandWorker
 		{
 			public BrushEngine m_engine;
@@ -105,7 +113,22 @@ namespace Bitmute.Tools
 			SKBitmap bitmap = layer.Bitmap();
 			m_width = bitmap.Width;
 			m_height = bitmap.Height;
-			m_coverage = new byte[m_width * m_height];
+			int coverageLength = m_width * m_height;
+			if (s_coveragePool == null || s_coveragePool.Length != coverageLength || s_coveragePoolWidth != m_width)
+			{
+				s_coveragePool = new byte[coverageLength];
+				s_coveragePoolWidth = m_width;
+				s_coverageDirtyValid = false;
+			}
+			else if (s_coverageDirtyValid)
+			{
+				for (int y = s_coverageDirtyTop; y < s_coverageDirtyBottom; y++)
+				{
+					System.Array.Clear(s_coveragePool, (y * m_width) + s_coverageDirtyLeft, s_coverageDirtyRight - s_coverageDirtyLeft);
+				}
+				s_coverageDirtyValid = false;
+			}
+			m_coverage = s_coveragePool;
 			if (original != null && original.Width == m_width && original.Height == m_height)
 			{
 				m_original = original;
@@ -973,6 +996,30 @@ namespace Bitmute.Tools
 					CaptureColorReplaceSample(layer, m_dabQueueX[index], m_dabQueueY[index]);
 				}
 			}
+			double minCenterX = m_dabQueueX[0];
+			double maxCenterX = m_dabQueueX[0];
+			double minCenterY = m_dabQueueY[0];
+			double maxCenterY = m_dabQueueY[0];
+			for (int index = 1; index < m_dabQueueCount; index++)
+			{
+				if (m_dabQueueX[index] < minCenterX)
+				{
+					minCenterX = m_dabQueueX[index];
+				}
+				if (m_dabQueueX[index] > maxCenterX)
+				{
+					maxCenterX = m_dabQueueX[index];
+				}
+				if (m_dabQueueY[index] < minCenterY)
+				{
+					minCenterY = m_dabQueueY[index];
+				}
+				if (m_dabQueueY[index] > maxCenterY)
+				{
+					maxCenterY = m_dabQueueY[index];
+				}
+			}
+			UnionCoverageDirty(layer, minCenterX, minCenterY, maxCenterX, maxCenterY);
 			int diameter = (m_radius * 2) + 3;
 			long work = (long)diameter * diameter * m_dabQueueCount;
 			long threshold = ParallelWorkThreshold;
@@ -989,19 +1036,6 @@ namespace Bitmute.Tools
 				m_dabQueueCount = 0;
 				return;
 			}
-			double minCenterY = m_dabQueueY[0];
-			double maxCenterY = m_dabQueueY[0];
-			for (int index = 1; index < m_dabQueueCount; index++)
-			{
-				if (m_dabQueueY[index] < minCenterY)
-				{
-					minCenterY = m_dabQueueY[index];
-				}
-				if (m_dabQueueY[index] > maxCenterY)
-				{
-					maxCenterY = m_dabQueueY[index];
-				}
-			}
 			int rowFirst = (int)System.Math.Floor(minCenterY) - m_radius - 1;
 			int rowLast = (int)System.Math.Ceiling(maxCenterY) + m_radius + 1;
 			DabBandWorker worker = new DabBandWorker();
@@ -1010,6 +1044,59 @@ namespace Bitmute.Tools
 			worker.m_selection = selection;
 			RowBands.Run(rowFirst, rowLast + 1, worker.Band);
 			m_dabQueueCount = 0;
+		}
+
+		private void UnionCoverageDirty(Layer layer, double minCenterX, double minCenterY, double maxCenterX, double maxCenterY)
+		{
+			int left = (int)System.Math.Floor(minCenterX) - m_radius - 1 - layer.OffsetX();
+			int top = (int)System.Math.Floor(minCenterY) - m_radius - 1 - layer.OffsetY();
+			int right = (int)System.Math.Ceiling(maxCenterX) + m_radius + 2 - layer.OffsetX();
+			int bottom = (int)System.Math.Ceiling(maxCenterY) + m_radius + 2 - layer.OffsetY();
+			if (left < 0)
+			{
+				left = 0;
+			}
+			if (top < 0)
+			{
+				top = 0;
+			}
+			if (right > m_width)
+			{
+				right = m_width;
+			}
+			if (bottom > m_height)
+			{
+				bottom = m_height;
+			}
+			if (right <= left || bottom <= top)
+			{
+				return;
+			}
+			if (!s_coverageDirtyValid)
+			{
+				s_coverageDirtyLeft = left;
+				s_coverageDirtyTop = top;
+				s_coverageDirtyRight = right;
+				s_coverageDirtyBottom = bottom;
+				s_coverageDirtyValid = true;
+				return;
+			}
+			if (left < s_coverageDirtyLeft)
+			{
+				s_coverageDirtyLeft = left;
+			}
+			if (top < s_coverageDirtyTop)
+			{
+				s_coverageDirtyTop = top;
+			}
+			if (right > s_coverageDirtyRight)
+			{
+				s_coverageDirtyRight = right;
+			}
+			if (bottom > s_coverageDirtyBottom)
+			{
+				s_coverageDirtyBottom = bottom;
+			}
 		}
 
 		public void AirbrushStamp(Document document, Layer layer, double x, double y, Selection selection)

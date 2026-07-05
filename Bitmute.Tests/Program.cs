@@ -116,6 +116,8 @@ namespace Bitmute.Tests
 			TestRowBandsCoverage();
 			TestParallelMatchesSingleBand();
 			TestParallelBrushMatchesSingleBand();
+			TestStrokeSnapshotPoolReuse();
+			TestCoveragePoolClearedBetweenStrokes();
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");
@@ -3055,6 +3057,49 @@ namespace Bitmute.Tests
 			Check(center.Alpha > 0, "large brush stroke painted the path");
 			SKColor outside = parallelDoc.ActiveLayer().Bitmap().GetPixel(20, 20);
 			Check(outside.Alpha == 0, "large brush stroke clipped by selection");
+		}
+
+		private static void TestStrokeSnapshotPoolReuse()
+		{
+			Document doc = new Document("t", 48, 40);
+			Layer layer = doc.ActiveLayer();
+			doc.BeginStroke();
+			Adjustments.InvertColors(layer.Bitmap());
+			doc.EndStroke();
+			doc.BeginStroke();
+			layer.Bitmap().SetPixel(5, 5, new SKColor(200, 10, 10, 255));
+			doc.EndStroke();
+			Check(layer.Bitmap().GetPixel(5, 5) == new SKColor(200, 10, 10, 255), "second pooled stroke applied");
+			doc.Undo();
+			Check(layer.Bitmap().GetPixel(5, 5) == new SKColor(0, 0, 0, 255), "undo of second pooled stroke restores inverted pixel");
+			Check(layer.Bitmap().GetPixel(20, 20) == new SKColor(0, 0, 0, 255), "first pooled stroke still applied after one undo");
+			doc.Undo();
+			Check(layer.Bitmap().GetPixel(5, 5) == new SKColor(255, 255, 255, 255), "undo of first pooled stroke restores white");
+			doc.Redo();
+			Check(layer.Bitmap().GetPixel(20, 20) == new SKColor(0, 0, 0, 255), "redo reapplies inverted stroke");
+		}
+
+		private static void TestCoveragePoolClearedBetweenStrokes()
+		{
+			Document doc = new Document("t", 64, 64);
+			Layer layer = doc.ActiveLayer();
+			layer.Bitmap().Erase(new SKColor(0, 0, 0, 0));
+			BrushEngine engine = new BrushEngine();
+			doc.BeginStroke();
+			engine.Begin(layer, doc.StrokeSnapshot(), 8, 1.0, 1.0, 0.3, false, 0.25, 0.0, eBrushOp.Paint, eBlendMode.Normal, new SKColor(255, 0, 0, 255));
+			engine.StampFirst(doc, layer, 32, 32, doc.Selection());
+			engine.End();
+			doc.EndStroke();
+			SKColor afterFirst = layer.Bitmap().GetPixel(32, 32);
+			CheckNear(afterFirst.Alpha, 77, 2, "first low-flow dab alpha");
+			doc.BeginStroke();
+			engine.Begin(layer, doc.StrokeSnapshot(), 8, 1.0, 1.0, 0.3, false, 0.25, 0.0, eBrushOp.Paint, eBlendMode.Normal, new SKColor(0, 0, 255, 255));
+			engine.StampFirst(doc, layer, 32, 32, doc.Selection());
+			engine.End();
+			doc.EndStroke();
+			SKColor afterSecond = layer.Bitmap().GetPixel(32, 32);
+			CheckNear(afterSecond.Alpha, 130, 3, "second stroke starts with clean coverage (stale coverage would give ~168)");
+			Check(afterSecond.Blue > afterSecond.Red && afterSecond.Red > 0, "second stroke composites blue over remaining red");
 		}
 	}
 }

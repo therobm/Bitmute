@@ -35,6 +35,7 @@ namespace Bitmute.Imaging
 		private List<EditCommand> m_undoStack;
 		private List<EditCommand> m_redoStack;
 		private SKBitmap m_strokeSnapshot;
+		private bool m_strokeSnapshotValid;
 		private int m_strokeLayerIndex;
 		private Selection m_selection;
 		private SKRectI m_composeDirtyRect;
@@ -263,6 +264,7 @@ namespace Bitmute.Imaging
 			m_undoStack = new List<EditCommand>();
 			m_redoStack = new List<EditCommand>();
 			m_strokeSnapshot = null;
+			m_strokeSnapshotValid = false;
 			m_strokeLayerIndex = 0;
 			m_selection = new Selection(width, height);
 			m_composeDirtyRect = SKRectI.Empty;
@@ -715,6 +717,10 @@ namespace Bitmute.Imaging
 
 		public SKBitmap StrokeSnapshot()
 		{
+			if (!m_strokeSnapshotValid)
+			{
+				return null;
+			}
 			return m_strokeSnapshot;
 		}
 
@@ -816,25 +822,31 @@ namespace Bitmute.Imaging
 
 		public void BeginStroke()
 		{
-			if (m_strokeSnapshot != null)
-			{
-				m_strokeSnapshot.Dispose();
-				m_strokeSnapshot = null;
-			}
+			m_strokeSnapshotValid = false;
 			Layer active = ActiveLayer();
 			if (active == null)
 			{
 				return;
 			}
+			SKBitmap bitmap = active.Bitmap();
+			if (m_strokeSnapshot == null || m_strokeSnapshot.Width != bitmap.Width || m_strokeSnapshot.Height != bitmap.Height)
+			{
+				if (m_strokeSnapshot != null)
+				{
+					m_strokeSnapshot.Dispose();
+				}
+				m_strokeSnapshot = new SKBitmap(bitmap.Width, bitmap.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			}
+			PixelRegion.CopyPixels(bitmap, m_strokeSnapshot);
 			m_strokeLayerIndex = m_activeLayerIndex;
-			m_strokeSnapshot = active.Bitmap().Copy();
+			m_strokeSnapshotValid = true;
 			m_strokeDirtyRect = SKRectI.Empty;
 			m_strokeDirtyValid = false;
 		}
 
 		public unsafe void RestoreStrokeSnapshot()
 		{
-			if (m_strokeSnapshot == null)
+			if (!m_strokeSnapshotValid)
 			{
 				return;
 			}
@@ -863,10 +875,11 @@ namespace Bitmute.Imaging
 
 		public void EndStroke()
 		{
-			if (m_strokeSnapshot == null)
+			if (!m_strokeSnapshotValid)
 			{
 				return;
 			}
+			m_strokeSnapshotValid = false;
 			if (m_strokeLayerIndex >= 0 && m_strokeLayerIndex < m_layers.Count)
 			{
 				Layer strokeStyledLayer = m_layers[m_strokeLayerIndex];
@@ -878,15 +891,11 @@ namespace Bitmute.Imaging
 			}
 			if (m_strokeLayerIndex < 0 || m_strokeLayerIndex >= m_layers.Count)
 			{
-				m_strokeSnapshot.Dispose();
-				m_strokeSnapshot = null;
 				return;
 			}
 			SKBitmap current = m_layers[m_strokeLayerIndex].Bitmap();
 			if (current.Width != m_strokeSnapshot.Width || current.Height != m_strokeSnapshot.Height)
 			{
-				m_strokeSnapshot.Dispose();
-				m_strokeSnapshot = null;
 				return;
 			}
 			SKRectI searchRect = new SKRectI(0, 0, current.Width, current.Height);
@@ -915,8 +924,6 @@ namespace Bitmute.Imaging
 				}
 				if (bitmapRight <= bitmapLeft || bitmapBottom <= bitmapTop)
 				{
-					m_strokeSnapshot.Dispose();
-					m_strokeSnapshot = null;
 					return;
 				}
 				searchRect = new SKRectI(bitmapLeft, bitmapTop, bitmapRight, bitmapBottom);
@@ -924,8 +931,6 @@ namespace Bitmute.Imaging
 			SKRectI rect = PixelRegion.ComputeDirtyRect(m_strokeSnapshot, current, searchRect);
 			if (rect.Width <= 0 || rect.Height <= 0)
 			{
-				m_strokeSnapshot.Dispose();
-				m_strokeSnapshot = null;
 				return;
 			}
 			SKBitmap before = PixelRegion.ExtractRegion(m_strokeSnapshot, rect);
@@ -938,8 +943,6 @@ namespace Bitmute.Imaging
 				m_undoStack.RemoveAt(0);
 			}
 			m_dirty = true;
-			m_strokeSnapshot.Dispose();
-			m_strokeSnapshot = null;
 		}
 
 		public void PushCommand(EditCommand command)

@@ -5,6 +5,38 @@ namespace Bitmute.Imaging
 {
 	public static class PixelRegion
 	{
+		private sealed unsafe class CopyPixelsWorker
+		{
+			public IntPtr m_sourceBase;
+			public IntPtr m_destinationBase;
+			public int m_sourceStride;
+			public int m_destinationStride;
+			public long m_rowLength;
+
+			public void Band(int start, int end)
+			{
+				byte* sourceBase = (byte*)m_sourceBase.ToPointer();
+				byte* destinationBase = (byte*)m_destinationBase.ToPointer();
+				for (int y = start; y < end; y++)
+				{
+					byte* sourceRow = sourceBase + ((long)y * m_sourceStride);
+					byte* destinationRow = destinationBase + ((long)y * m_destinationStride);
+					Buffer.MemoryCopy(sourceRow, destinationRow, m_rowLength, m_rowLength);
+				}
+			}
+		}
+
+		public static void CopyPixels(SKBitmap source, SKBitmap destination)
+		{
+			CopyPixelsWorker worker = new CopyPixelsWorker();
+			worker.m_sourceBase = source.GetPixels();
+			worker.m_destinationBase = destination.GetPixels();
+			worker.m_sourceStride = source.RowBytes;
+			worker.m_destinationStride = destination.RowBytes;
+			worker.m_rowLength = (long)source.Width * 4;
+			RowBands.Run(0, source.Height, worker.Band);
+		}
+
 		public static SKRectI ComputeDirtyRect(SKBitmap before, SKBitmap after)
 		{
 			return ComputeDirtyRect(before, after, new SKRectI(0, 0, before.Width, before.Height));
