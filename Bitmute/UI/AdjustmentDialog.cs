@@ -111,6 +111,10 @@ namespace Bitmute.UI
 			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
 			Button applyButton = PrimaryButton("Apply", OnApplyClicked);
 			ComposeFields(adjustment.m_name, ButtonRow(cancelButton, applyButton));
+			if (adjustment.m_previewable)
+			{
+				RunPreview();
+			}
 		}
 	}
 }

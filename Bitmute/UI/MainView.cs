@@ -3269,7 +3269,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			FocusKeyboardSink();
+			Dispatcher.Dispatch(FocusKeyboardSinkDeferred);
 			if (m_activeDocumentWindow == window)
 			{
 				return;
@@ -3401,8 +3401,18 @@ namespace Bitmute.UI
 			}
 			double targetX = entry.m_dragOriginX + totalX;
 			double targetY = entry.m_dragOriginY + totalY;
-			double maxX = m_workspace.Width - entry.m_width;
-			double maxY = m_workspace.Height - entry.m_height;
+			double clampWidth = entry.m_content.Width;
+			if (clampWidth <= 0.0)
+			{
+				clampWidth = entry.m_width;
+			}
+			double clampHeight = entry.m_content.Height;
+			if (clampHeight <= 0.0)
+			{
+				clampHeight = entry.m_height;
+			}
+			double maxX = m_workspace.Width - clampWidth;
+			double maxY = m_workspace.Height - clampHeight;
 			if (targetX < 0.0)
 			{
 				targetX = 0.0;

@@ -144,7 +144,7 @@ namespace Bitmute.UI
 
 		private void RunAddNoise(SKBitmap bitmap, int[] values)
 		{
-			Adjustments.AddNoise(bitmap, values[0], false);
+			Adjustments.AddNoise(bitmap, values[0], values[1] == 1);
 		}
 
 		private void RunMosaic(SKBitmap bitmap, int[] values)
@@ -530,7 +530,7 @@ namespace Bitmute.UI
 			AddDialog(eMenuAction.Twirl, eMenuAction.FilterDistortMenu, "Twirl", true, new string[] { "Angle" }, new int[] { -999 }, new int[] { 999 }, new int[] { 50 }, 360.0, 200.0, RunTwirl);
 			AddChoiceDialog(eMenuAction.Wave, eMenuAction.FilterDistortMenu, "Wave", true, new string[] { "Wavelength", "Amplitude" }, new int[] { 1, 1 }, new int[] { 200, 100 }, new int[] { 40, 10 }, new string[] { "Type" }, new string[][] { new string[] { "Sine", "Triangle", "Square" } }, new int[] { 0 }, 360.0, 260.0, RunWave);
 
-			AddDialog(eMenuAction.AddNoise, eMenuAction.FilterNoiseMenu, "Add Noise", true, new string[] { "Amount" }, new int[] { 0 }, new int[] { 100 }, new int[] { 20 }, 360.0, 200.0, RunAddNoise);
+			AddChoiceDialog(eMenuAction.AddNoise, eMenuAction.FilterNoiseMenu, "Add Noise", true, new string[] { "Amount" }, new int[] { 0 }, new int[] { 100 }, new int[] { 20 }, new string[] { "Type" }, new string[][] { new string[] { "Color", "Monochromatic" } }, new int[] { 0 }, 360.0, 230.0, RunAddNoise);
 			AddInstant(eMenuAction.Despeckle, eMenuAction.FilterNoiseMenu, "Despeckle", RunDespeckle);
 			AddDialog(eMenuAction.Median, eMenuAction.FilterNoiseMenu, "Median", true, new string[] { "Radius" }, new int[] { 1 }, new int[] { 16 }, new int[] { 3 }, 360.0, 200.0, RunMedian);
 
