@@ -198,6 +198,9 @@ namespace Bitmute.UI.Panels
 			thumbnail.HeightRequest = ThumbnailHeight;
 			thumbnail.VerticalOptions = LayoutOptions.Center;
 			thumbnail.Source = BuildThumbnail(layer);
+			TapGestureRecognizer thumbnailTap = new TapGestureRecognizer();
+			thumbnailTap.Tapped += OnThumbnailTapped;
+			thumbnail.GestureRecognizers.Add(thumbnailTap);
 			m_thumbnailImages.Add(thumbnail);
 			m_thumbnailLayers.Add(layerIndex);
 
@@ -308,6 +311,41 @@ namespace Bitmute.UI.Panels
 		{
 			Windows.UI.Core.CoreVirtualKeyStates state = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift);
 			return (state & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
+		}
+
+		private void OnThumbnailTapped(object sender, TappedEventArgs eventArgs)
+		{
+			Document document = Doc();
+			if (document == null)
+			{
+				return;
+			}
+			for (int index = 0; index < m_thumbnailImages.Count; index++)
+			{
+				if (ReferenceEquals(m_thumbnailImages[index], sender))
+				{
+					int layerIndex = m_thumbnailLayers[index];
+					if (ControlHeld())
+					{
+						MainView main = MainView.Self;
+						if (main != null)
+						{
+							main.SelectLayerPixels(layerIndex);
+						}
+						return;
+					}
+					if (ShiftHeld())
+					{
+						document.SelectLayerRange(layerIndex);
+					}
+					else
+					{
+						document.SetActiveLayerIndex(layerIndex);
+					}
+					Refresh();
+					return;
+				}
+			}
 		}
 
 		private void OnRowTapped(object sender, TappedEventArgs eventArgs)

@@ -811,6 +811,168 @@ namespace Bitmute.UI
 			SetStatusMessage("Pasted");
 		}
 
+		public async void DoPasteInto()
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Selection selection = document.Selection();
+			if (!selection.IsActive())
+			{
+				DoPaste();
+				return;
+			}
+			SkiaSharp.SKBitmap pasted = await GetSystemClipboardBitmap();
+			if (pasted == null && s_clipboardBitmap != null)
+			{
+				pasted = s_clipboardBitmap.Copy();
+			}
+			if (pasted == null)
+			{
+				return;
+			}
+			SkiaSharp.SKRectI bounds = selection.Bounds();
+			document.BeginCanvasEdit("Paste Into");
+			int pastedNumber = document.Layers().Count + 1;
+			Layer layer = document.AddLayer("Layer " + pastedNumber);
+			if (layer == null)
+			{
+				document.EndCanvasEdit();
+				pasted.Dispose();
+				return;
+			}
+			layer.SetBitmap(pasted);
+			int offsetX = bounds.Left + ((bounds.Width - pasted.Width) / 2);
+			int offsetY = bounds.Top + ((bounds.Height - pasted.Height) / 2);
+			layer.SetOffset(offsetX, offsetY);
+			ApplySelectionStencilToLayer(document, layer);
+			document.EndCanvasEdit();
+			CanvasView pasteCanvas = ActiveCanvas();
+			if (pasteCanvas != null)
+			{
+				pasteCanvas.MarkComposeDirty();
+			}
+			if (m_layersPanel != null)
+			{
+				m_layersPanel.Refresh();
+			}
+			SetStatusMessage("Pasted into selection");
+		}
+
+		private unsafe void ApplySelectionStencilToLayer(Document document, Layer layer)
+		{
+			Selection selection = document.Selection();
+			byte[] mask = selection.Mask();
+			int maskWidth = selection.Width();
+			int maskHeight = selection.Height();
+			SkiaSharp.SKBitmap bitmap = layer.Bitmap();
+			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
+			int rowBytes = bitmap.RowBytes;
+			int offsetX = layer.OffsetX();
+			int offsetY = layer.OffsetY();
+			int bitmapWidth = bitmap.Width;
+			int bitmapHeight = bitmap.Height;
+			for (int y = 0; y < bitmapHeight; y++)
+			{
+				byte* row = basePointer + ((long)y * rowBytes);
+				int canvasY = y + offsetY;
+				bool rowInside = canvasY >= 0 && canvasY < maskHeight;
+				int maskRow = canvasY * maskWidth;
+				for (int x = 0; x < bitmapWidth; x++)
+				{
+					int coverage = 0;
+					if (rowInside)
+					{
+						int canvasX = x + offsetX;
+						if (canvasX >= 0 && canvasX < maskWidth)
+						{
+							coverage = mask[maskRow + canvasX];
+						}
+					}
+					int pixelOffset = x * 4;
+					int alpha = row[pixelOffset + 3];
+					row[pixelOffset + 3] = (byte)(((alpha * coverage) + 127) / 255);
+				}
+			}
+		}
+
+		public unsafe void SelectLayerPixels(int layerIndex)
+		{
+			CanvasView canvas = ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			List<Layer> layers = document.Layers();
+			if (layerIndex < 0 || layerIndex >= layers.Count)
+			{
+				return;
+			}
+			Layer layer = layers[layerIndex];
+			int canvasWidth = document.Width();
+			int canvasHeight = document.Height();
+			byte[] mask = new byte[canvasWidth * canvasHeight];
+			SkiaSharp.SKBitmap bitmap = layer.Bitmap();
+			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
+			int rowBytes = bitmap.RowBytes;
+			int offsetX = layer.OffsetX();
+			int offsetY = layer.OffsetY();
+			int minX = canvasWidth;
+			int minY = canvasHeight;
+			int maxX = -1;
+			int maxY = -1;
+			for (int y = 0; y < bitmap.Height; y++)
+			{
+				int canvasY = y + offsetY;
+				if (canvasY < 0 || canvasY >= canvasHeight)
+				{
+					continue;
+				}
+				byte* row = basePointer + ((long)y * rowBytes);
+				int maskRow = canvasY * canvasWidth;
+				for (int x = 0; x < bitmap.Width; x++)
+				{
+					int canvasX = x + offsetX;
+					if (canvasX < 0 || canvasX >= canvasWidth)
+					{
+						continue;
+					}
+					byte alpha = row[(x * 4) + 3];
+					if (alpha == 0)
+					{
+						continue;
+					}
+					mask[maskRow + canvasX] = alpha;
+					if (canvasX < minX)
+					{
+						minX = canvasX;
+					}
+					if (canvasX > maxX)
+					{
+						maxX = canvasX;
+					}
+					if (canvasY < minY)
+					{
+						minY = canvasY;
+					}
+					if (canvasY > maxY)
+					{
+						maxY = canvasY;
+					}
+				}
+			}
+			if (maxX < 0)
+			{
+				SetStatusMessage("Layer has no pixels to select");
+				return;
+			}
+			document.Selection().SelectMask(mask, new SkiaSharp.SKRectI(minX, minY, maxX + 1, maxY + 1));
+			canvas.InvalidateSurface();
+		}
+
 		public bool RulersEnabled()
 		{
 			return m_workspaceState.RulersEnabled();
