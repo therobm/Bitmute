@@ -14,6 +14,17 @@ using SkiaSharp;
 
 namespace Bitmute.UI
 {
+	public enum eCanvasOperation
+	{
+		FlipHorizontal,
+		FlipVertical,
+		Rotate90Clockwise,
+		Rotate180,
+		Rotate90CounterClockwise,
+		CropToSelection,
+		Trim
+	}
+
 	public class MainView : ContentPage
 	{
 		public static MainView Self;
@@ -350,37 +361,37 @@ namespace Bitmute.UI
 			}
 			if (action == eMenuAction.FlipHorizontal)
 			{
-				DoCanvasOp("fliph");
+				DoCanvasOp(eCanvasOperation.FlipHorizontal);
 				return;
 			}
 			if (action == eMenuAction.FlipVertical)
 			{
-				DoCanvasOp("flipv");
+				DoCanvasOp(eCanvasOperation.FlipVertical);
 				return;
 			}
 			if (action == eMenuAction.Rotate90Clockwise)
 			{
-				DoCanvasOp("rot90");
+				DoCanvasOp(eCanvasOperation.Rotate90Clockwise);
 				return;
 			}
 			if (action == eMenuAction.Rotate180)
 			{
-				DoCanvasOp("rot180");
+				DoCanvasOp(eCanvasOperation.Rotate180);
 				return;
 			}
 			if (action == eMenuAction.Rotate90CounterClockwise)
 			{
-				DoCanvasOp("rot270");
+				DoCanvasOp(eCanvasOperation.Rotate90CounterClockwise);
 				return;
 			}
 			if (action == eMenuAction.CropToSelection)
 			{
-				DoCanvasOp("crop");
+				DoCanvasOp(eCanvasOperation.CropToSelection);
 				return;
 			}
 			if (action == eMenuAction.Trim)
 			{
-				DoCanvasOp("trim");
+				DoCanvasOp(eCanvasOperation.Trim);
 				return;
 			}
 			if (action == eMenuAction.CascadeWindows)
@@ -498,7 +509,7 @@ namespace Bitmute.UI
 			RefreshLayerThumbnails();
 		}
 
-		private void DoCanvasOp(string op)
+		public void DoCanvasOp(eCanvasOperation op)
 		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas == null)
@@ -507,31 +518,31 @@ namespace Bitmute.UI
 			}
 			Document document = canvas.CurrentDocument();
 			document.BeginCanvasEdit(CanvasOpLabel(op));
-			if (op == "fliph")
+			if (op == eCanvasOperation.FlipHorizontal)
 			{
 				document.FlipHorizontal();
 			}
-			else if (op == "flipv")
+			else if (op == eCanvasOperation.FlipVertical)
 			{
 				document.FlipVertical();
 			}
-			else if (op == "rot90")
+			else if (op == eCanvasOperation.Rotate90Clockwise)
 			{
 				document.Rotate90();
 			}
-			else if (op == "rot180")
+			else if (op == eCanvasOperation.Rotate180)
 			{
 				document.Rotate180();
 			}
-			else if (op == "rot270")
+			else if (op == eCanvasOperation.Rotate90CounterClockwise)
 			{
 				document.Rotate270();
 			}
-			else if (op == "crop")
+			else if (op == eCanvasOperation.CropToSelection)
 			{
 				document.CropToSelection();
 			}
-			else if (op == "trim")
+			else if (op == eCanvasOperation.Trim)
 			{
 				document.Trim();
 			}
@@ -539,33 +550,33 @@ namespace Bitmute.UI
 			FinishCanvasOp(canvas, document);
 		}
 
-		private static string CanvasOpLabel(string op)
+		private static string CanvasOpLabel(eCanvasOperation op)
 		{
-			if (op == "fliph")
+			if (op == eCanvasOperation.FlipHorizontal)
 			{
 				return "Flip Horizontal";
 			}
-			if (op == "flipv")
+			if (op == eCanvasOperation.FlipVertical)
 			{
 				return "Flip Vertical";
 			}
-			if (op == "rot90")
+			if (op == eCanvasOperation.Rotate90Clockwise)
 			{
 				return "Rotate 90 CW";
 			}
-			if (op == "rot180")
+			if (op == eCanvasOperation.Rotate180)
 			{
 				return "Rotate 180";
 			}
-			if (op == "rot270")
+			if (op == eCanvasOperation.Rotate90CounterClockwise)
 			{
 				return "Rotate 90 CCW";
 			}
-			if (op == "crop")
+			if (op == eCanvasOperation.CropToSelection)
 			{
 				return "Crop";
 			}
-			if (op == "trim")
+			if (op == eCanvasOperation.Trim)
 			{
 				return "Trim";
 			}
