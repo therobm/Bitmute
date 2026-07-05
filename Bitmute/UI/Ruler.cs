@@ -8,6 +8,7 @@ namespace Bitmute.UI
 	public class Ruler : SKCanvasView
 	{
 		private const float TargetLabelSpacing = 50.0f;
+		private const double DocumentDpi = 72.0;
 
 		private CanvasView m_canvas;
 		private bool m_horizontal;
@@ -85,27 +86,28 @@ namespace Bitmute.UI
 
 		private double PixelsPerUnit()
 		{
-			Bitmute.Imaging.eRulerUnits units = m_canvas.CurrentDocument().RulerUnits();
+			Bitmute.Imaging.Document document = m_canvas.CurrentDocument();
+			Bitmute.Imaging.eRulerUnits units = document.RulerUnits();
 			if (units == Bitmute.Imaging.eRulerUnits.Millimeters)
 			{
-				return 96.0 / 25.4;
+				return DocumentDpi / 25.4;
 			}
 			if (units == Bitmute.Imaging.eRulerUnits.Centimeters)
 			{
-				return 96.0 / 2.54;
+				return DocumentDpi / 2.54;
 			}
 			if (units == Bitmute.Imaging.eRulerUnits.Percent)
 			{
-				float content = m_canvas.ContentWidth();
+				int documentLength = document.Width();
 				if (!m_horizontal)
 				{
-					content = m_canvas.ContentHeight();
+					documentLength = document.Height();
 				}
-				if (content < 1.0f)
+				if (documentLength < 1)
 				{
 					return 1.0;
 				}
-				return content / 100.0;
+				return documentLength / 100.0;
 			}
 			return 1.0;
 		}
