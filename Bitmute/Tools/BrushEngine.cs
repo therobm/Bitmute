@@ -43,6 +43,9 @@ namespace Bitmute.Tools
 		private double m_flow;
 		private double m_strength;
 		private bool m_square;
+		private double m_tipAspect;
+		private double m_tipCos;
+		private double m_tipSin;
 		private eBrushOp m_op;
 		private int m_cloneOffsetX;
 		private int m_cloneOffsetY;
@@ -83,6 +86,29 @@ namespace Bitmute.Tools
 		{
 			m_cloneOffsetX = offsetX;
 			m_cloneOffsetY = offsetY;
+		}
+
+		public void SetTipShape(int roundness, int angleDegrees)
+		{
+			double aspect = roundness / 100.0;
+			if (aspect < 0.05)
+			{
+				aspect = 0.05;
+			}
+			if (aspect > 1.0)
+			{
+				aspect = 1.0;
+			}
+			m_tipAspect = aspect;
+			if (aspect >= 1.0 && angleDegrees == 0)
+			{
+				m_tipCos = 1.0;
+				m_tipSin = 0.0;
+				return;
+			}
+			double radians = angleDegrees * System.Math.PI / 180.0;
+			m_tipCos = System.Math.Cos(radians);
+			m_tipSin = System.Math.Sin(radians);
 		}
 
 		public void SetStrength(double strength)
@@ -165,6 +191,9 @@ namespace Bitmute.Tools
 			m_flow = flow;
 			m_strength = 1.0;
 			m_square = square;
+			m_tipAspect = 1.0;
+			m_tipCos = 1.0;
+			m_tipSin = 0.0;
 			m_op = op;
 			m_cloneOffsetX = 0;
 			m_cloneOffsetY = 0;
@@ -254,11 +283,14 @@ namespace Bitmute.Tools
 				return 0.0;
 			}
 			double outer = m_tipOuter;
+			double localX = (offsetX * m_tipCos) + (offsetY * m_tipSin);
+			double localY = (offsetY * m_tipCos) - (offsetX * m_tipSin);
+			localY = localY / m_tipAspect;
 			double distance;
 			if (m_square)
 			{
-				double absX = System.Math.Abs(offsetX);
-				double absY = System.Math.Abs(offsetY);
+				double absX = System.Math.Abs(localX);
+				double absY = System.Math.Abs(localY);
 				distance = absX;
 				if (absY > absX)
 				{
@@ -267,7 +299,7 @@ namespace Bitmute.Tools
 			}
 			else
 			{
-				distance = System.Math.Sqrt((offsetX * offsetX) + (offsetY * offsetY));
+				distance = System.Math.Sqrt((localX * localX) + (localY * localY));
 			}
 			double inner = m_tipInner;
 			if (distance <= inner)

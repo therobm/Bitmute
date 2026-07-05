@@ -21,6 +21,7 @@ namespace Bitmute.Tools
 				return false;
 			}
 			BeginStroke(document, layer, state);
+			m_engine.SetTipShape(state.BrushRoundness(), state.BrushAngle());
 			m_engine.StampFirst(document, layer, x, y, document.Selection());
 			m_lastX = x;
 			m_lastY = y;

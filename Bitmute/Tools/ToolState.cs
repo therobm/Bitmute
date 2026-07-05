@@ -14,6 +14,8 @@ namespace Bitmute.Tools
 		private int m_brushFlow;
 		private int m_brushSpacing;
 		private bool m_brushSquareTip;
+		private int m_brushRoundness = 100;
+		private int m_brushAngle;
 		private int m_brushSmoothing;
 		private int m_brushStrength;
 		private eBlendMode m_brushMode;
@@ -540,6 +542,42 @@ namespace Bitmute.Tools
 		public void SetBrushSquareTip(bool square)
 		{
 			m_brushSquareTip = square;
+		}
+
+		public int BrushRoundness()
+		{
+			return m_brushRoundness;
+		}
+
+		public void SetBrushRoundness(int roundness)
+		{
+			if (roundness < 5)
+			{
+				roundness = 5;
+			}
+			if (roundness > 100)
+			{
+				roundness = 100;
+			}
+			m_brushRoundness = roundness;
+		}
+
+		public int BrushAngle()
+		{
+			return m_brushAngle;
+		}
+
+		public void SetBrushAngle(int angle)
+		{
+			if (angle < 0)
+			{
+				angle = 0;
+			}
+			if (angle > 180)
+			{
+				angle = 180;
+			}
+			m_brushAngle = angle;
 		}
 
 		public int BrushSmoothing()

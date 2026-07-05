@@ -31,6 +31,10 @@ namespace Bitmute.UI
 		private Picker m_brushTipPicker;
 		private Slider m_brushSpacingSlider;
 		private Label m_brushSpacingValue;
+		private Slider m_brushRoundnessSlider;
+		private Label m_brushRoundnessValue;
+		private Slider m_brushAngleSlider;
+		private Label m_brushAngleValue;
 		private Label m_brushModeLabel;
 		private Picker m_brushModePicker;
 		private Label m_brushAirbrushLabel;
@@ -545,7 +549,16 @@ namespace Bitmute.UI
 				anchorX = m_optionsRow.X + m_brushSettingsButton.X;
 			}
 			double anchorY = UiConstants.MenuBarHeight + 1.0 + UiConstants.OptionsBarHeight + 1.0;
-			m_main.ShowPulldown(BuildBrushSettingsContent(), anchorX, anchorY, 288.0, 108.0);
+			m_main.ShowPulldown(BuildBrushSettingsContent(), anchorX, anchorY, 288.0, 188.0);
+		}
+
+		public void OpenBrushSettingsAt(double anchorX, double anchorY)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_main.ShowPulldown(BuildBrushSettingsContent(), anchorX, anchorY, 288.0, 188.0);
 		}
 
 		private View BuildBrushSettingsContent()
@@ -612,12 +625,110 @@ namespace Bitmute.UI
 			spacingRow.Add(m_brushSpacingSlider);
 			spacingRow.Add(m_brushSpacingValue);
 
+			Label roundnessLabel = new Label();
+			roundnessLabel.Text = "Roundness";
+			roundnessLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			roundnessLabel.FontSize = UiConstants.ComponentFontSize;
+			roundnessLabel.WidthRequest = 60.0;
+			roundnessLabel.VerticalOptions = LayoutOptions.Center;
+
+			m_brushRoundnessSlider = new Slider();
+			m_brushRoundnessSlider.Minimum = 5.0;
+			m_brushRoundnessSlider.Maximum = 100.0;
+			m_brushRoundnessSlider.WidthRequest = 140.0;
+			m_brushRoundnessSlider.VerticalOptions = LayoutOptions.Center;
+			m_brushRoundnessSlider.Value = m_toolState.BrushRoundness();
+			m_brushRoundnessSlider.ValueChanged += OnBrushRoundnessPulldownChanged;
+
+			m_brushRoundnessValue = new Label();
+			m_brushRoundnessValue.Text = m_toolState.BrushRoundness() + "%";
+			m_brushRoundnessValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_brushRoundnessValue.FontSize = UiConstants.ComponentFontSize;
+			m_brushRoundnessValue.WidthRequest = 44.0;
+			m_brushRoundnessValue.VerticalOptions = LayoutOptions.Center;
+
+			Grid roundnessRow = new Grid();
+			roundnessRow.ColumnSpacing = 8.0;
+			roundnessRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			roundnessRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			roundnessRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			Grid.SetColumn(roundnessLabel, 0);
+			Grid.SetColumn(m_brushRoundnessSlider, 1);
+			Grid.SetColumn(m_brushRoundnessValue, 2);
+			roundnessRow.Add(roundnessLabel);
+			roundnessRow.Add(m_brushRoundnessSlider);
+			roundnessRow.Add(m_brushRoundnessValue);
+
+			Label angleLabel = new Label();
+			angleLabel.Text = "Angle";
+			angleLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			angleLabel.FontSize = UiConstants.ComponentFontSize;
+			angleLabel.WidthRequest = 60.0;
+			angleLabel.VerticalOptions = LayoutOptions.Center;
+
+			m_brushAngleSlider = new Slider();
+			m_brushAngleSlider.Minimum = 0.0;
+			m_brushAngleSlider.Maximum = 180.0;
+			m_brushAngleSlider.WidthRequest = 140.0;
+			m_brushAngleSlider.VerticalOptions = LayoutOptions.Center;
+			m_brushAngleSlider.Value = m_toolState.BrushAngle();
+			m_brushAngleSlider.ValueChanged += OnBrushAnglePulldownChanged;
+
+			m_brushAngleValue = new Label();
+			m_brushAngleValue.Text = m_toolState.BrushAngle() + "°";
+			m_brushAngleValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_brushAngleValue.FontSize = UiConstants.ComponentFontSize;
+			m_brushAngleValue.WidthRequest = 44.0;
+			m_brushAngleValue.VerticalOptions = LayoutOptions.Center;
+
+			Grid angleRow = new Grid();
+			angleRow.ColumnSpacing = 8.0;
+			angleRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			angleRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			angleRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			Grid.SetColumn(angleLabel, 0);
+			Grid.SetColumn(m_brushAngleSlider, 1);
+			Grid.SetColumn(m_brushAngleValue, 2);
+			angleRow.Add(angleLabel);
+			angleRow.Add(m_brushAngleSlider);
+			angleRow.Add(m_brushAngleValue);
+
 			VerticalStackLayout body = new VerticalStackLayout();
 			body.Spacing = 10.0;
 			body.Padding = new Thickness(12.0);
 			body.Add(tipRow);
 			body.Add(spacingRow);
+			body.Add(roundnessRow);
+			body.Add(angleRow);
 			return body;
+		}
+
+		private void OnBrushRoundnessPulldownChanged(object sender, ValueChangedEventArgs eventArgs)
+		{
+			if (m_brushRoundnessSlider == null || m_toolState == null)
+			{
+				return;
+			}
+			int roundness = (int)m_brushRoundnessSlider.Value;
+			m_toolState.SetBrushRoundness(roundness);
+			if (m_brushRoundnessValue != null)
+			{
+				m_brushRoundnessValue.Text = roundness + "%";
+			}
+		}
+
+		private void OnBrushAnglePulldownChanged(object sender, ValueChangedEventArgs eventArgs)
+		{
+			if (m_brushAngleSlider == null || m_toolState == null)
+			{
+				return;
+			}
+			int angle = (int)m_brushAngleSlider.Value;
+			m_toolState.SetBrushAngle(angle);
+			if (m_brushAngleValue != null)
+			{
+				m_brushAngleValue.Text = angle + "°";
+			}
 		}
 
 		private void OnBrushTipPulldownChanged(object sender, System.EventArgs eventArgs)
