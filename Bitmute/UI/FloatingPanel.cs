@@ -15,8 +15,12 @@ namespace Bitmute.UI
 		private double m_height;
 		private double m_dragOriginX;
 		private double m_dragOriginY;
+		private const double ResizeEdgeThickness = 5.0;
+
 		private double m_resizeOriginWidth;
 		private double m_resizeOriginHeight;
+		private double m_resizeOriginX;
+		private double m_resizeOriginY;
 		private Label m_titleLabel;
 		private Grid m_titleBar;
 		private ContentView m_contentHost;
@@ -161,6 +165,111 @@ namespace Bitmute.UI
 					targetHeight = UiConstants.PanelMinHeight;
 				}
 				ResizeTo(targetWidth, targetHeight);
+			}
+		}
+
+		private Border BuildResizeEdge(double edgeWidth, double edgeHeight, LayoutOptions horizontalOptions, LayoutOptions verticalOptions, EventHandler<PanUpdatedEventArgs> handler)
+		{
+			Border edge = new Border();
+			if (edgeWidth > 0.0)
+			{
+				edge.WidthRequest = edgeWidth;
+			}
+			if (edgeHeight > 0.0)
+			{
+				edge.HeightRequest = edgeHeight;
+			}
+			edge.BackgroundColor = Colors.Transparent;
+			edge.StrokeThickness = 0.0;
+			edge.HorizontalOptions = horizontalOptions;
+			edge.VerticalOptions = verticalOptions;
+			PanGestureRecognizer pan = new PanGestureRecognizer();
+			pan.PanUpdated += handler;
+			edge.GestureRecognizers.Add(pan);
+			return edge;
+		}
+
+		private void OnResizeRightPan(object sender, PanUpdatedEventArgs eventArgs)
+		{
+			if (eventArgs.StatusType == GestureStatus.Started)
+			{
+				Raise();
+				m_resizeOriginWidth = m_width;
+				return;
+			}
+			if (eventArgs.StatusType == GestureStatus.Running)
+			{
+				double targetWidth = m_resizeOriginWidth + eventArgs.TotalX;
+				if (targetWidth < UiConstants.PanelMinWidth)
+				{
+					targetWidth = UiConstants.PanelMinWidth;
+				}
+				ResizeTo(targetWidth, m_height);
+			}
+		}
+
+		private void OnResizeBottomPan(object sender, PanUpdatedEventArgs eventArgs)
+		{
+			if (eventArgs.StatusType == GestureStatus.Started)
+			{
+				Raise();
+				m_resizeOriginHeight = m_height;
+				return;
+			}
+			if (eventArgs.StatusType == GestureStatus.Running)
+			{
+				double targetHeight = m_resizeOriginHeight + eventArgs.TotalY;
+				if (targetHeight < UiConstants.PanelMinHeight)
+				{
+					targetHeight = UiConstants.PanelMinHeight;
+				}
+				ResizeTo(m_width, targetHeight);
+			}
+		}
+
+		private void OnResizeLeftPan(object sender, PanUpdatedEventArgs eventArgs)
+		{
+			if (eventArgs.StatusType == GestureStatus.Started)
+			{
+				Raise();
+				m_resizeOriginX = m_x;
+				m_resizeOriginWidth = m_width;
+				return;
+			}
+			if (eventArgs.StatusType == GestureStatus.Running)
+			{
+				double delta = eventArgs.TotalX;
+				double targetWidth = m_resizeOriginWidth - delta;
+				if (targetWidth < UiConstants.PanelMinWidth)
+				{
+					delta = m_resizeOriginWidth - UiConstants.PanelMinWidth;
+					targetWidth = UiConstants.PanelMinWidth;
+				}
+				m_x = m_resizeOriginX + delta;
+				ResizeTo(targetWidth, m_height);
+			}
+		}
+
+		private void OnResizeTopPan(object sender, PanUpdatedEventArgs eventArgs)
+		{
+			if (eventArgs.StatusType == GestureStatus.Started)
+			{
+				Raise();
+				m_resizeOriginY = m_y;
+				m_resizeOriginHeight = m_height;
+				return;
+			}
+			if (eventArgs.StatusType == GestureStatus.Running)
+			{
+				double delta = eventArgs.TotalY;
+				double targetHeight = m_resizeOriginHeight - delta;
+				if (targetHeight < UiConstants.PanelMinHeight)
+				{
+					delta = m_resizeOriginHeight - UiConstants.PanelMinHeight;
+					targetHeight = UiConstants.PanelMinHeight;
+				}
+				m_y = m_resizeOriginY + delta;
+				ResizeTo(m_width, targetHeight);
 			}
 		}
 
@@ -312,6 +421,15 @@ namespace Bitmute.UI
 
 			frame.Content = frameContent;
 			root.Add(frame);
+
+			Border leftEdge = BuildResizeEdge(ResizeEdgeThickness, 0.0, LayoutOptions.Start, LayoutOptions.Fill, OnResizeLeftPan);
+			Border rightEdge = BuildResizeEdge(ResizeEdgeThickness, 0.0, LayoutOptions.End, LayoutOptions.Fill, OnResizeRightPan);
+			Border topEdge = BuildResizeEdge(0.0, ResizeEdgeThickness, LayoutOptions.Fill, LayoutOptions.Start, OnResizeTopPan);
+			Border bottomEdge = BuildResizeEdge(0.0, ResizeEdgeThickness, LayoutOptions.Fill, LayoutOptions.End, OnResizeBottomPan);
+			root.Add(leftEdge);
+			root.Add(rightEdge);
+			root.Add(topEdge);
+			root.Add(bottomEdge);
 
 			Border grip = BuildResizeGrip();
 			root.Add(grip);
