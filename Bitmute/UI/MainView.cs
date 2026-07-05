@@ -934,39 +934,39 @@ namespace Bitmute.UI
 			return false;
 		}
 
-		private void RunAdjustmentMath(string id, SkiaSharp.SKBitmap bitmap, int first, int second, int third)
+		private void RunAdjustmentMath(string id, SkiaSharp.SKBitmap bitmap, int[] values)
 		{
 			if (id == "bc")
 			{
-				Adjustments.BrightnessContrast(bitmap, first, second);
+				Adjustments.BrightnessContrast(bitmap, values[0], values[1]);
 			}
 			else if (id == "hsl")
 			{
-				Adjustments.HueSaturationLightness(bitmap, first, second, third);
+				Adjustments.HueSaturationLightness(bitmap, values[0], values[1], values[2]);
 			}
 			else if (id == "posterize")
 			{
-				Adjustments.Posterize(bitmap, first);
+				Adjustments.Posterize(bitmap, values[0]);
 			}
 			else if (id == "threshold")
 			{
-				Adjustments.Threshold(bitmap, first);
+				Adjustments.Threshold(bitmap, values[0]);
 			}
 			else if (id == "gblur")
 			{
-				Adjustments.GaussianBlur(bitmap, first);
+				Adjustments.GaussianBlur(bitmap, values[0]);
 			}
 			else if (id == "unsharp")
 			{
-				Adjustments.UnsharpMask(bitmap, first, second);
+				Adjustments.UnsharpMask(bitmap, values[0], values[1]);
 			}
 			else if (id == "noise")
 			{
-				Adjustments.AddNoise(bitmap, first, false);
+				Adjustments.AddNoise(bitmap, values[0], false);
 			}
 			else if (id == "pixelate")
 			{
-				Adjustments.Pixelate(bitmap, first);
+				Adjustments.Pixelate(bitmap, values[0]);
 			}
 		}
 
@@ -1045,7 +1045,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		public void ApplyAdjustment(string id, int first, int second, int third)
+		public void ApplyAdjustment(string id, int[] values)
 		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas == null)
@@ -1056,14 +1056,14 @@ namespace Bitmute.UI
 			if (id == "rotate")
 			{
 				document.BeginCanvasEdit("Rotate");
-				document.RotateArbitrary(first, 2);
+				document.RotateArbitrary(values[0], 2);
 				document.EndCanvasEdit();
 				FinishCanvasOp(canvas, document);
 				return;
 			}
 			if (id == "feather")
 			{
-				document.Selection().FeatherActive(first);
+				document.Selection().FeatherActive(values[0]);
 				canvas.InvalidateSurface();
 				return;
 			}
@@ -1074,12 +1074,12 @@ namespace Bitmute.UI
 			}
 			SkiaSharp.SKBitmap bitmap = activeLayer.Bitmap();
 			document.BeginStroke();
-			RunAdjustmentMath(id, bitmap, first, second, third);
+			RunAdjustmentMath(id, bitmap, values);
 			document.EndStroke();
 			canvas.MarkComposeDirty();
 		}
 
-		public void PreviewAdjustment(string id, int first, int second, int third)
+		public void PreviewAdjustment(string id, int[] values)
 		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas == null)
@@ -1097,7 +1097,7 @@ namespace Bitmute.UI
 				return;
 			}
 			document.RestoreStrokeSnapshot();
-			RunAdjustmentMath(id, activeLayer.Bitmap(), first, second, third);
+			RunAdjustmentMath(id, activeLayer.Bitmap(), values);
 			canvas.MarkComposeDirty();
 		}
 
@@ -1117,7 +1117,7 @@ namespace Bitmute.UI
 			canvas.MarkComposeDirty();
 		}
 
-		public void CommitAdjustment(string id, int first, int second, int third)
+		public void CommitAdjustment(string id, int[] values)
 		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas == null)
@@ -1127,7 +1127,7 @@ namespace Bitmute.UI
 			Document document = canvas.CurrentDocument();
 			if (document.StrokeSnapshot() == null)
 			{
-				ApplyAdjustment(id, first, second, third);
+				ApplyAdjustment(id, values);
 				RefreshLayerThumbnails();
 				return;
 			}
@@ -1138,7 +1138,7 @@ namespace Bitmute.UI
 				return;
 			}
 			document.RestoreStrokeSnapshot();
-			RunAdjustmentMath(id, activeLayer.Bitmap(), first, second, third);
+			RunAdjustmentMath(id, activeLayer.Bitmap(), values);
 			document.EndStroke();
 			canvas.MarkComposeDirty();
 			RefreshLayerThumbnails();
@@ -3940,10 +3940,10 @@ namespace Bitmute.UI
 			{
 				cancelledPicker.RevertLivePreview();
 			}
-			AdjustmentDialog adjustmentDialog = entry.m_content as AdjustmentDialog;
-			if (adjustmentDialog != null)
+			PreviewDialog previewDialog = entry.m_content as PreviewDialog;
+			if (previewDialog != null)
 			{
-				adjustmentDialog.CancelPreview();
+				previewDialog.CancelPreview();
 			}
 			if (entry.m_content is LayerStyleDialog && m_layerStyleSnapshot != null)
 			{
