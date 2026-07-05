@@ -103,6 +103,10 @@ namespace Bitmute.Tests
 			TestPixelateMatchesReference();
 			TestUnsharpMaskMatchesReference();
 			TestGaussianBlurMatchesReference();
+			TestComputeDirtyRectMatchesReference();
+			TestComputeContentBoundsMatchesReference();
+			TestExtractApplyRegionRoundTrip();
+			TestRestoreStrokeSnapshot();
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");
@@ -2405,6 +2409,185 @@ namespace Bitmute.Tests
 				blurA.Dispose();
 				blurB.Dispose();
 			}
+		}
+
+		private static SKRectI ReferenceDirtyRect(SKBitmap before, SKBitmap after, SKRectI searchRect)
+		{
+			int minX = before.Width;
+			int minY = before.Height;
+			int maxX = -1;
+			int maxY = -1;
+			for (int y = 0; y < before.Height; y++)
+			{
+				for (int x = 0; x < before.Width; x++)
+				{
+					if (x < searchRect.Left || x >= searchRect.Right || y < searchRect.Top || y >= searchRect.Bottom)
+					{
+						continue;
+					}
+					if (before.GetPixel(x, y) != after.GetPixel(x, y))
+					{
+						if (x < minX)
+						{
+							minX = x;
+						}
+						if (x > maxX)
+						{
+							maxX = x;
+						}
+						if (y < minY)
+						{
+							minY = y;
+						}
+						if (y > maxY)
+						{
+							maxY = y;
+						}
+					}
+				}
+			}
+			if (maxX < 0)
+			{
+				return SKRectI.Empty;
+			}
+			return new SKRectI(minX, minY, maxX + 1, maxY + 1);
+		}
+
+		private static void TestComputeDirtyRectMatchesReference()
+		{
+			SKBitmap before = BuildAdjustmentTestBitmap();
+			SKBitmap after = BuildAdjustmentTestBitmap();
+			after.SetPixel(7, 4, new SKColor(1, 2, 3, 200));
+			after.SetPixel(30, 20, new SKColor(9, 9, 9, 9));
+			after.SetPixel(15, 11, new SKColor(200, 100, 50, 255));
+			SKRectI full = new SKRectI(0, 0, before.Width, before.Height);
+			SKRectI actualFull = PixelRegion.ComputeDirtyRect(before, after, full);
+			SKRectI expectedFull = ReferenceDirtyRect(before, after, full);
+			Check(actualFull == expectedFull, "dirty rect full search matches reference (" + actualFull + " vs " + expectedFull + ")");
+			SKRectI partial = new SKRectI(10, 8, 25, 18);
+			SKRectI actualPartial = PixelRegion.ComputeDirtyRect(before, after, partial);
+			SKRectI expectedPartial = ReferenceDirtyRect(before, after, partial);
+			Check(actualPartial == expectedPartial, "dirty rect partial search matches reference");
+			SKRectI oversized = new SKRectI(-5, -5, before.Width + 9, before.Height + 9);
+			SKRectI actualOversized = PixelRegion.ComputeDirtyRect(before, after, oversized);
+			Check(actualOversized == expectedFull, "dirty rect oversized search clamps to full");
+			SKRectI actualClean = PixelRegion.ComputeDirtyRect(before, before, full);
+			Check(actualClean == SKRectI.Empty, "dirty rect identical bitmaps is empty");
+			before.Dispose();
+			after.Dispose();
+		}
+
+		private static void TestComputeContentBoundsMatchesReference()
+		{
+			SKBitmap empty = new SKBitmap(31, 17, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			empty.Erase(SKColors.Transparent);
+			Check(PixelRegion.ComputeContentBounds(empty) == SKRectI.Empty, "content bounds of empty bitmap is empty");
+			empty.SetPixel(5, 3, new SKColor(10, 20, 30, 255));
+			empty.SetPixel(22, 14, new SKColor(10, 20, 30, 7));
+			SKRectI sparse = PixelRegion.ComputeContentBounds(empty);
+			Check(sparse == new SKRectI(5, 3, 23, 15), "content bounds spans the two marked pixels (" + sparse + ")");
+			empty.Dispose();
+			SKBitmap random = BuildAdjustmentTestBitmap();
+			SKRectI actual = PixelRegion.ComputeContentBounds(random);
+			int minX = random.Width;
+			int minY = random.Height;
+			int maxX = -1;
+			int maxY = -1;
+			for (int y = 0; y < random.Height; y++)
+			{
+				for (int x = 0; x < random.Width; x++)
+				{
+					if (random.GetPixel(x, y).Alpha != 0)
+					{
+						if (x < minX)
+						{
+							minX = x;
+						}
+						if (x > maxX)
+						{
+							maxX = x;
+						}
+						if (y < minY)
+						{
+							minY = y;
+						}
+						if (y > maxY)
+						{
+							maxY = y;
+						}
+					}
+				}
+			}
+			SKRectI expected = new SKRectI(minX, minY, maxX + 1, maxY + 1);
+			Check(actual == expected, "content bounds of random bitmap matches reference (" + actual + " vs " + expected + ")");
+			random.Dispose();
+		}
+
+		private static void TestExtractApplyRegionRoundTrip()
+		{
+			SKBitmap source = BuildAdjustmentTestBitmap();
+			SKRectI rect = new SKRectI(6, 3, 27, 19);
+			SKBitmap region = PixelRegion.ExtractRegion(source, rect);
+			bool extractMatches = true;
+			for (int y = rect.Top; y < rect.Bottom; y++)
+			{
+				for (int x = rect.Left; x < rect.Right; x++)
+				{
+					if (source.GetPixel(x, y) != region.GetPixel(x - rect.Left, y - rect.Top))
+					{
+						extractMatches = false;
+					}
+				}
+			}
+			Check(extractMatches, "extract region copies exact source pixels");
+			SKBitmap target = new SKBitmap(source.Width, source.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			target.Erase(new SKColor(1, 1, 1, 1));
+			PixelRegion.ApplyRegion(target, region, rect.Left, rect.Top);
+			bool applyMatches = true;
+			for (int y = 0; y < target.Height; y++)
+			{
+				for (int x = 0; x < target.Width; x++)
+				{
+					bool inside = x >= rect.Left && x < rect.Right && y >= rect.Top && y < rect.Bottom;
+					SKColor expected;
+					if (inside)
+					{
+						expected = source.GetPixel(x, y);
+					}
+					else
+					{
+						expected = new SKColor(1, 1, 1, 1);
+					}
+					if (target.GetPixel(x, y) != expected)
+					{
+						applyMatches = false;
+					}
+				}
+			}
+			Check(applyMatches, "apply region writes exact pixels and leaves surroundings untouched");
+			SKBitmap smallTarget = new SKBitmap(10, 10, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			smallTarget.Erase(SKColors.Transparent);
+			PixelRegion.ApplyRegion(smallTarget, region, 4, 5);
+			SKColor clipped = smallTarget.GetPixel(6, 7);
+			Check(clipped == source.GetPixel(rect.Left + 2, rect.Top + 2), "apply region clipped to target still writes overlap");
+			source.Dispose();
+			region.Dispose();
+			target.Dispose();
+			smallTarget.Dispose();
+		}
+
+		private static void TestRestoreStrokeSnapshot()
+		{
+			Document doc = new Document("t", 32, 24);
+			Layer layer = doc.ActiveLayer();
+			layer.Bitmap().Erase(new SKColor(10, 60, 200, 255));
+			doc.BeginStroke();
+			Adjustments.InvertColors(layer.Bitmap());
+			doc.RestoreStrokeSnapshot();
+			SKColor restored = layer.Bitmap().GetPixel(16, 12);
+			Check(restored == new SKColor(10, 60, 200, 255), "restore stroke snapshot puts original pixels back");
+			doc.EndStroke();
+			Check(doc.HistoryIndex() == 0, "restored stroke produces no undo entry");
 		}
 	}
 }

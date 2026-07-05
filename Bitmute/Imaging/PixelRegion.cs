@@ -1,24 +1,16 @@
-using System.Runtime.InteropServices;
+using System;
 using SkiaSharp;
 
 namespace Bitmute.Imaging
 {
 	public static class PixelRegion
 	{
-		private static byte[] ReadBytes(SKBitmap bitmap)
-		{
-			int count = bitmap.ByteCount;
-			byte[] bytes = new byte[count];
-			Marshal.Copy(bitmap.GetPixels(), bytes, 0, count);
-			return bytes;
-		}
-
 		public static SKRectI ComputeDirtyRect(SKBitmap before, SKBitmap after)
 		{
 			return ComputeDirtyRect(before, after, new SKRectI(0, 0, before.Width, before.Height));
 		}
 
-		public static SKRectI ComputeDirtyRect(SKBitmap before, SKBitmap after, SKRectI searchRect)
+		public static unsafe SKRectI ComputeDirtyRect(SKBitmap before, SKBitmap after, SKRectI searchRect)
 		{
 			int width = before.Width;
 			int height = before.Height;
@@ -46,9 +38,10 @@ namespace Bitmute.Imaging
 			{
 				return SKRectI.Empty;
 			}
-			byte[] beforeBytes = ReadBytes(before);
-			byte[] afterBytes = ReadBytes(after);
-			int rowBytes = width * 4;
+			byte* beforeBase = (byte*)before.GetPixels().ToPointer();
+			byte* afterBase = (byte*)after.GetPixels().ToPointer();
+			int beforeStride = before.RowBytes;
+			int afterStride = after.RowBytes;
 
 			int minX = width;
 			int minY = height;
@@ -57,12 +50,11 @@ namespace Bitmute.Imaging
 
 			for (int y = scanTop; y < scanBottom; y++)
 			{
-				int rowStart = y * rowBytes;
+				uint* beforeRow = (uint*)(beforeBase + ((long)y * beforeStride));
+				uint* afterRow = (uint*)(afterBase + ((long)y * afterStride));
 				for (int x = scanLeft; x < scanRight; x++)
 				{
-					int index = rowStart + (x * 4);
-					bool differs = beforeBytes[index] != afterBytes[index] || beforeBytes[index + 1] != afterBytes[index + 1] || beforeBytes[index + 2] != afterBytes[index + 2] || beforeBytes[index + 3] != afterBytes[index + 3];
-					if (differs)
+					if (beforeRow[x] != afterRow[x])
 					{
 						if (x < minX)
 						{
@@ -91,81 +83,161 @@ namespace Bitmute.Imaging
 			return new SKRectI(minX, minY, maxX + 1, maxY + 1);
 		}
 
-		public static SKRectI ComputeContentBounds(SKBitmap bitmap)
+		public static unsafe SKRectI ComputeContentBounds(SKBitmap bitmap)
 		{
 			int width = bitmap.Width;
 			int height = bitmap.Height;
-			byte[] bytes = ReadBytes(bitmap);
-			int rowBytes = width * 4;
+			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
+			int stride = bitmap.RowBytes;
 
-			int minX = width;
-			int minY = height;
-			int maxX = -1;
-			int maxY = -1;
-
+			int minY = -1;
 			for (int y = 0; y < height; y++)
 			{
-				int rowStart = y * rowBytes;
-				for (int x = 0; x < width; x++)
+				if (RowHasAlpha(basePointer, stride, y, width))
 				{
-					int index = rowStart + (x * 4);
-					byte alpha = bytes[index + 3];
-					if (alpha != 0)
-					{
-						if (x < minX)
-						{
-							minX = x;
-						}
-						if (x > maxX)
-						{
-							maxX = x;
-						}
-						if (y < minY)
-						{
-							minY = y;
-						}
-						if (y > maxY)
-						{
-							maxY = y;
-						}
-					}
+					minY = y;
+					break;
 				}
 			}
-
-			if (maxX < 0)
+			if (minY < 0)
 			{
 				return SKRectI.Empty;
+			}
+			int maxY = minY;
+			for (int y = height - 1; y > minY; y--)
+			{
+				if (RowHasAlpha(basePointer, stride, y, width))
+				{
+					maxY = y;
+					break;
+				}
+			}
+			int minX = width;
+			for (int x = 0; x < width; x++)
+			{
+				if (ColumnHasAlpha(basePointer, stride, x, minY, maxY))
+				{
+					minX = x;
+					break;
+				}
+			}
+			int maxX = minX;
+			for (int x = width - 1; x > minX; x--)
+			{
+				if (ColumnHasAlpha(basePointer, stride, x, minY, maxY))
+				{
+					maxX = x;
+					break;
+				}
 			}
 			return new SKRectI(minX, minY, maxX + 1, maxY + 1);
 		}
 
-		public static SKBitmap ExtractRegion(SKBitmap source, SKRectI rect)
+		private static unsafe bool RowHasAlpha(byte* basePointer, int stride, int y, int width)
+		{
+			byte* row = basePointer + ((long)y * stride);
+			for (int x = 0; x < width; x++)
+			{
+				if (row[(x * 4) + 3] != 0)
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+
+		private static unsafe bool ColumnHasAlpha(byte* basePointer, int stride, int x, int minY, int maxY)
+		{
+			byte* alphaPointer = basePointer + ((long)minY * stride) + (x * 4) + 3;
+			for (int y = minY; y <= maxY; y++)
+			{
+				if (*alphaPointer != 0)
+				{
+					return true;
+				}
+				alphaPointer += stride;
+			}
+			return false;
+		}
+
+		public static unsafe SKBitmap ExtractRegion(SKBitmap source, SKRectI rect)
 		{
 			SKBitmap region = new SKBitmap(rect.Width, rect.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-			SKCanvas canvas = new SKCanvas(region);
-			SKImage image = SKImage.FromBitmap(source);
-			SKRect sourceRect = new SKRect(rect.Left, rect.Top, rect.Right, rect.Bottom);
-			SKRect destinationRect = new SKRect(0.0f, 0.0f, rect.Width, rect.Height);
-			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
-			SKPaint paint = new SKPaint();
-			canvas.DrawImage(image, sourceRect, destinationRect, sampling, paint);
-			paint.Dispose();
-			image.Dispose();
-			canvas.Dispose();
+			int copyLeft = rect.Left;
+			int copyTop = rect.Top;
+			int copyRight = rect.Right;
+			int copyBottom = rect.Bottom;
+			if (copyLeft < 0)
+			{
+				copyLeft = 0;
+			}
+			if (copyTop < 0)
+			{
+				copyTop = 0;
+			}
+			if (copyRight > source.Width)
+			{
+				copyRight = source.Width;
+			}
+			if (copyBottom > source.Height)
+			{
+				copyBottom = source.Height;
+			}
+			if (copyRight <= copyLeft || copyBottom <= copyTop)
+			{
+				return region;
+			}
+			byte* sourceBase = (byte*)source.GetPixels().ToPointer();
+			byte* regionBase = (byte*)region.GetPixels().ToPointer();
+			int sourceStride = source.RowBytes;
+			int regionStride = region.RowBytes;
+			long rowLength = (long)(copyRight - copyLeft) * 4;
+			for (int y = copyTop; y < copyBottom; y++)
+			{
+				byte* sourceRow = sourceBase + ((long)y * sourceStride) + (copyLeft * 4);
+				byte* regionRow = regionBase + ((long)(y - rect.Top) * regionStride) + ((copyLeft - rect.Left) * 4);
+				Buffer.MemoryCopy(sourceRow, regionRow, rowLength, rowLength);
+			}
 			return region;
 		}
 
-		public static void ApplyRegion(SKBitmap target, SKBitmap region, int x, int y)
+		public static unsafe void ApplyRegion(SKBitmap target, SKBitmap region, int x, int y)
 		{
-			SKCanvas canvas = new SKCanvas(target);
-			SKImage image = SKImage.FromBitmap(region);
-			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
-			SKPaint paint = new SKPaint();
-			paint.BlendMode = SKBlendMode.Src;
-			canvas.DrawImage(image, x, y, sampling, paint);
-			paint.Dispose();
-			image.Dispose();
-			canvas.Dispose();
+			int copyLeft = x;
+			int copyTop = y;
+			int copyRight = x + region.Width;
+			int copyBottom = y + region.Height;
+			if (copyLeft < 0)
+			{
+				copyLeft = 0;
+			}
+			if (copyTop < 0)
+			{
+				copyTop = 0;
+			}
+			if (copyRight > target.Width)
+			{
+				copyRight = target.Width;
+			}
+			if (copyBottom > target.Height)
+			{
+				copyBottom = target.Height;
+			}
+			if (copyRight <= copyLeft || copyBottom <= copyTop)
+			{
+				return;
+			}
+			byte* regionBase = (byte*)region.GetPixels().ToPointer();
+			byte* targetBase = (byte*)target.GetPixels().ToPointer();
+			int regionStride = region.RowBytes;
+			int targetStride = target.RowBytes;
+			long rowLength = (long)(copyRight - copyLeft) * 4;
+			for (int row = copyTop; row < copyBottom; row++)
+			{
+				byte* sourceRow = regionBase + ((long)(row - y) * regionStride) + ((copyLeft - x) * 4);
+				byte* targetRow = targetBase + ((long)row * targetStride) + (copyLeft * 4);
+				Buffer.MemoryCopy(sourceRow, targetRow, rowLength, rowLength);
+			}
 		}
 	}
 }

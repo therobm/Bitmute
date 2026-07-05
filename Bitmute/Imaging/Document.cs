@@ -668,16 +668,13 @@ namespace Bitmute.Imaging
 			int sourceRowBytes = m_strokeSnapshot.RowBytes;
 			byte* targetBase = (byte*)current.GetPixels().ToPointer();
 			int targetRowBytes = current.RowBytes;
-			int rowLength = current.Width * 4;
+			long rowLength = (long)current.Width * 4;
 			int height = current.Height;
 			for (int y = 0; y < height; y++)
 			{
-				byte* sourceRow = sourceBase + (y * sourceRowBytes);
-				byte* targetRow = targetBase + (y * targetRowBytes);
-				for (int index = 0; index < rowLength; index++)
-				{
-					targetRow[index] = sourceRow[index];
-				}
+				byte* sourceRow = sourceBase + ((long)y * sourceRowBytes);
+				byte* targetRow = targetBase + ((long)y * targetRowBytes);
+				Buffer.MemoryCopy(sourceRow, targetRow, rowLength, rowLength);
 			}
 		}
 
