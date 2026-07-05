@@ -108,7 +108,8 @@ namespace Bitmute.UI
 		Diffuse,
 		Emboss,
 		FindEdges,
-		Solarize
+		Solarize,
+		DeInterlace
 	}
 
 	public class MenuBarItem

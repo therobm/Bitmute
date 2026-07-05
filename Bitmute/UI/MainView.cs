@@ -204,7 +204,12 @@ namespace Bitmute.UI
 				items.Add(new MenuBarItem("Solarize", eMenuAction.Solarize));
 				return items;
 			}
-			if (parent == eMenuAction.FilterDistortMenu || parent == eMenuAction.FilterVideoMenu)
+			if (parent == eMenuAction.FilterVideoMenu)
+			{
+				items.Add(new MenuBarItem("De-Interlace…", eMenuAction.DeInterlace));
+				return items;
+			}
+			if (parent == eMenuAction.FilterDistortMenu)
 			{
 				MenuBarItem placeholder = new MenuBarItem("(none yet)", eMenuAction.None);
 				placeholder.m_enabled = false;
@@ -801,6 +806,11 @@ namespace Bitmute.UI
 				RunInstantFilter("solarize");
 				return;
 			}
+			if (action == eMenuAction.DeInterlace)
+			{
+				OpenAdjustment("deinterlace");
+				return;
+			}
 			if (action == eMenuAction.FlipHorizontal)
 			{
 				DoCanvasOp("fliph");
@@ -1119,6 +1129,10 @@ namespace Bitmute.UI
 			{
 				return true;
 			}
+			if (id == "deinterlace")
+			{
+				return true;
+			}
 			return false;
 		}
 
@@ -1223,6 +1237,10 @@ namespace Bitmute.UI
 			if (id == "solarize")
 			{
 				return "Solarize";
+			}
+			if (id == "deinterlace")
+			{
+				return "De-Interlace";
 			}
 			return "";
 		}
@@ -1380,6 +1398,10 @@ namespace Bitmute.UI
 			{
 				FilterStylize.Solarize(bitmap);
 			}
+			else if (id == "deinterlace")
+			{
+				FilterVideo.DeInterlace(bitmap, values[0], values[1]);
+			}
 		}
 
 		private void BeginAdjustmentPreview(string id)
@@ -1494,6 +1516,11 @@ namespace Bitmute.UI
 			if (id == "emboss")
 			{
 				ShowModal(new AdjustmentDialog("Emboss", "emboss", new string[] { "Angle", "Height", "Amount" }, new int[] { -180, 1, 1 }, new int[] { 180, 10, 500 }, new int[] { 135, 3, 100 }), 360.0, 260.0);
+				return;
+			}
+			if (id == "deinterlace")
+			{
+				ShowModal(new AdjustmentDialog("De-Interlace", "deinterlace", new string[0], new int[0], new int[0], new int[0], new string[] { "Eliminate", "Fill" }, new string[][] { new string[] { "Odd Fields", "Even Fields" }, new string[] { "Duplication", "Interpolation" } }, new int[] { 0, 1 }), 360.0, 230.0);
 				return;
 			}
 		}

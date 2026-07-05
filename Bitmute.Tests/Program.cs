@@ -128,6 +128,7 @@ namespace Bitmute.Tests
 			s_failures = s_failures + FilterPixelateTests.RunAll();
 			s_failures = s_failures + FilterSharpenTests.RunAll();
 			s_failures = s_failures + FilterStylizeTests.RunAll();
+			s_failures = s_failures + FilterVideoTests.RunAll();
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");
