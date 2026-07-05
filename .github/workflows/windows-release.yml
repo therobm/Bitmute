@@ -24,7 +24,8 @@ jobs:
         shell: pwsh
         run: |
           $baseVersion = (Get-Content VERSION -Raw).Trim()
-          $fullVersion = "$baseVersion.${{ github.run_number }}"
+          $fullVersion = "$baseVersion-dev"
+          "base=$baseVersion" >> $env:GITHUB_OUTPUT
           "version=$fullVersion" >> $env:GITHUB_OUTPUT
           Write-Host "Building version $fullVersion"
 
@@ -38,7 +39,7 @@ jobs:
           --self-contained true
           -p:DebugType=none
           -p:WindowsAppSDKSelfContained=true
-          -p:ApplicationDisplayVersion=${{ steps.version.outputs.version }}
+          -p:ApplicationDisplayVersion=${{ steps.version.outputs.base }}
           -p:ApplicationVersion=${{ github.run_number }}
           -o publish
 

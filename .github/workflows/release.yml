@@ -1,0 +1,86 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore workloads
+        run: dotnet workload restore Bitmute/Bitmute.csproj
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          version=$(tr -d ' \t\r\n' < VERSION)
+          if ! echo "$version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "VERSION must be MAJOR.MINOR.BUILD; got '$version'" >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "Version: ${version}"
+
+      - name: Publish
+        run: >
+          dotnet publish Bitmute/Bitmute.csproj
+          -f net10.0-windows10.0.19041.0
+          -c Release
+          -p:WindowsPackageType=None
+          -p:PublishSingleFile=true
+          --self-contained true
+          -p:DebugType=none
+          -p:WindowsAppSDKSelfContained=true
+          -p:ApplicationDisplayVersion=${{ steps.version.outputs.version }}
+          -p:ApplicationVersion=${{ github.run_number }}
+          -o publish
+
+      - name: Stage release artifact
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory artifacts | Out-Null
+          Compress-Archive -Path publish\* -DestinationPath "artifacts/Bitmute-${{ steps.version.outputs.version }}-win-x64.zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          files: artifacts/Bitmute-${{ steps.version.outputs.version }}-win-x64.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+
+      - name: Increment build number in VERSION
+        shell: bash
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          major=$(echo "$version" | cut -d. -f1)
+          minor=$(echo "$version" | cut -d. -f2)
+          build=$(echo "$version" | cut -d. -f3)
+          next="${major}.${minor}.$((build + 1))"
+          printf '%s\n' "$next" > VERSION
+          git config user.name "Vibratron"
+          git config user.email "vibratron@flatline.local"
+          git add VERSION
+          git commit -m "Bump build to ${next} [skip ci]"
+          git push origin HEAD:master
