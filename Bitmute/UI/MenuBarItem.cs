@@ -101,7 +101,10 @@ namespace Bitmute.UI
 		Crystallize,
 		Facet,
 		Fragment,
-		Pointillize
+		Pointillize,
+		Sharpen,
+		SharpenEdges,
+		SharpenMore
 	}
 
 	public class MenuBarItem

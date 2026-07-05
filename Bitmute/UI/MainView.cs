@@ -168,6 +168,9 @@ namespace Bitmute.UI
 			}
 			if (parent == eMenuAction.FilterSharpenMenu)
 			{
+				items.Add(new MenuBarItem("Sharpen", eMenuAction.Sharpen));
+				items.Add(new MenuBarItem("Sharpen Edges", eMenuAction.SharpenEdges));
+				items.Add(new MenuBarItem("Sharpen More", eMenuAction.SharpenMore));
 				items.Add(new MenuBarItem("Unsharp Mask…", eMenuAction.UnsharpMask));
 				return items;
 			}
@@ -755,6 +758,21 @@ namespace Bitmute.UI
 				OpenAdjustment("pointillize");
 				return;
 			}
+			if (action == eMenuAction.Sharpen)
+			{
+				RunInstantFilter("sharpen");
+				return;
+			}
+			if (action == eMenuAction.SharpenEdges)
+			{
+				RunInstantFilter("sharpenedges");
+				return;
+			}
+			if (action == eMenuAction.SharpenMore)
+			{
+				RunInstantFilter("sharpenmore");
+				return;
+			}
 			if (action == eMenuAction.FlipHorizontal)
 			{
 				DoCanvasOp("fliph");
@@ -1142,6 +1160,18 @@ namespace Bitmute.UI
 			{
 				return "Pointillize";
 			}
+			if (id == "sharpen")
+			{
+				return "Sharpen";
+			}
+			if (id == "sharpenedges")
+			{
+				return "Sharpen Edges";
+			}
+			if (id == "sharpenmore")
+			{
+				return "Sharpen More";
+			}
 			return "";
 		}
 
@@ -1269,6 +1299,18 @@ namespace Bitmute.UI
 			else if (id == "pointillize")
 			{
 				FilterPixelate.Pointillize(bitmap, values[0], m_filterSeed, m_toolState.Background());
+			}
+			else if (id == "sharpen")
+			{
+				FilterSharpen.Sharpen(bitmap);
+			}
+			else if (id == "sharpenedges")
+			{
+				FilterSharpen.SharpenEdges(bitmap);
+			}
+			else if (id == "sharpenmore")
+			{
+				FilterSharpen.SharpenMore(bitmap);
 			}
 		}
 
