@@ -406,17 +406,17 @@ namespace Bitmute.UI
 			}
 			if (action == eMenuAction.ToggleNavigatorPanel)
 			{
-				ToggleDockPanel("Navigator");
+				ToggleDockPanel(ePanelId.Navigator);
 				return;
 			}
 			if (action == eMenuAction.ToggleSwatchesPanel)
 			{
-				ToggleDockPanel("Swatches");
+				ToggleDockPanel(ePanelId.Swatches);
 				return;
 			}
 			if (action == eMenuAction.ToggleLayersPanel)
 			{
-				ToggleDockPanel("Layers");
+				ToggleDockPanel(ePanelId.Layers);
 				return;
 			}
 			if (action == eMenuAction.NewLayer)
@@ -1463,17 +1463,17 @@ namespace Bitmute.UI
 			return dock;
 		}
 
-		private PaletteGroup PanelForKey(string key)
+		private PaletteGroup PanelForKey(ePanelId panel)
 		{
-			if (key == "Navigator")
+			if (panel == ePanelId.Navigator)
 			{
 				return m_navigatorGroup;
 			}
-			if (key == "Swatches")
+			if (panel == ePanelId.Swatches)
 			{
 				return m_swatchesGroup;
 			}
-			if (key == "Layers")
+			if (panel == ePanelId.Layers)
 			{
 				return m_layersGroup;
 			}
@@ -1497,16 +1497,6 @@ namespace Bitmute.UI
 			return ePanelId.Info;
 		}
 
-		private bool PanelVisibleFlag(string key)
-		{
-			return m_workspaceState.PanelVisible(PanelIdForKey(key));
-		}
-
-		private void SetPanelVisibleFlag(string key, bool visible)
-		{
-			m_workspaceState.SetPanelVisible(PanelIdForKey(key), visible);
-		}
-
 		private void SavePanelLayout()
 		{
 			if (m_paletteOrder == null)
@@ -1525,7 +1515,7 @@ namespace Bitmute.UI
 					order = order + ",";
 				}
 				order = order + key;
-				if (!PanelVisibleFlag(key))
+				if (!m_workspaceState.PanelVisible(PanelIdForKey(key)))
 				{
 					if (hidden.Length > 0)
 					{
@@ -1556,7 +1546,7 @@ namespace Bitmute.UI
 				string[] orderKeys = order.Split(new char[] { ',' });
 				for (int index = 0; index < orderKeys.Length; index++)
 				{
-					PaletteGroup group = PanelForKey(orderKeys[index]);
+					PaletteGroup group = PanelForKey(PanelIdForKey(orderKeys[index]));
 					if (group != null && !restored.Contains(group))
 					{
 						restored.Add(group);
@@ -1577,7 +1567,7 @@ namespace Bitmute.UI
 				string[] hiddenKeys = hidden.Split(new char[] { ',' });
 				for (int index = 0; index < hiddenKeys.Length; index++)
 				{
-					SetPanelVisibleFlag(hiddenKeys[index], false);
+					m_workspaceState.SetPanelVisible(PanelIdForKey(hiddenKeys[index]), false);
 				}
 			}
 			string collapsed = Microsoft.Maui.Storage.Preferences.Default.Get("panel_collapsed", "");
@@ -1586,7 +1576,7 @@ namespace Bitmute.UI
 				string[] collapsedKeys = collapsed.Split(new char[] { ',' });
 				for (int index = 0; index < collapsedKeys.Length; index++)
 				{
-					PaletteGroup group = PanelForKey(collapsedKeys[index]);
+					PaletteGroup group = PanelForKey(PanelIdForKey(collapsedKeys[index]));
 					if (group != null)
 					{
 						group.SetCollapsed(true);
@@ -1695,14 +1685,14 @@ namespace Bitmute.UI
 
 		public void ClosePalettePanel(string key)
 		{
-			SetPanelVisibleFlag(key, false);
+			m_workspaceState.SetPanelVisible(PanelIdForKey(key), false);
 			RefreshDockLayout();
 			SavePanelLayout();
 		}
 
-		private void ToggleDockPanel(string key)
+		private void ToggleDockPanel(ePanelId panel)
 		{
-			SetPanelVisibleFlag(key, !PanelVisibleFlag(key));
+			m_workspaceState.SetPanelVisible(panel, !m_workspaceState.PanelVisible(panel));
 			RefreshDockLayout();
 			SavePanelLayout();
 		}
