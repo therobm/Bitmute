@@ -3064,12 +3064,15 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			ShowModal(new ConfirmDialog("Delete Layer", "Delete layer \"" + layer.Name() + "\"?", "Delete", OnConfirmDeleteLayer), 320.0, 150.0);
+			ShowModal(new MessageDialog("Delete Layer", "Delete layer \"" + layer.Name() + "\"?", new string[] { "Cancel", "Delete" }, OnDeleteLayerChoice), 320.0, 150.0);
 		}
 
-		private void OnConfirmDeleteLayer()
+		private void OnDeleteLayerChoice(int choice)
 		{
-			DeleteActiveLayer();
+			if (choice == 1)
+			{
+				DeleteActiveLayer();
+			}
 		}
 
 		private Border BuildContextMenuRow(string text, EventHandler<TappedEventArgs> handler)

@@ -26,5 +26,12 @@ namespace Bitmute.UI
 			EnsureFieldStack();
 			ComposeDialog(title, m_fieldStack, buttonRow);
 		}
+
+		protected void ComposeFields(string title, View buttonRow, double width)
+		{
+			EnsureFieldStack();
+			m_fieldStack.WidthRequest = width;
+			ComposeDialog(title, m_fieldStack, buttonRow);
+		}
 	}
 }
