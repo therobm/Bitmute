@@ -95,6 +95,7 @@ namespace Bitmute.Tests
 			TestBevelOppositeSides();
 			TestLayerStyleBoundingInvariance();
 			TestLayerStyleEmptyContent();
+			TestLayerStylePreviewTickEquivalence();
 			TestFeatherActive();
 			TestBrightnessContrastMatchesReference();
 			TestHueSaturationLightnessMatchesReference();
@@ -2064,6 +2065,82 @@ namespace Bitmute.Tests
 
 			small.Dispose();
 			large.Dispose();
+		}
+
+		private static Document BuildStyledTickDoc(out Layer layer)
+		{
+			Document doc = new Document("s", 64, 64);
+			layer = doc.AddLayer("styled");
+			layer.Bitmap().Erase(SKColors.Transparent);
+			SKColor red = new SKColor(200, 30, 30, 255);
+			for (int y = 20; y < 36; y++)
+			{
+				for (int x = 20; x < 36; x++)
+				{
+					layer.Bitmap().SetPixel(x, y, red);
+				}
+			}
+			return doc;
+		}
+
+		private static LayerStyle BuildStyledTickStyle(int glowSize)
+		{
+			LayerStyle style = new LayerStyle();
+			style.m_hasOuterGlow = true;
+			style.m_glowSize = glowSize;
+			style.m_glowSpread = 0;
+			style.m_glowOpacity = 100;
+			style.m_glowColor = new SKColor(0, 255, 0, 255);
+			style.m_hasDropShadow = true;
+			style.m_shadowColor = new SKColor(0, 0, 0, 255);
+			style.m_shadowOpacity = 100;
+			style.m_shadowAngle = 45;
+			style.m_shadowDistance = 8;
+			style.m_shadowSize = 3;
+			style.m_shadowSpread = 0;
+			return style;
+		}
+
+		private static void TestLayerStylePreviewTickEquivalence()
+		{
+			Layer layer;
+			Document doc = BuildStyledTickDoc(out layer);
+			LayerStyle dialogStyle = BuildStyledTickStyle(5);
+			layer.SetLayerStyle(dialogStyle.Clone());
+			SKBitmap first = new SKBitmap(64, 64, SKColorType.Rgba8888, SKAlphaType.Premul);
+			doc.CompositeInto(first);
+			SKColor glowRing = first.GetPixel(17, 28);
+			Check(glowRing.Green > glowRing.Red + 60, "styled composite shows the outer glow ring");
+			SKColor shadowCore = first.GetPixel(39, 39);
+			Check(shadowCore.Red < 160 && shadowCore.Blue < 160, "styled composite shows the drop shadow");
+
+			dialogStyle.m_glowSize = 9;
+			layer.SetLayerStyle(dialogStyle.Clone());
+			SKBitmap second = new SKBitmap(64, 64, SKColorType.Rgba8888, SKAlphaType.Premul);
+			doc.MarkComposeDirtyAll();
+			doc.CompositeInto(second);
+
+			Layer freshLayer;
+			Document freshDoc = BuildStyledTickDoc(out freshLayer);
+			freshLayer.SetLayerStyle(BuildStyledTickStyle(9));
+			SKBitmap fresh = new SKBitmap(64, 64, SKColorType.Rgba8888, SKAlphaType.Premul);
+			freshDoc.CompositeInto(fresh);
+
+			int mismatches = 0;
+			for (int y = 0; y < 64; y++)
+			{
+				for (int x = 0; x < 64; x++)
+				{
+					if (second.GetPixel(x, y) != fresh.GetPixel(x, y))
+					{
+						mismatches = mismatches + 1;
+					}
+				}
+			}
+			Check(mismatches == 0, "clone-per-tick style update matches a fresh render (" + mismatches + " mismatches)");
+			first.Dispose();
+			second.Dispose();
+			fresh.Dispose();
 		}
 
 		private static void TestLayerStyleEmptyContent()

@@ -1300,7 +1300,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			layer.SetLayerStyle(style);
+			layer.SetLayerStyle(style.Clone());
 			CanvasView canvas = ActiveCanvas();
 			if (canvas == null)
 			{
