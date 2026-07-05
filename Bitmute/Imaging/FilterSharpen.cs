@@ -258,6 +258,35 @@ namespace Bitmute.Imaging
 			RowBands.Run(0, height, worker.Band);
 		}
 
+		private sealed unsafe class HighPassWorker
+		{
+			public byte* m_sourceBase;
+			public byte* m_blurredBase;
+			public byte* m_destinationBase;
+			public int m_sourceStride;
+			public int m_blurredStride;
+			public int m_destinationStride;
+			public int m_width;
+
+			public void Band(int start, int end)
+			{
+				for (int y = start; y < end; y++)
+				{
+					byte* sourceRow = m_sourceBase + ((long)y * m_sourceStride);
+					byte* blurredRow = m_blurredBase + ((long)y * m_blurredStride);
+					byte* destinationRow = m_destinationBase + ((long)y * m_destinationStride);
+					for (int x = 0; x < m_width; x++)
+					{
+						int pixelOffset = x * 4;
+						destinationRow[pixelOffset + 0] = ClampByte(128.0 + (sourceRow[pixelOffset + 0] - blurredRow[pixelOffset + 0]));
+						destinationRow[pixelOffset + 1] = ClampByte(128.0 + (sourceRow[pixelOffset + 1] - blurredRow[pixelOffset + 1]));
+						destinationRow[pixelOffset + 2] = ClampByte(128.0 + (sourceRow[pixelOffset + 2] - blurredRow[pixelOffset + 2]));
+						destinationRow[pixelOffset + 3] = sourceRow[pixelOffset + 3];
+					}
+				}
+			}
+		}
+
 		private static unsafe void SharpenWithStrength(SKBitmap bitmap, double strength)
 		{
 			int width = bitmap.Width;
@@ -286,6 +315,36 @@ namespace Bitmute.Imaging
 		public static void SharpenMore(SKBitmap bitmap)
 		{
 			SharpenWithStrength(bitmap, SharpenMoreStrength);
+		}
+
+		public static unsafe void HighPass(SKBitmap bitmap, int radius)
+		{
+			int width = bitmap.Width;
+			int height = bitmap.Height;
+			SKBitmap source = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			SKBitmap blurred = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			byte* bitmapBase = (byte*)bitmap.GetPixels().ToPointer();
+			byte* sourceBase = (byte*)source.GetPixels().ToPointer();
+			byte* blurredBase = (byte*)blurred.GetPixels().ToPointer();
+			long rowLength = (long)width * 4;
+			for (int y = 0; y < height; y++)
+			{
+				byte* bitmapRow = bitmapBase + ((long)y * bitmap.RowBytes);
+				Buffer.MemoryCopy(bitmapRow, sourceBase + ((long)y * source.RowBytes), rowLength, rowLength);
+				Buffer.MemoryCopy(bitmapRow, blurredBase + ((long)y * blurred.RowBytes), rowLength, rowLength);
+			}
+			Adjustments.GaussianBlur(blurred, radius);
+			HighPassWorker worker = new HighPassWorker();
+			worker.m_sourceBase = sourceBase;
+			worker.m_blurredBase = blurredBase;
+			worker.m_destinationBase = bitmapBase;
+			worker.m_sourceStride = source.RowBytes;
+			worker.m_blurredStride = blurred.RowBytes;
+			worker.m_destinationStride = bitmap.RowBytes;
+			worker.m_width = width;
+			RowBands.Run(0, height, worker.Band);
+			source.Dispose();
+			blurred.Dispose();
 		}
 
 		public static unsafe void SharpenEdges(SKBitmap bitmap)

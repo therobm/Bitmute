@@ -320,6 +320,11 @@ namespace Bitmute.UI
 			FilterSharpen.Sharpen(bitmap);
 		}
 
+		private void RunHighPass(SKBitmap bitmap, int[] values)
+		{
+			FilterSharpen.HighPass(bitmap, values[0]);
+		}
+
 		private void RunSharpenEdges(SKBitmap bitmap, int[] values)
 		{
 			FilterSharpen.SharpenEdges(bitmap);
@@ -645,6 +650,7 @@ namespace Bitmute.UI
 			AddInstant(eMenuAction.SharpenEdges, eMenuAction.FilterSharpenMenu, "Sharpen Edges", RunSharpenEdges);
 			AddInstant(eMenuAction.SharpenMore, eMenuAction.FilterSharpenMenu, "Sharpen More", RunSharpenMore);
 			AddDialog(eMenuAction.UnsharpMask, eMenuAction.FilterSharpenMenu, "Unsharp Mask", true, new string[] { "Amount", "Radius" }, new int[] { 0, 1 }, new int[] { 300, 30 }, new int[] { 100, 3 }, 360.0, 230.0, RunUnsharpMask);
+			AddDialog(eMenuAction.HighPass, eMenuAction.FilterSharpenMenu, "High Pass", true, new string[] { "Radius" }, new int[] { 1 }, new int[] { 30 }, new int[] { 5 }, 360.0, 200.0, RunHighPass);
 
 			Adjustment diffuse = AddChoiceDialog(eMenuAction.Diffuse, eMenuAction.FilterStylizeMenu, "Diffuse", true, s_noLabels, s_noValues, s_noValues, s_noValues, new string[] { "Mode" }, new string[][] { new string[] { "Normal", "Darken Only", "Lighten Only" } }, new int[] { 0 }, 360.0, 200.0, RunDiffuse);
 			diffuse.m_skslSource = GpuFilterPreview.DiffuseSource;
