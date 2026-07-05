@@ -193,16 +193,8 @@ namespace Bitmute.UI
 			}
 			if (title == "Filter")
 			{
-				string lastFilterLabel = "Last Filter";
-
-				string lastFilterId = m_main.GetLastFilterID();
-				string lastFiltername = m_main.GetLastFilterName();
-				if (lastFiltername.Length > 0)
-				{
-					lastFilterLabel = "Last Filter: " + lastFiltername;
-				}
-				MenuBarItem lastFilter = new MenuBarItem(lastFilterLabel, eMenuAction.LastFilter, "Ctrl+F");
-				lastFilter.m_enabled = lastFilterId.Length > 0;
+				MenuBarItem lastFilter = new MenuBarItem(m_main.LastFilterLabel(), eMenuAction.LastFilter, "Ctrl+F");
+				lastFilter.m_enabled = m_main.HasLastFilter();
 				items.Add(lastFilter);
 				MenuBarItem filterSeparator = new MenuBarItem("", eMenuAction.None);
 				filterSeparator.m_separator = true;
@@ -339,70 +331,9 @@ namespace Bitmute.UI
 				items.Add(new MenuBarItem("Threshold…", eMenuAction.Threshold));
 				return items;
 			}
-			if (parent == eMenuAction.FilterBlurMenu)
+			if (m_main.BuildsFilterSubmenu(parent))
 			{
-				items.Add(new MenuBarItem("Average", eMenuAction.AverageBlur));
-				items.Add(new MenuBarItem("Blur", eMenuAction.Blur));
-				items.Add(new MenuBarItem("Blur More", eMenuAction.BlurMore));
-				items.Add(new MenuBarItem("Box Blur…", eMenuAction.BoxBlur));
-				items.Add(new MenuBarItem("Gaussian Blur…", eMenuAction.GaussianBlur));
-				items.Add(new MenuBarItem("Motion Blur…", eMenuAction.MotionBlur));
-				items.Add(new MenuBarItem("Radial Blur…", eMenuAction.RadialBlur));
-				return items;
-			}
-			if (parent == eMenuAction.FilterSharpenMenu)
-			{
-				items.Add(new MenuBarItem("Sharpen", eMenuAction.Sharpen));
-				items.Add(new MenuBarItem("Sharpen Edges", eMenuAction.SharpenEdges));
-				items.Add(new MenuBarItem("Sharpen More", eMenuAction.SharpenMore));
-				items.Add(new MenuBarItem("Unsharp Mask…", eMenuAction.UnsharpMask));
-				return items;
-			}
-			if (parent == eMenuAction.FilterNoiseMenu)
-			{
-				items.Add(new MenuBarItem("Add Noise…", eMenuAction.AddNoise));
-				items.Add(new MenuBarItem("Despeckle", eMenuAction.Despeckle));
-				items.Add(new MenuBarItem("Median…", eMenuAction.Median));
-				return items;
-			}
-			if (parent == eMenuAction.FilterPixelateMenu)
-			{
-				items.Add(new MenuBarItem("Crystallize…", eMenuAction.Crystallize));
-				items.Add(new MenuBarItem("Facet", eMenuAction.Facet));
-				items.Add(new MenuBarItem("Fragment", eMenuAction.Fragment));
-				items.Add(new MenuBarItem("Mosaic…", eMenuAction.Pixelate));
-				items.Add(new MenuBarItem("Pointillize…", eMenuAction.Pointillize));
-				return items;
-			}
-			if (parent == eMenuAction.FilterRenderMenu)
-			{
-				items.Add(new MenuBarItem("Clouds", eMenuAction.Clouds));
-				items.Add(new MenuBarItem("Difference Clouds", eMenuAction.DifferenceClouds));
-				return items;
-			}
-			if (parent == eMenuAction.FilterStylizeMenu)
-			{
-				items.Add(new MenuBarItem("Diffuse…", eMenuAction.Diffuse));
-				items.Add(new MenuBarItem("Emboss…", eMenuAction.Emboss));
-				items.Add(new MenuBarItem("Find Edges", eMenuAction.FindEdges));
-				items.Add(new MenuBarItem("Solarize", eMenuAction.Solarize));
-				return items;
-			}
-			if (parent == eMenuAction.FilterVideoMenu)
-			{
-				items.Add(new MenuBarItem("De-Interlace…", eMenuAction.DeInterlace));
-				return items;
-			}
-			if (parent == eMenuAction.FilterDistortMenu)
-			{
-				items.Add(new MenuBarItem("Pinch…", eMenuAction.Pinch));
-				items.Add(new MenuBarItem("Polar Coordinates…", eMenuAction.PolarCoordinates));
-				items.Add(new MenuBarItem("Ripple…", eMenuAction.Ripple));
-				items.Add(new MenuBarItem("Shear…", eMenuAction.Shear));
-				items.Add(new MenuBarItem("Spherize…", eMenuAction.Spherize));
-				items.Add(new MenuBarItem("Twirl…", eMenuAction.Twirl));
-				items.Add(new MenuBarItem("Wave…", eMenuAction.Wave));
-				return items;
+				return m_main.FilterSubmenuItems(parent);
 			}
 			return items;
 		}

@@ -85,12 +85,7 @@ namespace Bitmute.UI
 		private LayerStyle m_layerStyleSnapshot;
 		private int m_layerStyleTargetIndex;
 		private LayerStyle m_copiedLayerStyle;
-		private static readonly int[] s_instantFilterValues = new int[0];
-
-		private string m_lastFilterId = "";
-		private string m_lastFilterName = "";
-		private int[] m_lastFilterValues;
-		private int m_filterSeed;
+		private AdjustmentRegistry m_adjustments;
 		private Button m_focusSink;
 
 
@@ -115,15 +110,6 @@ namespace Bitmute.UI
 		public bool LayersPanelVisible()
 		{
 			return m_layersPanelVisible;
-		}
-
-		public string GetLastFilterID()
-		{
-			return m_lastFilterId;
-		}
-		public string GetLastFilterName()
-		{
-			return m_lastFilterName;
 		}
 
 		public bool CanMergeDown()
@@ -158,6 +144,17 @@ namespace Bitmute.UI
 				return;
 			}
 			eMenuAction action = item.m_action;
+			Adjustment adjustment = m_adjustments.ForAction(action);
+			if (adjustment != null)
+			{
+				m_adjustments.Open(adjustment);
+				return;
+			}
+			if (action == eMenuAction.LastFilter)
+			{
+				m_adjustments.ApplyLast();
+				return;
+			}
 			if (action == eMenuAction.NewDocument)
 			{
 				ShowNewDocumentDialog();
@@ -331,11 +328,6 @@ namespace Bitmute.UI
 				BeginTransform(7);
 				return;
 			}
-			if (action == eMenuAction.RotateArbitrary)
-			{
-				OpenAdjustment("rotate");
-				return;
-			}
 			if (action == eMenuAction.StrokeDialog)
 			{
 				OpenStrokeDialog();
@@ -356,11 +348,6 @@ namespace Bitmute.UI
 				DoInvertSelection();
 				return;
 			}
-			if (action == eMenuAction.FeatherSelection)
-			{
-				OpenAdjustment("feather");
-				return;
-			}
 			if (action == eMenuAction.InvertColors)
 			{
 				DoInvert();
@@ -369,196 +356,6 @@ namespace Bitmute.UI
 			if (action == eMenuAction.Desaturate)
 			{
 				DoDesaturate();
-				return;
-			}
-			if (action == eMenuAction.BrightnessContrast)
-			{
-				OpenAdjustment("bc");
-				return;
-			}
-			if (action == eMenuAction.HueSaturation)
-			{
-				OpenAdjustment("hsl");
-				return;
-			}
-			if (action == eMenuAction.Posterize)
-			{
-				OpenAdjustment("posterize");
-				return;
-			}
-			if (action == eMenuAction.Threshold)
-			{
-				OpenAdjustment("threshold");
-				return;
-			}
-			if (action == eMenuAction.GaussianBlur)
-			{
-				OpenAdjustment("gblur");
-				return;
-			}
-			if (action == eMenuAction.UnsharpMask)
-			{
-				OpenAdjustment("unsharp");
-				return;
-			}
-			if (action == eMenuAction.AddNoise)
-			{
-				OpenAdjustment("noise");
-				return;
-			}
-			if (action == eMenuAction.Pixelate)
-			{
-				OpenAdjustment("pixelate");
-				return;
-			}
-			if (action == eMenuAction.LastFilter)
-			{
-				ApplyLastFilter();
-				return;
-			}
-			if (action == eMenuAction.Clouds)
-			{
-				RunInstantFilter("clouds");
-				return;
-			}
-			if (action == eMenuAction.DifferenceClouds)
-			{
-				RunInstantFilter("diffclouds");
-				return;
-			}
-			if (action == eMenuAction.AverageBlur)
-			{
-				RunInstantFilter("average");
-				return;
-			}
-			if (action == eMenuAction.Blur)
-			{
-				RunInstantFilter("blur");
-				return;
-			}
-			if (action == eMenuAction.BlurMore)
-			{
-				RunInstantFilter("blurmore");
-				return;
-			}
-			if (action == eMenuAction.BoxBlur)
-			{
-				OpenAdjustment("boxblur");
-				return;
-			}
-			if (action == eMenuAction.MotionBlur)
-			{
-				OpenAdjustment("motionblur");
-				return;
-			}
-			if (action == eMenuAction.RadialBlur)
-			{
-				OpenAdjustment("radialblur");
-				return;
-			}
-			if (action == eMenuAction.Despeckle)
-			{
-				RunInstantFilter("despeckle");
-				return;
-			}
-			if (action == eMenuAction.Median)
-			{
-				OpenAdjustment("median");
-				return;
-			}
-			if (action == eMenuAction.Crystallize)
-			{
-				OpenAdjustment("crystallize");
-				return;
-			}
-			if (action == eMenuAction.Facet)
-			{
-				RunInstantFilter("facet");
-				return;
-			}
-			if (action == eMenuAction.Fragment)
-			{
-				RunInstantFilter("fragment");
-				return;
-			}
-			if (action == eMenuAction.Pointillize)
-			{
-				OpenAdjustment("pointillize");
-				return;
-			}
-			if (action == eMenuAction.Sharpen)
-			{
-				RunInstantFilter("sharpen");
-				return;
-			}
-			if (action == eMenuAction.SharpenEdges)
-			{
-				RunInstantFilter("sharpenedges");
-				return;
-			}
-			if (action == eMenuAction.SharpenMore)
-			{
-				RunInstantFilter("sharpenmore");
-				return;
-			}
-			if (action == eMenuAction.Diffuse)
-			{
-				OpenAdjustment("diffuse");
-				return;
-			}
-			if (action == eMenuAction.Emboss)
-			{
-				OpenAdjustment("emboss");
-				return;
-			}
-			if (action == eMenuAction.FindEdges)
-			{
-				RunInstantFilter("findedges");
-				return;
-			}
-			if (action == eMenuAction.Solarize)
-			{
-				RunInstantFilter("solarize");
-				return;
-			}
-			if (action == eMenuAction.DeInterlace)
-			{
-				OpenAdjustment("deinterlace");
-				return;
-			}
-			if (action == eMenuAction.Pinch)
-			{
-				OpenAdjustment("pinch");
-				return;
-			}
-			if (action == eMenuAction.PolarCoordinates)
-			{
-				OpenAdjustment("polar");
-				return;
-			}
-			if (action == eMenuAction.Ripple)
-			{
-				OpenAdjustment("ripple");
-				return;
-			}
-			if (action == eMenuAction.Shear)
-			{
-				OpenAdjustment("shear");
-				return;
-			}
-			if (action == eMenuAction.Spherize)
-			{
-				OpenAdjustment("spherize");
-				return;
-			}
-			if (action == eMenuAction.Twirl)
-			{
-				OpenAdjustment("twirl");
-				return;
-			}
-			if (action == eMenuAction.Wave)
-			{
-				OpenAdjustment("wave");
 				return;
 			}
 			if (action == eMenuAction.FlipHorizontal)
@@ -703,7 +500,7 @@ namespace Bitmute.UI
 			ShowModal(new SizeDialog(title, canvasMode, document.Width(), document.Height()), 340.0, 260.0);
 		}
 
-		private void FinishCanvasOp(CanvasView canvas, Document document)
+		public void FinishCanvasOp(CanvasView canvas, Document document)
 		{
 			document.ResetSelection();
 			canvas.ResetView();
@@ -813,703 +610,49 @@ namespace Bitmute.UI
 			FinishCanvasOp(canvas, document);
 		}
 
-		public static bool IsAdjustmentPreviewable(string id)
+		public bool HasLastFilter()
 		{
-			if (id == "bc")
-			{
-				return true;
-			}
-			if (id == "hsl")
-			{
-				return true;
-			}
-			if (id == "posterize")
-			{
-				return true;
-			}
-			if (id == "threshold")
-			{
-				return true;
-			}
-			if (id == "gblur")
-			{
-				return true;
-			}
-			if (id == "unsharp")
-			{
-				return true;
-			}
-			if (id == "noise")
-			{
-				return true;
-			}
-			if (id == "pixelate")
-			{
-				return true;
-			}
-			if (id == "boxblur")
-			{
-				return true;
-			}
-			if (id == "motionblur")
-			{
-				return true;
-			}
-			if (id == "radialblur")
-			{
-				return true;
-			}
-			if (id == "median")
-			{
-				return true;
-			}
-			if (id == "crystallize")
-			{
-				return true;
-			}
-			if (id == "pointillize")
-			{
-				return true;
-			}
-			if (id == "diffuse")
-			{
-				return true;
-			}
-			if (id == "emboss")
-			{
-				return true;
-			}
-			if (id == "deinterlace")
-			{
-				return true;
-			}
-			if (id == "pinch")
-			{
-				return true;
-			}
-			if (id == "polar")
-			{
-				return true;
-			}
-			if (id == "ripple")
-			{
-				return true;
-			}
-			if (id == "shear")
-			{
-				return true;
-			}
-			if (id == "spherize")
-			{
-				return true;
-			}
-			if (id == "twirl")
-			{
-				return true;
-			}
-			if (id == "wave")
-			{
-				return true;
-			}
-			return false;
+			return m_adjustments.HasLastFilter();
 		}
 
-		private static string FilterMenuName(string id)
+		public string LastFilterLabel()
 		{
-			if (id == "gblur")
-			{
-				return "Gaussian Blur";
-			}
-			if (id == "unsharp")
-			{
-				return "Unsharp Mask";
-			}
-			if (id == "noise")
-			{
-				return "Add Noise";
-			}
-			if (id == "pixelate")
-			{
-				return "Mosaic";
-			}
-			if (id == "clouds")
-			{
-				return "Clouds";
-			}
-			if (id == "diffclouds")
-			{
-				return "Difference Clouds";
-			}
-			if (id == "average")
-			{
-				return "Average";
-			}
-			if (id == "blur")
-			{
-				return "Blur";
-			}
-			if (id == "blurmore")
-			{
-				return "Blur More";
-			}
-			if (id == "boxblur")
-			{
-				return "Box Blur";
-			}
-			if (id == "motionblur")
-			{
-				return "Motion Blur";
-			}
-			if (id == "radialblur")
-			{
-				return "Radial Blur";
-			}
-			if (id == "despeckle")
-			{
-				return "Despeckle";
-			}
-			if (id == "median")
-			{
-				return "Median";
-			}
-			if (id == "crystallize")
-			{
-				return "Crystallize";
-			}
-			if (id == "facet")
-			{
-				return "Facet";
-			}
-			if (id == "fragment")
-			{
-				return "Fragment";
-			}
-			if (id == "pointillize")
-			{
-				return "Pointillize";
-			}
-			if (id == "sharpen")
-			{
-				return "Sharpen";
-			}
-			if (id == "sharpenedges")
-			{
-				return "Sharpen Edges";
-			}
-			if (id == "sharpenmore")
-			{
-				return "Sharpen More";
-			}
-			if (id == "diffuse")
-			{
-				return "Diffuse";
-			}
-			if (id == "emboss")
-			{
-				return "Emboss";
-			}
-			if (id == "findedges")
-			{
-				return "Find Edges";
-			}
-			if (id == "solarize")
-			{
-				return "Solarize";
-			}
-			if (id == "deinterlace")
-			{
-				return "De-Interlace";
-			}
-			if (id == "pinch")
-			{
-				return "Pinch";
-			}
-			if (id == "polar")
-			{
-				return "Polar Coordinates";
-			}
-			if (id == "ripple")
-			{
-				return "Ripple";
-			}
-			if (id == "shear")
-			{
-				return "Shear";
-			}
-			if (id == "spherize")
-			{
-				return "Spherize";
-			}
-			if (id == "twirl")
-			{
-				return "Twirl";
-			}
-			if (id == "wave")
-			{
-				return "Wave";
-			}
-			return "";
+			return m_adjustments.LastFilterLabel();
 		}
 
-		private void RecordLastFilter(string id, int[] values)
+		public bool BuildsFilterSubmenu(eMenuAction parent)
 		{
-			string filterName = FilterMenuName(id);
-			if (filterName.Length == 0)
-			{
-				return;
-			}
-			m_lastFilterId = id;
-			m_lastFilterName = filterName;
-			m_lastFilterValues = values;
+			return m_adjustments.BuildsSubmenu(parent);
 		}
 
-		private void RollFilterSeed()
+		public List<MenuBarItem> FilterSubmenuItems(eMenuAction parent)
 		{
-			m_filterSeed = Environment.TickCount;
+			return m_adjustments.SubmenuItems(parent);
 		}
 
-		private void RunInstantFilter(string id)
+		public void ApplyAdjustment(Adjustment adjustment, int[] values)
 		{
-			RollFilterSeed();
-			ApplyAdjustment(id, s_instantFilterValues);
-			RefreshLayerThumbnails();
+			m_adjustments.Apply(adjustment, values);
 		}
 
-		private void ApplyLastFilter()
+		public void PreviewAdjustment(Adjustment adjustment, int[] values)
 		{
-			if (m_lastFilterId.Length == 0)
-			{
-				return;
-			}
-			RollFilterSeed();
-			ApplyAdjustment(m_lastFilterId, m_lastFilterValues);
-			RefreshLayerThumbnails();
-		}
-
-		private void RunAdjustmentMath(string id, SkiaSharp.SKBitmap bitmap, int[] values)
-		{
-			if (id == "bc")
-			{
-				Adjustments.BrightnessContrast(bitmap, values[0], values[1]);
-			}
-			else if (id == "hsl")
-			{
-				Adjustments.HueSaturationLightness(bitmap, values[0], values[1], values[2]);
-			}
-			else if (id == "posterize")
-			{
-				Adjustments.Posterize(bitmap, values[0]);
-			}
-			else if (id == "threshold")
-			{
-				Adjustments.Threshold(bitmap, values[0]);
-			}
-			else if (id == "gblur")
-			{
-				Adjustments.GaussianBlur(bitmap, values[0]);
-			}
-			else if (id == "unsharp")
-			{
-				Adjustments.UnsharpMask(bitmap, values[0], values[1]);
-			}
-			else if (id == "noise")
-			{
-				Adjustments.AddNoise(bitmap, values[0], false);
-			}
-			else if (id == "pixelate")
-			{
-				Adjustments.Pixelate(bitmap, values[0]);
-			}
-			else if (id == "clouds")
-			{
-				FilterRender.Clouds(bitmap, m_toolState.Foreground(), m_toolState.Background(), m_filterSeed);
-			}
-			else if (id == "diffclouds")
-			{
-				FilterRender.DifferenceClouds(bitmap, m_toolState.Foreground(), m_toolState.Background(), m_filterSeed);
-			}
-			else if (id == "average")
-			{
-				FilterBlur.Average(bitmap);
-			}
-			else if (id == "blur")
-			{
-				FilterBlur.Blur(bitmap);
-			}
-			else if (id == "blurmore")
-			{
-				FilterBlur.BlurMore(bitmap);
-			}
-			else if (id == "boxblur")
-			{
-				FilterBlur.BoxBlur(bitmap, values[0]);
-			}
-			else if (id == "motionblur")
-			{
-				FilterBlur.MotionBlur(bitmap, values[0], values[1]);
-			}
-			else if (id == "radialblur")
-			{
-				FilterBlur.RadialBlur(bitmap, values[0], values[1]);
-			}
-			else if (id == "despeckle")
-			{
-				FilterNoise.Despeckle(bitmap);
-			}
-			else if (id == "median")
-			{
-				FilterNoise.Median(bitmap, values[0]);
-			}
-			else if (id == "crystallize")
-			{
-				FilterPixelate.Crystallize(bitmap, values[0], m_filterSeed);
-			}
-			else if (id == "facet")
-			{
-				FilterPixelate.Facet(bitmap);
-			}
-			else if (id == "fragment")
-			{
-				FilterPixelate.Fragment(bitmap);
-			}
-			else if (id == "pointillize")
-			{
-				FilterPixelate.Pointillize(bitmap, values[0], m_filterSeed, m_toolState.Background());
-			}
-			else if (id == "sharpen")
-			{
-				FilterSharpen.Sharpen(bitmap);
-			}
-			else if (id == "sharpenedges")
-			{
-				FilterSharpen.SharpenEdges(bitmap);
-			}
-			else if (id == "sharpenmore")
-			{
-				FilterSharpen.SharpenMore(bitmap);
-			}
-			else if (id == "diffuse")
-			{
-				FilterStylize.Diffuse(bitmap, values[0], m_filterSeed);
-			}
-			else if (id == "emboss")
-			{
-				FilterStylize.Emboss(bitmap, values[0], values[1], values[2]);
-			}
-			else if (id == "findedges")
-			{
-				FilterStylize.FindEdges(bitmap);
-			}
-			else if (id == "solarize")
-			{
-				FilterStylize.Solarize(bitmap);
-			}
-			else if (id == "deinterlace")
-			{
-				FilterVideo.DeInterlace(bitmap, values[0], values[1]);
-			}
-			else if (id == "pinch")
-			{
-				FilterDistort.Pinch(bitmap, values[0]);
-			}
-			else if (id == "polar")
-			{
-				FilterDistort.PolarCoordinates(bitmap, values[0]);
-			}
-			else if (id == "ripple")
-			{
-				FilterDistort.Ripple(bitmap, values[0], values[1]);
-			}
-			else if (id == "shear")
-			{
-				FilterDistort.Shear(bitmap, values[0], values[1]);
-			}
-			else if (id == "spherize")
-			{
-				FilterDistort.Spherize(bitmap, values[0], values[1]);
-			}
-			else if (id == "twirl")
-			{
-				FilterDistort.Twirl(bitmap, values[0]);
-			}
-			else if (id == "wave")
-			{
-				FilterDistort.Wave(bitmap, values[0], values[1], values[2]);
-			}
-		}
-
-		private void BeginAdjustmentPreview(string id)
-		{
-			if (!IsAdjustmentPreviewable(id))
-			{
-				return;
-			}
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
-			{
-				return;
-			}
-			Document document = canvas.CurrentDocument();
-			Layer activeLayer = document.ActiveLayer();
-			if (activeLayer == null)
-			{
-				return;
-			}
-			document.BeginStroke();
-		}
-
-		private void OpenAdjustment(string id)
-		{
-			RollFilterSeed();
-			BeginAdjustmentPreview(id);
-			if (id == "rotate")
-			{
-				ShowModal(new AdjustmentDialog("Rotate Arbitrary", "rotate", new string[] { "Angle" }, new int[] { -180 }, new int[] { 180 }, new int[] { 0 }), 360.0, 170.0);
-				return;
-			}
-			if (id == "feather")
-			{
-				ShowModal(new AdjustmentDialog("Feather Selection", "feather", new string[] { "Radius" }, new int[] { 1 }, new int[] { 100 }, new int[] { 4 }), 360.0, 170.0);
-				return;
-			}
-			if (id == "bc")
-			{
-				ShowModal(new AdjustmentDialog("Brightness/Contrast", "bc", new string[] { "Brightness", "Contrast" }, new int[] { -100, -100 }, new int[] { 100, 100 }, new int[] { 0, 0 }), 360.0, 230.0);
-				return;
-			}
-			if (id == "hsl")
-			{
-				ShowModal(new AdjustmentDialog("Hue/Saturation", "hsl", new string[] { "Hue", "Saturation", "Lightness" }, new int[] { -180, -100, -100 }, new int[] { 180, 100, 100 }, new int[] { 0, 0, 0 }), 360.0, 260.0);
-				return;
-			}
-			if (id == "posterize")
-			{
-				ShowModal(new AdjustmentDialog("Posterize", "posterize", new string[] { "Levels" }, new int[] { 2 }, new int[] { 64 }, new int[] { 8 }), 360.0, 200.0);
-				return;
-			}
-			if (id == "threshold")
-			{
-				ShowModal(new AdjustmentDialog("Threshold", "threshold", new string[] { "Level" }, new int[] { 0 }, new int[] { 255 }, new int[] { 128 }), 360.0, 200.0);
-				return;
-			}
-			if (id == "gblur")
-			{
-				ShowModal(new AdjustmentDialog("Gaussian Blur", "gblur", new string[] { "Radius" }, new int[] { 1 }, new int[] { 30 }, new int[] { 5 }), 360.0, 200.0);
-				return;
-			}
-			if (id == "unsharp")
-			{
-				ShowModal(new AdjustmentDialog("Unsharp Mask", "unsharp", new string[] { "Amount", "Radius" }, new int[] { 0, 1 }, new int[] { 300, 30 }, new int[] { 100, 3 }), 360.0, 230.0);
-				return;
-			}
-			if (id == "noise")
-			{
-				ShowModal(new AdjustmentDialog("Add Noise", "noise", new string[] { "Amount" }, new int[] { 0 }, new int[] { 100 }, new int[] { 20 }), 360.0, 200.0);
-				return;
-			}
-			if (id == "pixelate")
-			{
-				ShowModal(new AdjustmentDialog("Mosaic", "pixelate", new string[] { "Cell Size" }, new int[] { 2 }, new int[] { 64 }, new int[] { 8 }), 360.0, 200.0);
-				return;
-			}
-			if (id == "boxblur")
-			{
-				ShowModal(new AdjustmentDialog("Box Blur", "boxblur", new string[] { "Radius" }, new int[] { 1 }, new int[] { 100 }, new int[] { 10 }), 360.0, 200.0);
-				return;
-			}
-			if (id == "motionblur")
-			{
-				ShowModal(new AdjustmentDialog("Motion Blur", "motionblur", new string[] { "Angle", "Distance" }, new int[] { -90, 1 }, new int[] { 90, 200 }, new int[] { 0, 10 }), 360.0, 230.0);
-				return;
-			}
-			if (id == "radialblur")
-			{
-				ShowModal(new AdjustmentDialog("Radial Blur", "radialblur", new string[] { "Amount" }, new int[] { 1 }, new int[] { 100 }, new int[] { 10 }, new string[] { "Method" }, new string[][] { new string[] { "Spin", "Zoom" } }, new int[] { 0 }), 360.0, 230.0);
-				return;
-			}
-			if (id == "median")
-			{
-				ShowModal(new AdjustmentDialog("Median", "median", new string[] { "Radius" }, new int[] { 1 }, new int[] { 16 }, new int[] { 3 }), 360.0, 200.0);
-				return;
-			}
-			if (id == "crystallize")
-			{
-				ShowModal(new AdjustmentDialog("Crystallize", "crystallize", new string[] { "Cell Size" }, new int[] { 3 }, new int[] { 300 }, new int[] { 10 }), 360.0, 200.0);
-				return;
-			}
-			if (id == "pointillize")
-			{
-				ShowModal(new AdjustmentDialog("Pointillize", "pointillize", new string[] { "Cell Size" }, new int[] { 3 }, new int[] { 200 }, new int[] { 5 }), 360.0, 200.0);
-				return;
-			}
-			if (id == "diffuse")
-			{
-				ShowModal(new AdjustmentDialog("Diffuse", "diffuse", new string[0], new int[0], new int[0], new int[0], new string[] { "Mode" }, new string[][] { new string[] { "Normal", "Darken Only", "Lighten Only" } }, new int[] { 0 }), 360.0, 200.0);
-				return;
-			}
-			if (id == "emboss")
-			{
-				ShowModal(new AdjustmentDialog("Emboss", "emboss", new string[] { "Angle", "Height", "Amount" }, new int[] { -180, 1, 1 }, new int[] { 180, 10, 500 }, new int[] { 135, 3, 100 }), 360.0, 260.0);
-				return;
-			}
-			if (id == "deinterlace")
-			{
-				ShowModal(new AdjustmentDialog("De-Interlace", "deinterlace", new string[0], new int[0], new int[0], new int[0], new string[] { "Eliminate", "Fill" }, new string[][] { new string[] { "Odd Fields", "Even Fields" }, new string[] { "Duplication", "Interpolation" } }, new int[] { 0, 1 }), 360.0, 230.0);
-				return;
-			}
-			if (id == "pinch")
-			{
-				ShowModal(new AdjustmentDialog("Pinch", "pinch", new string[] { "Amount" }, new int[] { -100 }, new int[] { 100 }, new int[] { 50 }), 360.0, 200.0);
-				return;
-			}
-			if (id == "polar")
-			{
-				ShowModal(new AdjustmentDialog("Polar Coordinates", "polar", new string[0], new int[0], new int[0], new int[0], new string[] { "Direction" }, new string[][] { new string[] { "Rectangular to Polar", "Polar to Rectangular" } }, new int[] { 0 }), 360.0, 200.0);
-				return;
-			}
-			if (id == "ripple")
-			{
-				ShowModal(new AdjustmentDialog("Ripple", "ripple", new string[] { "Amount" }, new int[] { -999 }, new int[] { 999 }, new int[] { 100 }, new string[] { "Size" }, new string[][] { new string[] { "Small", "Medium", "Large" } }, new int[] { 1 }), 360.0, 230.0);
-				return;
-			}
-			if (id == "shear")
-			{
-				ShowModal(new AdjustmentDialog("Shear", "shear", new string[] { "Amount" }, new int[] { -100 }, new int[] { 100 }, new int[] { 25 }, new string[] { "Undefined Areas" }, new string[][] { new string[] { "Wrap Around", "Repeat Edge Pixels" } }, new int[] { 0 }), 360.0, 230.0);
-				return;
-			}
-			if (id == "spherize")
-			{
-				ShowModal(new AdjustmentDialog("Spherize", "spherize", new string[] { "Amount" }, new int[] { -100 }, new int[] { 100 }, new int[] { 50 }, new string[] { "Mode" }, new string[][] { new string[] { "Normal", "Horizontal Only", "Vertical Only" } }, new int[] { 0 }), 360.0, 230.0);
-				return;
-			}
-			if (id == "twirl")
-			{
-				ShowModal(new AdjustmentDialog("Twirl", "twirl", new string[] { "Angle" }, new int[] { -999 }, new int[] { 999 }, new int[] { 50 }), 360.0, 200.0);
-				return;
-			}
-			if (id == "wave")
-			{
-				ShowModal(new AdjustmentDialog("Wave", "wave", new string[] { "Wavelength", "Amplitude" }, new int[] { 1, 1 }, new int[] { 200, 100 }, new int[] { 40, 10 }, new string[] { "Type" }, new string[][] { new string[] { "Sine", "Triangle", "Square" } }, new int[] { 0 }), 360.0, 260.0);
-				return;
-			}
-		}
-
-		public void ApplyAdjustment(string id, int[] values)
-		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
-			{
-				return;
-			}
-			Document document = canvas.CurrentDocument();
-			if (id == "rotate")
-			{
-				document.BeginCanvasEdit("Rotate");
-				document.RotateArbitrary(values[0], 2);
-				document.EndCanvasEdit();
-				FinishCanvasOp(canvas, document);
-				return;
-			}
-			if (id == "feather")
-			{
-				document.Selection().FeatherActive(values[0]);
-				canvas.InvalidateSurface();
-				return;
-			}
-			Layer activeLayer = document.ActiveLayer();
-			if (activeLayer == null)
-			{
-				return;
-			}
-			SkiaSharp.SKBitmap bitmap = activeLayer.Bitmap();
-			document.BeginStroke();
-			RunAdjustmentMath(id, bitmap, values);
-			document.EndStroke();
-			canvas.MarkComposeDirty();
-			RecordLastFilter(id, values);
-		}
-
-		public void PreviewAdjustment(string id, int[] values)
-		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
-			{
-				return;
-			}
-			Document document = canvas.CurrentDocument();
-			if (document.StrokeSnapshot() == null)
-			{
-				return;
-			}
-			Layer activeLayer = document.ActiveLayer();
-			if (activeLayer == null)
-			{
-				return;
-			}
-			document.RestoreStrokeSnapshot();
-			RunAdjustmentMath(id, activeLayer.Bitmap(), values);
-			canvas.MarkComposeDirty();
+			m_adjustments.Preview(adjustment, values);
 		}
 
 		public void RestoreAdjustmentPreview()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
-			{
-				return;
-			}
-			Document document = canvas.CurrentDocument();
-			if (document.StrokeSnapshot() == null)
-			{
-				return;
-			}
-			document.RestoreStrokeSnapshot();
-			canvas.MarkComposeDirty();
+			m_adjustments.RestorePreview();
 		}
 
-		public void CommitAdjustment(string id, int[] values)
+		public void CommitAdjustment(Adjustment adjustment, int[] values)
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
-			{
-				return;
-			}
-			Document document = canvas.CurrentDocument();
-			if (document.StrokeSnapshot() == null)
-			{
-				ApplyAdjustment(id, values);
-				RefreshLayerThumbnails();
-				return;
-			}
-			Layer activeLayer = document.ActiveLayer();
-			if (activeLayer == null)
-			{
-				document.EndStroke();
-				return;
-			}
-			document.RestoreStrokeSnapshot();
-			RunAdjustmentMath(id, activeLayer.Bitmap(), values);
-			document.EndStroke();
-			canvas.MarkComposeDirty();
-			RefreshLayerThumbnails();
-			RecordLastFilter(id, values);
+			m_adjustments.Commit(adjustment, values);
 		}
 
 		public void CancelAdjustment()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
-			{
-				return;
-			}
-			Document document = canvas.CurrentDocument();
-			if (document.StrokeSnapshot() == null)
-			{
-				return;
-			}
-			document.RestoreStrokeSnapshot();
-			document.EndStroke();
-			canvas.MarkComposeDirty();
+			m_adjustments.Cancel();
 		}
 
 		private void DoDesaturate()
@@ -2649,6 +1792,7 @@ namespace Bitmute.UI
 			m_topZIndex = 0;
 			m_toolBox = new ToolBox();
 			m_toolState = m_toolBox.State();
+			m_adjustments = new AdjustmentRegistry(this, m_toolState);
 			m_guideCreateOrientation = 0;
 			m_guideCreateCanvas = null;
 			m_gridEnabled = Microsoft.Maui.Storage.Preferences.Default.Get("grid_enabled", false);
@@ -3250,7 +2394,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			ApplyLastFilter();
+			m_adjustments.ApplyLast();
 			args.Handled = true;
 		}
 

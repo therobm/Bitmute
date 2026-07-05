@@ -6,14 +6,9 @@ namespace Bitmute.UI
 {
 	public class AdjustmentDialog : PreviewDialog
 	{
-		private static readonly string[] s_noChoiceLabels = new string[0];
-		private static readonly string[][] s_noChoiceOptions = new string[0][];
-		private static readonly int[] s_noChoiceDefaults = new int[0];
-
-		private string m_filterId;
+		private Adjustment m_adjustment;
 		private IntSlider[] m_sliders;
 		private ListPicker[] m_pickers;
-		private bool m_previewable;
 
 		private int[] Values()
 		{
@@ -46,7 +41,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			main.PreviewAdjustment(m_filterId, Values());
+			main.PreviewAdjustment(m_adjustment, Values());
 		}
 
 		protected override void RestorePreview()
@@ -82,45 +77,40 @@ namespace Bitmute.UI
 				return;
 			}
 			int[] values = Values();
-			if (m_previewable)
+			if (m_adjustment.m_previewable)
 			{
 				MarkApplied();
-				main.CommitAdjustment(m_filterId, values);
+				main.CommitAdjustment(m_adjustment, values);
 			}
 			else
 			{
-				main.ApplyAdjustment(m_filterId, values);
+				main.ApplyAdjustment(m_adjustment, values);
 			}
 			CloseModal();
 		}
 
-		public AdjustmentDialog(string title, string filterId, string[] labels, int[] minimums, int[] maximums, int[] defaults) : this(title, filterId, labels, minimums, maximums, defaults, s_noChoiceLabels, s_noChoiceOptions, s_noChoiceDefaults)
+		public AdjustmentDialog(Adjustment adjustment)
 		{
-		}
-
-		public AdjustmentDialog(string title, string filterId, string[] labels, int[] minimums, int[] maximums, int[] defaults, string[] choiceLabels, string[][] choiceOptions, int[] choiceDefaults)
-		{
-			m_filterId = filterId;
-			m_previewable = MainView.IsAdjustmentPreviewable(filterId);
-			m_sliders = new IntSlider[labels.Length];
-			for (int index = 0; index < labels.Length; index++)
+			m_adjustment = adjustment;
+			m_sliders = new IntSlider[adjustment.m_sliderLabels.Length];
+			for (int index = 0; index < m_sliders.Length; index++)
 			{
-				m_sliders[index] = new IntSlider(labels[index], minimums[index], maximums[index], defaults[index], "", OnSliderValue);
+				m_sliders[index] = new IntSlider(adjustment.m_sliderLabels[index], adjustment.m_sliderMinimums[index], adjustment.m_sliderMaximums[index], adjustment.m_sliderDefaults[index], "", OnSliderValue);
 				AddField(m_sliders[index]);
 			}
-			m_pickers = new ListPicker[choiceLabels.Length];
-			for (int index = 0; index < choiceLabels.Length; index++)
+			m_pickers = new ListPicker[adjustment.m_choiceLabels.Length];
+			for (int index = 0; index < m_pickers.Length; index++)
 			{
-				m_pickers[index] = new ListPicker(choiceLabels[index], choiceOptions[index], choiceDefaults[index], OnPickerValue);
+				m_pickers[index] = new ListPicker(adjustment.m_choiceLabels[index], adjustment.m_choiceOptions[index], adjustment.m_choiceDefaults[index], OnPickerValue);
 				AddField(m_pickers[index]);
 			}
-			if (m_previewable)
+			if (adjustment.m_previewable)
 			{
 				AddPreviewField();
 			}
 			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
 			Button applyButton = PrimaryButton("Apply", OnApplyClicked);
-			ComposeFields(title, ButtonRow(cancelButton, applyButton));
+			ComposeFields(adjustment.m_name, ButtonRow(cancelButton, applyButton));
 		}
 	}
 }
