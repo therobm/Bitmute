@@ -161,6 +161,12 @@ namespace Bitmute.UI
 				return;
 			}
 			canvas.FilterPreview().BeginSession(snapshot, activeLayer.Bitmap());
+			if (adjustment.m_menuAction == eMenuAction.Diffuse)
+			{
+				SKBitmap offsetMap = new SKBitmap(activeLayer.Bitmap().Width, activeLayer.Bitmap().Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				GpuFilterPreview.BuildDiffuseOffsets(offsetMap, m_filterSeed);
+				canvas.FilterPreview().SetSessionOffsetMap(offsetMap);
+			}
 		}
 
 		private void RunBrightnessContrast(SKBitmap bitmap, int[] values)
@@ -470,7 +476,15 @@ namespace Bitmute.UI
 			GpuFilterPreview runner = canvas.FilterPreview();
 			if (runner.SessionActive())
 			{
-				runner.QueuePending(adjustment.m_skslSource, adjustment.m_skslPasses, adjustment.m_builtinBlurPreview, values);
+				int[] gpuValues = values;
+				if (adjustment.m_menuAction == eMenuAction.Emboss)
+				{
+					double radians = values[0] * (Math.PI / 180.0);
+					int offsetX = (int)Math.Round(Math.Cos(radians) * values[1]);
+					int offsetY = (int)Math.Round(-Math.Sin(radians) * values[1]);
+					gpuValues = new int[] { offsetX, offsetY, values[2] };
+				}
+				runner.QueuePending(adjustment.m_skslSource, adjustment.m_skslPasses, adjustment.m_builtinBlurPreview, adjustment.m_skslRawSource, gpuValues);
 				canvas.InvalidateSurface();
 				return;
 			}
@@ -591,13 +605,27 @@ namespace Bitmute.UI
 			radialBlur.m_skslSource = GpuFilterPreview.RadialBlurSource;
 			radialBlur.m_skslPasses = 1;
 
-			AddDialog(eMenuAction.Pinch, eMenuAction.FilterDistortMenu, "Pinch", true, new string[] { "Amount" }, new int[] { -100 }, new int[] { 100 }, new int[] { 50 }, 360.0, 200.0, RunPinch);
-			AddChoiceDialog(eMenuAction.PolarCoordinates, eMenuAction.FilterDistortMenu, "Polar Coordinates", true, s_noLabels, s_noValues, s_noValues, s_noValues, new string[] { "Direction" }, new string[][] { new string[] { "Rectangular to Polar", "Polar to Rectangular" } }, new int[] { 0 }, 360.0, 200.0, RunPolarCoordinates);
-			AddChoiceDialog(eMenuAction.Ripple, eMenuAction.FilterDistortMenu, "Ripple", true, new string[] { "Amount" }, new int[] { -999 }, new int[] { 999 }, new int[] { 100 }, new string[] { "Size" }, new string[][] { new string[] { "Small", "Medium", "Large" } }, new int[] { 1 }, 360.0, 230.0, RunRipple);
-			AddChoiceDialog(eMenuAction.Shear, eMenuAction.FilterDistortMenu, "Shear", true, new string[] { "Amount" }, new int[] { -100 }, new int[] { 100 }, new int[] { 25 }, new string[] { "Undefined Areas" }, new string[][] { new string[] { "Wrap Around", "Repeat Edge Pixels" } }, new int[] { 0 }, 360.0, 230.0, RunShear);
-			AddChoiceDialog(eMenuAction.Spherize, eMenuAction.FilterDistortMenu, "Spherize", true, new string[] { "Amount" }, new int[] { -100 }, new int[] { 100 }, new int[] { 50 }, new string[] { "Mode" }, new string[][] { new string[] { "Normal", "Horizontal Only", "Vertical Only" } }, new int[] { 0 }, 360.0, 230.0, RunSpherize);
-			AddDialog(eMenuAction.Twirl, eMenuAction.FilterDistortMenu, "Twirl", true, new string[] { "Angle" }, new int[] { -999 }, new int[] { 999 }, new int[] { 50 }, 360.0, 200.0, RunTwirl);
-			AddChoiceDialog(eMenuAction.Wave, eMenuAction.FilterDistortMenu, "Wave", true, new string[] { "Wavelength", "Amplitude" }, new int[] { 1, 1 }, new int[] { 200, 100 }, new int[] { 40, 10 }, new string[] { "Type" }, new string[][] { new string[] { "Sine", "Triangle", "Square" } }, new int[] { 0 }, 360.0, 260.0, RunWave);
+			Adjustment pinch = AddDialog(eMenuAction.Pinch, eMenuAction.FilterDistortMenu, "Pinch", true, new string[] { "Amount" }, new int[] { -100 }, new int[] { 100 }, new int[] { 50 }, 360.0, 200.0, RunPinch);
+			pinch.m_skslSource = GpuFilterPreview.PinchSource;
+			pinch.m_skslPasses = 1;
+			Adjustment polar = AddChoiceDialog(eMenuAction.PolarCoordinates, eMenuAction.FilterDistortMenu, "Polar Coordinates", true, s_noLabels, s_noValues, s_noValues, s_noValues, new string[] { "Direction" }, new string[][] { new string[] { "Rectangular to Polar", "Polar to Rectangular" } }, new int[] { 0 }, 360.0, 200.0, RunPolarCoordinates);
+			polar.m_skslSource = GpuFilterPreview.PolarCoordinatesSource;
+			polar.m_skslPasses = 1;
+			Adjustment ripple = AddChoiceDialog(eMenuAction.Ripple, eMenuAction.FilterDistortMenu, "Ripple", true, new string[] { "Amount" }, new int[] { -999 }, new int[] { 999 }, new int[] { 100 }, new string[] { "Size" }, new string[][] { new string[] { "Small", "Medium", "Large" } }, new int[] { 1 }, 360.0, 230.0, RunRipple);
+			ripple.m_skslSource = GpuFilterPreview.RippleSource;
+			ripple.m_skslPasses = 1;
+			Adjustment shear = AddChoiceDialog(eMenuAction.Shear, eMenuAction.FilterDistortMenu, "Shear", true, new string[] { "Amount" }, new int[] { -100 }, new int[] { 100 }, new int[] { 25 }, new string[] { "Undefined Areas" }, new string[][] { new string[] { "Wrap Around", "Repeat Edge Pixels" } }, new int[] { 0 }, 360.0, 230.0, RunShear);
+			shear.m_skslSource = GpuFilterPreview.ShearSource;
+			shear.m_skslPasses = 1;
+			Adjustment spherize = AddChoiceDialog(eMenuAction.Spherize, eMenuAction.FilterDistortMenu, "Spherize", true, new string[] { "Amount" }, new int[] { -100 }, new int[] { 100 }, new int[] { 50 }, new string[] { "Mode" }, new string[][] { new string[] { "Normal", "Horizontal Only", "Vertical Only" } }, new int[] { 0 }, 360.0, 230.0, RunSpherize);
+			spherize.m_skslSource = GpuFilterPreview.SpherizeSource;
+			spherize.m_skslPasses = 1;
+			Adjustment twirl = AddDialog(eMenuAction.Twirl, eMenuAction.FilterDistortMenu, "Twirl", true, new string[] { "Angle" }, new int[] { -999 }, new int[] { 999 }, new int[] { 50 }, 360.0, 200.0, RunTwirl);
+			twirl.m_skslSource = GpuFilterPreview.TwirlSource;
+			twirl.m_skslPasses = 1;
+			Adjustment wave = AddChoiceDialog(eMenuAction.Wave, eMenuAction.FilterDistortMenu, "Wave", true, new string[] { "Wavelength", "Amplitude" }, new int[] { 1, 1 }, new int[] { 200, 100 }, new int[] { 40, 10 }, new string[] { "Type" }, new string[][] { new string[] { "Sine", "Triangle", "Square" } }, new int[] { 0 }, 360.0, 260.0, RunWave);
+			wave.m_skslSource = GpuFilterPreview.WaveSource;
+			wave.m_skslPasses = 1;
 
 			AddChoiceDialog(eMenuAction.AddNoise, eMenuAction.FilterNoiseMenu, "Add Noise", true, new string[] { "Amount" }, new int[] { 0 }, new int[] { 100 }, new int[] { 20 }, new string[] { "Type" }, new string[][] { new string[] { "Color", "Monochromatic" } }, new int[] { 0 }, 360.0, 230.0, RunAddNoise);
 			AddInstant(eMenuAction.Despeckle, eMenuAction.FilterNoiseMenu, "Despeckle", RunDespeckle);
@@ -617,8 +645,14 @@ namespace Bitmute.UI
 			AddInstant(eMenuAction.SharpenMore, eMenuAction.FilterSharpenMenu, "Sharpen More", RunSharpenMore);
 			AddDialog(eMenuAction.UnsharpMask, eMenuAction.FilterSharpenMenu, "Unsharp Mask", true, new string[] { "Amount", "Radius" }, new int[] { 0, 1 }, new int[] { 300, 30 }, new int[] { 100, 3 }, 360.0, 230.0, RunUnsharpMask);
 
-			AddChoiceDialog(eMenuAction.Diffuse, eMenuAction.FilterStylizeMenu, "Diffuse", true, s_noLabels, s_noValues, s_noValues, s_noValues, new string[] { "Mode" }, new string[][] { new string[] { "Normal", "Darken Only", "Lighten Only" } }, new int[] { 0 }, 360.0, 200.0, RunDiffuse);
-			AddDialog(eMenuAction.Emboss, eMenuAction.FilterStylizeMenu, "Emboss", true, new string[] { "Angle", "Height", "Amount" }, new int[] { -180, 1, 1 }, new int[] { 180, 10, 500 }, new int[] { 135, 3, 100 }, 360.0, 260.0, RunEmboss);
+			Adjustment diffuse = AddChoiceDialog(eMenuAction.Diffuse, eMenuAction.FilterStylizeMenu, "Diffuse", true, s_noLabels, s_noValues, s_noValues, s_noValues, new string[] { "Mode" }, new string[][] { new string[] { "Normal", "Darken Only", "Lighten Only" } }, new int[] { 0 }, 360.0, 200.0, RunDiffuse);
+			diffuse.m_skslSource = GpuFilterPreview.DiffuseSource;
+			diffuse.m_skslPasses = 1;
+			diffuse.m_skslRawSource = true;
+			Adjustment emboss = AddDialog(eMenuAction.Emboss, eMenuAction.FilterStylizeMenu, "Emboss", true, new string[] { "Angle", "Height", "Amount" }, new int[] { -180, 1, 1 }, new int[] { 180, 10, 500 }, new int[] { 135, 3, 100 }, 360.0, 260.0, RunEmboss);
+			emboss.m_skslSource = GpuFilterPreview.EmbossSource;
+			emboss.m_skslPasses = 1;
+			emboss.m_skslRawSource = true;
 			AddInstant(eMenuAction.FindEdges, eMenuAction.FilterStylizeMenu, "Find Edges", RunFindEdges);
 			AddInstant(eMenuAction.Solarize, eMenuAction.FilterStylizeMenu, "Solarize", RunSolarize);
 

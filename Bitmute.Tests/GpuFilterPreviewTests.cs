@@ -210,7 +210,7 @@ namespace Bitmute.Tests
 			SKSurface scratchA = SKSurface.Create(scratchInfo);
 			SKSurface scratchB = SKSurface.Create(scratchInfo);
 			SKImage source = SKImage.FromPixels(input.PeekPixels());
-			bool succeeded = GpuFilterPreview.RunEffect(scratchA, scratchB, source, skslSource, passes, builtinBlur, values, destination);
+			bool succeeded = GpuFilterPreview.RunEffect(scratchA, scratchB, source, skslSource, passes, builtinBlur, false, null, values, destination);
 			source.Dispose();
 			scratchA.Dispose();
 			scratchB.Dispose();

@@ -45,7 +45,7 @@ namespace Bitmute.Imaging
 			return (byte)(255 - value);
 		}
 
-		private static uint HashCoordinates(int x, int y, int seed)
+		public static uint HashCoordinates(int x, int y, int seed)
 		{
 			uint value = (uint)x * 374761393u;
 			value = value + ((uint)y * 668265263u);
