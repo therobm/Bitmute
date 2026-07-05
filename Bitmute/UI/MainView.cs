@@ -4614,6 +4614,10 @@ namespace Bitmute.UI
 				}
 				m_layerStyleSnapshot = null;
 			}
+			if (m_modalStack.Count == 0 && m_textEditSession != null)
+			{
+				m_textEditSession.FocusKeyboardSink();
+			}
 		}
 
 		public void OpenColorPicker(bool foreground)
