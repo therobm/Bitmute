@@ -4,7 +4,7 @@ using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Graphics;
 
-namespace Bitmute.UI
+namespace Bitmute.UI.Panels
 {
 	public class PaletteGroup : ContentView
 	{

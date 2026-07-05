@@ -8,7 +8,7 @@ using Microsoft.Maui.Graphics;
 using SkiaSharp;
 using SkiaSharp.Views.Maui.Controls;
 
-namespace Bitmute.UI
+namespace Bitmute.UI.Panels
 {
 	public class LayersPanel : ContentView
 	{

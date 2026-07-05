@@ -6,7 +6,7 @@ using SkiaSharp;
 using SkiaSharp.Views.Maui.Controls;
 using Bitmute.Imaging;
 
-namespace Bitmute.UI
+namespace Bitmute.UI.Panels
 {
 	public class ChannelsPanel : ContentView
 	{

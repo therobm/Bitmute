@@ -9,7 +9,7 @@ using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Layouts;
 using SkiaSharp;
 
-namespace Bitmute.UI
+namespace Bitmute.UI.Panels
 {
 	public class ToolPalette : ContentView
 	{

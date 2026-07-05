@@ -3,7 +3,7 @@ using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
 using SkiaSharp;
 
-namespace Bitmute.UI
+namespace Bitmute.UI.Panels
 {
 	public class InfoPanel : ContentView
 	{

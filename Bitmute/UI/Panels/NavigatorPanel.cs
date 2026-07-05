@@ -8,7 +8,7 @@ using SkiaSharp;
 using SkiaSharp.Views.Maui;
 using SkiaSharp.Views.Maui.Controls;
 
-namespace Bitmute.UI
+namespace Bitmute.UI.Panels
 {
 	public class NavigatorPanel : ContentView
 	{
