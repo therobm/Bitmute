@@ -20,6 +20,9 @@ namespace Bitmute.UI.Panels
 		private int m_dragRowLayer = -1;
 		private double m_dragTotalY;
 		private double m_dragTotalX;
+		private double m_panelPressX;
+		private double m_panelPressY;
+		private bool m_panelPointerHooked;
 		private Border m_duplicateButton;
 		private Border m_deleteButton;
 		private int m_pendingContextLayer;
@@ -570,9 +573,7 @@ namespace Bitmute.UI.Panels
 			}
 			if (row != null)
 			{
-				double dropX = PagePosition(row, true) + (row.Width / 2.0) + m_dragTotalX;
-				double dropY = PagePosition(row, false) + (row.Height / 2.0) + m_dragTotalY;
-				if (DropIsOverButton(dropX, dropY, m_duplicateButton))
+				if (DropIsOverButton(m_duplicateButton))
 				{
 					document.SetActiveLayerIndex(fromIndex);
 					MainView duplicateMain = MainView.Self;
@@ -582,7 +583,7 @@ namespace Bitmute.UI.Panels
 					}
 					return;
 				}
-				if (DropIsOverButton(dropX, dropY, m_deleteButton))
+				if (DropIsOverButton(m_deleteButton))
 				{
 					document.SetActiveLayerIndex(fromIndex);
 					MainView deleteMain = MainView.Self;
@@ -605,14 +606,16 @@ namespace Bitmute.UI.Panels
 			Refresh();
 		}
 
-		private static bool DropIsOverButton(double dropX, double dropY, Border button)
+		private bool DropIsOverButton(Border button)
 		{
 			if (button == null)
 			{
 				return false;
 			}
-			double left = PagePosition(button, true);
-			double top = PagePosition(button, false);
+			double dropX = m_panelPressX + m_dragTotalX;
+			double dropY = m_panelPressY + m_dragTotalY;
+			double left = PanelPosition(button, true);
+			double top = PanelPosition(button, false);
 			if (dropX < left || dropX > left + button.Width)
 			{
 				return false;
@@ -624,12 +627,16 @@ namespace Bitmute.UI.Panels
 			return true;
 		}
 
-		private static double PagePosition(View element, bool horizontal)
+		private double PanelPosition(View element, bool horizontal)
 		{
 			double total = 0.0;
 			Element current = element;
 			for (int guard = 0; guard < 100; guard++)
 			{
+				if (ReferenceEquals(current, this))
+				{
+					break;
+				}
 				VisualElement visual = current as VisualElement;
 				if (visual == null)
 				{
@@ -646,6 +653,38 @@ namespace Bitmute.UI.Panels
 				current = current.Parent;
 			}
 			return total;
+		}
+
+		protected override void OnHandlerChanged()
+		{
+			base.OnHandlerChanged();
+			if (m_panelPointerHooked || Handler == null)
+			{
+				return;
+			}
+			Microsoft.UI.Xaml.UIElement platformElement = Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (platformElement == null)
+			{
+				return;
+			}
+			platformElement.AddHandler(Microsoft.UI.Xaml.UIElement.PointerPressedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnPanelPointerPressed), true);
+			m_panelPointerHooked = true;
+		}
+
+		private void OnPanelPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs eventArgs)
+		{
+			if (Handler == null)
+			{
+				return;
+			}
+			Microsoft.UI.Xaml.UIElement platformElement = Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (platformElement == null)
+			{
+				return;
+			}
+			Windows.Foundation.Point position = eventArgs.GetCurrentPoint(platformElement).Position;
+			m_panelPressX = position.X;
+			m_panelPressY = position.Y;
 		}
 
 		private void OnAddClicked(object sender, TappedEventArgs eventArgs)
