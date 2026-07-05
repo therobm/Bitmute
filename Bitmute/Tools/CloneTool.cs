@@ -12,6 +12,36 @@ namespace Bitmute.Tools
 		private int m_offsetY;
 		private bool m_hasOffset;
 
+		public bool HasSource()
+		{
+			return m_hasSource;
+		}
+
+		public int SourceX()
+		{
+			return m_sourceX;
+		}
+
+		public int SourceY()
+		{
+			return m_sourceY;
+		}
+
+		public bool HasOffset()
+		{
+			return m_hasOffset;
+		}
+
+		public int SourceOffsetX()
+		{
+			return m_offsetX;
+		}
+
+		public int SourceOffsetY()
+		{
+			return m_offsetY;
+		}
+
 		protected override void BeginStroke(Document document, Layer layer, ToolState state)
 		{
 			int radius = state.BrushSize() / 2;
@@ -54,6 +84,7 @@ namespace Bitmute.Tools
 				m_hasOffset = true;
 			}
 			BeginStroke(document, layer, state);
+			m_engine.SetTipShape(state.BrushRoundness(), state.BrushAngle());
 			m_engine.SetCloneOffset(offsetX, offsetY);
 			m_engine.StampFirst(document, layer, x, y, document.Selection());
 			m_lastX = x;

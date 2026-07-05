@@ -49,6 +49,9 @@ namespace Bitmute.UI
 		private int m_gpuResidentKey = -2;
 		private int m_gpuResidentVersion = -1;
 		private GpuFilterPreview m_gpuFilterPreview;
+		private SKImage m_clonePreviewImage;
+		private SKBitmap m_clonePreviewSource;
+		private int m_clonePreviewVersion = -1;
 		private SKImage m_floatImage;
 		private SKBitmap m_floatImageSource;
 		private SKImage m_transformPreviewImage;
@@ -490,6 +493,13 @@ namespace Bitmute.UI
 			{
 				m_gpuFilterPreview.EndSession();
 			}
+			if (m_clonePreviewImage != null)
+			{
+				m_clonePreviewImage.Dispose();
+				m_clonePreviewImage = null;
+				m_clonePreviewSource = null;
+				m_clonePreviewVersion = -1;
+			}
 			if (m_gpuComposite != null)
 			{
 				m_gpuComposite.Dispose();
@@ -843,8 +853,91 @@ namespace Bitmute.UI
 			}
 			if (m_cursorInside && ShowsBrushCursor(tool))
 			{
+				DrawClonePreview(canvas, main);
 				DrawBrushCursor(canvas, main);
 			}
+		}
+
+		private void DrawClonePreview(SKCanvas canvas, MainView main)
+		{
+			CloneTool clone = main.CurrentTool() as CloneTool;
+			if (clone == null || !clone.HasSource() || m_toolStrokeActive)
+			{
+				return;
+			}
+			ToolState state = main.CurrentToolState();
+			if (state == null)
+			{
+				return;
+			}
+			Layer layer = m_document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			double cursorDocX = (m_cursorDeviceX - m_offsetX) / m_zoom;
+			double cursorDocY = (m_cursorDeviceY - m_offsetY) / m_zoom;
+			int offsetX;
+			int offsetY;
+			if (state.CloneAligned() && clone.HasOffset())
+			{
+				offsetX = clone.SourceOffsetX();
+				offsetY = clone.SourceOffsetY();
+			}
+			else
+			{
+				offsetX = (int)cursorDocX - clone.SourceX();
+				offsetY = (int)cursorDocY - clone.SourceY();
+			}
+			float radius = (state.BrushSize() * m_zoom) / 2.0f;
+			if (radius < 1.0f)
+			{
+				radius = 1.0f;
+			}
+			SKBitmap layerBitmap = layer.Bitmap();
+			if (!object.ReferenceEquals(m_clonePreviewSource, layerBitmap) || m_clonePreviewVersion != m_compositeVersion)
+			{
+				if (m_clonePreviewImage != null)
+				{
+					m_clonePreviewImage.Dispose();
+				}
+				m_clonePreviewImage = SKImage.FromPixels(layerBitmap.PeekPixels());
+				m_clonePreviewSource = layerBitmap;
+				m_clonePreviewVersion = m_compositeVersion;
+			}
+			SKPathBuilder clipBuilder = new SKPathBuilder();
+			clipBuilder.AddCircle(m_cursorDeviceX, m_cursorDeviceY, radius);
+			SKPath clip = clipBuilder.Snapshot();
+			canvas.Save();
+			canvas.ClipPath(clip, SKClipOperation.Intersect, true);
+			float drawLeft = m_offsetX + ((layer.OffsetX() + offsetX) * m_zoom);
+			float drawTop = m_offsetY + ((layer.OffsetY() + offsetY) * m_zoom);
+			SKRect ghostDestination = new SKRect(drawLeft, drawTop, drawLeft + (layerBitmap.Width * m_zoom), drawTop + (layerBitmap.Height * m_zoom));
+			SKPaint ghostPaint = new SKPaint();
+			ghostPaint.Color = SKColors.White.WithAlpha(150);
+			SKSamplingOptions ghostSampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
+			canvas.DrawImage(m_clonePreviewImage, ghostDestination, ghostSampling, ghostPaint);
+			ghostPaint.Dispose();
+			canvas.Restore();
+			clip.Dispose();
+			float sourceDeviceX = m_offsetX + ((float)(cursorDocX - offsetX) * m_zoom);
+			float sourceDeviceY = m_offsetY + ((float)(cursorDocY - offsetY) * m_zoom);
+			SKPaint crossUnder = new SKPaint();
+			crossUnder.Style = SKPaintStyle.Stroke;
+			crossUnder.StrokeWidth = 3.0f;
+			crossUnder.Color = SKColors.Black;
+			crossUnder.IsAntialias = true;
+			SKPaint crossOver = new SKPaint();
+			crossOver.Style = SKPaintStyle.Stroke;
+			crossOver.StrokeWidth = 1.0f;
+			crossOver.Color = SKColors.White;
+			crossOver.IsAntialias = true;
+			canvas.DrawLine(sourceDeviceX - 6.0f, sourceDeviceY, sourceDeviceX + 6.0f, sourceDeviceY, crossUnder);
+			canvas.DrawLine(sourceDeviceX, sourceDeviceY - 6.0f, sourceDeviceX, sourceDeviceY + 6.0f, crossUnder);
+			canvas.DrawLine(sourceDeviceX - 6.0f, sourceDeviceY, sourceDeviceX + 6.0f, sourceDeviceY, crossOver);
+			canvas.DrawLine(sourceDeviceX, sourceDeviceY - 6.0f, sourceDeviceX, sourceDeviceY + 6.0f, crossOver);
+			crossUnder.Dispose();
+			crossOver.Dispose();
 		}
 
 		private void DrawShapePreview(SKCanvas canvas, ShapeTool shape)

@@ -54,6 +54,7 @@ namespace Bitmute.Tools
 				m_hasOffset = true;
 			}
 			BeginStroke(document, layer, state);
+			m_engine.SetTipShape(state.BrushRoundness(), state.BrushAngle());
 			m_engine.SetCloneOffset(offsetX, offsetY);
 			m_engine.StampFirst(document, layer, x, y, document.Selection());
 			m_lastX = x;
