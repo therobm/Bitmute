@@ -28,6 +28,18 @@ namespace Bitmute.UI
 		public const double ComponentFontSize = 8;
 		public const double ComponentHeight = ComponentFontSize * 2;
 
+		public const double DialogPadding = 12.0;
+		public const double DialogRowSpacing = 8.0;
+		public const double DialogTitleBarHeight = 30.0;
+		public const double DialogCloseButtonWidth = 40.0;
+		public const double DialogButtonWidth = 88.0;
+		public const double DialogButtonHeight = 26.0;
+		public const double FieldCaptionWidth = 90.0;
+		public const double FieldSliderWidth = 160.0;
+		public const double FieldEntryWidth = 90.0;
+		public const double FieldValueWidth = 40.0;
+		public const double FieldPickerWidth = 130.0;
+
 		public const double DefaultDocumentWidth = 800.0;
 		public const double DefaultDocumentHeight = 600.0;
 		public const double DefaultDocumentWindowWidth = 560.0;

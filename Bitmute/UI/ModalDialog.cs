@@ -41,8 +41,8 @@ namespace Bitmute.UI
 			Button closeButton = new Button();
 			closeButton.Text = "✕";
 			closeButton.FontSize = UiConstants.ComponentFontSize;
-			closeButton.WidthRequest = 40.0;
-			closeButton.HeightRequest = 30.0;
+			closeButton.WidthRequest = UiConstants.DialogCloseButtonWidth;
+			closeButton.HeightRequest = UiConstants.DialogTitleBarHeight;
 			closeButton.CornerRadius = 0;
 			closeButton.Padding = new Thickness(0.0);
 			closeButton.BackgroundColor = Colors.Transparent;
@@ -50,7 +50,7 @@ namespace Bitmute.UI
 			closeButton.Clicked += OnCloseClicked;
 
 			Grid titleBar = new Grid();
-			titleBar.HeightRequest = 30.0;
+			titleBar.HeightRequest = UiConstants.DialogTitleBarHeight;
 			titleBar.ThemeBg(UiConstants.TitleBarLight, UiConstants.TitleBarDark);
 			titleBar.Padding = new Thickness(10.0, 0.0, 0.0, 0.0);
 			titleBar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
@@ -71,8 +71,8 @@ namespace Bitmute.UI
 			Button button = new Button();
 			button.Text = text;
 			button.FontSize = UiConstants.PanelFontSize;
-			button.WidthRequest = 88.0;
-			button.HeightRequest = 26.0;
+			button.WidthRequest = UiConstants.DialogButtonWidth;
+			button.HeightRequest = UiConstants.DialogButtonHeight;
 			button.Padding = new Thickness(0.0);
 			button.CornerRadius = 0;
 			button.BorderWidth = 1.0;
@@ -99,7 +99,7 @@ namespace Bitmute.UI
 		protected View ButtonRow(Button cancelButton, Button primaryButton)
 		{
 			HorizontalStackLayout buttons = new HorizontalStackLayout();
-			buttons.Spacing = 8.0;
+			buttons.Spacing = UiConstants.DialogRowSpacing;
 			buttons.HorizontalOptions = LayoutOptions.End;
 			buttons.Add(cancelButton);
 			buttons.Add(primaryButton);
@@ -110,7 +110,7 @@ namespace Bitmute.UI
 		{
 			VerticalStackLayout innerLayout = new VerticalStackLayout();
 			innerLayout.Spacing = 10.0;
-			innerLayout.Padding = new Thickness(12.0);
+			innerLayout.Padding = new Thickness(UiConstants.DialogPadding);
 			innerLayout.Add(body);
 			if (buttonRow != null)
 			{
