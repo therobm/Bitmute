@@ -978,6 +978,24 @@ namespace Bitmute.UI
 			return m_workspaceState.RulersEnabled();
 		}
 
+		public bool PatternPreviewEnabled()
+		{
+			return m_workspaceState.PatternPreview();
+		}
+
+		public void TogglePatternPreview()
+		{
+			m_workspaceState.SetPatternPreview(!m_workspaceState.PatternPreview());
+			for (int index = 0; index < m_documents.Count; index++)
+			{
+				DocumentWindow window = m_documents[index] as DocumentWindow;
+				if (window != null)
+				{
+					window.Canvas().InvalidateSurface();
+				}
+			}
+		}
+
 		public void ToggleGrid()
 		{
 			m_workspaceState.SetGridEnabled(!m_workspaceState.GridEnabled());
@@ -3101,9 +3119,31 @@ namespace Bitmute.UI
 			RefreshTextEditStyle();
 		}
 
-		public void ShowNewDocumentDialog()
+		public async void ShowNewDocumentDialog()
 		{
-			NewDocumentDialog dialog = new NewDocumentDialog();
+			int initialWidth = 0;
+			int initialHeight = 0;
+			SkiaSharp.SKBitmap clipboard = await GetSystemClipboardBitmap();
+			if (clipboard != null)
+			{
+				initialWidth = clipboard.Width;
+				initialHeight = clipboard.Height;
+				clipboard.Dispose();
+			}
+			else if (s_clipboardBitmap != null)
+			{
+				initialWidth = s_clipboardBitmap.Width;
+				initialHeight = s_clipboardBitmap.Height;
+			}
+			NewDocumentDialog dialog;
+			if (initialWidth > 0 && initialHeight > 0)
+			{
+				dialog = new NewDocumentDialog(initialWidth, initialHeight);
+			}
+			else
+			{
+				dialog = new NewDocumentDialog();
+			}
 			ShowModal(dialog, 320.0, 280.0);
 		}
 

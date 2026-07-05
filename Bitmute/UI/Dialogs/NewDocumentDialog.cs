@@ -31,10 +31,22 @@ namespace Bitmute.UI.Dialogs
 			CloseModal();
 		}
 
-		public NewDocumentDialog()
+		public NewDocumentDialog() : this(DefaultWidth, DefaultHeight)
 		{
+		}
+
+		public NewDocumentDialog(int initialWidth, int initialHeight)
+		{
+			if (initialWidth < 1 || initialWidth > MaximumSize)
+			{
+				initialWidth = DefaultWidth;
+			}
+			if (initialHeight < 1 || initialHeight > MaximumSize)
+			{
+				initialHeight = DefaultHeight;
+			}
 			m_nameField = new TextField("Name", "Untitled", null);
-			m_sizeField = new DualIntField("Width", "Height", DefaultWidth, DefaultHeight, 1, MaximumSize, " px", null);
+			m_sizeField = new DualIntField("Width", "Height", initialWidth, initialHeight, 1, MaximumSize, " px", null);
 			m_backgroundPicker = new ListPicker("Background", new string[] { "White", "Transparent" }, 0, null);
 
 			AddField(m_nameField);
