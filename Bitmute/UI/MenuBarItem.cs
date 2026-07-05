@@ -87,7 +87,9 @@ namespace Bitmute.UI
 		FilterSharpenMenu,
 		FilterStylizeMenu,
 		FilterVideoMenu,
-		LastFilter
+		LastFilter,
+		Clouds,
+		DifferenceClouds
 	}
 
 	public class MenuBarItem

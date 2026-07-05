@@ -85,9 +85,12 @@ namespace Bitmute.UI
 		private LayerStyle m_layerStyleSnapshot;
 		private int m_layerStyleTargetIndex;
 		private LayerStyle m_copiedLayerStyle;
+		private static readonly int[] s_instantFilterValues = new int[0];
+
 		private string m_lastFilterId = "";
 		private string m_lastFilterName = "";
 		private int[] m_lastFilterValues;
+		private int m_filterSeed;
 
 		public List<MenuBarItem> GetSubmenuItems(eMenuAction parent)
 		{
@@ -172,7 +175,13 @@ namespace Bitmute.UI
 				items.Add(new MenuBarItem("Mosaic…", eMenuAction.Pixelate));
 				return items;
 			}
-			if (parent == eMenuAction.FilterDistortMenu || parent == eMenuAction.FilterRenderMenu || parent == eMenuAction.FilterStylizeMenu || parent == eMenuAction.FilterVideoMenu)
+			if (parent == eMenuAction.FilterRenderMenu)
+			{
+				items.Add(new MenuBarItem("Clouds", eMenuAction.Clouds));
+				items.Add(new MenuBarItem("Difference Clouds", eMenuAction.DifferenceClouds));
+				return items;
+			}
+			if (parent == eMenuAction.FilterDistortMenu || parent == eMenuAction.FilterStylizeMenu || parent == eMenuAction.FilterVideoMenu)
 			{
 				MenuBarItem placeholder = new MenuBarItem("(none yet)", eMenuAction.None);
 				placeholder.m_enabled = false;
@@ -664,6 +673,16 @@ namespace Bitmute.UI
 				ApplyLastFilter();
 				return;
 			}
+			if (action == eMenuAction.Clouds)
+			{
+				RunInstantFilter("clouds");
+				return;
+			}
+			if (action == eMenuAction.DifferenceClouds)
+			{
+				RunInstantFilter("diffclouds");
+				return;
+			}
 			if (action == eMenuAction.FlipHorizontal)
 			{
 				DoCanvasOp("fliph");
@@ -971,6 +990,14 @@ namespace Bitmute.UI
 			{
 				return "Mosaic";
 			}
+			if (id == "clouds")
+			{
+				return "Clouds";
+			}
+			if (id == "diffclouds")
+			{
+				return "Difference Clouds";
+			}
 			return "";
 		}
 
@@ -986,12 +1013,25 @@ namespace Bitmute.UI
 			m_lastFilterValues = values;
 		}
 
+		private void RollFilterSeed()
+		{
+			m_filterSeed = Environment.TickCount;
+		}
+
+		private void RunInstantFilter(string id)
+		{
+			RollFilterSeed();
+			ApplyAdjustment(id, s_instantFilterValues);
+			RefreshLayerThumbnails();
+		}
+
 		private void ApplyLastFilter()
 		{
 			if (m_lastFilterId.Length == 0)
 			{
 				return;
 			}
+			RollFilterSeed();
 			ApplyAdjustment(m_lastFilterId, m_lastFilterValues);
 			RefreshLayerThumbnails();
 		}
@@ -1029,6 +1069,14 @@ namespace Bitmute.UI
 			else if (id == "pixelate")
 			{
 				Adjustments.Pixelate(bitmap, values[0]);
+			}
+			else if (id == "clouds")
+			{
+				FilterRender.Clouds(bitmap, m_toolState.Foreground(), m_toolState.Background(), m_filterSeed);
+			}
+			else if (id == "diffclouds")
+			{
+				FilterRender.DifferenceClouds(bitmap, m_toolState.Foreground(), m_toolState.Background(), m_filterSeed);
 			}
 		}
 

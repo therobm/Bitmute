@@ -122,6 +122,7 @@ namespace Bitmute.Tests
 			TestEllipseDragScratchReuse();
 			TestSetShiftedPartialClip();
 			TestShiftTranslatableFlags();
+			s_failures = s_failures + FilterRenderTests.RunAll();
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");
