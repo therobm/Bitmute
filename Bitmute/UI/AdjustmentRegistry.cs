@@ -387,7 +387,7 @@ namespace Bitmute.UI
 				{
 					label = label + "…";
 				}
-				items.Add(new MenuBarItem(label, adjustment.m_menuAction));
+				items.Add(new MenuBarItem(label, adjustment.m_menuAction, () => Open(adjustment)));
 			}
 			return items;
 		}

@@ -123,12 +123,12 @@ namespace Bitmute.UI
 	{
 		public string m_label;
 		public eMenuAction m_action;
-		public string m_argument;
 		public string m_accelerator;
 		public bool m_enabled;
 		public bool m_checked;
 		public bool m_separator;
 		public bool m_submenu;
+		public System.Action m_invoke;
 
 		public MenuBarItem(string label, eMenuAction action) : this(label, action, "")
 		{
@@ -139,11 +139,21 @@ namespace Bitmute.UI
 			m_label = label;
 			m_action = action;
 			m_accelerator = accelerator;
-			m_argument = "";
 			m_enabled = true;
 			m_checked = false;
 			m_separator = false;
 			m_submenu = false;
+			m_invoke = null;
+		}
+
+		public MenuBarItem(string label, eMenuAction action, System.Action invoke) : this(label, action, "")
+		{
+			m_invoke = invoke;
+		}
+
+		public MenuBarItem(string label, eMenuAction action, string accelerator, System.Action invoke) : this(label, action, accelerator)
+		{
+			m_invoke = invoke;
 		}
 	}
 }

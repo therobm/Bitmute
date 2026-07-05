@@ -144,348 +144,6 @@ namespace Bitmute.UI
 			return layer.IsText();
 		}
 
-		public void InvokeMenuAction(MenuBarItem item)
-		{
-			if (item == null)
-			{
-				return;
-			}
-			eMenuAction action = item.m_action;
-			Adjustment adjustment = m_adjustments.ForAction(action);
-			if (adjustment != null)
-			{
-				m_adjustments.Open(adjustment);
-				return;
-			}
-			if (action == eMenuAction.LastFilter)
-			{
-				m_adjustments.ApplyLast();
-				return;
-			}
-			if (action == eMenuAction.NewDocument)
-			{
-				ShowNewDocumentDialog();
-				return;
-			}
-			if (action == eMenuAction.Undo)
-			{
-				DoUndo();
-				return;
-			}
-			if (action == eMenuAction.Redo)
-			{
-				DoRedo();
-				return;
-			}
-			if (action == eMenuAction.Cut)
-			{
-				DoCut();
-				return;
-			}
-			if (action == eMenuAction.Copy)
-			{
-				DoCopy();
-				return;
-			}
-			if (action == eMenuAction.Paste)
-			{
-				DoPaste();
-				return;
-			}
-			if (action == eMenuAction.OpenFile)
-			{
-				OpenImageFlow();
-				return;
-			}
-			if (action == eMenuAction.Save)
-			{
-				SaveImageFlow();
-				return;
-			}
-			if (action == eMenuAction.SaveAs)
-			{
-				SaveAsFlow();
-				return;
-			}
-			if (action == eMenuAction.OpenRecent)
-			{
-				OpenRecentFile(item.m_argument);
-				return;
-			}
-			if (action == eMenuAction.Exit)
-			{
-				DoExit();
-				return;
-			}
-			if (action == eMenuAction.ZoomIn)
-			{
-				DoZoomIn();
-				return;
-			}
-			if (action == eMenuAction.ZoomOut)
-			{
-				DoZoomOut();
-				return;
-			}
-			if (action == eMenuAction.FitOnScreen)
-			{
-				DoFit();
-				return;
-			}
-			if (action == eMenuAction.ToggleRulers)
-			{
-				ToggleRulers();
-				return;
-			}
-			if (action == eMenuAction.ToggleGrid)
-			{
-				ToggleGrid();
-				return;
-			}
-			if (action == eMenuAction.ToggleSnap)
-			{
-				m_workspaceState.SetSnapEnabled(!m_workspaceState.SnapEnabled());
-				return;
-			}
-			if (action == eMenuAction.ToggleSnapGuides)
-			{
-				m_workspaceState.SetSnapTargetGuides(!m_workspaceState.SnapTargetGuides());
-				return;
-			}
-			if (action == eMenuAction.ToggleSnapGrid)
-			{
-				m_workspaceState.SetSnapTargetGrid(!m_workspaceState.SnapTargetGrid());
-				return;
-			}
-			if (action == eMenuAction.ToggleSnapEdges)
-			{
-				m_workspaceState.SetSnapTargetEdges(!m_workspaceState.SnapTargetEdges());
-				return;
-			}
-			if (action == eMenuAction.ToggleSnapLayers)
-			{
-				m_workspaceState.SetSnapTargetLayerBounds(!m_workspaceState.SnapTargetLayerBounds());
-				return;
-			}
-			if (action == eMenuAction.ToggleLockGuides)
-			{
-				Document guideDoc = ActiveDocument();
-				if (guideDoc != null)
-				{
-					guideDoc.Guides().SetLocked(!guideDoc.Guides().IsLocked());
-				}
-				return;
-			}
-			if (action == eMenuAction.ClearGuides)
-			{
-				Document clearDoc = ActiveDocument();
-				if (clearDoc != null)
-				{
-					clearDoc.Guides().Clear();
-					CanvasView guideCanvas = ActiveCanvas();
-					if (guideCanvas != null)
-					{
-						guideCanvas.InvalidateSurface();
-					}
-				}
-				return;
-			}
-			if (action == eMenuAction.FreeTransform)
-			{
-				BeginTransform(0);
-				return;
-			}
-			if (action == eMenuAction.TransformScale)
-			{
-				BeginTransform(1);
-				return;
-			}
-			if (action == eMenuAction.TransformRotate)
-			{
-				BeginTransform(2);
-				return;
-			}
-			if (action == eMenuAction.TransformSkew)
-			{
-				BeginTransform(3);
-				return;
-			}
-			if (action == eMenuAction.TransformDistort)
-			{
-				BeginTransform(4);
-				return;
-			}
-			if (action == eMenuAction.TransformPerspective)
-			{
-				BeginTransform(5);
-				return;
-			}
-			if (action == eMenuAction.FlipLayerHorizontal)
-			{
-				BeginTransform(6);
-				return;
-			}
-			if (action == eMenuAction.FlipLayerVertical)
-			{
-				BeginTransform(7);
-				return;
-			}
-			if (action == eMenuAction.StrokeDialog)
-			{
-				OpenStrokeDialog();
-				return;
-			}
-			if (action == eMenuAction.SelectAll)
-			{
-				DoSelectAll();
-				return;
-			}
-			if (action == eMenuAction.Deselect)
-			{
-				DoDeselect();
-				return;
-			}
-			if (action == eMenuAction.InvertSelection)
-			{
-				DoInvertSelection();
-				return;
-			}
-			if (action == eMenuAction.InvertColors)
-			{
-				DoInvert();
-				return;
-			}
-			if (action == eMenuAction.Desaturate)
-			{
-				DoDesaturate();
-				return;
-			}
-			if (action == eMenuAction.FlipHorizontal)
-			{
-				DoCanvasOp(eCanvasOperation.FlipHorizontal);
-				return;
-			}
-			if (action == eMenuAction.FlipVertical)
-			{
-				DoCanvasOp(eCanvasOperation.FlipVertical);
-				return;
-			}
-			if (action == eMenuAction.Rotate90Clockwise)
-			{
-				DoCanvasOp(eCanvasOperation.Rotate90Clockwise);
-				return;
-			}
-			if (action == eMenuAction.Rotate180)
-			{
-				DoCanvasOp(eCanvasOperation.Rotate180);
-				return;
-			}
-			if (action == eMenuAction.Rotate90CounterClockwise)
-			{
-				DoCanvasOp(eCanvasOperation.Rotate90CounterClockwise);
-				return;
-			}
-			if (action == eMenuAction.CropToSelection)
-			{
-				DoCanvasOp(eCanvasOperation.CropToSelection);
-				return;
-			}
-			if (action == eMenuAction.Trim)
-			{
-				DoCanvasOp(eCanvasOperation.Trim);
-				return;
-			}
-			if (action == eMenuAction.CascadeWindows)
-			{
-				DoCascadeWindows();
-				return;
-			}
-			if (action == eMenuAction.TileWindows)
-			{
-				DoTileWindows();
-				return;
-			}
-			if (action == eMenuAction.ToggleNavigatorPanel)
-			{
-				ToggleDockPanel(ePanelId.Navigator);
-				return;
-			}
-			if (action == eMenuAction.ToggleSwatchesPanel)
-			{
-				ToggleDockPanel(ePanelId.Swatches);
-				return;
-			}
-			if (action == eMenuAction.ToggleLayersPanel)
-			{
-				ToggleDockPanel(ePanelId.Layers);
-				return;
-			}
-			if (action == eMenuAction.NewLayer)
-			{
-				AddNewLayer();
-				return;
-			}
-			if (action == eMenuAction.DeleteLayer)
-			{
-				RequestDeleteActiveLayer();
-				return;
-			}
-			if (action == eMenuAction.RasterizeText)
-			{
-				DoRasterizeText();
-				return;
-			}
-			if (action == eMenuAction.LayerStyle)
-			{
-				OpenLayerStyleDialog();
-				return;
-			}
-			if (action == eMenuAction.LayerProperties)
-			{
-				OpenLayerPropertiesDialog();
-				return;
-			}
-			if (action == eMenuAction.MergeDown)
-			{
-				DoMergeDown();
-				return;
-			}
-			if (action == eMenuAction.MergeVisible)
-			{
-				DoMergeVisible();
-				return;
-			}
-			if (action == eMenuAction.FlattenImage)
-			{
-				DoFlattenImage();
-				return;
-			}
-			if (action == eMenuAction.ExportAs)
-			{
-				OpenExportDialog();
-				return;
-			}
-			if (action == eMenuAction.Preferences)
-			{
-				ShowModal(new PreferencesDialog(), 340.0, 260.0);
-				return;
-			}
-			if (action == eMenuAction.AboutBitmute)
-			{
-				ShowModal(new AboutDialog(), 380.0, 300.0);
-				return;
-			}
-			if (action == eMenuAction.CanvasSize)
-			{
-				OpenSizeDialog(true);
-				return;
-			}
-			if (action == eMenuAction.ImageSize)
-			{
-				OpenSizeDialog(false);
-			}
-		}
-
 		public void OpenSizeDialog(bool canvasMode)
 		{
 			CanvasView canvas = ActiveCanvas();
@@ -622,6 +280,39 @@ namespace Bitmute.UI
 			m_adjustments.ApplyLast();
 		}
 
+		public void OpenAdjustment(eMenuAction action)
+		{
+			Adjustment adjustment = m_adjustments.ForAction(action);
+			if (adjustment != null)
+			{
+				m_adjustments.Open(adjustment);
+			}
+		}
+
+		public void ToggleGuideLock()
+		{
+			Document document = ActiveDocument();
+			if (document != null)
+			{
+				document.Guides().SetLocked(!document.Guides().IsLocked());
+			}
+		}
+
+		public void ClearGuides()
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			document.Guides().Clear();
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.InvalidateSurface();
+			}
+		}
+
 		public string LastFilterLabel()
 		{
 			return m_adjustments.LastFilterLabel();
@@ -662,7 +353,7 @@ namespace Bitmute.UI
 			m_adjustments.Cancel();
 		}
 
-		private void DoDesaturate()
+		public void DoDesaturate()
 		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas == null)
@@ -753,7 +444,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void DoExit()
+		public void DoExit()
 		{
 			Application current = Application.Current;
 			if (current != null)
@@ -1124,7 +815,7 @@ namespace Bitmute.UI
 			return m_workspaceState.RulersEnabled();
 		}
 
-		private void ToggleGrid()
+		public void ToggleGrid()
 		{
 			m_workspaceState.SetGridEnabled(!m_workspaceState.GridEnabled());
 			for (int index = 0; index < m_documents.Count; index++)
@@ -1137,7 +828,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void OpenRecentFile(string path)
+		public void OpenRecentFile(string path)
 		{
 			if (!System.IO.File.Exists(path))
 			{
@@ -1148,7 +839,7 @@ namespace Bitmute.UI
 			OpenDocumentFromPath(path);
 		}
 
-		private void OpenStrokeDialog()
+		public void OpenStrokeDialog()
 		{
 			Document document = ActiveDocument();
 			if (document == null)
@@ -1170,7 +861,7 @@ namespace Bitmute.UI
 			return m_toolState.Foreground();
 		}
 
-		private void OpenLayerStyleDialog()
+		public void OpenLayerStyleDialog()
 		{
 			Document document = ActiveDocument();
 			if (document == null)
@@ -1696,7 +1387,7 @@ namespace Bitmute.UI
 			SavePanelLayout();
 		}
 
-		private void ToggleDockPanel(ePanelId panel)
+		public void ToggleDockPanel(ePanelId panel)
 		{
 			m_workspaceState.SetPanelVisible(panel, !m_workspaceState.PanelVisible(panel));
 			RefreshDockLayout();
@@ -2130,7 +1821,7 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void DoMergeDown()
+		public void DoMergeDown()
 		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas == null)
@@ -2162,7 +1853,7 @@ namespace Bitmute.UI
 			FinishLayerStructureChange(canvas);
 		}
 
-		private void DoFlattenImage()
+		public void DoFlattenImage()
 		{
 			CanvasView canvas = ActiveCanvas();
 			if (canvas == null)
@@ -2515,7 +2206,7 @@ namespace Bitmute.UI
 			return windows;
 		}
 
-		private void DoCascadeWindows()
+		public void DoCascadeWindows()
 		{
 			System.Collections.Generic.List<DocumentWindow> windows = DocumentWindows();
 			double workspaceWidth = WorkspaceWidth();
@@ -2535,7 +2226,7 @@ namespace Bitmute.UI
 			m_cascadeCount = windows.Count;
 		}
 
-		private void DoTileWindows()
+		public void DoTileWindows()
 		{
 			System.Collections.Generic.List<DocumentWindow> windows = DocumentWindows();
 			int count = windows.Count;
