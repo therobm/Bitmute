@@ -1,48 +1,22 @@
 using System;
-using Microsoft.Maui;
 using Microsoft.Maui.Controls;
-using Microsoft.Maui.Graphics;
+using Bitmute.UI.Components;
 
 namespace Bitmute.UI
 {
-	public class SizeDialog : ModalDialog
+	public class SizeDialog : FieldDialog
 	{
 		private const int MaximumSize = 8192;
 
 		private bool m_canvasMode;
-		private Entry m_widthEntry;
-		private Entry m_heightEntry;
-		private Picker m_horizontalAnchor;
-		private Picker m_verticalAnchor;
-		private Picker m_interpolation;
+		private DualIntField m_sizeField;
+		private ListPicker m_horizontalAnchor;
+		private ListPicker m_verticalAnchor;
+		private ListPicker m_interpolation;
 
-		private void OnCancelClicked(object sender, EventArgs eventArgs)
+		private static int AnchorValue(ListPicker picker)
 		{
-			CloseModal();
-		}
-
-		private int ParseSize(Entry entry, int fallback)
-		{
-			int value = 0;
-			bool parsed = int.TryParse(entry.Text, out value);
-			if (!parsed)
-			{
-				return fallback;
-			}
-			if (value < 1)
-			{
-				return 1;
-			}
-			if (value > MaximumSize)
-			{
-				return MaximumSize;
-			}
-			return value;
-		}
-
-		private int AnchorValue(Picker picker)
-		{
-			int index = picker.SelectedIndex;
+			int index = picker.SelectedIndex();
 			if (index == 0)
 			{
 				return -1;
@@ -54,6 +28,11 @@ namespace Bitmute.UI
 			return 0;
 		}
 
+		private void OnCancelClicked(object sender, EventArgs eventArgs)
+		{
+			CloseModal();
+		}
+
 		private void OnApplyClicked(object sender, EventArgs eventArgs)
 		{
 			MainView main = MainView.Self;
@@ -61,97 +40,41 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			int width = ParseSize(m_widthEntry, 1);
-			int height = ParseSize(m_heightEntry, 1);
+			int width = m_sizeField.FirstValue();
+			int height = m_sizeField.SecondValue();
 			if (m_canvasMode)
 			{
 				main.ApplyCanvasSize(width, height, AnchorValue(m_horizontalAnchor), AnchorValue(m_verticalAnchor));
 			}
 			else
 			{
-				main.ApplyImageSize(width, height, m_interpolation.SelectedIndex);
+				main.ApplyImageSize(width, height, m_interpolation.SelectedIndex());
 			}
 			CloseModal();
-		}
-
-		private Entry BuildNumericEntry(int initial)
-		{
-			Entry entry = new Entry();
-			entry.FontSize = UiConstants.PanelFontSize;
-			entry.WidthRequest = 90.0;
-			entry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
-			entry.Keyboard = Keyboard.Numeric;
-			entry.Text = initial.ToString();
-			return entry;
-		}
-
-		private Grid BuildRow(string label, View field)
-		{
-			Label caption = new Label();
-			caption.Text = label;
-			caption.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			caption.FontSize = UiConstants.PanelFontSize;
-			caption.WidthRequest = 90.0;
-			caption.VerticalOptions = LayoutOptions.Center;
-
-			Grid row = new Grid();
-			row.ColumnSpacing = 8.0;
-			row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
-			row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-			Grid.SetColumn(caption, 0);
-			Grid.SetColumn(field, 1);
-			row.Add(caption);
-			row.Add(field);
-			return row;
 		}
 
 		public SizeDialog(string title, bool canvasMode, int currentWidth, int currentHeight)
 		{
 			m_canvasMode = canvasMode;
-			m_widthEntry = BuildNumericEntry(currentWidth);
-			m_heightEntry = BuildNumericEntry(currentHeight);
-
-			VerticalStackLayout body = new VerticalStackLayout();
-			body.Spacing = 8.0;
-			body.Add(BuildRow("Width", m_widthEntry));
-			body.Add(BuildRow("Height", m_heightEntry));
+			m_sizeField = new DualIntField("Width", "Height", currentWidth, currentHeight, 1, MaximumSize, " px", null);
+			AddField(m_sizeField);
 
 			if (canvasMode)
 			{
-				m_horizontalAnchor = new Picker();
-				m_horizontalAnchor.FontSize = UiConstants.PanelFontSize;
-				m_horizontalAnchor.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
-				m_horizontalAnchor.Items.Add("Left");
-				m_horizontalAnchor.Items.Add("Center");
-				m_horizontalAnchor.Items.Add("Right");
-				m_horizontalAnchor.SelectedIndex = 1;
-
-				m_verticalAnchor = new Picker();
-				m_verticalAnchor.FontSize = UiConstants.PanelFontSize;
-				m_verticalAnchor.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
-				m_verticalAnchor.Items.Add("Top");
-				m_verticalAnchor.Items.Add("Middle");
-				m_verticalAnchor.Items.Add("Bottom");
-				m_verticalAnchor.SelectedIndex = 1;
-
-				body.Add(BuildRow("Anchor X", m_horizontalAnchor));
-				body.Add(BuildRow("Anchor Y", m_verticalAnchor));
+				m_horizontalAnchor = new ListPicker("Anchor X", new string[] { "Left", "Center", "Right" }, 1, null);
+				m_verticalAnchor = new ListPicker("Anchor Y", new string[] { "Top", "Middle", "Bottom" }, 1, null);
+				AddField(m_horizontalAnchor);
+				AddField(m_verticalAnchor);
 			}
 			else
 			{
-				m_interpolation = new Picker();
-				m_interpolation.FontSize = UiConstants.PanelFontSize;
-				m_interpolation.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
-				m_interpolation.Items.Add("Nearest");
-				m_interpolation.Items.Add("Bilinear");
-				m_interpolation.Items.Add("Bicubic");
-				m_interpolation.SelectedIndex = 2;
-				body.Add(BuildRow("Resample", m_interpolation));
+				m_interpolation = new ListPicker("Resample", new string[] { "Nearest", "Bilinear", "Bicubic" }, 2, null);
+				AddField(m_interpolation);
 			}
 
 			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
 			Button applyButton = PrimaryButton("Apply", OnApplyClicked);
-			ComposeDialog(title, body, ButtonRow(cancelButton, applyButton));
+			ComposeFields(title, ButtonRow(cancelButton, applyButton));
 		}
 	}
 }

@@ -1,53 +1,16 @@
 using System;
-using Microsoft.Maui;
 using Microsoft.Maui.Controls;
+using Bitmute.UI.Components;
 
 namespace Bitmute.UI
 {
-	public class LayerPropertiesDialog : ModalDialog
+	public class LayerPropertiesDialog : FieldDialog
 	{
-		private Entry m_nameEntry;
-
-		public LayerPropertiesDialog(string currentName)
-		{
-			Label caption = new Label();
-			caption.Text = "Name";
-			caption.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			caption.FontSize = UiConstants.PanelFontSize;
-			caption.WidthRequest = 70.0;
-			caption.VerticalOptions = LayoutOptions.Center;
-
-			m_nameEntry = new Entry();
-			m_nameEntry.FontSize = UiConstants.PanelFontSize;
-			m_nameEntry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
-			m_nameEntry.Text = currentName;
-
-			Grid row = new Grid();
-			row.ColumnSpacing = 8.0;
-			row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
-			row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-			Grid.SetColumn(caption, 0);
-			Grid.SetColumn(m_nameEntry, 1);
-			row.Add(caption);
-			row.Add(m_nameEntry);
-
-			VerticalStackLayout body = new VerticalStackLayout();
-			body.Spacing = 8.0;
-			body.Add(row);
-
-			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
-			Button okButton = PrimaryButton("OK", OnOkClicked);
-			ComposeDialog("Layer Properties", body, ButtonRow(cancelButton, okButton));
-		}
+		private TextField m_nameField;
 
 		private void OnOkClicked(object sender, EventArgs eventArgs)
 		{
-			string text = m_nameEntry.Text;
-			if (text == null)
-			{
-				text = "";
-			}
-			text = text.Trim();
+			string text = m_nameField.Text().Trim();
 			if (text.Length == 0)
 			{
 				CloseModal();
@@ -64,6 +27,16 @@ namespace Bitmute.UI
 		private void OnCancelClicked(object sender, EventArgs eventArgs)
 		{
 			CloseModal();
+		}
+
+		public LayerPropertiesDialog(string currentName)
+		{
+			m_nameField = new TextField("Name", currentName, null);
+			AddField(m_nameField);
+
+			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
+			Button okButton = PrimaryButton("OK", OnOkClicked);
+			ComposeFields("Layer Properties", ButtonRow(cancelButton, okButton));
 		}
 	}
 }
