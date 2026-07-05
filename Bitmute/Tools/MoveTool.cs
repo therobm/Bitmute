@@ -121,6 +121,63 @@ namespace Bitmute.Tools
 			return OffsetRectI(local, layer.OffsetX(), layer.OffsetY());
 		}
 
+		private SKRectI TextGlyphBounds(Layer layer)
+		{
+			string text = layer.Text();
+			if (text == null || text.Length == 0)
+			{
+				return SKRectI.Empty;
+			}
+			List<SKRect> runs = TextRasterizer.MeasureSelectionRuns(layer, 0, text.Length);
+			if (runs.Count == 0)
+			{
+				return SKRectI.Empty;
+			}
+			float left = runs[0].Left;
+			float top = runs[0].Top;
+			float right = runs[0].Right;
+			float bottom = runs[0].Bottom;
+			for (int index = 1; index < runs.Count; index++)
+			{
+				SKRect run = runs[index];
+				if (run.Left < left)
+				{
+					left = run.Left;
+				}
+				if (run.Top < top)
+				{
+					top = run.Top;
+				}
+				if (run.Right > right)
+				{
+					right = run.Right;
+				}
+				if (run.Bottom > bottom)
+				{
+					bottom = run.Bottom;
+				}
+			}
+			int pad = 3;
+			return new SKRectI((int)System.Math.Floor(left) - pad, (int)System.Math.Floor(top) - pad, (int)System.Math.Ceiling(right) + pad, (int)System.Math.Ceiling(bottom) + pad);
+		}
+
+		private SKRectI TextMoveBounds(Layer layer)
+		{
+			SKRectI bitmapBounds = CanvasContentBounds(layer);
+			SKRectI glyphBounds = TextGlyphBounds(layer);
+			bool hasBitmap = bitmapBounds.Width > 0 && bitmapBounds.Height > 0;
+			bool hasGlyph = glyphBounds.Width > 0 && glyphBounds.Height > 0;
+			if (!hasGlyph)
+			{
+				return bitmapBounds;
+			}
+			if (!hasBitmap)
+			{
+				return glyphBounds;
+			}
+			return UnionRectI(bitmapBounds, glyphBounds);
+		}
+
 		private static int NearestMultiple(int value, int gridSize)
 		{
 			int half = gridSize / 2;
@@ -320,7 +377,7 @@ namespace Bitmute.Tools
 				m_oldTextX = layer.TextX();
 				m_oldTextY = layer.TextY();
 				document.BeginStroke();
-				CacheMoveContentBounds(layer, CanvasContentBounds(layer));
+				CacheMoveContentBounds(layer, TextMoveBounds(layer));
 			}
 			else
 			{
