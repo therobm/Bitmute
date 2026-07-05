@@ -180,7 +180,11 @@ namespace Bitmute.UI
 			}
 			if (parent == eMenuAction.FilterPixelateMenu)
 			{
+				items.Add(new MenuBarItem("Crystallize…", eMenuAction.Crystallize));
+				items.Add(new MenuBarItem("Facet", eMenuAction.Facet));
+				items.Add(new MenuBarItem("Fragment", eMenuAction.Fragment));
 				items.Add(new MenuBarItem("Mosaic…", eMenuAction.Pixelate));
+				items.Add(new MenuBarItem("Pointillize…", eMenuAction.Pointillize));
 				return items;
 			}
 			if (parent == eMenuAction.FilterRenderMenu)
@@ -731,6 +735,26 @@ namespace Bitmute.UI
 				OpenAdjustment("median");
 				return;
 			}
+			if (action == eMenuAction.Crystallize)
+			{
+				OpenAdjustment("crystallize");
+				return;
+			}
+			if (action == eMenuAction.Facet)
+			{
+				RunInstantFilter("facet");
+				return;
+			}
+			if (action == eMenuAction.Fragment)
+			{
+				RunInstantFilter("fragment");
+				return;
+			}
+			if (action == eMenuAction.Pointillize)
+			{
+				OpenAdjustment("pointillize");
+				return;
+			}
 			if (action == eMenuAction.FlipHorizontal)
 			{
 				DoCanvasOp("fliph");
@@ -1033,6 +1057,14 @@ namespace Bitmute.UI
 			{
 				return true;
 			}
+			if (id == "crystallize")
+			{
+				return true;
+			}
+			if (id == "pointillize")
+			{
+				return true;
+			}
 			return false;
 		}
 
@@ -1093,6 +1125,22 @@ namespace Bitmute.UI
 			if (id == "median")
 			{
 				return "Median";
+			}
+			if (id == "crystallize")
+			{
+				return "Crystallize";
+			}
+			if (id == "facet")
+			{
+				return "Facet";
+			}
+			if (id == "fragment")
+			{
+				return "Fragment";
+			}
+			if (id == "pointillize")
+			{
+				return "Pointillize";
 			}
 			return "";
 		}
@@ -1206,6 +1254,22 @@ namespace Bitmute.UI
 			{
 				FilterNoise.Median(bitmap, values[0]);
 			}
+			else if (id == "crystallize")
+			{
+				FilterPixelate.Crystallize(bitmap, values[0], m_filterSeed);
+			}
+			else if (id == "facet")
+			{
+				FilterPixelate.Facet(bitmap);
+			}
+			else if (id == "fragment")
+			{
+				FilterPixelate.Fragment(bitmap);
+			}
+			else if (id == "pointillize")
+			{
+				FilterPixelate.Pointillize(bitmap, values[0], m_filterSeed, m_toolState.Background());
+			}
 		}
 
 		private void BeginAdjustmentPreview(string id)
@@ -1300,6 +1364,16 @@ namespace Bitmute.UI
 			if (id == "median")
 			{
 				ShowModal(new AdjustmentDialog("Median", "median", new string[] { "Radius" }, new int[] { 1 }, new int[] { 16 }, new int[] { 3 }), 360.0, 200.0);
+				return;
+			}
+			if (id == "crystallize")
+			{
+				ShowModal(new AdjustmentDialog("Crystallize", "crystallize", new string[] { "Cell Size" }, new int[] { 3 }, new int[] { 300 }, new int[] { 10 }), 360.0, 200.0);
+				return;
+			}
+			if (id == "pointillize")
+			{
+				ShowModal(new AdjustmentDialog("Pointillize", "pointillize", new string[] { "Cell Size" }, new int[] { 3 }, new int[] { 200 }, new int[] { 5 }), 360.0, 200.0);
 				return;
 			}
 		}
