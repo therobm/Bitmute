@@ -124,6 +124,15 @@ namespace Bitmute.Tools
 			byte blue = color.Blue;
 			byte alpha = color.Alpha;
 			bool clip = selection != null && selection.IsActive();
+			byte[] selectionMask = null;
+			int selectionWidth = 0;
+			int selectionHeight = 0;
+			if (clip)
+			{
+				selectionMask = selection.Mask();
+				selectionWidth = selection.Width();
+				selectionHeight = selection.Height();
+			}
 			int radiusSquared = radius * radius;
 			for (int offsetY = -radius; offsetY <= radius; offsetY++)
 			{
@@ -133,7 +142,12 @@ namespace Bitmute.Tools
 				{
 					continue;
 				}
+				if (clip && (canvasY < 0 || canvasY >= selectionHeight))
+				{
+					continue;
+				}
 				int offsetYSquared = offsetY * offsetY;
+				int selectionRow = canvasY * selectionWidth;
 				byte* rowStart = pixels + (bitmapY * rowBytes);
 				for (int offsetX = -radius; offsetX <= radius; offsetX++)
 				{
@@ -145,7 +159,11 @@ namespace Bitmute.Tools
 					int coverage = 255;
 					if (clip)
 					{
-						coverage = selection.Coverage(canvasX, canvasY);
+						if (canvasX < 0 || canvasX >= selectionWidth)
+						{
+							continue;
+						}
+						coverage = selectionMask[selectionRow + canvasX];
 						if (coverage == 0)
 						{
 							continue;

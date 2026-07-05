@@ -107,6 +107,10 @@ namespace Bitmute.Tests
 			TestComputeContentBoundsMatchesReference();
 			TestExtractApplyRegionRoundTrip();
 			TestRestoreStrokeSnapshot();
+			TestSelectionBoundsAfterOps();
+			TestSelectionFeatherScratchReuse();
+			TestSetShiftedClearsResidue();
+			TestDabClampedToSelectionBounds();
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");
@@ -2588,6 +2592,99 @@ namespace Bitmute.Tests
 			Check(restored == new SKColor(10, 60, 200, 255), "restore stroke snapshot puts original pixels back");
 			doc.EndStroke();
 			Check(doc.HistoryIndex() == 0, "restored stroke produces no undo entry");
+		}
+
+		private static void TestSelectionBoundsAfterOps()
+		{
+			Selection sel = new Selection(64, 48);
+			sel.BeginOperation(eSelectionMode.Replace);
+			sel.ApplyRect(new SKRectI(4, 4, 12, 10));
+			Check(sel.Bounds() == new SKRectI(4, 4, 12, 10), "replace rect bounds exact");
+			sel.BeginOperation(eSelectionMode.Add);
+			sel.ApplyRect(new SKRectI(40, 30, 55, 44));
+			Check(sel.Bounds() == new SKRectI(4, 4, 55, 44), "add of disjoint rect unions bounds (" + sel.Bounds() + ")");
+			Check(sel.Coverage(5, 5) == 255 && sel.Coverage(45, 35) == 255 && sel.Coverage(20, 20) == 0, "disjoint add mask values");
+			sel.BeginOperation(eSelectionMode.Subtract);
+			sel.ApplyRect(new SKRectI(0, 0, 64, 48));
+			Check(!sel.IsActive() && sel.Bounds() == SKRectI.Empty, "subtracting everything deactivates");
+			sel.BeginOperation(eSelectionMode.Replace);
+			sel.ApplyRect(new SKRectI(10, 10, 30, 30));
+			sel.BeginOperation(eSelectionMode.Intersect);
+			sel.ApplyRect(new SKRectI(20, 20, 40, 40));
+			Check(sel.Bounds() == new SKRectI(20, 20, 30, 30), "intersect bounds exact (" + sel.Bounds() + ")");
+			Check(sel.Coverage(25, 25) == 255 && sel.Coverage(15, 15) == 0 && sel.Coverage(35, 35) == 0, "intersect mask values");
+		}
+
+		private static void TestSelectionFeatherScratchReuse()
+		{
+			Selection sel = new Selection(96, 96);
+			sel.BeginOperation(eSelectionMode.Replace, 2);
+			sel.ApplyRect(new SKRectI(8, 8, 24, 24));
+			Check(sel.Coverage(16, 16) == 255, "first feathered rect solid center");
+			Check(sel.Coverage(60, 60) == 0, "first feathered rect empty far corner");
+			sel.BeginOperation(eSelectionMode.Replace, 2);
+			sel.ApplyRect(new SKRectI(64, 64, 88, 88));
+			Check(sel.Coverage(76, 76) == 255, "second feathered rect solid center");
+			Check(sel.Coverage(16, 16) == 0, "second feathered replace cleared the first region");
+			SKRectI bounds = sel.Bounds();
+			Check(bounds.Left >= 50 && bounds.Top >= 50, "second feathered bounds exclude the first region (" + bounds + ")");
+		}
+
+		private static void TestSetShiftedClearsResidue()
+		{
+			Selection sel = new Selection(48, 48);
+			sel.SelectRect(new SKRectI(4, 4, 12, 12));
+			byte[] source = sel.MaskCopy();
+			SKRectI sourceBounds = sel.Bounds();
+			sel.SetShifted(source, sourceBounds, 10, 10);
+			Check(sel.Coverage(18, 18) == 255, "first shift placed mask");
+			Check(sel.Coverage(5, 5) == 0, "first shift cleared origin");
+			sel.SetShifted(source, sourceBounds, 30, 30);
+			Check(sel.Coverage(38, 38) == 255, "second shift placed mask");
+			Check(sel.Coverage(18, 18) == 0, "second shift cleared intermediate position");
+			Check(sel.Bounds() == new SKRectI(34, 34, 42, 42), "shifted bounds track placement (" + sel.Bounds() + ")");
+			sel.SetShifted(source, sourceBounds, 100, 100);
+			Check(!sel.IsActive(), "shift fully off canvas deactivates");
+			sel.SetShifted(source, sourceBounds, 0, 0);
+			Check(sel.Coverage(5, 5) == 255 && sel.Bounds() == new SKRectI(4, 4, 12, 12), "shift back after off-canvas restores original");
+		}
+
+		private static void TestDabClampedToSelectionBounds()
+		{
+			Document doc = new Document("t", 40, 40);
+			Layer layer = doc.ActiveLayer();
+			layer.Bitmap().Erase(new SKColor(0, 0, 0, 0));
+			doc.Selection().SelectRect(new SKRectI(10, 10, 20, 20));
+			BrushEngine engine = new BrushEngine();
+			engine.Begin(layer, null, 6, 1.0, 1.0, 1.0, false, 0.25, 0.0, eBrushOp.Paint, eBlendMode.Normal, new SKColor(0, 200, 0, 255));
+			engine.StampFirst(doc, layer, 10, 10, doc.Selection());
+			engine.End();
+			Check(layer.GetPixelCanvas(11, 11).Alpha == 255, "dab paints inside selection corner");
+			Check(layer.GetPixelCanvas(9, 10).Alpha == 0, "dab left of selection bounds untouched");
+			Check(layer.GetPixelCanvas(10, 9).Alpha == 0, "dab above selection bounds untouched");
+			Check(layer.GetPixelCanvas(19, 19).Alpha == 0, "far selection corner beyond brush radius untouched");
+			SKBitmap unclippedLayer = new SKBitmap(40, 40, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			unclippedLayer.Erase(new SKColor(0, 0, 0, 0));
+			Document reference = new Document("r", 40, 40);
+			Layer referenceLayer = reference.ActiveLayer();
+			referenceLayer.Bitmap().Erase(new SKColor(0, 0, 0, 0));
+			BrushEngine referenceEngine = new BrushEngine();
+			referenceEngine.Begin(referenceLayer, null, 6, 1.0, 1.0, 1.0, false, 0.25, 0.0, eBrushOp.Paint, eBlendMode.Normal, new SKColor(0, 200, 0, 255));
+			referenceEngine.StampFirst(reference, referenceLayer, 10, 10, reference.Selection());
+			referenceEngine.End();
+			bool clipMatchesUnclipped = true;
+			for (int y = 10; y < 20; y++)
+			{
+				for (int x = 10; x < 20; x++)
+				{
+					if (layer.GetPixelCanvas(x, y) != referenceLayer.GetPixelCanvas(x, y))
+					{
+						clipMatchesUnclipped = false;
+					}
+				}
+			}
+			Check(clipMatchesUnclipped, "pixels inside full-coverage selection match unclipped dab");
+			unclippedLayer.Dispose();
 		}
 	}
 }

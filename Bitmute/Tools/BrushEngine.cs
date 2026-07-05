@@ -15,6 +15,8 @@ namespace Bitmute.Tools
 		private bool m_ownsOriginal;
 		private int m_radius;
 		private double m_hardness;
+		private double m_tipInner;
+		private double m_tipOuter;
 		private double m_opacity;
 		private double m_flow;
 		private double m_strength;
@@ -99,6 +101,26 @@ namespace Bitmute.Tools
 			}
 			m_radius = radius;
 			m_hardness = hardness;
+			m_tipOuter = radius;
+			double tipInner = hardness * m_tipOuter;
+			double tipAntialias = m_tipOuter * 0.08;
+			if (tipAntialias > 1.0)
+			{
+				tipAntialias = 1.0;
+			}
+			if (tipAntialias < 0.4)
+			{
+				tipAntialias = 0.4;
+			}
+			if (m_tipOuter - tipInner < tipAntialias)
+			{
+				tipInner = m_tipOuter - tipAntialias;
+			}
+			if (tipInner < 0.0)
+			{
+				tipInner = 0.0;
+			}
+			m_tipInner = tipInner;
 			m_opacity = opacity;
 			m_flow = flow;
 			m_strength = 1.0;
@@ -189,7 +211,7 @@ namespace Bitmute.Tools
 				}
 				return 0.0;
 			}
-			double outer = m_radius;
+			double outer = m_tipOuter;
 			double distance;
 			if (m_square)
 			{
@@ -205,24 +227,7 @@ namespace Bitmute.Tools
 			{
 				distance = System.Math.Sqrt((offsetX * offsetX) + (offsetY * offsetY));
 			}
-			double inner = m_hardness * outer;
-			double antialias = outer * 0.08;
-			if (antialias > 1.0)
-			{
-				antialias = 1.0;
-			}
-			if (antialias < 0.4)
-			{
-				antialias = 0.4;
-			}
-			if (outer - inner < antialias)
-			{
-				inner = outer - antialias;
-			}
-			if (inner < 0.0)
-			{
-				inner = 0.0;
-			}
+			double inner = m_tipInner;
 			if (distance <= inner)
 			{
 				return 1.0;
@@ -409,6 +414,30 @@ namespace Bitmute.Tools
 			int maxCanvasX = (int)System.Math.Ceiling(centerX) + radius + 1;
 			int minCanvasY = (int)System.Math.Floor(centerY) - radius - 1;
 			int maxCanvasY = (int)System.Math.Ceiling(centerY) + radius + 1;
+			byte[] selectionMask = null;
+			int selectionWidth = 0;
+			if (clip)
+			{
+				selectionMask = selection.Mask();
+				selectionWidth = selection.Width();
+				SKRectI selectionBounds = selection.Bounds();
+				if (minCanvasX < selectionBounds.Left)
+				{
+					minCanvasX = selectionBounds.Left;
+				}
+				if (maxCanvasX > selectionBounds.Right - 1)
+				{
+					maxCanvasX = selectionBounds.Right - 1;
+				}
+				if (minCanvasY < selectionBounds.Top)
+				{
+					minCanvasY = selectionBounds.Top;
+				}
+				if (maxCanvasY > selectionBounds.Bottom - 1)
+				{
+					maxCanvasY = selectionBounds.Bottom - 1;
+				}
+			}
 			for (int canvasY = minCanvasY; canvasY <= maxCanvasY; canvasY++)
 			{
 				int bitmapY = canvasY - layerOffsetY;
@@ -417,6 +446,7 @@ namespace Bitmute.Tools
 					continue;
 				}
 				double offsetY = canvasY - centerY;
+				int selectionRow = canvasY * selectionWidth;
 				for (int canvasX = minCanvasX; canvasX <= maxCanvasX; canvasX++)
 				{
 					double tip = TipCoverage(canvasX - centerX, offsetY);
@@ -427,7 +457,7 @@ namespace Bitmute.Tools
 					double selectionFactor = 1.0;
 					if (clip)
 					{
-						int selectionCoverage = selection.Coverage(canvasX, canvasY);
+						int selectionCoverage = selectionMask[selectionRow + canvasX];
 						if (selectionCoverage == 0)
 						{
 							continue;
@@ -663,6 +693,30 @@ namespace Bitmute.Tools
 			int maxCanvasX = (int)System.Math.Ceiling(centerX) + radius + 1;
 			int minCanvasY = (int)System.Math.Floor(centerY) - radius - 1;
 			int maxCanvasY = (int)System.Math.Ceiling(centerY) + radius + 1;
+			byte[] selectionMask = null;
+			int selectionWidth = 0;
+			if (clip)
+			{
+				selectionMask = selection.Mask();
+				selectionWidth = selection.Width();
+				SKRectI selectionBounds = selection.Bounds();
+				if (minCanvasX < selectionBounds.Left)
+				{
+					minCanvasX = selectionBounds.Left;
+				}
+				if (maxCanvasX > selectionBounds.Right - 1)
+				{
+					maxCanvasX = selectionBounds.Right - 1;
+				}
+				if (minCanvasY < selectionBounds.Top)
+				{
+					minCanvasY = selectionBounds.Top;
+				}
+				if (maxCanvasY > selectionBounds.Bottom - 1)
+				{
+					maxCanvasY = selectionBounds.Bottom - 1;
+				}
+			}
 
 			double sumRed = 0.0;
 			double sumGreen = 0.0;
@@ -677,6 +731,7 @@ namespace Bitmute.Tools
 					continue;
 				}
 				double offsetY = canvasY - centerY;
+				int selectionRow = canvasY * selectionWidth;
 				for (int canvasX = minCanvasX; canvasX <= maxCanvasX; canvasX++)
 				{
 					double tip = TipCoverage(canvasX - centerX, offsetY);
@@ -686,7 +741,7 @@ namespace Bitmute.Tools
 					}
 					if (clip)
 					{
-						int selectionCoverage = selection.Coverage(canvasX, canvasY);
+						int selectionCoverage = selectionMask[selectionRow + canvasX];
 						if (selectionCoverage == 0)
 						{
 							continue;
@@ -736,6 +791,7 @@ namespace Bitmute.Tools
 					continue;
 				}
 				double offsetY = canvasY - centerY;
+				int selectionRow = canvasY * selectionWidth;
 				for (int canvasX = minCanvasX; canvasX <= maxCanvasX; canvasX++)
 				{
 					double tip = TipCoverage(canvasX - centerX, offsetY);
@@ -745,7 +801,7 @@ namespace Bitmute.Tools
 					}
 					if (clip)
 					{
-						int selectionCoverage = selection.Coverage(canvasX, canvasY);
+						int selectionCoverage = selectionMask[selectionRow + canvasX];
 						if (selectionCoverage == 0)
 						{
 							continue;

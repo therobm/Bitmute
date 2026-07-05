@@ -1,3 +1,4 @@
+using System;
 using SkiaSharp;
 
 namespace Bitmute.Imaging
@@ -16,6 +17,7 @@ namespace Bitmute.Imaging
 		private int m_height;
 		private byte[] m_mask;
 		private byte[] m_baseMask;
+		private SKRectI m_baseBounds;
 		private eSelectionMode m_operationMode;
 		private int m_featherRadius;
 		private byte[] m_regionScratch;
@@ -30,6 +32,7 @@ namespace Bitmute.Imaging
 			m_height = height;
 			m_mask = new byte[width * height];
 			m_baseMask = new byte[width * height];
+			m_baseBounds = SKRectI.Empty;
 			m_operationMode = eSelectionMode.Replace;
 			m_featherRadius = 0;
 			m_regionScratch = null;
@@ -39,16 +42,128 @@ namespace Bitmute.Imaging
 			m_generation = 0;
 		}
 
+		private static SKRectI UnionBounds(SKRectI first, SKRectI second)
+		{
+			bool firstEmpty = first.Width <= 0 || first.Height <= 0;
+			bool secondEmpty = second.Width <= 0 || second.Height <= 0;
+			if (firstEmpty)
+			{
+				return second;
+			}
+			if (secondEmpty)
+			{
+				return first;
+			}
+			int left = first.Left;
+			if (second.Left < left)
+			{
+				left = second.Left;
+			}
+			int top = first.Top;
+			if (second.Top < top)
+			{
+				top = second.Top;
+			}
+			int right = first.Right;
+			if (second.Right > right)
+			{
+				right = second.Right;
+			}
+			int bottom = first.Bottom;
+			if (second.Bottom > bottom)
+			{
+				bottom = second.Bottom;
+			}
+			return new SKRectI(left, top, right, bottom);
+		}
+
+		private static SKRectI IntersectBounds(SKRectI first, SKRectI second)
+		{
+			int left = first.Left;
+			if (second.Left > left)
+			{
+				left = second.Left;
+			}
+			int top = first.Top;
+			if (second.Top > top)
+			{
+				top = second.Top;
+			}
+			int right = first.Right;
+			if (second.Right < right)
+			{
+				right = second.Right;
+			}
+			int bottom = first.Bottom;
+			if (second.Bottom < bottom)
+			{
+				bottom = second.Bottom;
+			}
+			if (right <= left || bottom <= top)
+			{
+				return SKRectI.Empty;
+			}
+			return new SKRectI(left, top, right, bottom);
+		}
+
+		private SKRectI ClampToCanvas(SKRectI rect)
+		{
+			int left = rect.Left;
+			int top = rect.Top;
+			int right = rect.Right;
+			int bottom = rect.Bottom;
+			if (left < 0)
+			{
+				left = 0;
+			}
+			if (top < 0)
+			{
+				top = 0;
+			}
+			if (right > m_width)
+			{
+				right = m_width;
+			}
+			if (bottom > m_height)
+			{
+				bottom = m_height;
+			}
+			if (right <= left || bottom <= top)
+			{
+				return SKRectI.Empty;
+			}
+			return new SKRectI(left, top, right, bottom);
+		}
+
+		private SKRectI CombinedResultBounds(SKRectI regionBounds)
+		{
+			if (m_operationMode == eSelectionMode.Subtract)
+			{
+				return m_baseBounds;
+			}
+			if (m_operationMode == eSelectionMode.Intersect)
+			{
+				return IntersectBounds(m_baseBounds, regionBounds);
+			}
+			return UnionBounds(m_baseBounds, regionBounds);
+		}
+
 		private void RecomputeFromMask()
 		{
+			RecomputeFromMask(new SKRectI(0, 0, m_width, m_height));
+		}
+
+		private void RecomputeFromMask(SKRectI searchBounds)
+		{
+			SKRectI search = ClampToCanvas(searchBounds);
 			int minX = m_width;
 			int minY = m_height;
 			int maxX = -1;
 			int maxY = -1;
-			for (int y = 0; y < m_height; y++)
+			for (int y = search.Top; y < search.Bottom; y++)
 			{
 				int rowStart = y * m_width;
-				for (int x = 0; x < m_width; x++)
+				for (int x = search.Left; x < search.Right; x++)
 				{
 					if (m_mask[rowStart + x] == 0)
 					{
@@ -125,46 +240,64 @@ namespace Bitmute.Imaging
 			return new SKRectI(minX, minY, maxX + 1, maxY + 1);
 		}
 
-		private void CombineRegion(byte[] region)
+		private void CombineRegion(byte[] region, SKRectI regionBounds)
 		{
+			SKRectI bounds = ClampToCanvas(regionBounds);
 			if (m_operationMode == eSelectionMode.Intersect)
 			{
-				for (int index = 0; index < m_mask.Length; index++)
+				Array.Clear(m_mask, 0, m_mask.Length);
+				for (int y = bounds.Top; y < bounds.Bottom; y++)
 				{
+					int rowStart = y * m_width;
+					for (int x = bounds.Left; x < bounds.Right; x++)
+					{
+						int index = rowStart + x;
+						int baseValue = m_baseMask[index];
+						int regionValue = region[index];
+						int result = baseValue;
+						if (regionValue < result)
+						{
+							result = regionValue;
+						}
+						m_mask[index] = (byte)result;
+					}
+				}
+				return;
+			}
+			Buffer.BlockCopy(m_baseMask, 0, m_mask, 0, m_baseMask.Length);
+			if (m_operationMode == eSelectionMode.Subtract)
+			{
+				for (int y = bounds.Top; y < bounds.Bottom; y++)
+				{
+					int rowStart = y * m_width;
+					for (int x = bounds.Left; x < bounds.Right; x++)
+					{
+						int index = rowStart + x;
+						int result = m_baseMask[index] - region[index];
+						if (result < 0)
+						{
+							result = 0;
+						}
+						m_mask[index] = (byte)result;
+					}
+				}
+				return;
+			}
+			for (int y = bounds.Top; y < bounds.Bottom; y++)
+			{
+				int rowStart = y * m_width;
+				for (int x = bounds.Left; x < bounds.Right; x++)
+				{
+					int index = rowStart + x;
 					int baseValue = m_baseMask[index];
 					int regionValue = region[index];
 					int result = baseValue;
-					if (regionValue < result)
+					if (regionValue > result)
 					{
 						result = regionValue;
 					}
 					m_mask[index] = (byte)result;
 				}
-				return;
-			}
-			if (m_operationMode == eSelectionMode.Subtract)
-			{
-				for (int index = 0; index < m_mask.Length; index++)
-				{
-					int result = m_baseMask[index] - region[index];
-					if (result < 0)
-					{
-						result = 0;
-					}
-					m_mask[index] = (byte)result;
-				}
-				return;
-			}
-			for (int index = 0; index < m_mask.Length; index++)
-			{
-				int baseValue = m_baseMask[index];
-				int regionValue = region[index];
-				int result = baseValue;
-				if (regionValue > result)
-				{
-					result = regionValue;
-				}
-				m_mask[index] = (byte)result;
 			}
 		}
 
@@ -293,17 +426,13 @@ namespace Bitmute.Imaging
 			m_featherRadius = featherRadius;
 			if (mode == eSelectionMode.Replace)
 			{
-				for (int index = 0; index < m_baseMask.Length; index++)
-				{
-					m_baseMask[index] = 0;
-				}
+				Array.Clear(m_baseMask, 0, m_baseMask.Length);
+				m_baseBounds = SKRectI.Empty;
 			}
 			else
 			{
-				for (int index = 0; index < m_baseMask.Length; index++)
-				{
-					m_baseMask[index] = m_mask[index];
-				}
+				Buffer.BlockCopy(m_mask, 0, m_baseMask, 0, m_mask.Length);
+				m_baseBounds = m_bounds;
 			}
 		}
 
@@ -336,7 +465,12 @@ namespace Bitmute.Imaging
 				{
 					m_regionScratch = new byte[m_mask.Length];
 				}
-				System.Array.Clear(m_regionScratch, 0, m_regionScratch.Length);
+				int inflate = (m_featherRadius * 3) + 1;
+				SKRectI inflated = ClampToCanvas(new SKRectI(left - inflate, top - inflate, right + inflate, bottom + inflate));
+				for (int y = inflated.Top; y < inflated.Bottom; y++)
+				{
+					Array.Clear(m_regionScratch, (y * m_width) + inflated.Left, inflated.Width);
+				}
 				for (int y = top; y < bottom; y++)
 				{
 					int rowStart = y * m_width;
@@ -346,16 +480,18 @@ namespace Bitmute.Imaging
 					}
 				}
 				FeatherRegion(m_regionScratch, new SKRectI(left, top, right, bottom));
-				CombineRegion(m_regionScratch);
-				RecomputeFromMask();
+				CombineRegion(m_regionScratch, inflated);
+				RecomputeFromMask(CombinedResultBounds(inflated));
 				return;
+			}
+			SKRectI rectBounds = SKRectI.Empty;
+			if (hasArea)
+			{
+				rectBounds = new SKRectI(left, top, right, bottom);
 			}
 			if (m_operationMode == eSelectionMode.Intersect)
 			{
-				for (int index = 0; index < m_mask.Length; index++)
-				{
-					m_mask[index] = 0;
-				}
+				Array.Clear(m_mask, 0, m_mask.Length);
 				for (int y = top; y < bottom; y++)
 				{
 					int rowStart = y * m_width;
@@ -364,7 +500,7 @@ namespace Bitmute.Imaging
 						m_mask[rowStart + x] = m_baseMask[rowStart + x];
 					}
 				}
-				RecomputeFromMask();
+				RecomputeFromMask(CombinedResultBounds(rectBounds));
 				return;
 			}
 			byte value = 255;
@@ -372,10 +508,7 @@ namespace Bitmute.Imaging
 			{
 				value = 0;
 			}
-			for (int index = 0; index < m_mask.Length; index++)
-			{
-				m_mask[index] = m_baseMask[index];
-			}
+			Buffer.BlockCopy(m_baseMask, 0, m_mask, 0, m_baseMask.Length);
 			for (int y = top; y < bottom; y++)
 			{
 				int rowStart = y * m_width;
@@ -384,26 +517,35 @@ namespace Bitmute.Imaging
 					m_mask[rowStart + x] = value;
 				}
 			}
-			RecomputeFromMask();
+			RecomputeFromMask(CombinedResultBounds(rectBounds));
 		}
 
 		public void ApplyMask(byte[] regionMask)
 		{
-			if (m_featherRadius > 0)
+			SKRectI regionBounds = NonzeroBounds(regionMask);
+			if (m_featherRadius > 0 && regionBounds.Width > 0 && regionBounds.Height > 0)
 			{
-				SKRectI regionBounds = NonzeroBounds(regionMask);
-				if (regionBounds.Width > 0 && regionBounds.Height > 0)
-				{
-					FeatherRegion(regionMask, regionBounds);
-				}
+				FeatherRegion(regionMask, regionBounds);
+				int inflate = (m_featherRadius * 3) + 1;
+				regionBounds = ClampToCanvas(new SKRectI(regionBounds.Left - inflate, regionBounds.Top - inflate, regionBounds.Right + inflate, regionBounds.Bottom + inflate));
 			}
-			CombineRegion(regionMask);
-			RecomputeFromMask();
+			CombineRegion(regionMask, regionBounds);
+			RecomputeFromMask(CombinedResultBounds(regionBounds));
 		}
 
 		public int Generation()
 		{
 			return m_generation;
+		}
+
+		public int Width()
+		{
+			return m_width;
+		}
+
+		public int Height()
+		{
+			return m_height;
 		}
 
 		public bool IsActive()
@@ -436,10 +578,7 @@ namespace Bitmute.Imaging
 
 		public void Clear()
 		{
-			for (int index = 0; index < m_mask.Length; index++)
-			{
-				m_mask[index] = 0;
-			}
+			Array.Clear(m_mask, 0, m_mask.Length);
 			m_active = false;
 			m_bounds = SKRectI.Empty;
 			m_generation = m_generation + 1;
@@ -495,10 +634,7 @@ namespace Bitmute.Imaging
 				return;
 			}
 
-			for (int index = 0; index < m_mask.Length; index++)
-			{
-				m_mask[index] = 0;
-			}
+			Array.Clear(m_mask, 0, m_mask.Length);
 			for (int y = top; y < bottom; y++)
 			{
 				int rowStart = y * m_width;
@@ -514,10 +650,7 @@ namespace Bitmute.Imaging
 
 		public void SelectMask(byte[] mask, SKRectI bounds)
 		{
-			for (int index = 0; index < m_mask.Length; index++)
-			{
-				m_mask[index] = mask[index];
-			}
+			Buffer.BlockCopy(mask, 0, m_mask, 0, m_mask.Length);
 			m_active = true;
 			m_bounds = bounds;
 			m_generation = m_generation + 1;
@@ -531,18 +664,18 @@ namespace Bitmute.Imaging
 		public byte[] MaskCopy()
 		{
 			byte[] copy = new byte[m_mask.Length];
-			for (int index = 0; index < m_mask.Length; index++)
-			{
-				copy[index] = m_mask[index];
-			}
+			Buffer.BlockCopy(m_mask, 0, copy, 0, m_mask.Length);
 			return copy;
 		}
 
 		public void SetShifted(byte[] sourceMask, SKRectI sourceBounds, int deltaX, int deltaY)
 		{
-			for (int index = 0; index < m_mask.Length; index++)
+			if (m_active && m_bounds.Width > 0 && m_bounds.Height > 0)
 			{
-				m_mask[index] = 0;
+				for (int y = m_bounds.Top; y < m_bounds.Bottom; y++)
+				{
+					Array.Clear(m_mask, (y * m_width) + m_bounds.Left, m_bounds.Width);
+				}
 			}
 			int minX = m_width;
 			int minY = m_height;
