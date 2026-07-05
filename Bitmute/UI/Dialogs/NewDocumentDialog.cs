@@ -2,7 +2,7 @@ using System;
 using Microsoft.Maui.Controls;
 using Bitmute.UI.Components;
 
-namespace Bitmute.UI
+namespace Bitmute.UI.Dialogs
 {
 	public class NewDocumentDialog : FieldDialog
 	{

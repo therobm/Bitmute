@@ -4,7 +4,7 @@ using Microsoft.Maui.Controls;
 using SkiaSharp;
 using Bitmute.UI.Components;
 
-namespace Bitmute.UI
+namespace Bitmute.UI.Dialogs
 {
 	public class LayerStyleDialog : MultiModal
 	{

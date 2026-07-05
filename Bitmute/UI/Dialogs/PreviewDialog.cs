@@ -3,7 +3,7 @@ using SkiaSharp.Views.Maui;
 using SkiaSharp.Views.Maui.Controls;
 using Bitmute.UI.Components;
 
-namespace Bitmute.UI
+namespace Bitmute.UI.Dialogs
 {
 	public abstract class PreviewDialog : FieldDialog
 	{

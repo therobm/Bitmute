@@ -5,7 +5,7 @@ using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
 using Bitmute.UI.Components;
 
-namespace Bitmute.UI
+namespace Bitmute.UI.Dialogs
 {
 	public abstract class MultiModal : ModalDialog
 	{

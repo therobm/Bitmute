@@ -1,6 +1,6 @@
 using Microsoft.Maui.Controls;
 
-namespace Bitmute.UI
+namespace Bitmute.UI.Dialogs
 {
 	public abstract class FieldDialog : ModalDialog
 	{

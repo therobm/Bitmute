@@ -2,7 +2,7 @@ using System;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 
-namespace Bitmute.UI
+namespace Bitmute.UI.Dialogs
 {
 	public class SaveChangesDialog : ModalDialog
 	{

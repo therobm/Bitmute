@@ -3,7 +3,7 @@ using System.Reflection;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 
-namespace Bitmute.UI
+namespace Bitmute.UI.Dialogs
 {
 	public class AboutDialog : ModalDialog
 	{

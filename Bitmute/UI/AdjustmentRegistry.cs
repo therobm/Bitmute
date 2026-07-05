@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using SkiaSharp;
 using Bitmute.Imaging;
 using Bitmute.Tools;
+using Bitmute.UI.Dialogs;
 
 namespace Bitmute.UI
 {
