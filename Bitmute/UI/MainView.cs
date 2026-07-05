@@ -90,6 +90,7 @@ namespace Bitmute.UI
 		private LayerStyle m_copiedLayerStyle;
 		private AdjustmentRegistry m_adjustments;
 		private Button m_focusSink;
+		private bool m_focusSinkKeyHooked;
 
 
 		public bool GuidesLocked()
@@ -1117,10 +1118,16 @@ namespace Bitmute.UI
 				return;
 			}
 			Layer layer = layers[layerIndex];
-			int left = layer.OffsetX();
-			int top = layer.OffsetY();
-			int right = left + layer.Bitmap().Width;
-			int bottom = top + layer.Bitmap().Height;
+			SkiaSharp.SKRectI content = PixelRegion.ComputeContentBounds(layer.Bitmap());
+			if (content.Width <= 0 || content.Height <= 0)
+			{
+				SetStatusMessage("Layer has no pixels to select");
+				return;
+			}
+			int left = layer.OffsetX() + content.Left;
+			int top = layer.OffsetY() + content.Top;
+			int right = layer.OffsetX() + content.Right;
+			int bottom = layer.OffsetY() + content.Bottom;
 			if (left < 0)
 			{
 				left = 0;
@@ -3198,9 +3205,47 @@ namespace Bitmute.UI
 				m_focusSink.ZIndex = 0;
 				AbsoluteLayout.SetLayoutBounds(m_focusSink, new Rect(0.0, 0.0, 1.0, 1.0));
 				AbsoluteLayout.SetLayoutFlags(m_focusSink, Microsoft.Maui.Layouts.AbsoluteLayoutFlags.None);
+				m_focusSink.HandlerChanged += OnFocusSinkHandlerChanged;
 				m_workspace.Add(m_focusSink);
 			}
 			m_focusSink.Focus();
+		}
+
+		private void OnFocusSinkHandlerChanged(object sender, EventArgs eventArgs)
+		{
+			if (m_focusSinkKeyHooked)
+			{
+				return;
+			}
+			if (m_focusSink == null || m_focusSink.Handler == null)
+			{
+				return;
+			}
+			Microsoft.UI.Xaml.UIElement element = m_focusSink.Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			element.PreviewKeyDown += OnFocusSinkPreviewKeyDown;
+			m_focusSinkKeyHooked = true;
+		}
+
+		private void OnFocusSinkPreviewKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs eventArgs)
+		{
+			if (eventArgs.Key != Windows.System.VirtualKey.Enter)
+			{
+				return;
+			}
+			eventArgs.Handled = true;
+			if (IsTextEditActive())
+			{
+				return;
+			}
+			if (!TransformActive())
+			{
+				return;
+			}
+			CommitTransform();
 		}
 
 		private void FocusKeyboardSinkDeferred()

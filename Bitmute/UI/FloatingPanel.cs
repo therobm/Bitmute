@@ -179,7 +179,8 @@ namespace Bitmute.UI
 			{
 				edge.HeightRequest = edgeHeight;
 			}
-			edge.BackgroundColor = Colors.Transparent;
+			edge.BackgroundColor = Colors.Black;
+			edge.Opacity = 0.0;
 			edge.StrokeThickness = 0.0;
 			edge.HorizontalOptions = horizontalOptions;
 			edge.VerticalOptions = verticalOptions;
