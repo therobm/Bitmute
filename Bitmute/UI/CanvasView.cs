@@ -48,6 +48,7 @@ namespace Bitmute.UI
 		private int m_gpuHeight;
 		private int m_gpuResidentKey = -2;
 		private int m_gpuResidentVersion = -1;
+		private GpuFilterPreview m_gpuFilterPreview;
 		private SKImage m_floatImage;
 		private SKBitmap m_floatImageSource;
 		private SKImage m_transformPreviewImage;
@@ -169,6 +170,23 @@ namespace Bitmute.UI
 			if (info.Width <= 0 || info.Height <= 0)
 			{
 				return;
+			}
+
+			if (m_gpuFilterPreview != null && m_gpuFilterPreview.HasPending())
+			{
+				GRRecordingContext filterContext = eventArgs.Surface.Context;
+				if (filterContext != null)
+				{
+					bool filtered = m_gpuFilterPreview.RunPending(filterContext);
+					if (filtered)
+					{
+						m_document.MarkComposeDirtyAll();
+					}
+				}
+				else
+				{
+					m_gpuFilterPreview.ClearPending();
+				}
 			}
 
 			bool recreated = EnsureComposite();
@@ -405,8 +423,26 @@ namespace Bitmute.UI
 			DrawToolOverlay(canvas);
 		}
 
+		public GpuFilterPreview FilterPreview()
+		{
+			if (m_gpuFilterPreview == null)
+			{
+				m_gpuFilterPreview = new GpuFilterPreview();
+			}
+			return m_gpuFilterPreview;
+		}
+
+		public bool GpuFilterAvailable()
+		{
+			return m_gpuContext != null;
+		}
+
 		public void ReleaseGpuResources()
 		{
+			if (m_gpuFilterPreview != null)
+			{
+				m_gpuFilterPreview.EndSession();
+			}
 			if (m_gpuComposite != null)
 			{
 				m_gpuComposite.Dispose();

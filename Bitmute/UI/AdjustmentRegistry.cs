@@ -112,6 +112,57 @@ namespace Bitmute.UI
 			document.BeginStroke();
 		}
 
+		private bool GpuPreviewUsable(Adjustment adjustment, CanvasView canvas)
+		{
+			if (!adjustment.m_previewable)
+			{
+				return false;
+			}
+			if (adjustment.m_skslSource == null && !adjustment.m_builtinBlurPreview)
+			{
+				return false;
+			}
+			if (!canvas.GpuFilterAvailable())
+			{
+				return false;
+			}
+			if (adjustment.m_skslSource != null)
+			{
+				bool compiled = GpuFilterPreview.CanRun(adjustment.m_skslSource);
+				if (!compiled)
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+
+		private void BeginGpuPreview(Adjustment adjustment)
+		{
+			CanvasView canvas = m_main.ActiveCanvas();
+			if (canvas == null)
+			{
+				return;
+			}
+			bool usable = GpuPreviewUsable(adjustment, canvas);
+			if (!usable)
+			{
+				return;
+			}
+			Document document = canvas.CurrentDocument();
+			SKBitmap snapshot = document.StrokeSnapshot();
+			if (snapshot == null)
+			{
+				return;
+			}
+			Layer activeLayer = document.ActiveLayer();
+			if (activeLayer == null)
+			{
+				return;
+			}
+			canvas.FilterPreview().BeginSession(snapshot, activeLayer.Bitmap());
+		}
+
 		private void RunBrightnessContrast(SKBitmap bitmap, int[] values)
 		{
 			Adjustments.BrightnessContrast(bitmap, values[0], values[1]);
@@ -358,6 +409,7 @@ namespace Bitmute.UI
 				return;
 			}
 			BeginPreview(adjustment);
+			BeginGpuPreview(adjustment);
 			m_main.ShowModal(new AdjustmentDialog(adjustment), adjustment.m_dialogWidth, adjustment.m_dialogHeight);
 		}
 
@@ -415,6 +467,13 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			GpuFilterPreview runner = canvas.FilterPreview();
+			if (runner.SessionActive())
+			{
+				runner.QueuePending(adjustment.m_skslSource, adjustment.m_skslPasses, adjustment.m_builtinBlurPreview, values);
+				canvas.InvalidateSurface();
+				return;
+			}
 			document.RestoreStrokeSnapshot();
 			if (adjustment.m_run != null)
 			{
@@ -430,6 +489,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			canvas.FilterPreview().ClearPending();
 			Document document = canvas.CurrentDocument();
 			if (document.StrokeSnapshot() == null)
 			{
@@ -446,6 +506,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			canvas.FilterPreview().EndSession();
 			Document document = canvas.CurrentDocument();
 			if (document.StrokeSnapshot() == null)
 			{
@@ -477,6 +538,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			canvas.FilterPreview().EndSession();
 			Document document = canvas.CurrentDocument();
 			if (document.StrokeSnapshot() == null)
 			{
@@ -517,10 +579,17 @@ namespace Bitmute.UI
 			AddInstant(eMenuAction.AverageBlur, eMenuAction.FilterBlurMenu, "Average", RunAverage);
 			AddInstant(eMenuAction.Blur, eMenuAction.FilterBlurMenu, "Blur", RunBlur);
 			AddInstant(eMenuAction.BlurMore, eMenuAction.FilterBlurMenu, "Blur More", RunBlurMore);
-			AddDialog(eMenuAction.BoxBlur, eMenuAction.FilterBlurMenu, "Box Blur", true, new string[] { "Radius" }, new int[] { 1 }, new int[] { 100 }, new int[] { 10 }, 360.0, 200.0, RunBoxBlur);
-			AddDialog(eMenuAction.GaussianBlur, eMenuAction.FilterBlurMenu, "Gaussian Blur", true, new string[] { "Radius" }, new int[] { 1 }, new int[] { 30 }, new int[] { 5 }, 360.0, 200.0, RunGaussianBlur);
-			AddDialog(eMenuAction.MotionBlur, eMenuAction.FilterBlurMenu, "Motion Blur", true, new string[] { "Angle", "Distance" }, new int[] { -90, 1 }, new int[] { 90, 200 }, new int[] { 0, 10 }, 360.0, 230.0, RunMotionBlur);
-			AddChoiceDialog(eMenuAction.RadialBlur, eMenuAction.FilterBlurMenu, "Radial Blur", true, new string[] { "Amount" }, new int[] { 1 }, new int[] { 100 }, new int[] { 10 }, new string[] { "Method" }, new string[][] { new string[] { "Spin", "Zoom" } }, new int[] { 0 }, 360.0, 230.0, RunRadialBlur);
+			Adjustment boxBlur = AddDialog(eMenuAction.BoxBlur, eMenuAction.FilterBlurMenu, "Box Blur", true, new string[] { "Radius" }, new int[] { 1 }, new int[] { 100 }, new int[] { 10 }, 360.0, 200.0, RunBoxBlur);
+			boxBlur.m_skslSource = GpuFilterPreview.BoxBlurSource;
+			boxBlur.m_skslPasses = 2;
+			Adjustment gaussianBlur = AddDialog(eMenuAction.GaussianBlur, eMenuAction.FilterBlurMenu, "Gaussian Blur", true, new string[] { "Radius" }, new int[] { 1 }, new int[] { 30 }, new int[] { 5 }, 360.0, 200.0, RunGaussianBlur);
+			gaussianBlur.m_builtinBlurPreview = true;
+			Adjustment motionBlur = AddDialog(eMenuAction.MotionBlur, eMenuAction.FilterBlurMenu, "Motion Blur", true, new string[] { "Angle", "Distance" }, new int[] { -90, 1 }, new int[] { 90, 200 }, new int[] { 0, 10 }, 360.0, 230.0, RunMotionBlur);
+			motionBlur.m_skslSource = GpuFilterPreview.MotionBlurSource;
+			motionBlur.m_skslPasses = 1;
+			Adjustment radialBlur = AddChoiceDialog(eMenuAction.RadialBlur, eMenuAction.FilterBlurMenu, "Radial Blur", true, new string[] { "Amount" }, new int[] { 1 }, new int[] { 100 }, new int[] { 10 }, new string[] { "Method" }, new string[][] { new string[] { "Spin", "Zoom" } }, new int[] { 0 }, 360.0, 230.0, RunRadialBlur);
+			radialBlur.m_skslSource = GpuFilterPreview.RadialBlurSource;
+			radialBlur.m_skslPasses = 1;
 
 			AddDialog(eMenuAction.Pinch, eMenuAction.FilterDistortMenu, "Pinch", true, new string[] { "Amount" }, new int[] { -100 }, new int[] { 100 }, new int[] { 50 }, 360.0, 200.0, RunPinch);
 			AddChoiceDialog(eMenuAction.PolarCoordinates, eMenuAction.FilterDistortMenu, "Polar Coordinates", true, s_noLabels, s_noValues, s_noValues, s_noValues, new string[] { "Direction" }, new string[][] { new string[] { "Rectangular to Polar", "Polar to Rectangular" } }, new int[] { 0 }, 360.0, 200.0, RunPolarCoordinates);

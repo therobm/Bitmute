@@ -28,5 +28,8 @@ namespace Bitmute.UI
 		public double m_dialogWidth;
 		public double m_dialogHeight;
 		public Action<SKBitmap, int[]> m_run;
+		public string m_skslSource;
+		public int m_skslPasses;
+		public bool m_builtinBlurPreview;
 	}
 }
