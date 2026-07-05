@@ -244,12 +244,13 @@ namespace Bitmute.UI
 
 		public void BeginForLayer(Bitmute.Imaging.Layer layer)
 		{
-			CanvasView canvas = m_main.ActiveCanvas();
-			if (canvas == null || layer == null)
+			DocumentWindow window = m_main.ActiveWindow();
+			if (window == null || layer == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			if (document == null)
 			{
 				return;
@@ -422,11 +423,12 @@ namespace Bitmute.UI
 		public void Rasterize()
 		{
 			Commit();
-			Document document = m_main.ActiveDocument();
-			if (document == null)
+			DocumentWindow window = m_main.ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
+			Document document = window.DocumentModel();
 			Layer layer = document.ActiveLayer();
 			if (layer == null || !layer.IsText())
 			{
@@ -435,12 +437,8 @@ namespace Bitmute.UI
 			}
 			layer.RenderText();
 			layer.RasterizeText();
-			CanvasView canvas = m_main.ActiveCanvas();
-			if (canvas != null)
-			{
-				canvas.MarkComposeDirty();
-				canvas.InvalidateSurface();
-			}
+			window.Canvas().MarkComposeDirty();
+			window.Canvas().InvalidateSurface();
 			m_main.RefreshLayersPanel();
 		}
 

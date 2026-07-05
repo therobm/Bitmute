@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using SkiaSharp;
 using Bitmute.Imaging;
@@ -99,12 +99,13 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			CanvasView canvas = m_main.ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = m_main.ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			Layer activeLayer = document.ActiveLayer();
 			if (activeLayer == null)
 			{
@@ -140,17 +141,18 @@ namespace Bitmute.UI
 
 		private void BeginGpuPreview(Adjustment adjustment)
 		{
-			CanvasView canvas = m_main.ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = m_main.ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
+			CanvasView canvas = window.Canvas();
 			bool usable = GpuPreviewUsable(adjustment, canvas);
 			if (!usable)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			Document document = window.DocumentModel();
 			SKBitmap snapshot = document.StrokeSnapshot();
 			if (snapshot == null)
 			{
@@ -390,7 +392,7 @@ namespace Bitmute.UI
 				string label = adjustment.m_name;
 				if (!adjustment.m_instant)
 				{
-					label = label + "…";
+					label = label + "â€¦";
 				}
 				items.Add(new MenuBarItem(label, adjustment.m_menuAction, () => Open(adjustment)));
 			}
@@ -427,12 +429,13 @@ namespace Bitmute.UI
 
 		public void Apply(Adjustment adjustment, int[] values)
 		{
-			CanvasView canvas = m_main.ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = m_main.ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			if (adjustment.m_kind == eAdjustmentKind.Canvas)
 			{
 				document.BeginCanvasEdit("Rotate");
@@ -464,12 +467,13 @@ namespace Bitmute.UI
 
 		public void Preview(Adjustment adjustment, int[] values)
 		{
-			CanvasView canvas = m_main.ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = m_main.ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			if (document.StrokeSnapshot() == null)
 			{
 				return;
@@ -504,13 +508,14 @@ namespace Bitmute.UI
 
 		public void RestorePreview()
 		{
-			CanvasView canvas = m_main.ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = m_main.ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
+			CanvasView canvas = window.Canvas();
 			canvas.FilterPreview().ClearPending();
-			Document document = canvas.CurrentDocument();
+			Document document = window.DocumentModel();
 			if (document.StrokeSnapshot() == null)
 			{
 				return;
@@ -521,13 +526,14 @@ namespace Bitmute.UI
 
 		public void Commit(Adjustment adjustment, int[] values)
 		{
-			CanvasView canvas = m_main.ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = m_main.ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
+			CanvasView canvas = window.Canvas();
 			canvas.FilterPreview().EndSession();
-			Document document = canvas.CurrentDocument();
+			Document document = window.DocumentModel();
 			if (document.StrokeSnapshot() == null)
 			{
 				Apply(adjustment, values);
@@ -553,13 +559,14 @@ namespace Bitmute.UI
 
 		public void Cancel()
 		{
-			CanvasView canvas = m_main.ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = m_main.ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
+			CanvasView canvas = window.Canvas();
 			canvas.FilterPreview().EndSession();
-			Document document = canvas.CurrentDocument();
+			Document document = window.DocumentModel();
 			if (document.StrokeSnapshot() == null)
 			{
 				return;
