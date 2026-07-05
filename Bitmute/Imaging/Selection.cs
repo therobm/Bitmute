@@ -26,6 +26,97 @@ namespace Bitmute.Imaging
 		private SKRectI m_bounds;
 		private int m_generation;
 
+		private sealed class HorizontalBlurWorker
+		{
+			public byte[] m_source;
+			public byte[] m_destination;
+			public int m_width;
+			public int m_left;
+			public int m_top;
+			public int m_right;
+			public int m_bottom;
+			public int m_radius;
+
+			public void Band(int start, int end)
+			{
+				int window = (m_radius * 2) + 1;
+				int half = window / 2;
+				for (int y = start; y < end; y++)
+				{
+					int rowStart = y * m_width;
+					int sum = 0;
+					int primeEnd = m_left + m_radius;
+					if (primeEnd > m_right - 1)
+					{
+						primeEnd = m_right - 1;
+					}
+					for (int x = m_left; x <= primeEnd; x++)
+					{
+						sum = sum + m_source[rowStart + x];
+					}
+					for (int x = m_left; x < m_right; x++)
+					{
+						m_destination[rowStart + x] = (byte)((sum + half) / window);
+						int addIndex = x + m_radius + 1;
+						if (addIndex < m_right)
+						{
+							sum = sum + m_source[rowStart + addIndex];
+						}
+						int removeIndex = x - m_radius;
+						if (removeIndex >= m_left)
+						{
+							sum = sum - m_source[rowStart + removeIndex];
+						}
+					}
+				}
+			}
+		}
+
+		private sealed class VerticalBlurWorker
+		{
+			public byte[] m_source;
+			public byte[] m_destination;
+			public int m_width;
+			public int m_left;
+			public int m_top;
+			public int m_right;
+			public int m_bottom;
+			public int m_radius;
+
+			public void Band(int start, int end)
+			{
+				int window = (m_radius * 2) + 1;
+				int half = window / 2;
+				for (int x = start; x < end; x++)
+				{
+					int sum = 0;
+					int primeEnd = m_top + m_radius;
+					if (primeEnd > m_bottom - 1)
+					{
+						primeEnd = m_bottom - 1;
+					}
+					for (int y = m_top; y <= primeEnd; y++)
+					{
+						sum = sum + m_source[(y * m_width) + x];
+					}
+					for (int y = m_top; y < m_bottom; y++)
+					{
+						m_destination[(y * m_width) + x] = (byte)((sum + half) / window);
+						int addIndex = y + m_radius + 1;
+						if (addIndex < m_bottom)
+						{
+							sum = sum + m_source[(addIndex * m_width) + x];
+						}
+						int removeIndex = y - m_radius;
+						if (removeIndex >= m_top)
+						{
+							sum = sum - m_source[(removeIndex * m_width) + x];
+						}
+					}
+				}
+			}
+		}
+
 		public Selection(int width, int height)
 		{
 			m_width = width;
@@ -303,69 +394,30 @@ namespace Bitmute.Imaging
 
 		private void BoxBlurHorizontal(byte[] source, byte[] destination, int left, int top, int right, int bottom, int radius)
 		{
-			int window = (radius * 2) + 1;
-			int half = window / 2;
-			for (int y = top; y < bottom; y++)
-			{
-				int rowStart = y * m_width;
-				int sum = 0;
-				int primeEnd = left + radius;
-				if (primeEnd > right - 1)
-				{
-					primeEnd = right - 1;
-				}
-				for (int x = left; x <= primeEnd; x++)
-				{
-					sum = sum + source[rowStart + x];
-				}
-				for (int x = left; x < right; x++)
-				{
-					destination[rowStart + x] = (byte)((sum + half) / window);
-					int addIndex = x + radius + 1;
-					if (addIndex < right)
-					{
-						sum = sum + source[rowStart + addIndex];
-					}
-					int removeIndex = x - radius;
-					if (removeIndex >= left)
-					{
-						sum = sum - source[rowStart + removeIndex];
-					}
-				}
-			}
+			HorizontalBlurWorker worker = new HorizontalBlurWorker();
+			worker.m_source = source;
+			worker.m_destination = destination;
+			worker.m_width = m_width;
+			worker.m_left = left;
+			worker.m_top = top;
+			worker.m_right = right;
+			worker.m_bottom = bottom;
+			worker.m_radius = radius;
+			RowBands.Run(top, bottom, worker.Band);
 		}
 
 		private void BoxBlurVertical(byte[] source, byte[] destination, int left, int top, int right, int bottom, int radius)
 		{
-			int window = (radius * 2) + 1;
-			int half = window / 2;
-			for (int x = left; x < right; x++)
-			{
-				int sum = 0;
-				int primeEnd = top + radius;
-				if (primeEnd > bottom - 1)
-				{
-					primeEnd = bottom - 1;
-				}
-				for (int y = top; y <= primeEnd; y++)
-				{
-					sum = sum + source[(y * m_width) + x];
-				}
-				for (int y = top; y < bottom; y++)
-				{
-					destination[(y * m_width) + x] = (byte)((sum + half) / window);
-					int addIndex = y + radius + 1;
-					if (addIndex < bottom)
-					{
-						sum = sum + source[(addIndex * m_width) + x];
-					}
-					int removeIndex = y - radius;
-					if (removeIndex >= top)
-					{
-						sum = sum - source[(removeIndex * m_width) + x];
-					}
-				}
-			}
+			VerticalBlurWorker worker = new VerticalBlurWorker();
+			worker.m_source = source;
+			worker.m_destination = destination;
+			worker.m_width = m_width;
+			worker.m_left = left;
+			worker.m_top = top;
+			worker.m_right = right;
+			worker.m_bottom = bottom;
+			worker.m_radius = radius;
+			RowBands.Run(left, right, worker.Band);
 		}
 
 		private void FeatherRegion(byte[] mask, SKRectI bounds)

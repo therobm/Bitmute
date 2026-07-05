@@ -114,6 +114,8 @@ namespace Bitmute.Tests
 			TestFloodFillMatchesReference();
 			TestTrimAndResizeCanvas();
 			TestRowBandsCoverage();
+			TestParallelMatchesSingleBand();
+			TestParallelBrushMatchesSingleBand();
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");
@@ -2952,6 +2954,107 @@ namespace Bitmute.Tests
 			Check(RowBandsCoversExactlyOnce(0, 4096), "row bands cover with single band forced");
 			RowBands.SetMaxBands(savedMax);
 			Check(RowBands.MaxBands() == savedMax, "max bands restored");
+		}
+
+		private static SKBitmap BuildLargeTestBitmap(int seed)
+		{
+			SKBitmap bitmap = new SKBitmap(256, 200, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			Random random = new Random(seed);
+			for (int y = 0; y < bitmap.Height; y++)
+			{
+				for (int x = 0; x < bitmap.Width; x++)
+				{
+					bitmap.SetPixel(x, y, new SKColor((byte)random.Next(256), (byte)random.Next(256), (byte)random.Next(256), (byte)random.Next(256)));
+				}
+			}
+			return bitmap;
+		}
+
+		private static void TestParallelMatchesSingleBand()
+		{
+			int savedMax = RowBands.MaxBands();
+			SKBitmap parallelBc = BuildLargeTestBitmap(31);
+			SKBitmap parallelHsl = BuildLargeTestBitmap(32);
+			SKBitmap parallelBlur = BuildLargeTestBitmap(33);
+			SKBitmap parallelChannel = BuildLargeTestBitmap(34);
+			SKBitmap channelOutParallel = new SKBitmap(256, 200, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			RowBands.SetMaxBands(savedMax);
+			Adjustments.BrightnessContrast(parallelBc, 25, -40);
+			Adjustments.HueSaturationLightness(parallelHsl, 90, 40, -20);
+			Adjustments.GaussianBlur(parallelBlur, 5);
+			ChannelRender.Render(parallelChannel, channelOutParallel, 1);
+			RowBands.SetMaxBands(1);
+			SKBitmap singleBc = BuildLargeTestBitmap(31);
+			SKBitmap singleHsl = BuildLargeTestBitmap(32);
+			SKBitmap singleBlur = BuildLargeTestBitmap(33);
+			SKBitmap singleChannel = BuildLargeTestBitmap(34);
+			SKBitmap channelOutSingle = new SKBitmap(256, 200, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			Adjustments.BrightnessContrast(singleBc, 25, -40);
+			Adjustments.HueSaturationLightness(singleHsl, 90, 40, -20);
+			Adjustments.GaussianBlur(singleBlur, 5);
+			ChannelRender.Render(singleChannel, channelOutSingle, 1);
+			RowBands.SetMaxBands(savedMax);
+			Check(AdjustmentBitmapsEqual(parallelBc, singleBc), "parallel brightness/contrast matches single band");
+			Check(AdjustmentBitmapsEqual(parallelHsl, singleHsl), "parallel hsl matches single band");
+			Check(AdjustmentBitmapsEqual(parallelBlur, singleBlur), "parallel gaussian blur matches single band");
+			Check(AdjustmentBitmapsEqual(channelOutParallel, channelOutSingle), "parallel channel render matches single band");
+			parallelBc.Dispose();
+			parallelHsl.Dispose();
+			parallelBlur.Dispose();
+			parallelChannel.Dispose();
+			channelOutParallel.Dispose();
+			singleBc.Dispose();
+			singleHsl.Dispose();
+			singleBlur.Dispose();
+			singleChannel.Dispose();
+			channelOutSingle.Dispose();
+
+			Document parallelDoc = new Document("p", 300, 220);
+			parallelDoc.AddLayer("Upper");
+			parallelDoc.Layers()[0].Bitmap().Erase(new SKColor(200, 40, 40, 255));
+			SKBitmap upper = BuildLargeTestBitmap(35);
+			parallelDoc.Layers()[1].SetPixelsFrom(upper);
+			parallelDoc.Layers()[1].SetOffset(20, 10);
+			parallelDoc.Layers()[1].SetOpacity(180);
+			SKBitmap parallelComposite = new SKBitmap(300, 220, SKColorType.Rgba8888, SKAlphaType.Premul);
+			parallelDoc.CompositeInto(parallelComposite);
+			RowBands.SetMaxBands(1);
+			SKBitmap singleComposite = new SKBitmap(300, 220, SKColorType.Rgba8888, SKAlphaType.Premul);
+			parallelDoc.CompositeInto(singleComposite);
+			RowBands.SetMaxBands(savedMax);
+			Check(AdjustmentBitmapsEqual(parallelComposite, singleComposite), "parallel raw composite matches single band");
+			upper.Dispose();
+			parallelComposite.Dispose();
+			singleComposite.Dispose();
+		}
+
+		private static void RunLargeBrushStroke(Document doc)
+		{
+			Layer layer = doc.ActiveLayer();
+			layer.Bitmap().Erase(new SKColor(0, 0, 0, 0));
+			doc.Selection().SelectRect(new SKRectI(40, 40, 560, 400));
+			BrushEngine engine = new BrushEngine();
+			engine.Begin(layer, null, 200, 0.5, 0.8, 0.6, false, 0.25, 0.0, eBrushOp.Paint, eBlendMode.Normal, new SKColor(30, 120, 240, 255));
+			engine.StampFirst(doc, layer, 150, 150, doc.Selection());
+			engine.StrokeTo(doc, layer, 450, 300, doc.Selection());
+			engine.End();
+		}
+
+		private static void TestParallelBrushMatchesSingleBand()
+		{
+			int savedMax = RowBands.MaxBands();
+			RowBands.SetMaxBands(savedMax);
+			Document parallelDoc = new Document("p", 600, 440);
+			RunLargeBrushStroke(parallelDoc);
+			RowBands.SetMaxBands(1);
+			Document singleDoc = new Document("s", 600, 440);
+			RunLargeBrushStroke(singleDoc);
+			RowBands.SetMaxBands(savedMax);
+			Check(AdjustmentBitmapsEqual(parallelDoc.ActiveLayer().Bitmap(), singleDoc.ActiveLayer().Bitmap()), "parallel large brush stroke matches single band");
+			SKColor center = parallelDoc.ActiveLayer().Bitmap().GetPixel(300, 225);
+			Check(center.Alpha > 0, "large brush stroke painted the path");
+			SKColor outside = parallelDoc.ActiveLayer().Bitmap().GetPixel(20, 20);
+			Check(outside.Alpha == 0, "large brush stroke clipped by selection");
 		}
 	}
 }

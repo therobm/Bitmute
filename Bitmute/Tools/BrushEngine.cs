@@ -7,6 +7,20 @@ namespace Bitmute.Tools
 	public class BrushEngine
 	{
 		private const double ShoulderExponent = 1.7;
+		private const long ParallelWorkThreshold = 262144;
+		private const long ParallelBoxAverageWorkThreshold = 16384;
+
+		private sealed class DabBandWorker
+		{
+			public BrushEngine m_engine;
+			public Layer m_layer;
+			public Selection m_selection;
+
+			public void Band(int start, int end)
+			{
+				m_engine.StampQueuedDabRows(m_layer, m_selection, start, end);
+			}
+		}
 
 		private byte[] m_coverage;
 		private int m_width;
@@ -53,6 +67,9 @@ namespace Bitmute.Tools
 		private int m_colorReplaceSampleB;
 		private bool m_lockAlpha;
 		private bool m_active;
+		private double[] m_dabQueueX;
+		private double[] m_dabQueueY;
+		private int m_dabQueueCount;
 
 		public void SetCloneOffset(int offsetX, int offsetY)
 		{
@@ -181,6 +198,7 @@ namespace Bitmute.Tools
 			m_colorReplaceSampleG = 0;
 			m_colorReplaceSampleB = 0;
 			m_lockAlpha = layer.LockAlpha();
+			m_dabQueueCount = 0;
 			m_active = true;
 		}
 
@@ -198,6 +216,7 @@ namespace Bitmute.Tools
 			m_original = null;
 			m_ownsOriginal = false;
 			m_coverage = null;
+			m_dabQueueCount = 0;
 			m_active = false;
 		}
 
@@ -373,7 +392,7 @@ namespace Bitmute.Tools
 			avgBlue = (double)sumBlue / count;
 		}
 
-		public unsafe void StampDab(Layer layer, double centerX, double centerY, Selection selection)
+		public void StampDab(Layer layer, double centerX, double centerY, Selection selection)
 		{
 			if (!m_active)
 			{
@@ -389,25 +408,40 @@ namespace Bitmute.Tools
 				StampSmudgeDab(layer, centerX, centerY, selection);
 				return;
 			}
+			if (m_op == eBrushOp.ColorReplace && !m_colorReplaceHasSample)
+			{
+				CaptureColorReplaceSample(layer, centerX, centerY);
+			}
+			StampDabCore(layer, centerX, centerY, selection, int.MinValue, int.MaxValue);
+		}
+
+		private unsafe void CaptureColorReplaceSample(Layer layer, double centerX, double centerY)
+		{
+			int layerOffsetX = layer.OffsetX();
+			int layerOffsetY = layer.OffsetY();
+			int originalRowBytes = m_original.RowBytes;
+			byte* originalPixels = (byte*)m_original.GetPixels().ToPointer();
+			int sampleX = (int)System.Math.Round(centerX) - layerOffsetX;
+			int sampleY = (int)System.Math.Round(centerY) - layerOffsetY;
+			if (sampleX >= 0 && sampleY >= 0 && sampleX < m_width && sampleY < m_height)
+			{
+				byte* samplePixel = originalPixels + (sampleY * originalRowBytes) + (sampleX * 4);
+				m_colorReplaceSampleR = samplePixel[0];
+				m_colorReplaceSampleG = samplePixel[1];
+				m_colorReplaceSampleB = samplePixel[2];
+				m_colorReplaceHasSample = true;
+			}
+		}
+
+		private unsafe void StampDabCore(Layer layer, double centerX, double centerY, Selection selection, int bandTop, int bandBottom)
+		{
+			SKBitmap bitmap = layer.Bitmap();
 			int rowBytes = bitmap.RowBytes;
 			int originalRowBytes = m_original.RowBytes;
 			int layerOffsetX = layer.OffsetX();
 			int layerOffsetY = layer.OffsetY();
 			byte* pixels = (byte*)bitmap.GetPixels().ToPointer();
 			byte* originalPixels = (byte*)m_original.GetPixels().ToPointer();
-			if (m_op == eBrushOp.ColorReplace && !m_colorReplaceHasSample)
-			{
-				int sampleX = (int)System.Math.Round(centerX) - layerOffsetX;
-				int sampleY = (int)System.Math.Round(centerY) - layerOffsetY;
-				if (sampleX >= 0 && sampleY >= 0 && sampleX < m_width && sampleY < m_height)
-				{
-					byte* samplePixel = originalPixels + (sampleY * originalRowBytes) + (sampleX * 4);
-					m_colorReplaceSampleR = samplePixel[0];
-					m_colorReplaceSampleG = samplePixel[1];
-					m_colorReplaceSampleB = samplePixel[2];
-					m_colorReplaceHasSample = true;
-				}
-			}
 			bool clip = selection != null && selection.IsActive();
 			int radius = m_radius;
 			int minCanvasX = (int)System.Math.Floor(centerX) - radius - 1;
@@ -437,6 +471,14 @@ namespace Bitmute.Tools
 				{
 					maxCanvasY = selectionBounds.Bottom - 1;
 				}
+			}
+			if (minCanvasY < bandTop)
+			{
+				minCanvasY = bandTop;
+			}
+			if (bandBottom != int.MaxValue && maxCanvasY > bandBottom - 1)
+			{
+				maxCanvasY = bandBottom - 1;
 			}
 			for (int canvasY = minCanvasY; canvasY <= maxCanvasY; canvasY++)
 			{
@@ -865,15 +907,122 @@ namespace Bitmute.Tools
 			document.MarkComposeDirtyRegion(new SKRectI(left, top, right, bottom));
 		}
 
+		private void QueueDab(double x, double y)
+		{
+			if (m_dabQueueX == null)
+			{
+				m_dabQueueX = new double[64];
+				m_dabQueueY = new double[64];
+			}
+			if (m_dabQueueCount == m_dabQueueX.Length)
+			{
+				double[] grownX = new double[m_dabQueueX.Length * 2];
+				double[] grownY = new double[m_dabQueueY.Length * 2];
+				System.Array.Copy(m_dabQueueX, grownX, m_dabQueueCount);
+				System.Array.Copy(m_dabQueueY, grownY, m_dabQueueCount);
+				m_dabQueueX = grownX;
+				m_dabQueueY = grownY;
+			}
+			m_dabQueueX[m_dabQueueCount] = x;
+			m_dabQueueY[m_dabQueueCount] = y;
+			m_dabQueueCount = m_dabQueueCount + 1;
+		}
+
+		private void StampQueuedDabRows(Layer layer, Selection selection, int bandTop, int bandBottom)
+		{
+			for (int index = 0; index < m_dabQueueCount; index++)
+			{
+				StampDabCore(layer, m_dabQueueX[index], m_dabQueueY[index], selection, bandTop, bandBottom);
+			}
+		}
+
+		private void FlushQueuedDabs(Layer layer, Selection selection)
+		{
+			if (m_dabQueueCount == 0)
+			{
+				return;
+			}
+			if (!m_active)
+			{
+				m_dabQueueCount = 0;
+				return;
+			}
+			SKBitmap bitmap = layer.Bitmap();
+			if (bitmap.Width != m_width || bitmap.Height != m_height)
+			{
+				m_dabQueueCount = 0;
+				return;
+			}
+			if (m_op == eBrushOp.Smudge)
+			{
+				for (int index = 0; index < m_dabQueueCount; index++)
+				{
+					StampSmudgeDab(layer, m_dabQueueX[index], m_dabQueueY[index], selection);
+				}
+				m_dabQueueCount = 0;
+				return;
+			}
+			if (m_op == eBrushOp.ColorReplace)
+			{
+				for (int index = 0; index < m_dabQueueCount; index++)
+				{
+					if (m_colorReplaceHasSample)
+					{
+						break;
+					}
+					CaptureColorReplaceSample(layer, m_dabQueueX[index], m_dabQueueY[index]);
+				}
+			}
+			int diameter = (m_radius * 2) + 3;
+			long work = (long)diameter * diameter * m_dabQueueCount;
+			long threshold = ParallelWorkThreshold;
+			if (m_op == eBrushOp.Blur || m_op == eBrushOp.Sharpen || m_op == eBrushOp.Heal)
+			{
+				threshold = ParallelBoxAverageWorkThreshold;
+			}
+			if (work < threshold)
+			{
+				for (int index = 0; index < m_dabQueueCount; index++)
+				{
+					StampDabCore(layer, m_dabQueueX[index], m_dabQueueY[index], selection, int.MinValue, int.MaxValue);
+				}
+				m_dabQueueCount = 0;
+				return;
+			}
+			double minCenterY = m_dabQueueY[0];
+			double maxCenterY = m_dabQueueY[0];
+			for (int index = 1; index < m_dabQueueCount; index++)
+			{
+				if (m_dabQueueY[index] < minCenterY)
+				{
+					minCenterY = m_dabQueueY[index];
+				}
+				if (m_dabQueueY[index] > maxCenterY)
+				{
+					maxCenterY = m_dabQueueY[index];
+				}
+			}
+			int rowFirst = (int)System.Math.Floor(minCenterY) - m_radius - 1;
+			int rowLast = (int)System.Math.Ceiling(maxCenterY) + m_radius + 1;
+			DabBandWorker worker = new DabBandWorker();
+			worker.m_engine = this;
+			worker.m_layer = layer;
+			worker.m_selection = selection;
+			RowBands.Run(rowFirst, rowLast + 1, worker.Band);
+			m_dabQueueCount = 0;
+		}
+
 		public void AirbrushStamp(Document document, Layer layer, double x, double y, Selection selection)
 		{
-			StampDab(layer, x, y, selection);
+			QueueDab(x, y);
+			FlushQueuedDabs(layer, selection);
 			MarkDirty(document, x, y, x, y);
 		}
 
 		public void StampFirst(Document document, Layer layer, double x, double y, Selection selection)
 		{
-			StampDab(layer, x, y, selection);
+			QueueDab(x, y);
+			FlushQueuedDabs(layer, selection);
 			m_penX = x;
 			m_penY = y;
 			m_inputX = x;
@@ -917,9 +1066,10 @@ namespace Bitmute.Tools
 				traveled = traveled + distanceToNext;
 				double stampX = m_penX + (directionX * traveled);
 				double stampY = m_penY + (directionY * traveled);
-				StampDab(layer, stampX, stampY, selection);
+				QueueDab(stampX, stampY);
 				m_distanceSinceStamp = 0.0;
 			}
+			FlushQueuedDabs(layer, selection);
 			m_distanceSinceStamp = m_distanceSinceStamp + (segmentLength - traveled);
 			m_penX = x;
 			m_penY = y;

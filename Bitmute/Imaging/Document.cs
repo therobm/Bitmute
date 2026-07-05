@@ -57,6 +57,189 @@ namespace Bitmute.Imaging
 		private byte[] m_floatSourceMask;
 		private SKRectI m_floatSourceBounds;
 
+		private sealed unsafe class CompositeBandWorker
+		{
+			public IntPtr[] m_sourceBases;
+			public int[] m_sourceRowBytes;
+			public int[] m_sourceWidths;
+			public int[] m_sourceHeights;
+			public int[] m_sourceOffsetsX;
+			public int[] m_sourceOffsetsY;
+			public int[] m_sourceOpacities;
+			public int m_visibleCount;
+			public IntPtr m_targetBase;
+			public int m_targetRowBytes;
+			public int m_left;
+			public int m_right;
+
+			public void Band(int start, int end)
+			{
+				byte* targetBase = (byte*)m_targetBase.ToPointer();
+				for (int canvasY = start; canvasY < end; canvasY++)
+				{
+					byte* targetRow = targetBase + (canvasY * m_targetRowBytes);
+					for (int canvasX = m_left; canvasX < m_right; canvasX++)
+					{
+						int accumulatedRed = 0;
+						int accumulatedGreen = 0;
+						int accumulatedBlue = 0;
+						int accumulatedAlpha = 0;
+						for (int layerIndex = 0; layerIndex < m_visibleCount; layerIndex++)
+						{
+							int bitmapX = canvasX - m_sourceOffsetsX[layerIndex];
+							int bitmapY = canvasY - m_sourceOffsetsY[layerIndex];
+							if (bitmapX < 0 || bitmapY < 0 || bitmapX >= m_sourceWidths[layerIndex] || bitmapY >= m_sourceHeights[layerIndex])
+							{
+								continue;
+							}
+							byte* sourcePixel = (byte*)m_sourceBases[layerIndex].ToPointer() + (bitmapY * m_sourceRowBytes[layerIndex]) + (bitmapX * 4);
+							int sourceAlpha = sourcePixel[3];
+							if (sourceAlpha == 0)
+							{
+								continue;
+							}
+							int effectiveAlpha = ((sourceAlpha * m_sourceOpacities[layerIndex]) + 127) / 255;
+							if (effectiveAlpha == 0)
+							{
+								continue;
+							}
+							int premultipliedRed = ((sourcePixel[0] * effectiveAlpha) + 127) / 255;
+							int premultipliedGreen = ((sourcePixel[1] * effectiveAlpha) + 127) / 255;
+							int premultipliedBlue = ((sourcePixel[2] * effectiveAlpha) + 127) / 255;
+							int inverseAlpha = 255 - effectiveAlpha;
+							accumulatedRed = premultipliedRed + (((accumulatedRed * inverseAlpha) + 127) / 255);
+							accumulatedGreen = premultipliedGreen + (((accumulatedGreen * inverseAlpha) + 127) / 255);
+							accumulatedBlue = premultipliedBlue + (((accumulatedBlue * inverseAlpha) + 127) / 255);
+							accumulatedAlpha = effectiveAlpha + (((accumulatedAlpha * inverseAlpha) + 127) / 255);
+						}
+						byte* targetPixel = targetRow + (canvasX * 4);
+						targetPixel[0] = (byte)accumulatedRed;
+						targetPixel[1] = (byte)accumulatedGreen;
+						targetPixel[2] = (byte)accumulatedBlue;
+						targetPixel[3] = (byte)accumulatedAlpha;
+					}
+				}
+			}
+		}
+
+		private sealed unsafe class CustomBlendBandWorker
+		{
+			public IntPtr m_sourceBase;
+			public int m_sourceRowBytes;
+			public int m_sourceWidth;
+			public int m_sourceHeight;
+			public int m_offsetX;
+			public int m_offsetY;
+			public int m_opacity;
+			public eBlendMode m_mode;
+			public IntPtr m_targetBase;
+			public int m_targetRowBytes;
+			public int m_left;
+			public int m_right;
+
+			public void Band(int start, int end)
+			{
+				byte* sourceBase = (byte*)m_sourceBase.ToPointer();
+				byte* targetBase = (byte*)m_targetBase.ToPointer();
+				for (int canvasY = start; canvasY < end; canvasY++)
+				{
+					int bitmapY = canvasY - m_offsetY;
+					if (bitmapY < 0 || bitmapY >= m_sourceHeight)
+					{
+						continue;
+					}
+					byte* sourceRow = sourceBase + (bitmapY * m_sourceRowBytes);
+					byte* targetRow = targetBase + (canvasY * m_targetRowBytes);
+					for (int canvasX = m_left; canvasX < m_right; canvasX++)
+					{
+						int bitmapX = canvasX - m_offsetX;
+						if (bitmapX < 0 || bitmapX >= m_sourceWidth)
+						{
+							continue;
+						}
+						byte* sourcePixel = sourceRow + (bitmapX * 4);
+						int sourceAlpha = sourcePixel[3];
+						if (sourceAlpha == 0)
+						{
+							continue;
+						}
+						int effectiveAlpha = ((sourceAlpha * m_opacity) + 127) / 255;
+						if (effectiveAlpha == 0)
+						{
+							continue;
+						}
+						byte* targetPixel = targetRow + (canvasX * 4);
+						if (m_mode == eBlendMode.Dissolve)
+						{
+							int threshold = ((canvasX * 73) + (canvasY * 151)) & 255;
+							if (effectiveAlpha > threshold)
+							{
+								targetPixel[0] = sourcePixel[0];
+								targetPixel[1] = sourcePixel[1];
+								targetPixel[2] = sourcePixel[2];
+								targetPixel[3] = 255;
+							}
+							continue;
+						}
+						int baseAlpha = targetPixel[3];
+						byte blendedRed;
+						byte blendedGreen;
+						byte blendedBlue;
+						if (baseAlpha == 0)
+						{
+							blendedRed = sourcePixel[0];
+							blendedGreen = sourcePixel[1];
+							blendedBlue = sourcePixel[2];
+						}
+						else
+						{
+							int baseRed = ((targetPixel[0] * 255) + (baseAlpha / 2)) / baseAlpha;
+							int baseGreen = ((targetPixel[1] * 255) + (baseAlpha / 2)) / baseAlpha;
+							int baseBlue = ((targetPixel[2] * 255) + (baseAlpha / 2)) / baseAlpha;
+							if (baseRed > 255)
+							{
+								baseRed = 255;
+							}
+							if (baseGreen > 255)
+							{
+								baseGreen = 255;
+							}
+							if (baseBlue > 255)
+							{
+								baseBlue = 255;
+							}
+							BlendModes.Blend(m_mode, (byte)baseRed, (byte)baseGreen, (byte)baseBlue, sourcePixel[0], sourcePixel[1], sourcePixel[2], out blendedRed, out blendedGreen, out blendedBlue);
+						}
+						int inverseAlpha = 255 - effectiveAlpha;
+						int resultRed = (((blendedRed * effectiveAlpha) + 127) / 255) + (((targetPixel[0] * inverseAlpha) + 127) / 255);
+						int resultGreen = (((blendedGreen * effectiveAlpha) + 127) / 255) + (((targetPixel[1] * inverseAlpha) + 127) / 255);
+						int resultBlue = (((blendedBlue * effectiveAlpha) + 127) / 255) + (((targetPixel[2] * inverseAlpha) + 127) / 255);
+						int resultAlpha = effectiveAlpha + (((baseAlpha * inverseAlpha) + 127) / 255);
+						if (resultRed > 255)
+						{
+							resultRed = 255;
+						}
+						if (resultGreen > 255)
+						{
+							resultGreen = 255;
+						}
+						if (resultBlue > 255)
+						{
+							resultBlue = 255;
+						}
+						if (resultAlpha > 255)
+						{
+							resultAlpha = 255;
+						}
+						targetPixel[0] = (byte)resultRed;
+						targetPixel[1] = (byte)resultGreen;
+						targetPixel[2] = (byte)resultBlue;
+						targetPixel[3] = (byte)resultAlpha;
+					}
+				}
+			}
+		}
+
 		public static Document OpenImage(string title, SKBitmap source)
 		{
 			Document document = new Document(title, source.Width, source.Height);
@@ -1653,13 +1836,14 @@ namespace Bitmute.Imaging
 			}
 
 			int layerCount = m_layers.Count;
-			IntPtr* sourceBases = stackalloc IntPtr[layerCount];
-			int* sourceRowBytes = stackalloc int[layerCount];
-			int* sourceWidths = stackalloc int[layerCount];
-			int* sourceHeights = stackalloc int[layerCount];
-			int* sourceOffsetsX = stackalloc int[layerCount];
-			int* sourceOffsetsY = stackalloc int[layerCount];
-			int* sourceOpacities = stackalloc int[layerCount];
+			CompositeBandWorker worker = new CompositeBandWorker();
+			worker.m_sourceBases = new IntPtr[layerCount];
+			worker.m_sourceRowBytes = new int[layerCount];
+			worker.m_sourceWidths = new int[layerCount];
+			worker.m_sourceHeights = new int[layerCount];
+			worker.m_sourceOffsetsX = new int[layerCount];
+			worker.m_sourceOffsetsY = new int[layerCount];
+			worker.m_sourceOpacities = new int[layerCount];
 			int visibleCount = 0;
 			for (int index = 0; index < layerCount; index++)
 			{
@@ -1669,63 +1853,21 @@ namespace Bitmute.Imaging
 					continue;
 				}
 				SKBitmap bitmap = layer.Bitmap();
-				sourceBases[visibleCount] = bitmap.GetPixels();
-				sourceRowBytes[visibleCount] = bitmap.RowBytes;
-				sourceWidths[visibleCount] = bitmap.Width;
-				sourceHeights[visibleCount] = bitmap.Height;
-				sourceOffsetsX[visibleCount] = layer.OffsetX();
-				sourceOffsetsY[visibleCount] = layer.OffsetY();
-				sourceOpacities[visibleCount] = layer.Opacity();
+				worker.m_sourceBases[visibleCount] = bitmap.GetPixels();
+				worker.m_sourceRowBytes[visibleCount] = bitmap.RowBytes;
+				worker.m_sourceWidths[visibleCount] = bitmap.Width;
+				worker.m_sourceHeights[visibleCount] = bitmap.Height;
+				worker.m_sourceOffsetsX[visibleCount] = layer.OffsetX();
+				worker.m_sourceOffsetsY[visibleCount] = layer.OffsetY();
+				worker.m_sourceOpacities[visibleCount] = layer.Opacity();
 				visibleCount++;
 			}
-
-			int targetRowBytes = target.RowBytes;
-			byte* targetBase = (byte*)target.GetPixels().ToPointer();
-
-			for (int canvasY = top; canvasY < bottom; canvasY++)
-			{
-				byte* targetRow = targetBase + (canvasY * targetRowBytes);
-				for (int canvasX = left; canvasX < right; canvasX++)
-				{
-					int accumulatedRed = 0;
-					int accumulatedGreen = 0;
-					int accumulatedBlue = 0;
-					int accumulatedAlpha = 0;
-					for (int layerIndex = 0; layerIndex < visibleCount; layerIndex++)
-					{
-						int bitmapX = canvasX - sourceOffsetsX[layerIndex];
-						int bitmapY = canvasY - sourceOffsetsY[layerIndex];
-						if (bitmapX < 0 || bitmapY < 0 || bitmapX >= sourceWidths[layerIndex] || bitmapY >= sourceHeights[layerIndex])
-						{
-							continue;
-						}
-						byte* sourcePixel = (byte*)sourceBases[layerIndex].ToPointer() + (bitmapY * sourceRowBytes[layerIndex]) + (bitmapX * 4);
-						int sourceAlpha = sourcePixel[3];
-						if (sourceAlpha == 0)
-						{
-							continue;
-						}
-						int effectiveAlpha = ((sourceAlpha * sourceOpacities[layerIndex]) + 127) / 255;
-						if (effectiveAlpha == 0)
-						{
-							continue;
-						}
-						int premultipliedRed = ((sourcePixel[0] * effectiveAlpha) + 127) / 255;
-						int premultipliedGreen = ((sourcePixel[1] * effectiveAlpha) + 127) / 255;
-						int premultipliedBlue = ((sourcePixel[2] * effectiveAlpha) + 127) / 255;
-						int inverseAlpha = 255 - effectiveAlpha;
-						accumulatedRed = premultipliedRed + (((accumulatedRed * inverseAlpha) + 127) / 255);
-						accumulatedGreen = premultipliedGreen + (((accumulatedGreen * inverseAlpha) + 127) / 255);
-						accumulatedBlue = premultipliedBlue + (((accumulatedBlue * inverseAlpha) + 127) / 255);
-						accumulatedAlpha = effectiveAlpha + (((accumulatedAlpha * inverseAlpha) + 127) / 255);
-					}
-					byte* targetPixel = targetRow + (canvasX * 4);
-					targetPixel[0] = (byte)accumulatedRed;
-					targetPixel[1] = (byte)accumulatedGreen;
-					targetPixel[2] = (byte)accumulatedBlue;
-					targetPixel[3] = (byte)accumulatedAlpha;
-				}
-			}
+			worker.m_visibleCount = visibleCount;
+			worker.m_targetBase = target.GetPixels();
+			worker.m_targetRowBytes = target.RowBytes;
+			worker.m_left = left;
+			worker.m_right = right;
+			RowBands.Run(top, bottom, worker.Band);
 		}
 
 		private void CompositeRegionSkia(SKBitmap target, SKRectI region)
@@ -1811,115 +1953,23 @@ namespace Bitmute.Imaging
 			}
 		}
 
-		private unsafe void BlendCustomLayer(SKBitmap target, int left, int top, int right, int bottom, Layer layer)
+		private void BlendCustomLayer(SKBitmap target, int left, int top, int right, int bottom, Layer layer)
 		{
 			SKBitmap source = layer.Bitmap();
-			int sourceWidth = source.Width;
-			int sourceHeight = source.Height;
-			int offsetX = layer.OffsetX();
-			int offsetY = layer.OffsetY();
-			int opacity = layer.Opacity();
-			eBlendMode mode = layer.BlendMode();
-			byte* sourceBase = (byte*)source.GetPixels().ToPointer();
-			int sourceRowBytes = source.RowBytes;
-			byte* targetBase = (byte*)target.GetPixels().ToPointer();
-			int targetRowBytes = target.RowBytes;
-			for (int canvasY = top; canvasY < bottom; canvasY++)
-			{
-				int bitmapY = canvasY - offsetY;
-				if (bitmapY < 0 || bitmapY >= sourceHeight)
-				{
-					continue;
-				}
-				byte* sourceRow = sourceBase + (bitmapY * sourceRowBytes);
-				byte* targetRow = targetBase + (canvasY * targetRowBytes);
-				for (int canvasX = left; canvasX < right; canvasX++)
-				{
-					int bitmapX = canvasX - offsetX;
-					if (bitmapX < 0 || bitmapX >= sourceWidth)
-					{
-						continue;
-					}
-					byte* sourcePixel = sourceRow + (bitmapX * 4);
-					int sourceAlpha = sourcePixel[3];
-					if (sourceAlpha == 0)
-					{
-						continue;
-					}
-					int effectiveAlpha = ((sourceAlpha * opacity) + 127) / 255;
-					if (effectiveAlpha == 0)
-					{
-						continue;
-					}
-					byte* targetPixel = targetRow + (canvasX * 4);
-					if (mode == eBlendMode.Dissolve)
-					{
-						int threshold = ((canvasX * 73) + (canvasY * 151)) & 255;
-						if (effectiveAlpha > threshold)
-						{
-							targetPixel[0] = sourcePixel[0];
-							targetPixel[1] = sourcePixel[1];
-							targetPixel[2] = sourcePixel[2];
-							targetPixel[3] = 255;
-						}
-						continue;
-					}
-					int baseAlpha = targetPixel[3];
-					byte blendedRed;
-					byte blendedGreen;
-					byte blendedBlue;
-					if (baseAlpha == 0)
-					{
-						blendedRed = sourcePixel[0];
-						blendedGreen = sourcePixel[1];
-						blendedBlue = sourcePixel[2];
-					}
-					else
-					{
-						int baseRed = ((targetPixel[0] * 255) + (baseAlpha / 2)) / baseAlpha;
-						int baseGreen = ((targetPixel[1] * 255) + (baseAlpha / 2)) / baseAlpha;
-						int baseBlue = ((targetPixel[2] * 255) + (baseAlpha / 2)) / baseAlpha;
-						if (baseRed > 255)
-						{
-							baseRed = 255;
-						}
-						if (baseGreen > 255)
-						{
-							baseGreen = 255;
-						}
-						if (baseBlue > 255)
-						{
-							baseBlue = 255;
-						}
-						BlendModes.Blend(mode, (byte)baseRed, (byte)baseGreen, (byte)baseBlue, sourcePixel[0], sourcePixel[1], sourcePixel[2], out blendedRed, out blendedGreen, out blendedBlue);
-					}
-					int inverseAlpha = 255 - effectiveAlpha;
-					int resultRed = (((blendedRed * effectiveAlpha) + 127) / 255) + (((targetPixel[0] * inverseAlpha) + 127) / 255);
-					int resultGreen = (((blendedGreen * effectiveAlpha) + 127) / 255) + (((targetPixel[1] * inverseAlpha) + 127) / 255);
-					int resultBlue = (((blendedBlue * effectiveAlpha) + 127) / 255) + (((targetPixel[2] * inverseAlpha) + 127) / 255);
-					int resultAlpha = effectiveAlpha + (((baseAlpha * inverseAlpha) + 127) / 255);
-					if (resultRed > 255)
-					{
-						resultRed = 255;
-					}
-					if (resultGreen > 255)
-					{
-						resultGreen = 255;
-					}
-					if (resultBlue > 255)
-					{
-						resultBlue = 255;
-					}
-					if (resultAlpha > 255)
-					{
-						resultAlpha = 255;
-					}
-					targetPixel[0] = (byte)resultRed;
-					targetPixel[1] = (byte)resultGreen;
-					targetPixel[2] = (byte)resultBlue;
-					targetPixel[3] = (byte)resultAlpha;
-				}
-			}
+			CustomBlendBandWorker worker = new CustomBlendBandWorker();
+			worker.m_sourceBase = source.GetPixels();
+			worker.m_sourceRowBytes = source.RowBytes;
+			worker.m_sourceWidth = source.Width;
+			worker.m_sourceHeight = source.Height;
+			worker.m_offsetX = layer.OffsetX();
+			worker.m_offsetY = layer.OffsetY();
+			worker.m_opacity = layer.Opacity();
+			worker.m_mode = layer.BlendMode();
+			worker.m_targetBase = target.GetPixels();
+			worker.m_targetRowBytes = target.RowBytes;
+			worker.m_left = left;
+			worker.m_right = right;
+			RowBands.Run(top, bottom, worker.Band);
 		}
 
 		private SKBitmap BakeLayerToCanvas(Layer layer)

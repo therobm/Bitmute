@@ -5,6 +5,192 @@ namespace Bitmute.Imaging
 {
 	public static class LayerStyles
 	{
+		private sealed unsafe class StampAlphaWorker
+		{
+			public byte* m_sourceBase;
+			public int m_sourceRowBytes;
+			public int m_sourceWidth;
+			public byte[] m_destAlpha;
+			public int m_destWidth;
+			public int m_destHeight;
+			public int m_stampX;
+			public int m_stampY;
+
+			public void Band(int start, int end)
+			{
+				for (int sourceY = start; sourceY < end; sourceY++)
+				{
+					int destY = sourceY + m_stampY;
+					if (destY < 0 || destY >= m_destHeight)
+					{
+						continue;
+					}
+					byte* sourceRow = m_sourceBase + (sourceY * m_sourceRowBytes);
+					int destRow = destY * m_destWidth;
+					for (int sourceX = 0; sourceX < m_sourceWidth; sourceX++)
+					{
+						int destX = sourceX + m_stampX;
+						if (destX < 0 || destX >= m_destWidth)
+						{
+							continue;
+						}
+						byte* sourcePixel = sourceRow + (sourceX * 4);
+						m_destAlpha[destRow + destX] = sourcePixel[3];
+					}
+				}
+			}
+		}
+
+		private sealed class BoxBlurHorizontalWorker
+		{
+			public double[] m_sourceAlpha;
+			public double[] m_destAlpha;
+			public int m_width;
+			public int m_radius;
+			public double m_windowScale;
+
+			public void Band(int start, int end)
+			{
+				for (int y = start; y < end; y++)
+				{
+					int row = y * m_width;
+					double accumulator = 0.0;
+					for (int offset = -m_radius; offset <= m_radius; offset++)
+					{
+						int sampleX = offset;
+						if (sampleX < 0)
+						{
+							sampleX = 0;
+						}
+						if (sampleX >= m_width)
+						{
+							sampleX = m_width - 1;
+						}
+						accumulator = accumulator + m_sourceAlpha[row + sampleX];
+					}
+					for (int x = 0; x < m_width; x++)
+					{
+						m_destAlpha[row + x] = accumulator * m_windowScale;
+						int leaveX = x - m_radius;
+						if (leaveX < 0)
+						{
+							leaveX = 0;
+						}
+						int enterX = x + m_radius + 1;
+						if (enterX >= m_width)
+						{
+							enterX = m_width - 1;
+						}
+						accumulator = accumulator - m_sourceAlpha[row + leaveX];
+						accumulator = accumulator + m_sourceAlpha[row + enterX];
+					}
+				}
+			}
+		}
+
+		private sealed class BoxBlurVerticalWorker
+		{
+			public double[] m_sourceAlpha;
+			public double[] m_destAlpha;
+			public int m_width;
+			public int m_height;
+			public int m_radius;
+			public double m_windowScale;
+
+			public void Band(int start, int end)
+			{
+				for (int x = start; x < end; x++)
+				{
+					double accumulator = 0.0;
+					for (int offset = -m_radius; offset <= m_radius; offset++)
+					{
+						int sampleY = offset;
+						if (sampleY < 0)
+						{
+							sampleY = 0;
+						}
+						if (sampleY >= m_height)
+						{
+							sampleY = m_height - 1;
+						}
+						accumulator = accumulator + m_sourceAlpha[(sampleY * m_width) + x];
+					}
+					for (int y = 0; y < m_height; y++)
+					{
+						m_destAlpha[(y * m_width) + x] = accumulator * m_windowScale;
+						int leaveY = y - m_radius;
+						if (leaveY < 0)
+						{
+							leaveY = 0;
+						}
+						int enterY = y + m_radius + 1;
+						if (enterY >= m_height)
+						{
+							enterY = m_height - 1;
+						}
+						accumulator = accumulator - m_sourceAlpha[(leaveY * m_width) + x];
+						accumulator = accumulator + m_sourceAlpha[(enterY * m_width) + x];
+					}
+				}
+			}
+		}
+
+		private sealed unsafe class WriteColoredAlphaWorker
+		{
+			public byte* m_basePixels;
+			public int m_rowBytes;
+			public int m_width;
+			public byte[] m_alpha;
+			public byte m_colorRed;
+			public byte m_colorGreen;
+			public byte m_colorBlue;
+			public double m_opacityScale;
+
+			public void Band(int start, int end)
+			{
+				for (int y = start; y < end; y++)
+				{
+					byte* row = m_basePixels + (y * m_rowBytes);
+					int alphaRow = y * m_width;
+					for (int x = 0; x < m_width; x++)
+					{
+						byte* pixel = row + (x * 4);
+						pixel[0] = m_colorRed;
+						pixel[1] = m_colorGreen;
+						pixel[2] = m_colorBlue;
+						pixel[3] = ClampToByte(m_alpha[alphaRow + x] * m_opacityScale);
+					}
+				}
+			}
+		}
+
+		private sealed class DilateAlphaWorker
+		{
+			public byte[] m_alpha;
+			public byte[] m_state;
+			public int[] m_distance;
+			public int m_radius;
+
+			public void Band(int start, int end)
+			{
+				for (int index = start; index < end; index++)
+				{
+					if (m_state[index] != 0)
+					{
+						m_alpha[index] = 255;
+					}
+					else if (m_distance[index] <= m_radius)
+					{
+						m_alpha[index] = 255;
+					}
+					else
+					{
+						m_alpha[index] = 0;
+					}
+				}
+			}
+		}
+
 		private static byte ClampToByte(double value)
 		{
 			double rounded = Math.Round(value);
@@ -28,109 +214,44 @@ namespace Bitmute.Imaging
 
 		private static unsafe void StampAlpha(SKBitmap source, byte[] destAlpha, int destWidth, int destHeight, int stampX, int stampY)
 		{
-			int sourceWidth = source.Width;
 			int sourceHeight = source.Height;
-			int sourceRowBytes = source.RowBytes;
-			byte* sourceBase = (byte*)source.GetPixels().ToPointer();
-			for (int sourceY = 0; sourceY < sourceHeight; sourceY++)
-			{
-				int destY = sourceY + stampY;
-				if (destY < 0 || destY >= destHeight)
-				{
-					continue;
-				}
-				byte* sourceRow = sourceBase + (sourceY * sourceRowBytes);
-				int destRow = destY * destWidth;
-				for (int sourceX = 0; sourceX < sourceWidth; sourceX++)
-				{
-					int destX = sourceX + stampX;
-					if (destX < 0 || destX >= destWidth)
-					{
-						continue;
-					}
-					byte* sourcePixel = sourceRow + (sourceX * 4);
-					destAlpha[destRow + destX] = sourcePixel[3];
-				}
-			}
+			StampAlphaWorker worker = new StampAlphaWorker();
+			worker.m_sourceBase = (byte*)source.GetPixels().ToPointer();
+			worker.m_sourceRowBytes = source.RowBytes;
+			worker.m_sourceWidth = source.Width;
+			worker.m_destAlpha = destAlpha;
+			worker.m_destWidth = destWidth;
+			worker.m_destHeight = destHeight;
+			worker.m_stampX = stampX;
+			worker.m_stampY = stampY;
+			RowBands.Run(0, sourceHeight, worker.Band);
 		}
 
 		private static void BoxBlurHorizontal(double[] sourceAlpha, double[] destAlpha, int width, int height, int radius)
 		{
 			int window = (radius * 2) + 1;
 			double windowScale = 1.0 / window;
-			for (int y = 0; y < height; y++)
-			{
-				int row = y * width;
-				double accumulator = 0.0;
-				for (int offset = -radius; offset <= radius; offset++)
-				{
-					int sampleX = offset;
-					if (sampleX < 0)
-					{
-						sampleX = 0;
-					}
-					if (sampleX >= width)
-					{
-						sampleX = width - 1;
-					}
-					accumulator = accumulator + sourceAlpha[row + sampleX];
-				}
-				for (int x = 0; x < width; x++)
-				{
-					destAlpha[row + x] = accumulator * windowScale;
-					int leaveX = x - radius;
-					if (leaveX < 0)
-					{
-						leaveX = 0;
-					}
-					int enterX = x + radius + 1;
-					if (enterX >= width)
-					{
-						enterX = width - 1;
-					}
-					accumulator = accumulator - sourceAlpha[row + leaveX];
-					accumulator = accumulator + sourceAlpha[row + enterX];
-				}
-			}
+			BoxBlurHorizontalWorker worker = new BoxBlurHorizontalWorker();
+			worker.m_sourceAlpha = sourceAlpha;
+			worker.m_destAlpha = destAlpha;
+			worker.m_width = width;
+			worker.m_radius = radius;
+			worker.m_windowScale = windowScale;
+			RowBands.Run(0, height, worker.Band);
 		}
 
 		private static void BoxBlurVertical(double[] sourceAlpha, double[] destAlpha, int width, int height, int radius)
 		{
 			int window = (radius * 2) + 1;
 			double windowScale = 1.0 / window;
-			for (int x = 0; x < width; x++)
-			{
-				double accumulator = 0.0;
-				for (int offset = -radius; offset <= radius; offset++)
-				{
-					int sampleY = offset;
-					if (sampleY < 0)
-					{
-						sampleY = 0;
-					}
-					if (sampleY >= height)
-					{
-						sampleY = height - 1;
-					}
-					accumulator = accumulator + sourceAlpha[(sampleY * width) + x];
-				}
-				for (int y = 0; y < height; y++)
-				{
-					destAlpha[(y * width) + x] = accumulator * windowScale;
-					int leaveY = y - radius;
-					if (leaveY < 0)
-					{
-						leaveY = 0;
-					}
-					int enterY = y + radius + 1;
-					if (enterY >= height)
-					{
-						enterY = height - 1;
-					}
-					accumulator = accumulator - sourceAlpha[(leaveY * width) + x];
-					accumulator = accumulator + sourceAlpha[(enterY * width) + x];
-				}
-			}
+			BoxBlurVerticalWorker worker = new BoxBlurVerticalWorker();
+			worker.m_sourceAlpha = sourceAlpha;
+			worker.m_destAlpha = destAlpha;
+			worker.m_width = width;
+			worker.m_height = height;
+			worker.m_radius = radius;
+			worker.m_windowScale = windowScale;
+			RowBands.Run(0, width, worker.Band);
 		}
 
 		private static void BlurAlpha(byte[] alpha, int width, int height, int radius)
@@ -159,27 +280,17 @@ namespace Bitmute.Imaging
 
 		private static unsafe void WriteColoredAlpha(SKBitmap target, byte[] alpha, SKColor color, byte opacity)
 		{
-			int width = target.Width;
 			int height = target.Height;
-			int rowBytes = target.RowBytes;
-			byte* basePixels = (byte*)target.GetPixels().ToPointer();
-			byte colorRed = color.Red;
-			byte colorGreen = color.Green;
-			byte colorBlue = color.Blue;
-			double opacityScale = opacity / 255.0;
-			for (int y = 0; y < height; y++)
-			{
-				byte* row = basePixels + (y * rowBytes);
-				int alphaRow = y * width;
-				for (int x = 0; x < width; x++)
-				{
-					byte* pixel = row + (x * 4);
-					pixel[0] = colorRed;
-					pixel[1] = colorGreen;
-					pixel[2] = colorBlue;
-					pixel[3] = ClampToByte(alpha[alphaRow + x] * opacityScale);
-				}
-			}
+			WriteColoredAlphaWorker worker = new WriteColoredAlphaWorker();
+			worker.m_basePixels = (byte*)target.GetPixels().ToPointer();
+			worker.m_rowBytes = target.RowBytes;
+			worker.m_width = target.Width;
+			worker.m_alpha = alpha;
+			worker.m_colorRed = color.Red;
+			worker.m_colorGreen = color.Green;
+			worker.m_colorBlue = color.Blue;
+			worker.m_opacityScale = opacity / 255.0;
+			RowBands.Run(0, height, worker.Band);
 		}
 
 		private static int NeighborCandidate(byte[] state, int[] distance, int width, int height, int neighborX, int neighborY, bool inside)
@@ -292,21 +403,12 @@ namespace Bitmute.Imaging
 			}
 			int[] distance = new int[alpha.Length];
 			ComputeDistance(state, width, height, distance);
-			for (int index = 0; index < alpha.Length; index++)
-			{
-				if (state[index] != 0)
-				{
-					alpha[index] = 255;
-				}
-				else if (distance[index] <= radius)
-				{
-					alpha[index] = 255;
-				}
-				else
-				{
-					alpha[index] = 0;
-				}
-			}
+			DilateAlphaWorker worker = new DilateAlphaWorker();
+			worker.m_alpha = alpha;
+			worker.m_state = state;
+			worker.m_distance = distance;
+			worker.m_radius = radius;
+			RowBands.Run(0, alpha.Length, worker.Band);
 		}
 
 		private static int SpreadPixels(int size, int spread)

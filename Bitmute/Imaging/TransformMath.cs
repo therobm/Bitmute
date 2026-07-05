@@ -5,6 +5,101 @@ namespace Bitmute.Imaging
 {
 	public static class TransformMath
 	{
+		private sealed unsafe class WarpWorker
+		{
+			public byte* m_sourceBase;
+			public int m_sourceRowBytes;
+			public int m_sourceWidth;
+			public int m_sourceHeight;
+			public byte* m_destinationBase;
+			public int m_destinationRowBytes;
+			public int m_destinationWidth;
+			public int m_originX;
+			public int m_originY;
+			public double m_m0;
+			public double m_m1;
+			public double m_m2;
+			public double m_m3;
+			public double m_m4;
+			public double m_m5;
+			public double m_m6;
+			public double m_m7;
+			public double m_m8;
+			public int m_interpolation;
+
+			public void Band(int start, int end)
+			{
+				byte* sourceBase = m_sourceBase;
+				int sourceRowBytes = m_sourceRowBytes;
+				int sourceWidth = m_sourceWidth;
+				int sourceHeight = m_sourceHeight;
+				byte* destinationBase = m_destinationBase;
+				int destinationRowBytes = m_destinationRowBytes;
+				int destinationWidth = m_destinationWidth;
+				int originX = m_originX;
+				int originY = m_originY;
+				double m0 = m_m0;
+				double m1 = m_m1;
+				double m2 = m_m2;
+				double m3 = m_m3;
+				double m4 = m_m4;
+				double m5 = m_m5;
+				double m6 = m_m6;
+				double m7 = m_m7;
+				double m8 = m_m8;
+				int interpolation = m_interpolation;
+				double* weightsX = stackalloc double[4];
+				double* weightsY = stackalloc double[4];
+				for (int destinationY = start; destinationY < end; destinationY++)
+				{
+					double targetY = originY + destinationY + 0.5;
+					double rowNumeratorX = m1 * targetY + m2;
+					double rowNumeratorY = m4 * targetY + m5;
+					double rowDenominator = m7 * targetY + m8;
+					byte* destinationRow = destinationBase + (destinationY * destinationRowBytes);
+					for (int destinationX = 0; destinationX < destinationWidth; destinationX++)
+					{
+						double targetX = originX + destinationX + 0.5;
+						double denominator = m6 * targetX + rowDenominator;
+						byte* destinationPixel = destinationRow + (destinationX * 4);
+						if (Math.Abs(denominator) < 0.0000000001)
+						{
+							destinationPixel[0] = 0;
+							destinationPixel[1] = 0;
+							destinationPixel[2] = 0;
+							destinationPixel[3] = 0;
+							continue;
+						}
+						double inverseDenominator = 1.0 / denominator;
+						double sourceX = (m0 * targetX + rowNumeratorX) * inverseDenominator;
+						double sourceY = (m3 * targetX + rowNumeratorY) * inverseDenominator;
+						if (sourceX < 0.0 || sourceY < 0.0 || sourceX > sourceWidth || sourceY > sourceHeight)
+						{
+							destinationPixel[0] = 0;
+							destinationPixel[1] = 0;
+							destinationPixel[2] = 0;
+							destinationPixel[3] = 0;
+							continue;
+						}
+						double sampleX = sourceX - 0.5;
+						double sampleY = sourceY - 0.5;
+						if (interpolation == 0)
+						{
+							SampleNearest(sourceBase, sourceRowBytes, sourceWidth, sourceHeight, sampleX, sampleY, destinationPixel);
+						}
+						else if (interpolation == 2)
+						{
+							SampleBicubic(sourceBase, sourceRowBytes, sourceWidth, sourceHeight, sampleX, sampleY, destinationPixel, weightsX, weightsY);
+						}
+						else
+						{
+							SampleBilinear(sourceBase, sourceRowBytes, sourceWidth, sourceHeight, sampleX, sampleY, destinationPixel, weightsX, weightsY);
+						}
+					}
+				}
+			}
+		}
+
 		private static byte ClampByte(double value)
 		{
 			if (value < 0.0)
@@ -405,55 +500,27 @@ namespace Bitmute.Imaging
 			int sourceRowBytes = source.RowBytes;
 			byte* destinationBase = (byte*)destination.GetPixels().ToPointer();
 			int destinationRowBytes = destination.RowBytes;
-			double* weightsX = stackalloc double[4];
-			double* weightsY = stackalloc double[4];
-			for (int destinationY = 0; destinationY < destinationHeight; destinationY++)
-			{
-				double targetY = originY + destinationY + 0.5;
-				double rowNumeratorX = m1 * targetY + m2;
-				double rowNumeratorY = m4 * targetY + m5;
-				double rowDenominator = m7 * targetY + m8;
-				byte* destinationRow = destinationBase + (destinationY * destinationRowBytes);
-				for (int destinationX = 0; destinationX < destinationWidth; destinationX++)
-				{
-					double targetX = originX + destinationX + 0.5;
-					double denominator = m6 * targetX + rowDenominator;
-					byte* destinationPixel = destinationRow + (destinationX * 4);
-					if (Math.Abs(denominator) < 0.0000000001)
-					{
-						destinationPixel[0] = 0;
-						destinationPixel[1] = 0;
-						destinationPixel[2] = 0;
-						destinationPixel[3] = 0;
-						continue;
-					}
-					double inverseDenominator = 1.0 / denominator;
-					double sourceX = (m0 * targetX + rowNumeratorX) * inverseDenominator;
-					double sourceY = (m3 * targetX + rowNumeratorY) * inverseDenominator;
-					if (sourceX < 0.0 || sourceY < 0.0 || sourceX > sourceWidth || sourceY > sourceHeight)
-					{
-						destinationPixel[0] = 0;
-						destinationPixel[1] = 0;
-						destinationPixel[2] = 0;
-						destinationPixel[3] = 0;
-						continue;
-					}
-					double sampleX = sourceX - 0.5;
-					double sampleY = sourceY - 0.5;
-					if (interpolation == 0)
-					{
-						SampleNearest(sourceBase, sourceRowBytes, sourceWidth, sourceHeight, sampleX, sampleY, destinationPixel);
-					}
-					else if (interpolation == 2)
-					{
-						SampleBicubic(sourceBase, sourceRowBytes, sourceWidth, sourceHeight, sampleX, sampleY, destinationPixel, weightsX, weightsY);
-					}
-					else
-					{
-						SampleBilinear(sourceBase, sourceRowBytes, sourceWidth, sourceHeight, sampleX, sampleY, destinationPixel, weightsX, weightsY);
-					}
-				}
-			}
+			WarpWorker worker = new WarpWorker();
+			worker.m_sourceBase = sourceBase;
+			worker.m_sourceRowBytes = sourceRowBytes;
+			worker.m_sourceWidth = sourceWidth;
+			worker.m_sourceHeight = sourceHeight;
+			worker.m_destinationBase = destinationBase;
+			worker.m_destinationRowBytes = destinationRowBytes;
+			worker.m_destinationWidth = destinationWidth;
+			worker.m_originX = originX;
+			worker.m_originY = originY;
+			worker.m_m0 = m0;
+			worker.m_m1 = m1;
+			worker.m_m2 = m2;
+			worker.m_m3 = m3;
+			worker.m_m4 = m4;
+			worker.m_m5 = m5;
+			worker.m_m6 = m6;
+			worker.m_m7 = m7;
+			worker.m_m8 = m8;
+			worker.m_interpolation = interpolation;
+			RowBands.Run(0, destinationHeight, worker.Band);
 			outX = originX;
 			outY = originY;
 			return destination;

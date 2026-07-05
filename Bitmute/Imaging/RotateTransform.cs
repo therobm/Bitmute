@@ -5,6 +5,254 @@ namespace Bitmute.Imaging
 {
 	public static class RotateTransform
 	{
+		private sealed unsafe class RotateNearestWorker
+		{
+			public byte* m_sourceBase;
+			public int m_sourceRowBytes;
+			public int m_sourceWidth;
+			public int m_sourceHeight;
+			public byte* m_destinationBase;
+			public int m_destinationRowBytes;
+			public int m_destinationWidth;
+			public double m_cos;
+			public double m_sin;
+			public double m_sourceCenterX;
+			public double m_sourceCenterY;
+			public double m_destinationCenterX;
+			public double m_destinationCenterY;
+
+			public void Band(int start, int end)
+			{
+				byte* sourceBase = m_sourceBase;
+				int sourceRowBytes = m_sourceRowBytes;
+				int sourceWidth = m_sourceWidth;
+				int sourceHeight = m_sourceHeight;
+				byte* destinationBase = m_destinationBase;
+				int destinationRowBytes = m_destinationRowBytes;
+				int destinationWidth = m_destinationWidth;
+				double cos = m_cos;
+				double sin = m_sin;
+				double sourceCenterX = m_sourceCenterX;
+				double sourceCenterY = m_sourceCenterY;
+				double destinationCenterX = m_destinationCenterX;
+				double destinationCenterY = m_destinationCenterY;
+				for (int destinationY = start; destinationY < end; destinationY++)
+				{
+					double offsetY = destinationY + 0.5 - destinationCenterY;
+					double rowTermX = offsetY * sin + sourceCenterX - 0.5;
+					double rowTermY = offsetY * cos + sourceCenterY - 0.5;
+					byte* destinationRow = destinationBase + (destinationY * destinationRowBytes);
+					for (int destinationX = 0; destinationX < destinationWidth; destinationX++)
+					{
+						double offsetX = destinationX + 0.5 - destinationCenterX;
+						double sourceX = offsetX * cos + rowTermX;
+						double sourceY = rowTermY - offsetX * sin;
+						int nearestX = (int)Math.Round(sourceX);
+						int nearestY = (int)Math.Round(sourceY);
+						byte* destinationPixel = destinationRow + (destinationX * 4);
+						if (nearestX >= 0 && nearestY >= 0 && nearestX < sourceWidth && nearestY < sourceHeight)
+						{
+							byte* sourcePixel = sourceBase + (nearestY * sourceRowBytes) + (nearestX * 4);
+							destinationPixel[0] = sourcePixel[0];
+							destinationPixel[1] = sourcePixel[1];
+							destinationPixel[2] = sourcePixel[2];
+							destinationPixel[3] = sourcePixel[3];
+						}
+						else
+						{
+							destinationPixel[0] = 0;
+							destinationPixel[1] = 0;
+							destinationPixel[2] = 0;
+							destinationPixel[3] = 0;
+						}
+					}
+				}
+			}
+		}
+
+		private sealed unsafe class RotateBilinearWorker
+		{
+			public byte* m_sourceBase;
+			public int m_sourceRowBytes;
+			public int m_sourceWidth;
+			public int m_sourceHeight;
+			public byte* m_destinationBase;
+			public int m_destinationRowBytes;
+			public int m_destinationWidth;
+			public double m_cos;
+			public double m_sin;
+			public double m_sourceCenterX;
+			public double m_sourceCenterY;
+			public double m_destinationCenterX;
+			public double m_destinationCenterY;
+
+			public void Band(int start, int end)
+			{
+				byte* sourceBase = m_sourceBase;
+				int sourceRowBytes = m_sourceRowBytes;
+				int sourceWidth = m_sourceWidth;
+				int sourceHeight = m_sourceHeight;
+				byte* destinationBase = m_destinationBase;
+				int destinationRowBytes = m_destinationRowBytes;
+				int destinationWidth = m_destinationWidth;
+				double cos = m_cos;
+				double sin = m_sin;
+				double sourceCenterX = m_sourceCenterX;
+				double sourceCenterY = m_sourceCenterY;
+				double destinationCenterX = m_destinationCenterX;
+				double destinationCenterY = m_destinationCenterY;
+				double* weightsX = stackalloc double[2];
+				double* weightsY = stackalloc double[2];
+				for (int destinationY = start; destinationY < end; destinationY++)
+				{
+					double offsetY = destinationY + 0.5 - destinationCenterY;
+					double rowTermX = offsetY * sin + sourceCenterX - 0.5;
+					double rowTermY = offsetY * cos + sourceCenterY - 0.5;
+					byte* destinationRow = destinationBase + (destinationY * destinationRowBytes);
+					for (int destinationX = 0; destinationX < destinationWidth; destinationX++)
+					{
+						double offsetX = destinationX + 0.5 - destinationCenterX;
+						double sourceX = offsetX * cos + rowTermX;
+						double sourceY = rowTermY - offsetX * sin;
+						int baseX = (int)Math.Floor(sourceX);
+						int baseY = (int)Math.Floor(sourceY);
+						double fractionX = sourceX - baseX;
+						double fractionY = sourceY - baseY;
+						weightsX[0] = 1.0 - fractionX;
+						weightsX[1] = fractionX;
+						weightsY[0] = 1.0 - fractionY;
+						weightsY[1] = fractionY;
+						double sumRed = 0.0;
+						double sumGreen = 0.0;
+						double sumBlue = 0.0;
+						double sumAlpha = 0.0;
+						for (int tapY = 0; tapY < 2; tapY++)
+						{
+							int sampleY = baseY + tapY;
+							if (sampleY < 0 || sampleY >= sourceHeight)
+							{
+								continue;
+							}
+							byte* sourceRow = sourceBase + (sampleY * sourceRowBytes);
+							double weightY = weightsY[tapY];
+							for (int tapX = 0; tapX < 2; tapX++)
+							{
+								int sampleX = baseX + tapX;
+								if (sampleX < 0 || sampleX >= sourceWidth)
+								{
+									continue;
+								}
+								byte* sourcePixel = sourceRow + (sampleX * 4);
+								double alpha = sourcePixel[3];
+								if (alpha <= 0.0)
+								{
+									continue;
+								}
+								double weightedAlpha = weightsX[tapX] * weightY * alpha;
+								sumRed += sourcePixel[0] * weightedAlpha;
+								sumGreen += sourcePixel[1] * weightedAlpha;
+								sumBlue += sourcePixel[2] * weightedAlpha;
+								sumAlpha += weightedAlpha;
+							}
+						}
+						WriteResolved(destinationRow + (destinationX * 4), sumRed, sumGreen, sumBlue, sumAlpha);
+					}
+				}
+			}
+		}
+
+		private sealed unsafe class RotateBicubicWorker
+		{
+			public byte* m_sourceBase;
+			public int m_sourceRowBytes;
+			public int m_sourceWidth;
+			public int m_sourceHeight;
+			public byte* m_destinationBase;
+			public int m_destinationRowBytes;
+			public int m_destinationWidth;
+			public double m_cos;
+			public double m_sin;
+			public double m_sourceCenterX;
+			public double m_sourceCenterY;
+			public double m_destinationCenterX;
+			public double m_destinationCenterY;
+
+			public void Band(int start, int end)
+			{
+				byte* sourceBase = m_sourceBase;
+				int sourceRowBytes = m_sourceRowBytes;
+				int sourceWidth = m_sourceWidth;
+				int sourceHeight = m_sourceHeight;
+				byte* destinationBase = m_destinationBase;
+				int destinationRowBytes = m_destinationRowBytes;
+				int destinationWidth = m_destinationWidth;
+				double cos = m_cos;
+				double sin = m_sin;
+				double sourceCenterX = m_sourceCenterX;
+				double sourceCenterY = m_sourceCenterY;
+				double destinationCenterX = m_destinationCenterX;
+				double destinationCenterY = m_destinationCenterY;
+				double* weightsX = stackalloc double[4];
+				double* weightsY = stackalloc double[4];
+				for (int destinationY = start; destinationY < end; destinationY++)
+				{
+					double offsetY = destinationY + 0.5 - destinationCenterY;
+					double rowTermX = offsetY * sin + sourceCenterX - 0.5;
+					double rowTermY = offsetY * cos + sourceCenterY - 0.5;
+					byte* destinationRow = destinationBase + (destinationY * destinationRowBytes);
+					for (int destinationX = 0; destinationX < destinationWidth; destinationX++)
+					{
+						double offsetX = destinationX + 0.5 - destinationCenterX;
+						double sourceX = offsetX * cos + rowTermX;
+						double sourceY = rowTermY - offsetX * sin;
+						int baseX = (int)Math.Floor(sourceX);
+						int baseY = (int)Math.Floor(sourceY);
+						double fractionX = sourceX - baseX;
+						double fractionY = sourceY - baseY;
+						for (int tap = 0; tap < 4; tap++)
+						{
+							weightsX[tap] = CubicWeight(fractionX + 1.0 - tap);
+							weightsY[tap] = CubicWeight(fractionY + 1.0 - tap);
+						}
+						double sumRed = 0.0;
+						double sumGreen = 0.0;
+						double sumBlue = 0.0;
+						double sumAlpha = 0.0;
+						for (int tapY = 0; tapY < 4; tapY++)
+						{
+							int sampleY = baseY - 1 + tapY;
+							if (sampleY < 0 || sampleY >= sourceHeight)
+							{
+								continue;
+							}
+							byte* sourceRow = sourceBase + (sampleY * sourceRowBytes);
+							double weightY = weightsY[tapY];
+							for (int tapX = 0; tapX < 4; tapX++)
+							{
+								int sampleX = baseX - 1 + tapX;
+								if (sampleX < 0 || sampleX >= sourceWidth)
+								{
+									continue;
+								}
+								byte* sourcePixel = sourceRow + (sampleX * 4);
+								double alpha = sourcePixel[3];
+								if (alpha <= 0.0)
+								{
+									continue;
+								}
+								double weightedAlpha = weightsX[tapX] * weightY * alpha;
+								sumRed += sourcePixel[0] * weightedAlpha;
+								sumGreen += sourcePixel[1] * weightedAlpha;
+								sumBlue += sourcePixel[2] * weightedAlpha;
+								sumAlpha += weightedAlpha;
+							}
+						}
+						WriteResolved(destinationRow + (destinationX * 4), sumRed, sumGreen, sumBlue, sumAlpha);
+					}
+				}
+			}
+		}
+
 		private static byte ClampByte(double value)
 		{
 			if (value < 0.0)
@@ -71,160 +319,59 @@ namespace Bitmute.Imaging
 
 		private static unsafe void RotateNearest(byte* sourceBase, int sourceRowBytes, int sourceWidth, int sourceHeight, byte* destinationBase, int destinationRowBytes, int destinationWidth, int destinationHeight, double cos, double sin, double sourceCenterX, double sourceCenterY, double destinationCenterX, double destinationCenterY)
 		{
-			for (int destinationY = 0; destinationY < destinationHeight; destinationY++)
-			{
-				double offsetY = destinationY + 0.5 - destinationCenterY;
-				double rowTermX = offsetY * sin + sourceCenterX - 0.5;
-				double rowTermY = offsetY * cos + sourceCenterY - 0.5;
-				byte* destinationRow = destinationBase + (destinationY * destinationRowBytes);
-				for (int destinationX = 0; destinationX < destinationWidth; destinationX++)
-				{
-					double offsetX = destinationX + 0.5 - destinationCenterX;
-					double sourceX = offsetX * cos + rowTermX;
-					double sourceY = rowTermY - offsetX * sin;
-					int nearestX = (int)Math.Round(sourceX);
-					int nearestY = (int)Math.Round(sourceY);
-					byte* destinationPixel = destinationRow + (destinationX * 4);
-					if (nearestX >= 0 && nearestY >= 0 && nearestX < sourceWidth && nearestY < sourceHeight)
-					{
-						byte* sourcePixel = sourceBase + (nearestY * sourceRowBytes) + (nearestX * 4);
-						destinationPixel[0] = sourcePixel[0];
-						destinationPixel[1] = sourcePixel[1];
-						destinationPixel[2] = sourcePixel[2];
-						destinationPixel[3] = sourcePixel[3];
-					}
-					else
-					{
-						destinationPixel[0] = 0;
-						destinationPixel[1] = 0;
-						destinationPixel[2] = 0;
-						destinationPixel[3] = 0;
-					}
-				}
-			}
+			RotateNearestWorker worker = new RotateNearestWorker();
+			worker.m_sourceBase = sourceBase;
+			worker.m_sourceRowBytes = sourceRowBytes;
+			worker.m_sourceWidth = sourceWidth;
+			worker.m_sourceHeight = sourceHeight;
+			worker.m_destinationBase = destinationBase;
+			worker.m_destinationRowBytes = destinationRowBytes;
+			worker.m_destinationWidth = destinationWidth;
+			worker.m_cos = cos;
+			worker.m_sin = sin;
+			worker.m_sourceCenterX = sourceCenterX;
+			worker.m_sourceCenterY = sourceCenterY;
+			worker.m_destinationCenterX = destinationCenterX;
+			worker.m_destinationCenterY = destinationCenterY;
+			RowBands.Run(0, destinationHeight, worker.Band);
 		}
 
 		private static unsafe void RotateBilinear(byte* sourceBase, int sourceRowBytes, int sourceWidth, int sourceHeight, byte* destinationBase, int destinationRowBytes, int destinationWidth, int destinationHeight, double cos, double sin, double sourceCenterX, double sourceCenterY, double destinationCenterX, double destinationCenterY)
 		{
-			double* weightsX = stackalloc double[2];
-			double* weightsY = stackalloc double[2];
-			for (int destinationY = 0; destinationY < destinationHeight; destinationY++)
-			{
-				double offsetY = destinationY + 0.5 - destinationCenterY;
-				double rowTermX = offsetY * sin + sourceCenterX - 0.5;
-				double rowTermY = offsetY * cos + sourceCenterY - 0.5;
-				byte* destinationRow = destinationBase + (destinationY * destinationRowBytes);
-				for (int destinationX = 0; destinationX < destinationWidth; destinationX++)
-				{
-					double offsetX = destinationX + 0.5 - destinationCenterX;
-					double sourceX = offsetX * cos + rowTermX;
-					double sourceY = rowTermY - offsetX * sin;
-					int baseX = (int)Math.Floor(sourceX);
-					int baseY = (int)Math.Floor(sourceY);
-					double fractionX = sourceX - baseX;
-					double fractionY = sourceY - baseY;
-					weightsX[0] = 1.0 - fractionX;
-					weightsX[1] = fractionX;
-					weightsY[0] = 1.0 - fractionY;
-					weightsY[1] = fractionY;
-					double sumRed = 0.0;
-					double sumGreen = 0.0;
-					double sumBlue = 0.0;
-					double sumAlpha = 0.0;
-					for (int tapY = 0; tapY < 2; tapY++)
-					{
-						int sampleY = baseY + tapY;
-						if (sampleY < 0 || sampleY >= sourceHeight)
-						{
-							continue;
-						}
-						byte* sourceRow = sourceBase + (sampleY * sourceRowBytes);
-						double weightY = weightsY[tapY];
-						for (int tapX = 0; tapX < 2; tapX++)
-						{
-							int sampleX = baseX + tapX;
-							if (sampleX < 0 || sampleX >= sourceWidth)
-							{
-								continue;
-							}
-							byte* sourcePixel = sourceRow + (sampleX * 4);
-							double alpha = sourcePixel[3];
-							if (alpha <= 0.0)
-							{
-								continue;
-							}
-							double weightedAlpha = weightsX[tapX] * weightY * alpha;
-							sumRed += sourcePixel[0] * weightedAlpha;
-							sumGreen += sourcePixel[1] * weightedAlpha;
-							sumBlue += sourcePixel[2] * weightedAlpha;
-							sumAlpha += weightedAlpha;
-						}
-					}
-					WriteResolved(destinationRow + (destinationX * 4), sumRed, sumGreen, sumBlue, sumAlpha);
-				}
-			}
+			RotateBilinearWorker worker = new RotateBilinearWorker();
+			worker.m_sourceBase = sourceBase;
+			worker.m_sourceRowBytes = sourceRowBytes;
+			worker.m_sourceWidth = sourceWidth;
+			worker.m_sourceHeight = sourceHeight;
+			worker.m_destinationBase = destinationBase;
+			worker.m_destinationRowBytes = destinationRowBytes;
+			worker.m_destinationWidth = destinationWidth;
+			worker.m_cos = cos;
+			worker.m_sin = sin;
+			worker.m_sourceCenterX = sourceCenterX;
+			worker.m_sourceCenterY = sourceCenterY;
+			worker.m_destinationCenterX = destinationCenterX;
+			worker.m_destinationCenterY = destinationCenterY;
+			RowBands.Run(0, destinationHeight, worker.Band);
 		}
 
 		private static unsafe void RotateBicubic(byte* sourceBase, int sourceRowBytes, int sourceWidth, int sourceHeight, byte* destinationBase, int destinationRowBytes, int destinationWidth, int destinationHeight, double cos, double sin, double sourceCenterX, double sourceCenterY, double destinationCenterX, double destinationCenterY)
 		{
-			double* weightsX = stackalloc double[4];
-			double* weightsY = stackalloc double[4];
-			for (int destinationY = 0; destinationY < destinationHeight; destinationY++)
-			{
-				double offsetY = destinationY + 0.5 - destinationCenterY;
-				double rowTermX = offsetY * sin + sourceCenterX - 0.5;
-				double rowTermY = offsetY * cos + sourceCenterY - 0.5;
-				byte* destinationRow = destinationBase + (destinationY * destinationRowBytes);
-				for (int destinationX = 0; destinationX < destinationWidth; destinationX++)
-				{
-					double offsetX = destinationX + 0.5 - destinationCenterX;
-					double sourceX = offsetX * cos + rowTermX;
-					double sourceY = rowTermY - offsetX * sin;
-					int baseX = (int)Math.Floor(sourceX);
-					int baseY = (int)Math.Floor(sourceY);
-					double fractionX = sourceX - baseX;
-					double fractionY = sourceY - baseY;
-					for (int tap = 0; tap < 4; tap++)
-					{
-						weightsX[tap] = CubicWeight(fractionX + 1.0 - tap);
-						weightsY[tap] = CubicWeight(fractionY + 1.0 - tap);
-					}
-					double sumRed = 0.0;
-					double sumGreen = 0.0;
-					double sumBlue = 0.0;
-					double sumAlpha = 0.0;
-					for (int tapY = 0; tapY < 4; tapY++)
-					{
-						int sampleY = baseY - 1 + tapY;
-						if (sampleY < 0 || sampleY >= sourceHeight)
-						{
-							continue;
-						}
-						byte* sourceRow = sourceBase + (sampleY * sourceRowBytes);
-						double weightY = weightsY[tapY];
-						for (int tapX = 0; tapX < 4; tapX++)
-						{
-							int sampleX = baseX - 1 + tapX;
-							if (sampleX < 0 || sampleX >= sourceWidth)
-							{
-								continue;
-							}
-							byte* sourcePixel = sourceRow + (sampleX * 4);
-							double alpha = sourcePixel[3];
-							if (alpha <= 0.0)
-							{
-								continue;
-							}
-							double weightedAlpha = weightsX[tapX] * weightY * alpha;
-							sumRed += sourcePixel[0] * weightedAlpha;
-							sumGreen += sourcePixel[1] * weightedAlpha;
-							sumBlue += sourcePixel[2] * weightedAlpha;
-							sumAlpha += weightedAlpha;
-						}
-					}
-					WriteResolved(destinationRow + (destinationX * 4), sumRed, sumGreen, sumBlue, sumAlpha);
-				}
-			}
+			RotateBicubicWorker worker = new RotateBicubicWorker();
+			worker.m_sourceBase = sourceBase;
+			worker.m_sourceRowBytes = sourceRowBytes;
+			worker.m_sourceWidth = sourceWidth;
+			worker.m_sourceHeight = sourceHeight;
+			worker.m_destinationBase = destinationBase;
+			worker.m_destinationRowBytes = destinationRowBytes;
+			worker.m_destinationWidth = destinationWidth;
+			worker.m_cos = cos;
+			worker.m_sin = sin;
+			worker.m_sourceCenterX = sourceCenterX;
+			worker.m_sourceCenterY = sourceCenterY;
+			worker.m_destinationCenterX = destinationCenterX;
+			worker.m_destinationCenterY = destinationCenterY;
+			RowBands.Run(0, destinationHeight, worker.Band);
 		}
 
 		public static unsafe SKBitmap Rotate(SKBitmap source, double angleDegrees, int interpolation)
