@@ -118,6 +118,10 @@ namespace Bitmute.Tests
 			TestParallelBrushMatchesSingleBand();
 			TestStrokeSnapshotPoolReuse();
 			TestCoveragePoolClearedBetweenStrokes();
+			TestMarqueeDragSequence();
+			TestEllipseDragScratchReuse();
+			TestSetShiftedPartialClip();
+			TestShiftTranslatableFlags();
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");
@@ -3100,6 +3104,150 @@ namespace Bitmute.Tests
 			SKColor afterSecond = layer.Bitmap().GetPixel(32, 32);
 			CheckNear(afterSecond.Alpha, 130, 3, "second stroke starts with clean coverage (stale coverage would give ~168)");
 			Check(afterSecond.Blue > afterSecond.Red && afterSecond.Red > 0, "second stroke composites blue over remaining red");
+		}
+
+		private static bool SelectionMasksEqual(Selection first, Selection second, int width, int height)
+		{
+			for (int y = 0; y < height; y++)
+			{
+				for (int x = 0; x < width; x++)
+				{
+					if (first.Coverage(x, y) != second.Coverage(x, y))
+					{
+						Console.WriteLine("  selection mismatch at " + x + "," + y + " " + first.Coverage(x, y) + " vs " + second.Coverage(x, y));
+						return false;
+					}
+				}
+			}
+			return true;
+		}
+
+		private static Selection BuildBaseSelection(int width, int height)
+		{
+			Selection sel = new Selection(width, height);
+			sel.BeginOperation(eSelectionMode.Replace);
+			sel.ApplyRect(new SKRectI(10, 10, 40, 35));
+			return sel;
+		}
+
+		private static void TestMarqueeDragSequence()
+		{
+			eSelectionMode[] modes = new eSelectionMode[] { eSelectionMode.Replace, eSelectionMode.Add, eSelectionMode.Subtract, eSelectionMode.Intersect };
+			int[] feathers = new int[] { 0, 3 };
+			for (int featherIndex = 0; featherIndex < feathers.Length; featherIndex++)
+			{
+				for (int modeIndex = 0; modeIndex < modes.Length; modeIndex++)
+				{
+					Selection dragged = BuildBaseSelection(96, 80);
+					dragged.BeginOperation(modes[modeIndex], feathers[featherIndex]);
+					dragged.ApplyRect(new SKRectI(20, 15, 70, 60));
+					dragged.ApplyRect(new SKRectI(25, 20, 55, 48));
+					dragged.ApplyRect(new SKRectI(30, 22, 62, 52));
+					Selection direct = BuildBaseSelection(96, 80);
+					direct.BeginOperation(modes[modeIndex], feathers[featherIndex]);
+					direct.ApplyRect(new SKRectI(30, 22, 62, 52));
+					Check(SelectionMasksEqual(dragged, direct, 96, 80), "drag sequence mode " + modes[modeIndex] + " feather " + feathers[featherIndex] + " matches single apply");
+					Check(dragged.Bounds() == direct.Bounds(), "drag sequence bounds match (" + dragged.Bounds() + " vs " + direct.Bounds() + ")");
+				}
+			}
+		}
+
+		private static void TestEllipseDragScratchReuse()
+		{
+			int[] feathers = new int[] { 0, 3 };
+			for (int featherIndex = 0; featherIndex < feathers.Length; featherIndex++)
+			{
+				Document draggedDoc = new Document("d", 96, 80);
+				ToolState state = new ToolState();
+				state.SetSelectionFeather(feathers[featherIndex]);
+				EllipseSelectTool tool = new EllipseSelectTool();
+				tool.OnPressed(draggedDoc, 20, 18, state);
+				tool.OnDragged(draggedDoc, 70, 60, state);
+				tool.OnDragged(draggedDoc, 50, 44, state);
+				Document directDoc = new Document("s", 96, 80);
+				EllipseSelectTool directTool = new EllipseSelectTool();
+				directTool.OnPressed(directDoc, 20, 18, state);
+				directTool.OnDragged(directDoc, 50, 44, state);
+				Check(SelectionMasksEqual(draggedDoc.Selection(), directDoc.Selection(), 96, 80), "ellipse drag with reused scratch matches single drag (feather " + feathers[featherIndex] + ")");
+			}
+		}
+
+		private static void TestSetShiftedPartialClip()
+		{
+			Selection sel = new Selection(48, 40);
+			sel.BeginOperation(eSelectionMode.Replace, 2);
+			sel.ApplyRect(new SKRectI(6, 8, 20, 22));
+			byte[] source = sel.MaskCopy();
+			SKRectI sourceBounds = sel.Bounds();
+			sel.SetShifted(source, sourceBounds, -10, -12);
+			int minX = 48;
+			int minY = 40;
+			int maxX = -1;
+			int maxY = -1;
+			bool masksMatch = true;
+			for (int y = 0; y < 40; y++)
+			{
+				for (int x = 0; x < 48; x++)
+				{
+					int expected = 0;
+					int sourceX = x + 10;
+					int sourceY = y + 12;
+					if (sourceX >= sourceBounds.Left && sourceX < sourceBounds.Right && sourceY >= sourceBounds.Top && sourceY < sourceBounds.Bottom)
+					{
+						expected = source[(sourceY * 48) + sourceX];
+					}
+					if (sel.Coverage(x, y) != expected)
+					{
+						masksMatch = false;
+					}
+					if (expected > 0)
+					{
+						if (x < minX)
+						{
+							minX = x;
+						}
+						if (x > maxX)
+						{
+							maxX = x;
+						}
+						if (y < minY)
+						{
+							minY = y;
+						}
+						if (y > maxY)
+						{
+							maxY = y;
+						}
+					}
+				}
+			}
+			Check(masksMatch, "partially clipped shift mask matches reference");
+			Check(sel.Bounds() == new SKRectI(minX, minY, maxX + 1, maxY + 1), "partially clipped shift bounds tight (" + sel.Bounds() + ")");
+		}
+
+		private static void TestShiftTranslatableFlags()
+		{
+			Selection sel = new Selection(64, 64);
+			sel.SelectRect(new SKRectI(10, 10, 24, 24));
+			byte[] source = sel.MaskCopy();
+			SKRectI sourceBounds = sel.Bounds();
+			sel.SetShifted(source, sourceBounds, 5, 5);
+			Check(sel.LastChangeWasTranslatableShift(), "in-canvas shift is translatable");
+			Check(sel.ShiftStepX() == 5 && sel.ShiftStepY() == 5, "first shift step is the full delta");
+			sel.SetShifted(source, sourceBounds, 8, 3);
+			Check(sel.LastChangeWasTranslatableShift(), "second in-canvas shift is translatable");
+			Check(sel.ShiftStepX() == 3 && sel.ShiftStepY() == -2, "second shift step is relative to the first");
+			sel.SetShifted(source, sourceBounds, 55, 55);
+			Check(!sel.LastChangeWasTranslatableShift(), "fully clipped shift is not translatable");
+			sel.SetShifted(source, sourceBounds, 45, 45);
+			Check(!sel.LastChangeWasTranslatableShift(), "partially clipped shift is not translatable");
+			sel.SetShifted(source, sourceBounds, 20, 20);
+			Check(!sel.LastChangeWasTranslatableShift(), "unclipped shift after a partially clipped one is not translatable");
+			sel.SetShifted(source, sourceBounds, 22, 22);
+			Check(sel.LastChangeWasTranslatableShift(), "unclipped shift after an unclipped one is translatable again");
+			sel.BeginOperation(eSelectionMode.Replace);
+			sel.ApplyRect(new SKRectI(2, 2, 8, 8));
+			Check(!sel.LastChangeWasTranslatableShift(), "rect apply clears the shift flag");
 		}
 	}
 }

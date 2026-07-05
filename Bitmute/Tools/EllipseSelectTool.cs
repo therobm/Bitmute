@@ -9,6 +9,7 @@ namespace Bitmute.Tools
 
 		private int m_startX;
 		private int m_startY;
+		private byte[] m_scratchMask;
 
 		public override bool IsDestructive()
 		{
@@ -90,7 +91,36 @@ namespace Bitmute.Tools
 			double radiusY = (bottom - top) / 2.0;
 			bool antiAlias = state.SelectionAntiAlias();
 
-			byte[] mask = new byte[documentWidth * documentHeight];
+			if (m_scratchMask == null || m_scratchMask.Length != documentWidth * documentHeight)
+			{
+				m_scratchMask = new byte[documentWidth * documentHeight];
+			}
+			byte[] mask = m_scratchMask;
+			int clearInflate = (state.SelectionFeather() * 3) + 1;
+			int clearLeft = clampedLeft - clearInflate;
+			int clearTop = clampedTop - clearInflate;
+			int clearRight = clampedRight + clearInflate;
+			int clearBottom = clampedBottom + clearInflate;
+			if (clearLeft < 0)
+			{
+				clearLeft = 0;
+			}
+			if (clearTop < 0)
+			{
+				clearTop = 0;
+			}
+			if (clearRight > documentWidth)
+			{
+				clearRight = documentWidth;
+			}
+			if (clearBottom > documentHeight)
+			{
+				clearBottom = documentHeight;
+			}
+			for (int clearY = clearTop; clearY < clearBottom; clearY++)
+			{
+				System.Array.Clear(mask, (clearY * documentWidth) + clearLeft, clearRight - clearLeft);
+			}
 			for (int pixelY = clampedTop; pixelY < clampedBottom; pixelY++)
 			{
 				double normalizedY = ((pixelY + 0.5) - centerY) / radiusY;
@@ -137,7 +167,7 @@ namespace Bitmute.Tools
 				}
 			}
 
-			document.Selection().ApplyMask(mask);
+			document.Selection().ApplyMask(mask, new SKRectI(clampedLeft, clampedTop, clampedRight, clampedBottom));
 			return false;
 		}
 	}

@@ -32,6 +32,7 @@ namespace Bitmute.UI
 		private const int GridCellSize = 16;
 		private const float AntLength = 6.0f;
 		private const float AntStrokeWidth = 1.0f;
+		private const long AntRebuildThrottleMs = 90;
 
 		private static SKBitmap s_checkerTile;
 
@@ -56,6 +57,7 @@ namespace Bitmute.UI
 		private DocumentWindow m_ownerWindow;
 		private IDispatcherTimer m_antTimer;
 		private float m_antPhase;
+		private long m_lastAntRebuildTick;
 		private IDispatcherTimer m_airbrushTimer;
 		private bool m_airbrushActive;
 		private int m_airbrushX;
@@ -1337,8 +1339,24 @@ namespace Bitmute.UI
 
 			if (selection.Generation() != m_antEdgesGeneration)
 			{
-				RebuildAntEdges(selection, bounds);
-				m_antEdgesGeneration = selection.Generation();
+				bool translated = false;
+				if (selection.Generation() == m_antEdgesGeneration + 1 && selection.LastChangeWasTranslatableShift() && m_antEdges.Count > 0)
+				{
+					TranslateAntEdges(selection.ShiftStepX(), selection.ShiftStepY());
+					m_antEdgesGeneration = selection.Generation();
+					translated = true;
+				}
+				if (!translated)
+				{
+					long now = System.Environment.TickCount64;
+					bool throttled = m_toolStrokeActive && m_antEdges.Count > 0 && (now - m_lastAntRebuildTick) < AntRebuildThrottleMs;
+					if (!throttled)
+					{
+						RebuildAntEdges(selection, bounds);
+						m_antEdgesGeneration = selection.Generation();
+						m_lastAntRebuildTick = now;
+					}
+				}
 			}
 
 			SKPathBuilder blackBuilder = new SKPathBuilder();
@@ -1384,30 +1402,57 @@ namespace Bitmute.UI
 			whiteBuilder.Dispose();
 		}
 
+		private void TranslateAntEdges(int deltaX, int deltaY)
+		{
+			for (int index = 0; index < m_antEdges.Count; index++)
+			{
+				AntEdge edge = m_antEdges[index];
+				if (edge.m_vertical)
+				{
+					edge.m_fixedCoord = edge.m_fixedCoord + deltaX;
+					edge.m_startCoord = edge.m_startCoord + deltaY;
+				}
+				else
+				{
+					edge.m_fixedCoord = edge.m_fixedCoord + deltaY;
+					edge.m_startCoord = edge.m_startCoord + deltaX;
+				}
+				m_antEdges[index] = edge;
+			}
+		}
+
 		private void RebuildAntEdges(Selection selection, SKRectI bounds)
 		{
 			m_antEdges.Clear();
+			byte[] mask = selection.Mask();
+			int maskWidth = selection.Width();
+			int maskHeight = selection.Height();
 			for (int y = bounds.Top; y < bounds.Bottom; y++)
 			{
+				int rowStart = y * maskWidth;
 				for (int x = bounds.Left; x < bounds.Right; x++)
 				{
-					if (!selection.IsSelected(x, y))
+					if (mask[rowStart + x] < 128)
 					{
 						continue;
 					}
-					if (!selection.IsSelected(x - 1, y))
+					bool leftSelected = x > 0 && mask[rowStart + x - 1] >= 128;
+					if (!leftSelected)
 					{
 						m_antEdges.Add(new AntEdge(true, x, y));
 					}
-					if (!selection.IsSelected(x + 1, y))
+					bool rightSelected = x < maskWidth - 1 && mask[rowStart + x + 1] >= 128;
+					if (!rightSelected)
 					{
 						m_antEdges.Add(new AntEdge(true, x + 1, y));
 					}
-					if (!selection.IsSelected(x, y - 1))
+					bool upSelected = y > 0 && mask[rowStart + x - maskWidth] >= 128;
+					if (!upSelected)
 					{
 						m_antEdges.Add(new AntEdge(false, y, x));
 					}
-					if (!selection.IsSelected(x, y + 1))
+					bool downSelected = y < maskHeight - 1 && mask[rowStart + x + maskWidth] >= 128;
+					if (!downSelected)
 					{
 						m_antEdges.Add(new AntEdge(false, y + 1, x));
 					}
