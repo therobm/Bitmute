@@ -389,6 +389,7 @@ namespace Bitmute.UI
 					}
 					SKImage residentSnapshot = m_gpuComposite.Snapshot();
 					canvas.DrawImage(residentSnapshot, destination, sampling, imagePaint);
+					DrawPatternTiles(canvas, residentSnapshot, destination, rectWidth, rectHeight, sampling, imagePaint);
 					residentSnapshot.Dispose();
 					drewFromGpu = true;
 				}
@@ -398,6 +399,7 @@ namespace Bitmute.UI
 				SKPixmap displayPixmap = displayBitmap.PeekPixels();
 				SKImage image = SKImage.FromPixels(displayPixmap);
 				canvas.DrawImage(image, destination, sampling, imagePaint);
+				DrawPatternTiles(canvas, image, destination, rectWidth, rectHeight, sampling, imagePaint);
 				image.Dispose();
 				displayPixmap.Dispose();
 			}
@@ -435,6 +437,27 @@ namespace Bitmute.UI
 		public bool GpuFilterAvailable()
 		{
 			return m_gpuContext != null;
+		}
+
+		private static void DrawPatternTiles(SKCanvas canvas, SKImage image, SKRect destination, float tileWidth, float tileHeight, SKSamplingOptions sampling, SKPaint paint)
+		{
+			MainView main = MainView.Self;
+			if (main == null || !main.PatternPreviewEnabled())
+			{
+				return;
+			}
+			for (int tileY = -1; tileY <= 1; tileY++)
+			{
+				for (int tileX = -1; tileX <= 1; tileX++)
+				{
+					if (tileX == 0 && tileY == 0)
+					{
+						continue;
+					}
+					SKRect tile = new SKRect(destination.Left + (tileX * tileWidth), destination.Top + (tileY * tileHeight), destination.Right + (tileX * tileWidth), destination.Bottom + (tileY * tileHeight));
+					canvas.DrawImage(image, tile, sampling, paint);
+				}
+			}
 		}
 
 		public void ReleaseGpuResources()

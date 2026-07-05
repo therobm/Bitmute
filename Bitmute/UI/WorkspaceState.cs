@@ -25,6 +25,7 @@ namespace Bitmute.UI
 		private bool m_swatchesPanelVisible;
 		private bool m_layersPanelVisible;
 		private bool m_infoPanelVisible;
+		private bool m_patternPreview;
 
 		public WorkspaceState()
 		{
@@ -163,6 +164,16 @@ namespace Bitmute.UI
 		public bool RgbChannelsVisible()
 		{
 			return m_channelVisible[0] && m_channelVisible[1] && m_channelVisible[2];
+		}
+
+		public bool PatternPreview()
+		{
+			return m_patternPreview;
+		}
+
+		public void SetPatternPreview(bool value)
+		{
+			m_patternPreview = value;
 		}
 
 		public bool PanelVisible(ePanelId panel)

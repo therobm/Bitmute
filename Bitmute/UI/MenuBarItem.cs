@@ -117,7 +117,8 @@ namespace Bitmute.UI
 		Shear,
 		Spherize,
 		Twirl,
-		Wave
+		Wave,
+		TogglePatternPreview
 	}
 
 	public class MenuBarItem

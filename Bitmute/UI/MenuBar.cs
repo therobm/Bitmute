@@ -238,6 +238,9 @@ namespace Bitmute.UI
 				MenuBarItem grid = new MenuBarItem("Grid", eMenuAction.ToggleGrid, () => m_main.ToggleGrid());
 				grid.m_checked = m_main.GridEnabled();
 				items.Add(grid);
+				MenuBarItem patternPreview = new MenuBarItem("Pattern Preview", eMenuAction.TogglePatternPreview, () => m_main.TogglePatternPreview());
+				patternPreview.m_checked = m_main.PatternPreviewEnabled();
+				items.Add(patternPreview);
 				MenuBarItem snap = new MenuBarItem("Snap", eMenuAction.ToggleSnap, () => m_main.Workspace().SetSnapEnabled(!m_main.Workspace().SnapEnabled()));
 				snap.m_checked = m_main.SnapEnabled();
 				items.Add(snap);
