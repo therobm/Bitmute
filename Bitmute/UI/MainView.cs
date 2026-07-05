@@ -55,6 +55,11 @@ namespace Bitmute.UI
 		private bool m_rulersEnabled = true;
 		private System.Collections.Generic.List<ModalEntry> m_modalStack;
 		private FloatingPanel m_pendingClosePanel;
+		private bool m_quitPending;
+		private bool m_quitConfirmed;
+		private bool m_appCloseHooked;
+		private int m_appCloseHookAttempts;
+		private Microsoft.UI.Xaml.Window m_nativeWindow;
 		private View m_pulldownPanel;
 		private long m_pulldownDismissTick;
 		private Label m_statusInfoLabel;
@@ -2356,9 +2361,89 @@ namespace Bitmute.UI
 			Content = outer;
 		}
 
+		private void HookAppWindowClosing()
+		{
+			if (m_appCloseHooked)
+			{
+				return;
+			}
+			m_appCloseHookAttempts = m_appCloseHookAttempts + 1;
+			Microsoft.Maui.Controls.Window mauiWindow = Window;
+			Microsoft.UI.Xaml.Window nativeWindow = null;
+			if (mauiWindow != null && mauiWindow.Handler != null)
+			{
+				nativeWindow = mauiWindow.Handler.PlatformView as Microsoft.UI.Xaml.Window;
+			}
+			if (nativeWindow == null || nativeWindow.AppWindow == null)
+			{
+				if (m_appCloseHookAttempts < 20)
+				{
+					Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(500.0), HookAppWindowClosing);
+				}
+				return;
+			}
+			m_nativeWindow = nativeWindow;
+			nativeWindow.AppWindow.Closing += OnAppWindowClosing;
+			m_appCloseHooked = true;
+		}
+
+		private void OnAppWindowClosing(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs args)
+		{
+			if (m_quitConfirmed)
+			{
+				return;
+			}
+			if (FirstDirtyDocumentWindow() == null)
+			{
+				return;
+			}
+			args.Cancel = true;
+			m_quitPending = true;
+			Dispatcher.Dispatch(ContinueQuitClose);
+		}
+
+		private DocumentWindow FirstDirtyDocumentWindow()
+		{
+			for (int index = 0; index < m_documents.Count; index++)
+			{
+				DocumentWindow window = m_documents[index] as DocumentWindow;
+				if (window == null)
+				{
+					continue;
+				}
+				Document model = window.DocumentModel();
+				if (model != null && model.IsDirty())
+				{
+					return window;
+				}
+			}
+			return null;
+		}
+
+		private void ContinueQuitClose()
+		{
+			if (!m_quitPending)
+			{
+				return;
+			}
+			DocumentWindow dirty = FirstDirtyDocumentWindow();
+			if (dirty == null)
+			{
+				m_quitPending = false;
+				m_quitConfirmed = true;
+				if (m_nativeWindow != null)
+				{
+					m_nativeWindow.Close();
+				}
+				return;
+			}
+			ClosePanel(dirty);
+		}
+
 		protected override void OnHandlerChanged()
 		{
 			base.OnHandlerChanged();
+			Dispatcher.Dispatch(HookAppWindowClosing);
 			if (m_acceleratorsHooked)
 			{
 				return;
@@ -3846,6 +3931,10 @@ namespace Bitmute.UI
 			{
 				m_workspace.Remove(entry.m_content);
 			}
+			if (entry.m_content is SaveChangesDialog)
+			{
+				m_quitPending = false;
+			}
 			ColorPicker cancelledPicker = entry.m_content as ColorPicker;
 			if (cancelledPicker != null)
 			{
@@ -4031,7 +4120,9 @@ namespace Bitmute.UI
 
 		public void OnCloseSaveChanges()
 		{
+			bool quitting = m_quitPending;
 			CloseModal();
+			m_quitPending = quitting;
 			FloatingPanel panel = m_pendingClosePanel;
 			m_pendingClosePanel = null;
 			if (panel == null)
@@ -4058,12 +4149,16 @@ namespace Bitmute.UI
 			if (saved)
 			{
 				RemovePanel(panel);
+				return;
 			}
+			m_quitPending = false;
 		}
 
 		public void OnCloseDontSave()
 		{
+			bool quitting = m_quitPending;
 			CloseModal();
+			m_quitPending = quitting;
 			FloatingPanel panel = m_pendingClosePanel;
 			m_pendingClosePanel = null;
 			if (panel != null)
@@ -4076,6 +4171,7 @@ namespace Bitmute.UI
 		{
 			CloseModal();
 			m_pendingClosePanel = null;
+			m_quitPending = false;
 		}
 
 		private DocumentWindow TopmostDocumentWindow()
@@ -4139,6 +4235,10 @@ namespace Bitmute.UI
 					RefreshPanels();
 					ClearClosedDocumentReadouts();
 				}
+			}
+			if (m_quitPending)
+			{
+				Dispatcher.Dispatch(ContinueQuitClose);
 			}
 		}
 

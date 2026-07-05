@@ -244,8 +244,12 @@ namespace Bitmute.Tools
 		private bool HitRotateRing(int x, int y, out int index)
 		{
 			index = -1;
+			if (PointInQuad(x, y, m_cornerX, m_cornerY))
+			{
+				return false;
+			}
 			double inner = m_pickRadius;
-			double outer = m_pickRadius * 3.0;
+			double outer = m_pickRadius * 8.0;
 			for (int corner = 0; corner < 4; corner++)
 			{
 				double deltaX = x - m_cornerX[corner];
