@@ -550,18 +550,22 @@ namespace Bitmute.Tests
 			transform.SetPickRadius(2);
 			bool armed = transform.Begin(doc, 1, new SKColor(255, 255, 255, 255));
 			Check(armed, "transform scale arms");
+			Check(transform.CornerX(0) == 2.0 && transform.CornerY(0) == 2.0 && transform.CornerX(2) == 6.0 && transform.CornerY(2) == 6.0, "transform box hugs content bounds");
 			ToolState state = new ToolState();
-			transform.OnPressed(doc, 8, 8, state);
-			transform.OnDragged(doc, 16, 16, state);
-			transform.OnReleased(doc, 16, 16, state);
+			transform.OnPressed(doc, 6, 6, state);
+			transform.OnDragged(doc, 10, 10, state);
+			transform.OnReleased(doc, 10, 10, state);
 			transform.Commit(doc);
 			SKBitmap result = doc.ActiveLayer().Bitmap();
-			Check(result.Width == 16 && result.Height == 16, "transform scale doubles layer bitmap");
+			Check(result.Width == 8 && result.Height == 8, "transform scale doubles content bitmap (" + result.Width + "x" + result.Height + ")");
 			SKColor scaled = doc.ActiveLayer().GetPixelCanvas(8, 8);
 			Check(scaled.Red > 150 && scaled.Green < 80, "transform scale keeps painted content");
+			SKColor outsideContent = doc.ActiveLayer().GetPixelCanvas(1, 1);
+			Check(outsideContent.Alpha == 0, "transform scale leaves area outside content transparent");
 			bool undone = doc.Undo();
 			Check(undone, "transform scale undoable");
 			Check(doc.ActiveLayer().Bitmap().Width == 8, "transform scale undo restores bitmap");
+			Check(doc.ActiveLayer().GetPixelCanvas(7, 7).Alpha == 0, "transform scale undo restores original content extent");
 		}
 
 		private static void TestTransformSelectionLiftCancel()

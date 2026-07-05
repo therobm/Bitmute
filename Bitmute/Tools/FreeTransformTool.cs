@@ -34,6 +34,8 @@ namespace Bitmute.Tools
 		private Document m_document;
 		private SKBitmap m_sourceBitmap;
 		private SKBitmap m_originalLayerBitmap;
+		private SKBitmap m_styledPreviewBitmap;
+		private int m_styledPreviewMargin;
 		private int m_sourceOffsetX;
 		private int m_sourceOffsetY;
 		private int m_oldOffsetX;
@@ -68,6 +70,8 @@ namespace Bitmute.Tools
 			m_document = null;
 			m_sourceBitmap = null;
 			m_originalLayerBitmap = null;
+			m_styledPreviewBitmap = null;
+			m_styledPreviewMargin = 0;
 			m_sourceOffsetX = 0;
 			m_sourceOffsetY = 0;
 			m_oldOffsetX = 0;
@@ -621,9 +625,80 @@ namespace Bitmute.Tools
 			m_hasLastPress = false;
 			m_sourceBitmap = null;
 			m_originalLayerBitmap = null;
+			m_styledPreviewBitmap = null;
+			m_styledPreviewMargin = 0;
 			m_savedMask = null;
 			m_layerIndex = -1;
 			m_document = null;
+		}
+
+		private void BuildStyledPreview(Layer layer, int contentCanvasLeft, int contentCanvasTop, int contentWidth, int contentHeight)
+		{
+			m_styledPreviewBitmap = null;
+			m_styledPreviewMargin = 0;
+			LayerStyle style = layer.LayerStyle();
+			if (!style.HasAnyEffect())
+			{
+				return;
+			}
+			int margin = 4;
+			if (style.m_hasDropShadow)
+			{
+				int shadowDistance = style.m_shadowDistance;
+				if (shadowDistance < 0)
+				{
+					shadowDistance = -shadowDistance;
+				}
+				int shadowExtent = shadowDistance + style.m_shadowSize + style.m_shadowSpread + 4;
+				if (shadowExtent > margin)
+				{
+					margin = shadowExtent;
+				}
+			}
+			if (style.m_hasOuterGlow)
+			{
+				int glowExtent = style.m_glowSize + style.m_glowSpread + 4;
+				if (glowExtent > margin)
+				{
+					margin = glowExtent;
+				}
+			}
+			if (style.m_hasStroke)
+			{
+				int strokeExtent = style.m_strokeSize + 4;
+				if (strokeExtent > margin)
+				{
+					margin = strokeExtent;
+				}
+			}
+			m_styledPreviewMargin = margin;
+			SKBitmap styled = new SKBitmap(contentWidth + (margin * 2), contentHeight + (margin * 2), SKColorType.Rgba8888, SKAlphaType.Premul);
+			styled.Erase(SKColors.Transparent);
+			SKCanvas styledCanvas = new SKCanvas(styled);
+			styledCanvas.Translate(margin - contentCanvasLeft, margin - contentCanvasTop);
+			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
+			layer.DrawStyleUnder(styledCanvas, sampling);
+			SKPaint bodyPaint = new SKPaint();
+			bodyPaint.Color = SKColors.White.WithAlpha(layer.Opacity());
+			SKPixmap bodyPixmap = m_originalLayerBitmap.PeekPixels();
+			SKImage bodyImage = SKImage.FromPixels(bodyPixmap);
+			styledCanvas.DrawImage(bodyImage, m_oldOffsetX, m_oldOffsetY, sampling, bodyPaint);
+			bodyImage.Dispose();
+			bodyPixmap.Dispose();
+			bodyPaint.Dispose();
+			layer.DrawStyleOver(styledCanvas, sampling);
+			styledCanvas.Dispose();
+			m_styledPreviewBitmap = styled;
+		}
+
+		public SKBitmap PreviewStyledBitmap()
+		{
+			return m_styledPreviewBitmap;
+		}
+
+		public int PreviewStyledMargin()
+		{
+			return m_styledPreviewMargin;
 		}
 
 		private void RestoreLifted()
@@ -749,6 +824,8 @@ namespace Bitmute.Tools
 			m_oldOffsetY = layer.OffsetY();
 			m_isBackground = layer.IsBackground();
 			m_originalLayerBitmap = layer.Bitmap();
+			m_styledPreviewBitmap = null;
+			m_styledPreviewMargin = 0;
 			m_grab = GrabNone;
 			m_grabIndex = -1;
 			m_hasLastPress = false;
@@ -769,7 +846,7 @@ namespace Bitmute.Tools
 				selection.Clear();
 				SetIdentityQuad(bounds.Left, bounds.Top, bounds.Right - bounds.Left, bounds.Bottom - bounds.Top);
 			}
-			else
+			else if (instant || layer.IsBackground())
 			{
 				m_hasSelection = false;
 				m_savedMask = null;
@@ -781,7 +858,7 @@ namespace Bitmute.Tools
 				{
 					m_compositeMode = false;
 				}
-				else if (m_isBackground)
+				else
 				{
 					m_compositeMode = true;
 					SKBitmap fillBase = new SKBitmap(document.Width(), document.Height(), SKColorType.Rgba8888, SKAlphaType.Unpremul);
@@ -789,13 +866,32 @@ namespace Bitmute.Tools
 					layer.SetBitmap(fillBase);
 					layer.SetOffset(0, 0);
 				}
+			}
+			else
+			{
+				m_hasSelection = false;
+				m_savedMask = null;
+				m_compositeMode = false;
+				SKRectI contentBounds = PixelRegion.ComputeContentBounds(m_originalLayerBitmap);
+				bool fullContent = contentBounds.Width <= 0 || contentBounds.Height <= 0 || (contentBounds.Left == 0 && contentBounds.Top == 0 && contentBounds.Right == m_originalLayerBitmap.Width && contentBounds.Bottom == m_originalLayerBitmap.Height);
+				if (fullContent)
+				{
+					m_sourceBitmap = m_originalLayerBitmap;
+					m_sourceOffsetX = m_oldOffsetX;
+					m_sourceOffsetY = m_oldOffsetY;
+					SetIdentityQuad(m_oldOffsetX, m_oldOffsetY, m_originalLayerBitmap.Width, m_originalLayerBitmap.Height);
+				}
 				else
 				{
-					m_compositeMode = false;
-					SKBitmap lifted = new SKBitmap(m_originalLayerBitmap.Width, m_originalLayerBitmap.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-					lifted.Erase(SKColors.Transparent);
-					layer.SetBitmap(lifted);
+					m_sourceBitmap = PixelRegion.ExtractRegion(m_originalLayerBitmap, contentBounds);
+					m_sourceOffsetX = m_oldOffsetX + contentBounds.Left;
+					m_sourceOffsetY = m_oldOffsetY + contentBounds.Top;
+					SetIdentityQuad(m_sourceOffsetX, m_sourceOffsetY, contentBounds.Width, contentBounds.Height);
 				}
+				BuildStyledPreview(layer, m_sourceOffsetX, m_sourceOffsetY, m_sourceBitmap.Width, m_sourceBitmap.Height);
+				SKBitmap lifted = new SKBitmap(m_originalLayerBitmap.Width, m_originalLayerBitmap.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				lifted.Erase(SKColors.Transparent);
+				layer.SetBitmap(lifted);
 			}
 			m_armed = true;
 			if (instant)

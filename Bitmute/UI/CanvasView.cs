@@ -1186,19 +1186,41 @@ namespace Bitmute.UI
 				SKMatrix quadMatrix;
 				if (Bitmute.Imaging.TransformMath.QuadMatrix(screenQuad, previewBitmap.Width, previewBitmap.Height, out quadMatrix))
 				{
-					if (m_transformPreviewImage == null || !object.ReferenceEquals(m_transformPreviewSource, previewBitmap))
+					SKBitmap styledBitmap = transform.PreviewStyledBitmap();
+					SKBitmap drawSource = previewBitmap;
+					float drawOffset = 0.0f;
+					if (styledBitmap != null)
+					{
+						drawSource = styledBitmap;
+						drawOffset = -transform.PreviewStyledMargin();
+					}
+					if (m_transformPreviewImage == null || !object.ReferenceEquals(m_transformPreviewSource, drawSource))
 					{
 						ReleaseTransformPreviewImage();
-						SKPixmap previewPixmap = previewBitmap.PeekPixels();
+						SKPixmap previewPixmap = drawSource.PeekPixels();
 						m_transformPreviewImage = SKImage.FromPixels(previewPixmap);
-						m_transformPreviewSource = previewBitmap;
+						m_transformPreviewSource = drawSource;
 						previewPixmap.Dispose();
 					}
+					byte previewAlpha = 255;
+					Bitmute.Imaging.eBlendMode previewBlend = Bitmute.Imaging.eBlendMode.Normal;
+					int transformLayerIndex = transform.LayerIndex();
+					if (transformLayerIndex >= 0 && transformLayerIndex < m_document.Layers().Count)
+					{
+						Bitmute.Imaging.Layer transformLayer = m_document.Layers()[transformLayerIndex];
+						previewBlend = transformLayer.BlendMode();
+						if (styledBitmap == null)
+						{
+							previewAlpha = transformLayer.Opacity();
+						}
+					}
 					SKPaint previewPaint = new SKPaint();
+					previewPaint.Color = SKColors.White.WithAlpha(previewAlpha);
+					previewPaint.BlendMode = Bitmute.Imaging.Layer.ToSkBlendMode(previewBlend);
 					SKSamplingOptions previewSampling = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None);
 					canvas.Save();
 					canvas.SetMatrix(quadMatrix);
-					canvas.DrawImage(m_transformPreviewImage, 0.0f, 0.0f, previewSampling, previewPaint);
+					canvas.DrawImage(m_transformPreviewImage, drawOffset, drawOffset, previewSampling, previewPaint);
 					canvas.Restore();
 					previewPaint.Dispose();
 				}
