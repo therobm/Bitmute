@@ -374,6 +374,7 @@ namespace Bitmute.UI
 			}
 			m_textEditLayer = null;
 			m_textEditCanvas = null;
+			m_main.RestoreKeyboardFocusDeferred();
 		}
 
 		public void Cancel()
@@ -415,6 +416,7 @@ namespace Bitmute.UI
 			}
 			m_textEditLayer = null;
 			m_textEditCanvas = null;
+			m_main.RestoreKeyboardFocusDeferred();
 		}
 
 		public void Rasterize()

@@ -71,6 +71,7 @@ namespace Bitmute.UI
 		private Microsoft.UI.Xaml.Window m_nativeWindow;
 		private View m_pulldownPanel;
 		private long m_pulldownDismissTick;
+		private long m_pulldownShieldTick;
 		private Label m_statusInfoLabel;
 		private Label m_statusCursorLabel;
 		private string[] m_menuTitles;
@@ -1824,6 +1825,10 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			if ((System.Environment.TickCount64 - m_pulldownShieldTick) < 200)
+			{
+				return;
+			}
 			Microsoft.UI.Xaml.UIElement element = Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
 			if (element == null)
 			{
@@ -3459,6 +3464,7 @@ namespace Bitmute.UI
 		{
 			ClosePulldown();
 			m_menuBar.CloseOpenMenu();
+			m_pulldownShieldTick = System.Environment.TickCount64;
 
 			Border panel = new Border();
 			panel.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
@@ -3787,6 +3793,10 @@ namespace Bitmute.UI
 			}
 			OnToolSelected(eTool.FreeTransform);
 			bool armed = m_toolBox.FreeTransform().Begin(document, mode, m_toolState.Background());
+			if (armed)
+			{
+				RestoreKeyboardFocusDeferred();
+			}
 			if (!armed)
 			{
 				SetStatusMessage("Cannot transform this layer");

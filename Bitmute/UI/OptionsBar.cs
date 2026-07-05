@@ -1216,7 +1216,7 @@ namespace Bitmute.UI
 			m_brushSizeLabel.FontSize = UiConstants.ComponentFontSize;
 			m_brushSizeLabel.VerticalOptions = LayoutOptions.Center;
 
-			m_brushSizeField = new SliderField(1, 100, m_toolState.BrushSize(), " px", OnBrushSizeValue);
+			m_brushSizeField = new SliderField(1, 500, m_toolState.BrushSize(), " px", OnBrushSizeValue);
 			m_brushSizeField.VerticalOptions = LayoutOptions.Center;
 
 			m_brushHardnessLabel = new Label();
@@ -1725,6 +1725,7 @@ namespace Bitmute.UI
 			m_optionsRow = options;
 			options.Spacing = 8.0;
 			options.VerticalOptions = LayoutOptions.Center;
+			options.Add(m_brushSettingsButton);
 			options.Add(m_brushSizeLabel);
 			options.Add(m_brushSizeField);
 			options.Add(m_brushHardnessLabel);
@@ -1759,7 +1760,6 @@ namespace Bitmute.UI
 			options.Add(m_gradientReverseCheck);
 			options.Add(m_gradientTransparentLabel);
 			options.Add(m_gradientTransparentCheck);
-			options.Add(m_brushSettingsButton);
 			options.Add(m_lineAntiAliasLabel);
 			options.Add(m_lineAntiAliasCheck);
 			options.Add(m_selectModeNewButton);
