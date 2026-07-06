@@ -1657,6 +1657,97 @@ namespace Bitmute.Imaging
 			{
 				m_activeLayerIndex = m_layers.Count - 1;
 			}
+			for (int scan = m_selectedLayerIndices.Count - 1; scan >= 0; scan--)
+			{
+				int selected = m_selectedLayerIndices[scan];
+				if (selected == index)
+				{
+					m_selectedLayerIndices.RemoveAt(scan);
+				}
+				else if (selected > index)
+				{
+					m_selectedLayerIndices[scan] = selected - 1;
+				}
+			}
+		}
+
+		public void DeleteSelectedLayers()
+		{
+			List<int> copy = new List<int>(SelectedLayerIndices());
+			if (copy.Count == 0)
+			{
+				DeleteLayer(ActiveLayerIndex());
+				return;
+			}
+			copy.Sort();
+			for (int scan = copy.Count - 1; scan >= 0; scan--)
+			{
+				DeleteLayer(copy[scan]);
+			}
+			if (m_selectedLayerIndices.Count == 0)
+			{
+				m_selectedLayerIndices.Add(m_activeLayerIndex);
+			}
+		}
+
+		public void MoveSelectedLayers(int shift)
+		{
+			if (shift == 0)
+			{
+				return;
+			}
+			List<int> copy = new List<int>(SelectedLayerIndices());
+			if (copy.Count < 2)
+			{
+				return;
+			}
+			copy.Sort();
+			int count = m_layers.Count;
+			int blockCount = copy.Count;
+			int minSelected = copy[0];
+			Layer activeLayer = m_layers[m_activeLayerIndex];
+			List<Layer> block = new List<Layer>();
+			for (int scan = 0; scan < copy.Count; scan++)
+			{
+				block.Add(m_layers[copy[scan]]);
+			}
+			int newFirst = minSelected + shift;
+			if (newFirst < 0)
+			{
+				newFirst = 0;
+			}
+			if (newFirst > count - blockCount)
+			{
+				newFirst = count - blockCount;
+			}
+			for (int scan = copy.Count - 1; scan >= 0; scan--)
+			{
+				m_layers.RemoveAt(copy[scan]);
+			}
+			for (int scan = 0; scan < block.Count; scan++)
+			{
+				m_layers.Insert(newFirst + scan, block[scan]);
+			}
+			m_selectedLayerIndices.Clear();
+			for (int scan = 0; scan < blockCount; scan++)
+			{
+				m_selectedLayerIndices.Add(newFirst + scan);
+			}
+			int restored = -1;
+			for (int scan = 0; scan < m_layers.Count; scan++)
+			{
+				if (ReferenceEquals(m_layers[scan], activeLayer))
+				{
+					restored = scan;
+					break;
+				}
+			}
+			if (restored < 0)
+			{
+				restored = newFirst;
+			}
+			m_activeLayerIndex = restored;
+			m_dirty = true;
 		}
 
 		private void DrawStyledLayer(SKCanvas canvas, Layer layer, SKSamplingOptions sampling, SKPaint paint)

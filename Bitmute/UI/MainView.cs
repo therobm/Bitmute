@@ -2214,7 +2214,7 @@ namespace Bitmute.UI
 			CanvasView canvas = window.Canvas();
 			Document document = window.DocumentModel();
 			document.BeginCanvasEdit("Delete Layer");
-			document.DeleteLayer(document.ActiveLayerIndex());
+			document.DeleteSelectedLayers();
 			document.EndCanvasEdit();
 			FinishLayerStructureChange(canvas);
 		}
@@ -2241,7 +2241,17 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			ShowModal(new MessageDialog("Delete Layer", "Delete layer \"" + layer.Name() + "\"?", new string[] { "Cancel", "Delete" }, OnDeleteLayerChoice), 320.0, 150.0);
+			int selectedCount = document.SelectedLayerIndices().Count;
+			string message;
+			if (selectedCount > 1)
+			{
+				message = "Delete " + selectedCount + " layers?";
+			}
+			else
+			{
+				message = "Delete layer \"" + layer.Name() + "\"?";
+			}
+			ShowModal(new MessageDialog("Delete Layer", message, new string[] { "Cancel", "Delete" }, OnDeleteLayerChoice), 320.0, 150.0);
 		}
 
 		private void OnDeleteLayerChoice(int choice)

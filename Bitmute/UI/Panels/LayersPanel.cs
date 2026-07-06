@@ -18,6 +18,7 @@ namespace Bitmute.UI.Panels
 		private const double RowHeightEstimate = 38.0;
 
 		private int m_dragRowLayer = -1;
+		private List<int> m_dragSelection;
 		private double m_dragTotalY;
 		private double m_dragTotalX;
 		private double m_panelPressX;
@@ -543,6 +544,15 @@ namespace Bitmute.UI.Panels
 			if (eventArgs.StatusType == GestureStatus.Started)
 			{
 				m_dragRowLayer = LayerIndexForRow(sender);
+				Document startDocument = Doc();
+				if (startDocument == null)
+				{
+					m_dragSelection = new List<int>();
+				}
+				else
+				{
+					m_dragSelection = new List<int>(startDocument.SelectedLayerIndices());
+				}
 				m_dragTotalY = 0.0;
 				m_dragTotalX = 0.0;
 				m_listScroll.ZIndex = 1;
@@ -556,15 +566,49 @@ namespace Bitmute.UI.Panels
 				{
 					row.TranslationY = eventArgs.TotalY;
 				}
+				for (int index = 0; index < m_rowBorders.Count; index++)
+				{
+					Border otherRow = m_rowBorders[index];
+					if (ReferenceEquals(otherRow, sender))
+					{
+						continue;
+					}
+					if (m_dragSelection == null)
+					{
+						continue;
+					}
+					if (m_dragSelection.Contains(m_rowLayers[index]))
+					{
+						otherRow.TranslationY = eventArgs.TotalY;
+					}
+				}
 				return;
 			}
 			if (row != null)
 			{
 				row.TranslationY = 0.0;
 			}
+			for (int index = 0; index < m_rowBorders.Count; index++)
+			{
+				Border otherRow = m_rowBorders[index];
+				if (ReferenceEquals(otherRow, sender))
+				{
+					continue;
+				}
+				if (m_dragSelection == null)
+				{
+					continue;
+				}
+				if (m_dragSelection.Contains(m_rowLayers[index]))
+				{
+					otherRow.TranslationY = 0.0;
+				}
+			}
 			m_listScroll.ZIndex = 0;
 			int fromIndex = m_dragRowLayer;
 			m_dragRowLayer = -1;
+			List<int> dropSelection = m_dragSelection;
+			m_dragSelection = null;
 			if (fromIndex < 0)
 			{
 				return;
@@ -602,8 +646,20 @@ namespace Bitmute.UI.Panels
 			{
 				return;
 			}
+			bool moveGroup = false;
+			if (dropSelection != null && dropSelection.Count > 1 && dropSelection.Contains(fromIndex))
+			{
+				moveGroup = true;
+			}
 			document.BeginCanvasEdit("Reorder Layer");
-			document.MoveLayer(fromIndex, fromIndex - positions);
+			if (moveGroup)
+			{
+				document.MoveSelectedLayers(-positions);
+			}
+			else
+			{
+				document.MoveLayer(fromIndex, fromIndex - positions);
+			}
 			document.EndCanvasEdit();
 			RecompositeActive();
 			Refresh();
