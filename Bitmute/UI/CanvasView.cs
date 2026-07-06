@@ -154,6 +154,18 @@ namespace Bitmute.UI
 
 		private void OnPaintSurface(object sender, SKPaintGLSurfaceEventArgs eventArgs)
 		{
+			try
+			{
+				OnPaintSurfaceCore(sender, eventArgs);
+			}
+			catch (System.Exception exception)
+			{
+				Bitmute.Log.Exception(exception);
+			}
+		}
+
+		private void OnPaintSurfaceCore(object sender, SKPaintGLSurfaceEventArgs eventArgs)
+		{
 			SKCanvas canvas = eventArgs.Surface.Canvas;
 			SKImageInfo info = eventArgs.Info;
 			canvas.Clear(Theme.CanvasSurround());
@@ -2048,6 +2060,18 @@ namespace Bitmute.UI
 		}
 
 		private void OnTouch(object sender, SKTouchEventArgs eventArgs)
+		{
+			try
+			{
+				OnTouchCore(sender, eventArgs);
+			}
+			catch (System.Exception exception)
+			{
+				Bitmute.Log.Exception(exception);
+			}
+		}
+
+		private void OnTouchCore(object sender, SKTouchEventArgs eventArgs)
 		{
 			MainView main = MainView.Self;
 			if (main == null)

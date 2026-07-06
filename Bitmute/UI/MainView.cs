@@ -764,6 +764,10 @@ namespace Bitmute.UI
 		{
 			m_toolState.SetActivePattern(pattern);
 			m_toolState.SetFillContent(eFillContent.Pattern);
+			if (m_optionsBar != null)
+			{
+				m_optionsBar.ShowForTool(m_toolState.Tool());
+			}
 			RefreshPanels();
 		}
 
@@ -781,14 +785,14 @@ namespace Bitmute.UI
 				m_toolState.SetBrushAngle(shape.m_angle);
 				m_toolState.SetBrushSmoothing(shape.m_smoothing);
 				m_toolState.SetActiveCustomTip(null);
-				if (m_optionsBar != null)
-				{
-					m_optionsBar.ShowForTool(m_toolState.Tool());
-				}
 			}
 			else
 			{
 				m_toolState.SetActiveCustomTip(brush.m_tip);
+			}
+			if (m_optionsBar != null)
+			{
+				m_optionsBar.ShowForTool(m_toolState.Tool());
 			}
 			RefreshPanels();
 		}
