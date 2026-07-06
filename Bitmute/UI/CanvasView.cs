@@ -65,6 +65,7 @@ namespace Bitmute.UI
 		private float m_lastViewportHeight;
 		private bool m_viewInitialized;
 		private bool m_panning;
+		private bool m_spacePanning;
 		private float m_panLastX;
 		private float m_panLastY;
 		private bool m_wheelHooked;
@@ -2021,6 +2022,28 @@ namespace Bitmute.UI
 				}
 				eventArgs.Handled = true;
 				return;
+			}
+
+			if (eventArgs.MouseButton == SKMouseButton.Left)
+			{
+				Windows.UI.Core.CoreVirtualKeyStates spaceState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Space);
+				bool spaceHeld = (spaceState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
+				if (spaceHeld && eventArgs.ActionType == SKTouchAction.Pressed)
+				{
+					m_panning = true;
+					m_spacePanning = true;
+					m_panLastX = eventArgs.Location.X;
+					m_panLastY = eventArgs.Location.Y;
+					eventArgs.Handled = true;
+					return;
+				}
+				if (m_spacePanning && eventArgs.ActionType == SKTouchAction.Released)
+				{
+					m_panning = false;
+					m_spacePanning = false;
+					eventArgs.Handled = true;
+					return;
+				}
 			}
 
 			if (m_panning && eventArgs.ActionType == SKTouchAction.Moved)
