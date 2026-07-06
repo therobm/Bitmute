@@ -239,6 +239,8 @@ namespace Bitmute.Storage
 			writer.WriteBoolean("lockPosition", layer.LockPosition());
 			writer.WriteBoolean("lockAlpha", layer.LockAlpha());
 				writer.WriteBoolean("isText", layer.IsText());
+				writer.WriteBoolean("hasMask", layer.HasMask());
+				writer.WriteBoolean("maskEnabled", layer.MaskEnabled());
 				writer.WriteNumber("bitmapWidth", bitmap.Width);
 				writer.WriteNumber("bitmapHeight", bitmap.Height);
 				if (layer.IsText())
@@ -431,6 +433,27 @@ namespace Bitmute.Storage
 			stream.Dispose();
 		}
 
+		private static void WriteLayerMask(ZipArchive archive, int index, Layer layer)
+		{
+			SKBitmap bitmap = layer.MaskBitmap();
+			int width = bitmap.Width;
+			int height = bitmap.Height;
+			ZipArchiveEntry entry = archive.CreateEntry("layers/" + index.ToString() + ".mask.dat");
+			Stream stream = entry.Open();
+			WriteInt32(stream, width);
+			WriteInt32(stream, height);
+			int rowLength = width * 4;
+			byte[] rowBuffer = new byte[rowLength];
+			IntPtr basePointer = bitmap.GetPixels();
+			int rowBytes = bitmap.RowBytes;
+			for (int y = 0; y < height; y++)
+			{
+				Marshal.Copy(IntPtr.Add(basePointer, y * rowBytes), rowBuffer, 0, rowLength);
+				stream.Write(rowBuffer, 0, rowLength);
+			}
+			stream.Dispose();
+		}
+
 		private static void WriteSelectionMask(ZipArchive archive, Document document)
 		{
 			ZipArchiveEntry entry = archive.CreateEntry("selection.dat");
@@ -450,6 +473,27 @@ namespace Bitmute.Storage
 			int width = ReadInt32(stream);
 			int height = ReadInt32(stream);
 			SKBitmap bitmap = layer.Bitmap();
+			if (width != bitmap.Width || height != bitmap.Height)
+			{
+				return false;
+			}
+			int rowLength = width * 4;
+			byte[] rowBuffer = new byte[rowLength];
+			IntPtr basePointer = bitmap.GetPixels();
+			int rowBytes = bitmap.RowBytes;
+			for (int y = 0; y < height; y++)
+			{
+				ReadExact(stream, rowBuffer, rowLength);
+				Marshal.Copy(rowBuffer, 0, IntPtr.Add(basePointer, y * rowBytes), rowLength);
+			}
+			return true;
+		}
+
+		private static bool ReadLayerMask(Stream stream, Layer layer)
+		{
+			int width = ReadInt32(stream);
+			int height = ReadInt32(stream);
+			SKBitmap bitmap = layer.MaskBitmap();
 			if (width != bitmap.Width || height != bitmap.Height)
 			{
 				return false;
@@ -569,6 +613,25 @@ namespace Bitmute.Storage
 				style.m_bevelShadowOpacity = ReadInt(styleElement, "bevelShadowOpacity", 75);
 				style.m_bevelBlendMode = ReadBlendMode(styleElement, "bevelBlendMode");
 				layer.SetLayerStyle(style);
+			}
+			if (ReadBool(layerElement, "hasMask", false))
+			{
+				ZipArchiveEntry maskEntry = archive.GetEntry("layers/" + index.ToString() + ".mask.dat");
+				if (maskEntry != null)
+				{
+					layer.CreateMask(true);
+					Stream maskStream = maskEntry.Open();
+					bool maskLoaded = ReadLayerMask(maskStream, layer);
+					maskStream.Dispose();
+					if (maskLoaded)
+					{
+						layer.SetMaskEnabled(ReadBool(layerElement, "maskEnabled", true));
+					}
+					else
+					{
+						layer.DeleteMask();
+					}
+				}
 			}
 			return layer;
 		}
@@ -750,6 +813,10 @@ namespace Bitmute.Storage
 				for (int index = 0; index < layers.Count; index++)
 				{
 					WriteLayerPixels(archive, index, layers[index]);
+					if (layers[index].HasMask())
+					{
+						WriteLayerMask(archive, index, layers[index]);
+					}
 				}
 				if (document.Selection().IsActive())
 				{

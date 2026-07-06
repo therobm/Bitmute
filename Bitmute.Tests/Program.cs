@@ -147,6 +147,7 @@ namespace Bitmute.Tests
 			s_failures = s_failures + LayerMaskTests.RunAll();
 			s_failures = s_failures + LayerMaskPaintTests.RunAll();
 			s_failures = s_failures + LayerMaskApplyTests.RunAll();
+			s_failures = s_failures + LayerMaskPersistTests.RunAll();
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");
