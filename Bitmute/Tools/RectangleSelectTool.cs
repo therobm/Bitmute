@@ -5,20 +5,53 @@ namespace Bitmute.Tools
 {
 	public class RectangleSelectTool : Tool
 	{
-		private const int MinimumSpan = 3;
+		private const double ClickTravelThreshold = 3.0;
 
 		private int m_startX;
 		private int m_startY;
+		private int m_guideSnapTolerance = -1;
+		private double m_pointerTravel;
+		private bool m_pointerTravelMeasured;
+		private bool m_previewActive;
+		private int m_previewWidth;
+		private int m_previewHeight;
 
 		public override bool IsDestructive()
 		{
 			return false;
 		}
 
+		public void SetGuideSnap(int tolerance)
+		{
+			m_guideSnapTolerance = tolerance;
+		}
+
+		public void SetPointerTravel(double travel)
+		{
+			m_pointerTravelMeasured = true;
+			m_pointerTravel = travel;
+		}
+
+		public bool HasSizePreview()
+		{
+			return m_previewActive;
+		}
+
+		public int PreviewWidth()
+		{
+			return m_previewWidth;
+		}
+
+		public int PreviewHeight()
+		{
+			return m_previewHeight;
+		}
+
 		public override bool OnPressed(Document document, int x, int y, ToolState state)
 		{
 			m_startX = x;
 			m_startY = y;
+			m_previewActive = true;
 			eSelectionMode mode = SelectionModeFromState(state);
 			if (mode == eSelectionMode.Replace)
 			{
@@ -46,16 +79,46 @@ namespace Bitmute.Tools
 				top = bottom;
 				bottom = swap;
 			}
-			int spanX = (right + 1) - left;
-			int spanY = (bottom + 1) - top;
-			if (spanX < MinimumSpan || spanY < MinimumSpan)
+			if (m_pointerTravelMeasured && m_pointerTravel < ClickTravelThreshold)
 			{
 				document.Selection().ApplyRect(SKRectI.Empty);
+				m_previewWidth = 0;
+				m_previewHeight = 0;
 				return false;
 			}
-			SKRectI rect = new SKRectI(left, top, right + 1, bottom + 1);
+			int leftBoundary = left;
+			int topBoundary = top;
+			int rightBoundary = right + 1;
+			int bottomBoundary = bottom + 1;
+			if (m_guideSnapTolerance >= 0)
+			{
+				Bitmute.Imaging.Guides guides = document.Guides();
+				leftBoundary = guides.SnapX(leftBoundary, m_guideSnapTolerance);
+				rightBoundary = guides.SnapX(rightBoundary, m_guideSnapTolerance);
+				topBoundary = guides.SnapY(topBoundary, m_guideSnapTolerance);
+				bottomBoundary = guides.SnapY(bottomBoundary, m_guideSnapTolerance);
+				if (rightBoundary <= leftBoundary)
+				{
+					rightBoundary = leftBoundary + 1;
+				}
+				if (bottomBoundary <= topBoundary)
+				{
+					bottomBoundary = topBoundary + 1;
+				}
+			}
+			left = leftBoundary;
+			top = topBoundary;
+			SKRectI rect = new SKRectI(left, top, rightBoundary, bottomBoundary);
 			document.Selection().ApplyRect(rect);
+			m_previewWidth = rightBoundary - left;
+			m_previewHeight = bottomBoundary - top;
 			return false;
+		}
+
+		public override void OnReleased(Document document, int x, int y, ToolState state)
+		{
+			m_previewActive = false;
+			base.OnReleased(document, x, y, state);
 		}
 	}
 }
