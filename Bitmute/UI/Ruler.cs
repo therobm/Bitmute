@@ -1,4 +1,5 @@
 using System;
+using Microsoft.Maui.Dispatching;
 using SkiaSharp;
 using SkiaSharp.Views.Maui;
 using SkiaSharp.Views.Maui.Controls;
@@ -18,8 +19,24 @@ namespace Bitmute.UI
 			m_canvas = canvas;
 			m_horizontal = horizontal;
 			PaintSurface += OnPaintSurface;
+			Theme.Changed += OnThemeChanged;
 			EnableTouchEvents = true;
 			Touch += OnTouch;
+		}
+
+		private void OnThemeChanged(object sender, System.EventArgs eventArgs)
+		{
+			InvalidateSurface();
+			if (Dispatcher != null)
+			{
+				Dispatcher.Dispatch(RepaintForTheme);
+				Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(60.0), RepaintForTheme);
+			}
+		}
+
+		private void RepaintForTheme()
+		{
+			InvalidateSurface();
 		}
 
 		private void OnTouch(object sender, SKTouchEventArgs eventArgs)
@@ -150,7 +167,7 @@ namespace Bitmute.UI
 		{
 			SKCanvas canvas = eventArgs.Surface.Canvas;
 			SKImageInfo info = eventArgs.Info;
-			canvas.Clear(SKColors.White);
+			canvas.Clear(new SKColor(UiConstants.Ruler.ToUint()));
 
 			float zoom = m_canvas.Zoom();
 			if (zoom <= 0.0f)
@@ -159,13 +176,13 @@ namespace Bitmute.UI
 			}
 
 			SKPaint tickPaint = new SKPaint();
-			tickPaint.Color = SKColors.Black;
+			tickPaint.Color = new SKColor(UiConstants.RulerTick.ToUint());
 			tickPaint.StrokeWidth = 1.0f;
 			tickPaint.IsAntialias = false;
 			SKFont font = new SKFont();
 			font.Size = 9.0f;
 			SKPaint textPaint = new SKPaint();
-			textPaint.Color = SKColors.Black;
+			textPaint.Color = new SKColor(UiConstants.OnSurface.ToUint());
 			textPaint.IsAntialias = true;
 
 			float offset = m_canvas.PanOffsetX();
