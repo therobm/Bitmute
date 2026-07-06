@@ -392,7 +392,7 @@ namespace Bitmute.UI
 				string label = adjustment.m_name;
 				if (!adjustment.m_instant)
 				{
-					label = label + "â€¦";
+					label = label + "…";
 				}
 				items.Add(new MenuBarItem(label, adjustment.m_menuAction, () => Open(adjustment)));
 			}
