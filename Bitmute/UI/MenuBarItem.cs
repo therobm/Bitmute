@@ -16,6 +16,7 @@ namespace Bitmute.UI
 		Copy,
 		Paste,
 		StrokeDialog,
+		DefineBrush,
 		Preferences,
 		FreeTransform,
 		TransformScale,

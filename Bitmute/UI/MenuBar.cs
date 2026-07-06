@@ -122,6 +122,7 @@ namespace Bitmute.UI
 				transform.m_submenu = true;
 				items.Add(transform);
 				items.Add(new MenuBarItem("Stroke…", eMenuAction.StrokeDialog, () => m_main.OpenStrokeDialog()));
+				items.Add(new MenuBarItem("Define Brush", eMenuAction.DefineBrush, () => m_main.DoDefineBrush()));
 				items.Add(new MenuBarItem("Preferences…", eMenuAction.Preferences, () => m_main.ShowModal(new PreferencesDialog(), 340.0, 260.0)));
 				return items;
 			}
