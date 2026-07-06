@@ -107,6 +107,7 @@ namespace Bitmute.UI
 		SharpenEdges,
 		SharpenMore,
 		HighPass,
+		Offset,
 		Diffuse,
 		Emboss,
 		FindEdges,
