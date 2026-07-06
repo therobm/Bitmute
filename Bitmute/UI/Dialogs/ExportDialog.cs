@@ -48,12 +48,8 @@ namespace Bitmute.UI.Dialogs
 			UpdateOptionVisibility();
 		}
 
-		private void OnCancelClicked(object sender, EventArgs eventArgs)
-		{
-			CloseModal();
-		}
 
-		private void OnExportClicked(object sender, EventArgs eventArgs)
+		protected override void OnPrimaryClicked(object sender, EventArgs eventArgs)
 		{
 			MainView main = MainView.Self;
 			if (main == null)
@@ -61,6 +57,7 @@ namespace Bitmute.UI.Dialogs
 				return;
 			}
 			main.ConfirmExport(SelectedFormat(), m_qualityField.Value(), m_losslessField.Checked(), m_rleField.Checked());
+			base.OnPrimaryClicked(sender, eventArgs);
 		}
 
 		public ExportDialog()
@@ -81,8 +78,8 @@ namespace Bitmute.UI.Dialogs
 			AddField(optionRows);
 			UpdateOptionVisibility();
 
-			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
-			Button exportButton = PrimaryButton("Export", OnExportClicked);
+			Button cancelButton = SecondaryButton("Cancel");
+			Button exportButton = PrimaryButton("Export");
 			ComposeFields("Export As", ButtonRow(cancelButton, exportButton));
 		}
 	}

@@ -8,7 +8,7 @@ namespace Bitmute.UI.Dialogs
 	{
 		private TextField m_nameField;
 
-		private void OnOkClicked(object sender, EventArgs eventArgs)
+		protected override void OnPrimaryClicked(object sender, EventArgs eventArgs)
 		{
 			string text = m_nameField.Text().Trim();
 			if (text.Length == 0)
@@ -21,21 +21,17 @@ namespace Bitmute.UI.Dialogs
 			{
 				main.RenameActiveLayer(text);
 			}
-			CloseModal();
+			base.OnPrimaryClicked(sender, eventArgs);
 		}
 
-		private void OnCancelClicked(object sender, EventArgs eventArgs)
-		{
-			CloseModal();
-		}
 
 		public LayerPropertiesDialog(string currentName)
 		{
 			m_nameField = new TextField("Name", currentName, null);
 			AddField(m_nameField);
 
-			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
-			Button okButton = PrimaryButton("OK", OnOkClicked);
+			Button cancelButton = SecondaryButton("Cancel");
+			Button okButton = PrimaryButton("OK");
 			ComposeFields("Layer Properties", ButtonRow(cancelButton, okButton));
 		}
 	}

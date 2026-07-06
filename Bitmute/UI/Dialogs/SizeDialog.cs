@@ -28,12 +28,9 @@ namespace Bitmute.UI.Dialogs
 			return 0;
 		}
 
-		private void OnCancelClicked(object sender, EventArgs eventArgs)
-		{
-			CloseModal();
-		}
 
-		private void OnApplyClicked(object sender, EventArgs eventArgs)
+
+		protected override void OnPrimaryClicked(object sender, EventArgs eventArgs)
 		{
 			MainView main = MainView.Self;
 			if (main == null)
@@ -50,7 +47,7 @@ namespace Bitmute.UI.Dialogs
 			{
 				main.ApplyImageSize(width, height, m_interpolation.SelectedIndex());
 			}
-			CloseModal();
+			base.OnPrimaryClicked(sender, eventArgs);
 		}
 
 		public SizeDialog(string title, bool canvasMode, int currentWidth, int currentHeight)
@@ -72,8 +69,8 @@ namespace Bitmute.UI.Dialogs
 				AddField(m_interpolation);
 			}
 
-			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
-			Button applyButton = PrimaryButton("Apply", OnApplyClicked);
+			Button cancelButton = SecondaryButton("Cancel");
+			Button applyButton = PrimaryButton("Apply");
 			ComposeFields(title, ButtonRow(cancelButton, applyButton));
 		}
 	}

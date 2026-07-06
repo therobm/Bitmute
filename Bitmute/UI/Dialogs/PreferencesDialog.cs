@@ -39,7 +39,7 @@ namespace Bitmute.UI.Dialogs
 			}
 		}
 
-		private void OnOkClicked(object sender, EventArgs eventArgs)
+		protected override void OnPrimaryClicked(object sender, EventArgs eventArgs)
 		{
 			MainView main = MainView.Self;
 			if (main == null)
@@ -47,12 +47,8 @@ namespace Bitmute.UI.Dialogs
 				return;
 			}
 			main.ApplyUndoDepth(m_undoDepthField.Value());
-			main.CloseModal();
-		}
-
-		private void OnCancelClicked(object sender, EventArgs eventArgs)
-		{
-			CloseModal();
+			//main.CloseModal();//wtf?
+			base.OnPrimaryClicked(sender, eventArgs);
 		}
 
 		public PreferencesDialog()
@@ -85,7 +81,7 @@ namespace Bitmute.UI.Dialogs
 			}
 			m_themePicker = new RadioPicker("Theme", new string[] { "System", "Dark", "Light" }, themeIndex, OnThemeChanged);
 
-			Button clearRecentButton = SecondaryButton("Clear Recent Files", OnClearRecentClicked);
+			Button clearRecentButton = CreateButton("Clear Recent Files", OnClearRecentClicked);
 			clearRecentButton.WidthRequest = 150.0;
 			clearRecentButton.HorizontalOptions = LayoutOptions.Start;
 
@@ -99,8 +95,8 @@ namespace Bitmute.UI.Dialogs
 			AddField(new SectionHeader("Interface"));
 			AddField(m_themePicker);
 
-			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
-			Button okButton = PrimaryButton("OK", OnOkClicked);
+			Button cancelButton = SecondaryButton("Cancel");
+			Button okButton = PrimaryButton("OK");
 			ComposeFields("Preferences", ButtonRow(cancelButton, okButton), 340.0 - (2.0 * UiConstants.DialogPadding));
 		}
 	}

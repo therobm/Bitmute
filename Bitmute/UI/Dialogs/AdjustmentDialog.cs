@@ -103,12 +103,9 @@ namespace Bitmute.UI.Dialogs
 			main.CancelAdjustment();
 		}
 
-		private void OnCancelClicked(object sender, EventArgs eventArgs)
-		{
-			CloseModal();
-		}
 
-		private void OnApplyClicked(object sender, EventArgs eventArgs)
+
+		protected override void OnPrimaryClicked(object sender, EventArgs eventArgs)
 		{
 			MainView main = MainView.Self;
 			if (main == null)
@@ -125,7 +122,7 @@ namespace Bitmute.UI.Dialogs
 			{
 				main.ApplyAdjustment(m_adjustment, values);
 			}
-			CloseModal();
+			base.OnPrimaryClicked(sender, eventArgs);
 		}
 
 		public AdjustmentDialog(Adjustment adjustment)
@@ -159,8 +156,8 @@ namespace Bitmute.UI.Dialogs
 			{
 				AddPreviewField();
 			}
-			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
-			Button applyButton = PrimaryButton("Apply", OnApplyClicked);
+			Button cancelButton = SecondaryButton("Cancel");
+			Button applyButton = PrimaryButton("Apply");
 			ComposeFields(adjustment.m_name, ButtonRow(cancelButton, applyButton));
 			if (adjustment.m_previewable)
 			{

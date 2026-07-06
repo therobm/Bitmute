@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Bitmute.Imaging;
 using Bitmute.Storage;
@@ -1100,22 +1100,6 @@ namespace Bitmute.UI
 			int selTop = offsetY;
 			int selRight = offsetX + pasted.Width;
 			int selBottom = offsetY + pasted.Height;
-			if (selLeft < 0)
-			{
-				selLeft = 0;
-			}
-			if (selTop < 0)
-			{
-				selTop = 0;
-			}
-			if (selRight > document.Width())
-			{
-				selRight = document.Width();
-			}
-			if (selBottom > document.Height())
-			{
-				selBottom = document.Height();
-			}
 			if (selRight > selLeft && selBottom > selTop)
 			{
 				document.Selection().SelectRect(new SkiaSharp.SKRectI(selLeft, selTop, selRight, selBottom));
@@ -3642,7 +3626,20 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+
 			eventArgs.Handled = true;
+
+			// If there's a modal dialog, try to commit it first
+			if (HasOpenModal())
+			{
+				ModalEntry entry = m_modalStack[m_modalStack.Count - 1];
+				if (entry.m_content is ModalDialog dialog)
+				{
+					dialog.ClickPrimary();
+					return;
+				}
+			}
+
 			CommitArmedOperation();
 		}
 

@@ -9,7 +9,7 @@ namespace Bitmute.UI.Dialogs
 		private Action<int> m_onChoice;
 		private Button[] m_buttons;
 
-		private void OnButtonClicked(object sender, EventArgs eventArgs)
+		protected override void OnPrimaryClicked(object sender, EventArgs eventArgs)
 		{
 			int choice = -1;
 			for (int index = 0; index < m_buttons.Length; index++)
@@ -21,7 +21,7 @@ namespace Bitmute.UI.Dialogs
 				}
 			}
 			Action<int> callback = m_onChoice;
-			CloseModal();
+			base.OnPrimaryClicked(sender, eventArgs);
 			if (choice >= 0 && callback != null)
 			{
 				callback(choice);
@@ -51,11 +51,11 @@ namespace Bitmute.UI.Dialogs
 				Button button;
 				if (index == buttonLabels.Length - 1)
 				{
-					button = PrimaryButton(buttonLabels[index], OnButtonClicked);
+					button = PrimaryButton(buttonLabels[index]);
 				}
 				else
 				{
-					button = SecondaryButton(buttonLabels[index], OnButtonClicked);
+					button = SecondaryButton(buttonLabels[index]);
 				}
 				m_buttons[index] = button;
 				buttons.Add(button);
