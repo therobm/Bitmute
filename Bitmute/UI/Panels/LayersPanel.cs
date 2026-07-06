@@ -960,8 +960,8 @@ namespace Bitmute.UI.Panels
 			m_thumbnailLayers = new List<int>();
 
 			Border addButton = BuildActionButton("layer_add.png", "New layer", OnAddClicked);
-			Border duplicateButton = BuildActionButton("layer_duplicate.png", "Duplicate layer", OnDuplicateClicked);
-			Border mergeButton = BuildActionButton("layer_merge.png", "Merge down", OnMergeClicked);
+			Border duplicateButton = BuildActionButton("layer_duplicate.png", "Duplicate layer (Ctrl+J)", OnDuplicateClicked);
+			Border mergeButton = BuildActionButton("layer_merge.png", "Merge down (Ctrl+E)", OnMergeClicked);
 			Border deleteButton = BuildActionButton("layer_delete.png", "Delete layer", OnDeleteClicked);
 			m_duplicateButton = duplicateButton;
 			m_deleteButton = deleteButton;

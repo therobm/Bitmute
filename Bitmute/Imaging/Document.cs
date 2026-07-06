@@ -42,6 +42,7 @@ namespace Bitmute.Imaging
 		private List<int> m_selectedLayerIndices;
 		private List<EditCommand> m_undoStack;
 		private List<EditCommand> m_redoStack;
+		private bool m_lastHistoryWasUndo;
 		private SKBitmap m_strokeSnapshot;
 		private bool m_strokeSnapshotValid;
 		private int m_strokeLayerIndex;
@@ -1048,13 +1049,7 @@ namespace Bitmute.Imaging
 			SKBitmap before = PixelRegion.ExtractRegion(m_strokeSnapshot, rect);
 			SKBitmap after = PixelRegion.ExtractRegion(current, rect);
 			LayerEditCommand command = new LayerEditCommand(m_strokeLayerIndex, rect, before, after, strokeMask);
-			m_undoStack.Add(command);
-			m_redoStack.Clear();
-			if (m_undoStack.Count > s_maxUndoDepth)
-			{
-				m_undoStack.RemoveAt(0);
-			}
-			m_dirty = true;
+			PushCommand(command);
 		}
 
 		public void PushCommand(EditCommand command)
@@ -1066,6 +1061,7 @@ namespace Bitmute.Imaging
 				m_undoStack.RemoveAt(0);
 			}
 			m_dirty = true;
+			m_lastHistoryWasUndo = false;
 		}
 
 		public Guides Guides()
@@ -1143,6 +1139,7 @@ namespace Bitmute.Imaging
 			if (m_floatActive)
 			{
 				CancelFloatingSelection();
+				m_lastHistoryWasUndo = true;
 				return true;
 			}
 			if (m_undoStack.Count == 0)
@@ -1155,6 +1152,7 @@ namespace Bitmute.Imaging
 			command.ApplyBefore(this);
 			m_redoStack.Add(command);
 			m_dirty = true;
+			m_lastHistoryWasUndo = true;
 			return true;
 		}
 
@@ -1170,7 +1168,19 @@ namespace Bitmute.Imaging
 			command.ApplyAfter(this);
 			m_undoStack.Add(command);
 			m_dirty = true;
+			m_lastHistoryWasUndo = false;
 			return true;
+		}
+
+		// Ctrl+Z toggles the most recent change: undo, but redo if the last
+		// history action was itself an undo (a fresh edit resets the direction).
+		public bool UndoToggle()
+		{
+			if (m_lastHistoryWasUndo && m_redoStack.Count > 0)
+			{
+				return Redo();
+			}
+			return Undo();
 		}
 
 		public List<string> HistoryLabels()
@@ -1462,6 +1472,7 @@ namespace Bitmute.Imaging
 			Layer layer = new Layer(name, m_width, m_height);
 			m_layers.Add(layer);
 			m_activeLayerIndex = m_layers.Count - 1;
+			ResetLayerSelectionToActive();
 			return layer;
 		}
 

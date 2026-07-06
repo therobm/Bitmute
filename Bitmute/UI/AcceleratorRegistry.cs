@@ -219,7 +219,27 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			m_main.DoUndoToggle();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorUndoStep(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
 			m_main.DoUndo();
+			args.Handled = true;
+		}
+
+		private void OnAcceleratorRedoStep(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.DoRedo();
 			args.Handled = true;
 		}
 
@@ -499,6 +519,8 @@ namespace Bitmute.UI
 			AddAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorSave);
 			AddAccelerator(element, Windows.System.VirtualKey.Z, OnAcceleratorUndo);
 			AddAccelerator(element, Windows.System.VirtualKey.Y, OnAcceleratorRedo);
+			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.Z, OnAcceleratorUndoStep);
+			AddCtrlAltAccelerator(element, Windows.System.VirtualKey.Z, OnAcceleratorRedoStep);
 			AddAccelerator(element, Windows.System.VirtualKey.A, OnAcceleratorSelectAll);
 			AddAccelerator(element, Windows.System.VirtualKey.D, OnAcceleratorDeselect);
 			AddAccelerator(element, Windows.System.VirtualKey.C, OnAcceleratorCopy);

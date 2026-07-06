@@ -14,6 +14,9 @@ namespace Bitmute.UI.Panels
 		private Label m_pixelHexValue;
 		private Label m_selectionSizeValue;
 		private Label m_selectionBoundsValue;
+		private Label m_measureLengthValue;
+		private Label m_measureAngleValue;
+		private Label m_measureSizeValue;
 
 		private string HexByte(byte value)
 		{
@@ -62,6 +65,9 @@ namespace Bitmute.UI.Panels
 			m_pixelHexValue = BuildValue();
 			m_selectionSizeValue = BuildValue();
 			m_selectionBoundsValue = BuildValue();
+			m_measureLengthValue = BuildValue();
+			m_measureAngleValue = BuildValue();
+			m_measureSizeValue = BuildValue();
 
 			VerticalStackLayout stack = new VerticalStackLayout();
 			stack.Spacing = 4.0;
@@ -70,6 +76,9 @@ namespace Bitmute.UI.Panels
 			stack.Add(BuildRow("Hex", m_pixelHexValue));
 			stack.Add(BuildRow("Sel", m_selectionSizeValue));
 			stack.Add(BuildRow("At", m_selectionBoundsValue));
+			stack.Add(BuildRow("Length", m_measureLengthValue));
+			stack.Add(BuildRow("Angle", m_measureAngleValue));
+			stack.Add(BuildRow("W x H", m_measureSizeValue));
 
 			Grid layout = new Grid();
 			layout.Padding = new Thickness(8.0);
@@ -110,6 +119,20 @@ namespace Bitmute.UI.Panels
 			m_selectionBoundsValue.Text = "@ (" + bounds.Left + ", " + bounds.Top + ")";
 		}
 
+		public void UpdateMeasurement(int width, int height, double angleDegrees, double length, bool active)
+		{
+			if (!active)
+			{
+				m_measureLengthValue.Text = DashValue;
+				m_measureAngleValue.Text = DashValue;
+				m_measureSizeValue.Text = DashValue;
+				return;
+			}
+			m_measureLengthValue.Text = length.ToString("F1");
+			m_measureAngleValue.Text = angleDegrees.ToString("F1") + "°";
+			m_measureSizeValue.Text = width + " x " + height;
+		}
+
 		public void ClearReadout()
 		{
 			m_cursorValue.Text = DashValue;
@@ -117,6 +140,9 @@ namespace Bitmute.UI.Panels
 			m_pixelHexValue.Text = DashValue;
 			m_selectionSizeValue.Text = DashValue;
 			m_selectionBoundsValue.Text = DashValue;
+			m_measureLengthValue.Text = DashValue;
+			m_measureAngleValue.Text = DashValue;
+			m_measureSizeValue.Text = DashValue;
 		}
 	}
 }

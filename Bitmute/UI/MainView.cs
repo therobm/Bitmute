@@ -451,6 +451,21 @@ namespace Bitmute.UI
 			}
 		}
 
+		public void DoUndoToggle()
+		{
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
+			{
+				return;
+			}
+			if (window.DocumentModel().UndoToggle())
+			{
+				window.Canvas().SyncDocumentSize();
+				window.Canvas().MarkComposeDirty();
+				RefreshPanels();
+			}
+		}
+
 		public void DoExit()
 		{
 			Application current = Application.Current;
@@ -1425,6 +1440,15 @@ namespace Bitmute.UI
 			}
 			Selection selection = document.Selection();
 			m_infoPanel.UpdateSelection(selection.Bounds(), selection.IsActive());
+		}
+
+		public void UpdateMeasurement(int width, int height, double angleDegrees, double length, bool active)
+		{
+			if (m_infoPanel == null)
+			{
+				return;
+			}
+			m_infoPanel.UpdateMeasurement(width, height, angleDegrees, length, active);
 		}
 
 		public void UpdateZoomInfo(int zoomPercent, int width, int height)

@@ -22,6 +22,9 @@ namespace Bitmute.Tools
 			double angleDegrees = angleRadians * (180.0 / System.Math.PI);
 			string message = "L: " + length.ToString("F1") + "  A: " + angleDegrees.ToString("F1") + "°  dX: " + deltaX.ToString() + "  dY: " + deltaY.ToString();
 			MainView.Self.SetStatusMessage(message);
+			int width = (deltaX < 0) ? -deltaX : deltaX;
+			int height = (deltaY < 0) ? -deltaY : deltaY;
+			MainView.Self.UpdateMeasurement(width, height, angleDegrees, length, true);
 		}
 
 		public bool HasPreview()
