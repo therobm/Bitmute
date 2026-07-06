@@ -79,6 +79,8 @@ namespace Bitmute.Imaging
 			public int[] m_sourceOffsetsX;
 			public int[] m_sourceOffsetsY;
 			public int[] m_sourceOpacities;
+			public IntPtr[] m_sourceMaskBases;
+			public int[] m_sourceMaskRowBytes;
 			public int m_visibleCount;
 			public IntPtr m_targetBase;
 			public int m_targetRowBytes;
@@ -110,6 +112,16 @@ namespace Bitmute.Imaging
 							if (sourceAlpha == 0)
 							{
 								continue;
+							}
+							if (m_sourceMaskBases[layerIndex] != IntPtr.Zero)
+							{
+								byte* maskPixel = (byte*)m_sourceMaskBases[layerIndex].ToPointer() + (bitmapY * m_sourceMaskRowBytes[layerIndex]) + (bitmapX * 4);
+								int maskCoverage = maskPixel[0];
+								sourceAlpha = ((sourceAlpha * maskCoverage) + 127) / 255;
+								if (sourceAlpha == 0)
+								{
+									continue;
+								}
 							}
 							int effectiveAlpha = ((sourceAlpha * m_sourceOpacities[layerIndex]) + 127) / 255;
 							if (effectiveAlpha == 0)
@@ -145,6 +157,8 @@ namespace Bitmute.Imaging
 			public int m_offsetY;
 			public int m_opacity;
 			public eBlendMode m_mode;
+			public IntPtr m_maskBase;
+			public int m_maskRowBytes;
 			public IntPtr m_targetBase;
 			public int m_targetRowBytes;
 			public int m_left;
@@ -175,6 +189,16 @@ namespace Bitmute.Imaging
 						if (sourceAlpha == 0)
 						{
 							continue;
+						}
+						if (m_maskBase != IntPtr.Zero)
+						{
+							byte* maskPixel = (byte*)m_maskBase.ToPointer() + (bitmapY * m_maskRowBytes) + (bitmapX * 4);
+							int maskCoverage = maskPixel[0];
+							sourceAlpha = ((sourceAlpha * maskCoverage) + 127) / 255;
+							if (sourceAlpha == 0)
+							{
+								continue;
+							}
 						}
 						int effectiveAlpha = ((sourceAlpha * m_opacity) + 127) / 255;
 						if (effectiveAlpha == 0)
@@ -1314,6 +1338,39 @@ namespace Bitmute.Imaging
 			return m_layers[m_activeLayerIndex];
 		}
 
+		public void AddMaskToActiveLayer(bool reveal)
+		{
+			Layer layer = ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			layer.CreateMask(reveal);
+			MarkComposeDirtyAll();
+		}
+
+		public void DeleteActiveMask()
+		{
+			Layer layer = ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			layer.DeleteMask();
+			MarkComposeDirtyAll();
+		}
+
+		public void SetActiveMaskEnabled(bool enabled)
+		{
+			Layer layer = ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			layer.SetMaskEnabled(enabled);
+			MarkComposeDirtyAll();
+		}
+
 		public bool ActiveLayerContentBox(out SKRectI box, out bool isBackground)
 		{
 			box = SKRectI.Empty;
@@ -1858,6 +1915,23 @@ namespace Bitmute.Imaging
 			return false;
 		}
 
+		private bool AnyVisibleLayerHasMask()
+		{
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				if (!layer.IsVisible())
+				{
+					continue;
+				}
+				if (layer.HasMask() && layer.MaskEnabled())
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+
 		public SKBitmap Composite()
 		{
 			return m_composite;
@@ -1953,7 +2027,7 @@ namespace Bitmute.Imaging
 				CompositeRegionRaw(target, region);
 				return;
 			}
-			if (AnyVisibleCustomBlend())
+			if (AnyVisibleCustomBlend() || AnyVisibleLayerHasMask())
 			{
 				CompositeRegionSoftware(target, region);
 				return;
@@ -2058,6 +2132,8 @@ namespace Bitmute.Imaging
 			worker.m_sourceOffsetsX = new int[layerCount];
 			worker.m_sourceOffsetsY = new int[layerCount];
 			worker.m_sourceOpacities = new int[layerCount];
+			worker.m_sourceMaskBases = new IntPtr[layerCount];
+			worker.m_sourceMaskRowBytes = new int[layerCount];
 			int visibleCount = 0;
 			for (int index = 0; index < layerCount; index++)
 			{
@@ -2074,6 +2150,16 @@ namespace Bitmute.Imaging
 				worker.m_sourceOffsetsX[visibleCount] = layer.OffsetX();
 				worker.m_sourceOffsetsY[visibleCount] = layer.OffsetY();
 				worker.m_sourceOpacities[visibleCount] = layer.Opacity();
+				if (layer.HasMask() && layer.MaskEnabled())
+				{
+					worker.m_sourceMaskBases[visibleCount] = layer.MaskBitmap().GetPixels();
+					worker.m_sourceMaskRowBytes[visibleCount] = layer.MaskBitmap().RowBytes;
+				}
+				else
+				{
+					worker.m_sourceMaskBases[visibleCount] = IntPtr.Zero;
+					worker.m_sourceMaskRowBytes[visibleCount] = 0;
+				}
 				visibleCount++;
 			}
 			worker.m_visibleCount = visibleCount;
@@ -2155,14 +2241,21 @@ namespace Bitmute.Imaging
 				}
 				else
 				{
-					SKCanvas canvas = new SKCanvas(target);
-					canvas.Save();
-					canvas.ClipRect(clipRect);
-					SKPaint paint = new SKPaint();
-					DrawStyledLayer(canvas, layer, sampling, paint);
-					paint.Dispose();
-					canvas.Restore();
-					canvas.Dispose();
+					if (layer.HasMask() && layer.MaskEnabled() && !layer.LayerStyle().HasAnyEffect())
+					{
+						BlendMaskedNormalLayer(target, left, top, right, bottom, layer);
+					}
+					else
+					{
+						SKCanvas canvas = new SKCanvas(target);
+						canvas.Save();
+						canvas.ClipRect(clipRect);
+						SKPaint paint = new SKPaint();
+						DrawStyledLayer(canvas, layer, sampling, paint);
+						paint.Dispose();
+						canvas.Restore();
+						canvas.Dispose();
+					}
 				}
 			}
 		}
@@ -2179,11 +2272,107 @@ namespace Bitmute.Imaging
 			worker.m_offsetY = layer.OffsetY();
 			worker.m_opacity = layer.Opacity();
 			worker.m_mode = layer.BlendMode();
+			if (layer.HasMask() && layer.MaskEnabled())
+			{
+				worker.m_maskBase = layer.MaskBitmap().GetPixels();
+				worker.m_maskRowBytes = layer.MaskBitmap().RowBytes;
+			}
+			else
+			{
+				worker.m_maskBase = IntPtr.Zero;
+				worker.m_maskRowBytes = 0;
+			}
 			worker.m_targetBase = target.GetPixels();
 			worker.m_targetRowBytes = target.RowBytes;
 			worker.m_left = left;
 			worker.m_right = right;
 			RowBands.Run(top, bottom, worker.Band);
+		}
+
+		private unsafe void BlendMaskedNormalLayer(SKBitmap target, int left, int top, int right, int bottom, Layer layer)
+		{
+			SKBitmap source = layer.Bitmap();
+			SKBitmap mask = layer.MaskBitmap();
+			IntPtr sourceBasePtr = source.GetPixels();
+			int sourceRowBytes = source.RowBytes;
+			int sourceWidth = source.Width;
+			int sourceHeight = source.Height;
+			int offsetX = layer.OffsetX();
+			int offsetY = layer.OffsetY();
+			int opacity = layer.Opacity();
+			IntPtr maskBasePtr = mask.GetPixels();
+			int maskRowBytes = mask.RowBytes;
+			IntPtr targetBasePtr = target.GetPixels();
+			int targetRowBytes = target.RowBytes;
+			byte* sourceBase = (byte*)sourceBasePtr.ToPointer();
+			byte* maskBase = (byte*)maskBasePtr.ToPointer();
+			byte* targetBase = (byte*)targetBasePtr.ToPointer();
+			for (int canvasY = top; canvasY < bottom; canvasY++)
+			{
+				int bitmapY = canvasY - offsetY;
+				if (bitmapY < 0 || bitmapY >= sourceHeight)
+				{
+					continue;
+				}
+				byte* sourceRow = sourceBase + (bitmapY * sourceRowBytes);
+				byte* maskRow = maskBase + (bitmapY * maskRowBytes);
+				byte* targetRow = targetBase + (canvasY * targetRowBytes);
+				for (int canvasX = left; canvasX < right; canvasX++)
+				{
+					int bitmapX = canvasX - offsetX;
+					if (bitmapX < 0 || bitmapX >= sourceWidth)
+					{
+						continue;
+					}
+					byte* sourcePixel = sourceRow + (bitmapX * 4);
+					int sourceAlpha = sourcePixel[3];
+					if (sourceAlpha == 0)
+					{
+						continue;
+					}
+					byte* maskPixel = maskRow + (bitmapX * 4);
+					int maskCoverage = maskPixel[0];
+					sourceAlpha = ((sourceAlpha * maskCoverage) + 127) / 255;
+					if (sourceAlpha == 0)
+					{
+						continue;
+					}
+					int effectiveAlpha = ((sourceAlpha * opacity) + 127) / 255;
+					if (effectiveAlpha == 0)
+					{
+						continue;
+					}
+					int premultipliedRed = ((sourcePixel[0] * effectiveAlpha) + 127) / 255;
+					int premultipliedGreen = ((sourcePixel[1] * effectiveAlpha) + 127) / 255;
+					int premultipliedBlue = ((sourcePixel[2] * effectiveAlpha) + 127) / 255;
+					int inverseAlpha = 255 - effectiveAlpha;
+					byte* targetPixel = targetRow + (canvasX * 4);
+					int resultRed = premultipliedRed + (((targetPixel[0] * inverseAlpha) + 127) / 255);
+					int resultGreen = premultipliedGreen + (((targetPixel[1] * inverseAlpha) + 127) / 255);
+					int resultBlue = premultipliedBlue + (((targetPixel[2] * inverseAlpha) + 127) / 255);
+					int resultAlpha = effectiveAlpha + (((targetPixel[3] * inverseAlpha) + 127) / 255);
+					if (resultRed > 255)
+					{
+						resultRed = 255;
+					}
+					if (resultGreen > 255)
+					{
+						resultGreen = 255;
+					}
+					if (resultBlue > 255)
+					{
+						resultBlue = 255;
+					}
+					if (resultAlpha > 255)
+					{
+						resultAlpha = 255;
+					}
+					targetPixel[0] = (byte)resultRed;
+					targetPixel[1] = (byte)resultGreen;
+					targetPixel[2] = (byte)resultBlue;
+					targetPixel[3] = (byte)resultAlpha;
+				}
+			}
 		}
 
 		private SKBitmap BakeLayerToCanvas(Layer layer)
