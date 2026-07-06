@@ -512,7 +512,7 @@ namespace Bitmute.Storage
 				byte alpha = ClampByte(ReadInt(layerElement, "textColorAlpha", 255));
 				layer.SetTextStyle(
 					ReadFloat(layerElement, "textSize", 32.0f),
-					ReadString(layerElement, "textFontFamily", "Segoe UI"),
+					ReadString(layerElement, "textFontFamily", "OpenSans-Regular"),
 					ReadBool(layerElement, "textBold", false),
 					ReadBool(layerElement, "textItalic", false),
 					new SKColor(red, green, blue, alpha),

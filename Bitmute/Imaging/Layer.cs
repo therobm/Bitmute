@@ -227,7 +227,7 @@ namespace Bitmute.Imaging
 			m_textSize = 32.0f;
 			m_textBold = false;
 			m_textItalic = false;
-			m_textFontFamily = "Segoe UI";
+			m_textFontFamily = "OpenSans-Regular";
 			m_textColor = new SKColor(0, 0, 0, 255);
 			m_textAlign = 0;
 			m_textAntiAlias = 3;

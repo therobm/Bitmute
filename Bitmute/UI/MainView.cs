@@ -81,11 +81,9 @@ namespace Bitmute.UI
 		private int m_topZIndex;
 		private ToolBox m_toolBox;
 		private ToolState m_toolState;
-		private int m_guideCreateOrientation;
-		private CanvasView m_guideCreateCanvas;
 		private int m_editingSwatchIndex = -1;
 		private LayerStyle m_layerStyleSnapshot;
-		private int m_layerStyleTargetIndex;
+		private Layer m_layerStyleTargetLayer;
 		private LayerStyle m_copiedLayerStyle;
 		private AdjustmentRegistry m_adjustments;
 		private Button m_focusSink;
@@ -1232,7 +1230,7 @@ namespace Bitmute.UI
 				return;
 			}
 			m_layerStyleSnapshot = layer.LayerStyle().Clone();
-			m_layerStyleTargetIndex = document.ActiveLayerIndex();
+			m_layerStyleTargetLayer = layer;
 			ShowModal(new LayerStyleDialog(layer.LayerStyle().Clone()), 620.0, 460.0);
 		}
 
@@ -1275,17 +1273,7 @@ namespace Bitmute.UI
 
 		private Layer LayerStyleTargetLayer()
 		{
-			Document document = ActiveDocument();
-			if (document == null)
-			{
-				return null;
-			}
-			System.Collections.Generic.List<Layer> layers = document.Layers();
-			if (m_layerStyleTargetIndex < 0 || m_layerStyleTargetIndex >= layers.Count)
-			{
-				return null;
-			}
-			return layers[m_layerStyleTargetIndex];
+			return m_layerStyleTargetLayer;
 		}
 
 		public void PreviewLayerStyle(LayerStyle style)
@@ -1312,6 +1300,7 @@ namespace Bitmute.UI
 			if (document == null || layer == null || m_layerStyleSnapshot == null)
 			{
 				m_layerStyleSnapshot = null;
+				m_layerStyleTargetLayer = null;
 				CloseModal();
 				return;
 			}
@@ -1320,6 +1309,7 @@ namespace Bitmute.UI
 			layer.SetLayerStyle(style.Clone());
 			document.EndCanvasEdit();
 			m_layerStyleSnapshot = null;
+			m_layerStyleTargetLayer = null;
 			CanvasView canvas = ActiveCanvas();
 			if (canvas != null)
 			{
@@ -1344,6 +1334,7 @@ namespace Bitmute.UI
 				}
 			}
 			m_layerStyleSnapshot = null;
+			m_layerStyleTargetLayer = null;
 			CloseModal();
 		}
 
@@ -1826,8 +1817,6 @@ namespace Bitmute.UI
 			m_toolState = m_toolBox.State();
 			m_adjustments = new AdjustmentRegistry(this, m_toolState);
 			m_acceleratorRegistry = new AcceleratorRegistry(this, m_toolState);
-			m_guideCreateOrientation = 0;
-			m_guideCreateCanvas = null;
 			m_workspaceState = new WorkspaceState();
 			m_menuTitles = new string[] { "File", "Edit", "Image", "Layer", "Select", "Filter", "View", "Window", "Help" };
 			m_overlay = new AbsoluteLayout();
@@ -1980,8 +1969,6 @@ namespace Bitmute.UI
 			}
 			m_acceleratorRegistry.Hook(element);
 			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerPressedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGlobalPointerPressed), true);
-			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerMovedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGlobalPointerMoved), true);
-			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerReleasedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGlobalPointerReleased), true);
 			element.AllowDrop = true;
 			element.DragOver += OnElementDragOver;
 			element.Drop += OnElementDrop;
@@ -2016,56 +2003,6 @@ namespace Bitmute.UI
 			ClosePulldown();
 		}
 
-		public void BeginGuideCreation(int orientation, CanvasView canvas)
-		{
-			if (canvas == null)
-			{
-				return;
-			}
-			if (canvas.CurrentDocument().Guides().IsLocked())
-			{
-				return;
-			}
-			ActivateDocumentWindow(canvas.OwnerWindow());
-			m_guideCreateOrientation = orientation;
-			m_guideCreateCanvas = canvas;
-			canvas.ResetGuideStickyCache();
-		}
-
-		private void OnGlobalPointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs args)
-		{
-			if (m_guideCreateOrientation == 0)
-			{
-				return;
-			}
-			CanvasView canvas = m_guideCreateCanvas;
-			if (canvas == null)
-			{
-				return;
-			}
-			Microsoft.UI.Xaml.UIElement canvasElement = canvas.Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
-			if (canvasElement == null)
-			{
-				return;
-			}
-			Windows.Foundation.Point position = args.GetCurrentPoint(canvasElement).Position;
-			canvas.UpdatePendingGuideFromDip(m_guideCreateOrientation, position.X, position.Y);
-		}
-
-		private void OnGlobalPointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs args)
-		{
-			if (m_guideCreateOrientation == 0)
-			{
-				return;
-			}
-			CanvasView canvas = m_guideCreateCanvas;
-			m_guideCreateOrientation = 0;
-			m_guideCreateCanvas = null;
-			if (canvas != null)
-			{
-				canvas.CommitPendingGuide();
-			}
-		}
 
 		private void OnElementDragOver(object sender, Microsoft.UI.Xaml.DragEventArgs args)
 		{
