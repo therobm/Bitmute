@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.IO;
-using System.Text.Json;
 using SkiaSharp;
 using Bitmute.Imaging;
 
@@ -12,6 +11,48 @@ namespace Bitmute.Storage
 		private string m_manifestDirectory;
 		private string m_patternsDirectory;
 		private List<Pattern> m_patterns;
+
+		private void Load()
+		{
+			PaletteManifest manifest = PaletteFile.ReadManifest(m_manifestPath);
+			if (manifest == null)
+			{
+				return;
+			}
+			for (int i = 0; i < manifest.entries.Count; i++)
+			{
+				PaletteEntry entry = manifest.entries[i];
+				if (entry.name == null || entry.path == null)
+				{
+					continue;
+				}
+				string absolute = PaletteFile.ToAbsolute(m_manifestDirectory, entry.path);
+				SKBitmap bitmap = PaletteFile.ReadPngUnpremul(absolute);
+				if (bitmap == null)
+				{
+					continue;
+				}
+				Pattern pattern = new Pattern(entry.name, bitmap);
+				pattern.m_relativePath = entry.path;
+				m_patterns.Add(pattern);
+			}
+		}
+
+		private void Save()
+		{
+			PaletteManifest manifest = new PaletteManifest();
+			manifest.entries = new List<PaletteEntry>();
+			for (int i = 0; i < m_patterns.Count; i++)
+			{
+				Pattern pattern = m_patterns[i];
+				PaletteEntry entry = new PaletteEntry();
+				entry.name = pattern.m_name;
+				entry.path = pattern.m_relativePath;
+				entry.kind = ePaletteEntryKind.Image;
+				manifest.entries.Add(entry);
+			}
+			PaletteFile.WriteManifest(m_manifestPath, manifest);
+		}
 
 		public PatternPalette(string root)
 		{
@@ -52,84 +93,6 @@ namespace Bitmute.Storage
 		{
 			m_patterns.Remove(pattern);
 			Save();
-		}
-
-		private void Load()
-		{
-			byte[] bytes = File.ReadAllBytes(m_manifestPath);
-			JsonDocument document = JsonDocument.Parse(bytes);
-			JsonElement root = document.RootElement;
-			if (root.ValueKind != JsonValueKind.Object)
-			{
-				document.Dispose();
-				return;
-			}
-			JsonElement entries;
-			if (!root.TryGetProperty("entries", out entries))
-			{
-				document.Dispose();
-				return;
-			}
-			if (entries.ValueKind != JsonValueKind.Array)
-			{
-				document.Dispose();
-				return;
-			}
-			foreach (JsonElement entry in entries.EnumerateArray())
-			{
-				if (entry.ValueKind != JsonValueKind.Object)
-				{
-					continue;
-				}
-				JsonElement nameElement;
-				JsonElement pathElement;
-				if (!entry.TryGetProperty("name", out nameElement))
-				{
-					continue;
-				}
-				if (!entry.TryGetProperty("path", out pathElement))
-				{
-					continue;
-				}
-				string name = nameElement.GetString();
-				string relative = pathElement.GetString();
-				if (name == null || relative == null)
-				{
-					continue;
-				}
-				string absolute = PaletteFile.ToAbsolute(m_manifestDirectory, relative);
-				SKBitmap bitmap = PaletteFile.ReadPngUnpremul(absolute);
-				if (bitmap == null)
-				{
-					continue;
-				}
-				Pattern pattern = new Pattern(name, bitmap);
-				pattern.m_relativePath = relative;
-				m_patterns.Add(pattern);
-			}
-			document.Dispose();
-		}
-
-		private void Save()
-		{
-			FileStream stream = File.Create(m_manifestPath);
-			Utf8JsonWriter writer = new Utf8JsonWriter(stream);
-			writer.WriteStartObject();
-			writer.WriteString("type", "pattern");
-			writer.WriteStartArray("entries");
-			for (int i = 0; i < m_patterns.Count; i++)
-			{
-				Pattern pattern = m_patterns[i];
-				writer.WriteStartObject();
-				writer.WriteString("name", pattern.m_name);
-				writer.WriteString("path", pattern.m_relativePath);
-				writer.WriteEndObject();
-			}
-			writer.WriteEndArray();
-			writer.WriteEndObject();
-			writer.Flush();
-			writer.Dispose();
-			stream.Dispose();
 		}
 	}
 }

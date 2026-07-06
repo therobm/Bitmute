@@ -184,6 +184,17 @@ namespace Bitmute.Tests
 			Check(reloaded.Patterns().Count == 0, "reload after remove is empty");
 		}
 
+		private static void TestNewerVersionRefused()
+		{
+			string root = FreshRoot();
+			string paletteDirectory = Path.Combine(root, "Palettes");
+			Directory.CreateDirectory(paletteDirectory);
+			string manifestPath = Path.Combine(paletteDirectory, "patterns.plt");
+			File.WriteAllText(manifestPath, "{\"version\":999,\"entries\":[]}");
+			PatternPalette palette = new PatternPalette(root);
+			Check(palette.Patterns().Count == 0, "newer manifest version is refused, not misparsed");
+		}
+
 		public static int RunAll()
 		{
 			s_failures = 0;
@@ -192,6 +203,7 @@ namespace Bitmute.Tests
 			TestProceduralRoundTrip();
 			TestPortableRelativePaths();
 			TestRemoveKeepsFile();
+			TestNewerVersionRefused();
 			return s_failures;
 		}
 	}

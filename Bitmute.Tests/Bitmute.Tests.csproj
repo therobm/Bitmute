@@ -24,6 +24,8 @@
     <Compile Include="..\Bitmute\Storage\PaletteFile.cs" />
     <Compile Include="..\Bitmute\Storage\PatternPalette.cs" />
     <Compile Include="..\Bitmute\Storage\BrushPalette.cs" />
+    <Compile Include="..\Bitmute\Storage\PaletteManifest.cs" />
+    <Compile Include="..\Bitmute\Storage\ProceduralBrushData.cs" />
     <Compile Include="..\Bitmute\UI\GpuFilterPreview.cs" />
   </ItemGroup>
 

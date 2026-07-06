@@ -1,10 +1,24 @@
 using System.IO;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using SkiaSharp;
 
 namespace Bitmute.Storage
 {
 	public static class PaletteFile
 	{
+		private const int CurrentManifestVersion = 1;
+		private const int CurrentShapeVersion = 1;
+		private static JsonSerializerOptions s_options;
+
+		static PaletteFile()
+		{
+			s_options = new JsonSerializerOptions();
+			s_options.IncludeFields = true;
+			s_options.WriteIndented = true;
+			s_options.Converters.Add(new JsonStringEnumConverter());
+		}
+
 		private static string SanitizeBaseName(string baseName)
 		{
 			char[] invalid = Path.GetInvalidFileNameChars();
@@ -105,6 +119,76 @@ namespace Bitmute.Storage
 		public static string ToAbsolute(string fromDir, string relativePath)
 		{
 			return Path.GetFullPath(Path.Combine(fromDir, relativePath));
+		}
+
+		public static PaletteManifest ReadManifest(string path)
+		{
+			byte[] bytes = File.ReadAllBytes(path);
+			PaletteManifest manifest;
+			try
+			{
+				manifest = JsonSerializer.Deserialize<PaletteManifest>(bytes, s_options);
+			}
+			catch (JsonException)
+			{
+				return null;
+			}
+			if (manifest == null)
+			{
+				return null;
+			}
+			if (manifest.entries == null)
+			{
+				return null;
+			}
+			if (manifest.version > CurrentManifestVersion)
+			{
+				return null;
+			}
+			return manifest;
+		}
+
+		public static void WriteManifest(string path, PaletteManifest manifest)
+		{
+			manifest.version = CurrentManifestVersion;
+			FileStream stream = File.Create(path);
+			JsonSerializer.Serialize(stream, manifest, s_options);
+			stream.Dispose();
+		}
+
+		public static ProceduralBrushData ReadShapeData(string path)
+		{
+			if (!File.Exists(path))
+			{
+				return null;
+			}
+			byte[] bytes = File.ReadAllBytes(path);
+			ProceduralBrushData data;
+			try
+			{
+				data = JsonSerializer.Deserialize<ProceduralBrushData>(bytes, s_options);
+			}
+			catch (JsonException)
+			{
+				return null;
+			}
+			if (data == null)
+			{
+				return null;
+			}
+			if (data.version > CurrentShapeVersion)
+			{
+				return null;
+			}
+			return data;
+		}
+
+		public static void WriteShapeData(string path, ProceduralBrushData data)
+		{
+			data.version = CurrentShapeVersion;
+			FileStream stream = File.Create(path);
+			JsonSerializer.Serialize(stream, data, s_options);
+			stream.Dispose();
 		}
 	}
 }

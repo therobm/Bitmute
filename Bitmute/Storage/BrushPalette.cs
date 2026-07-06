@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.IO;
-using System.Text.Json;
 using SkiaSharp;
 using Bitmute.Tools;
 
@@ -12,6 +11,103 @@ namespace Bitmute.Storage
 		private string m_manifestDirectory;
 		private string m_brushesDirectory;
 		private List<CustomBrush> m_brushes;
+
+		private static ProceduralBrushData ShapeToData(ProceduralBrushShape shape)
+		{
+			ProceduralBrushData data = new ProceduralBrushData();
+			data.size = shape.m_size;
+			data.hardness = shape.m_hardness;
+			data.spacing = shape.m_spacing;
+			data.fade = shape.m_fade;
+			data.square = shape.m_square;
+			data.roundness = shape.m_roundness;
+			data.angle = shape.m_angle;
+			data.smoothing = shape.m_smoothing;
+			return data;
+		}
+
+		private static ProceduralBrushShape DataToShape(ProceduralBrushData data)
+		{
+			ProceduralBrushShape shape = new ProceduralBrushShape();
+			shape.m_size = data.size;
+			shape.m_hardness = data.hardness;
+			shape.m_spacing = data.spacing;
+			shape.m_fade = data.fade;
+			shape.m_square = data.square;
+			shape.m_roundness = data.roundness;
+			shape.m_angle = data.angle;
+			shape.m_smoothing = data.smoothing;
+			return shape;
+		}
+
+		private void Load()
+		{
+			PaletteManifest manifest = PaletteFile.ReadManifest(m_manifestPath);
+			if (manifest == null)
+			{
+				return;
+			}
+			for (int i = 0; i < manifest.entries.Count; i++)
+			{
+				PaletteEntry entry = manifest.entries[i];
+				if (entry.name == null || entry.path == null)
+				{
+					continue;
+				}
+				string absolute = PaletteFile.ToAbsolute(m_manifestDirectory, entry.path);
+				if (entry.kind == ePaletteEntryKind.Image)
+				{
+					SKBitmap tip = PaletteFile.ReadPngUnpremul(absolute);
+					if (tip == null)
+					{
+						continue;
+					}
+					CustomBrush brush = new CustomBrush(entry.name, tip);
+					brush.m_isProcedural = false;
+					brush.m_shape = null;
+					brush.m_relativePath = entry.path;
+					m_brushes.Add(brush);
+					continue;
+				}
+				if (entry.kind == ePaletteEntryKind.Procedural)
+				{
+					ProceduralBrushData data = PaletteFile.ReadShapeData(absolute);
+					if (data == null)
+					{
+						continue;
+					}
+					CustomBrush brush = new CustomBrush(entry.name, null);
+					brush.m_isProcedural = true;
+					brush.m_shape = DataToShape(data);
+					brush.m_relativePath = entry.path;
+					m_brushes.Add(brush);
+					continue;
+				}
+			}
+		}
+
+		private void Save()
+		{
+			PaletteManifest manifest = new PaletteManifest();
+			manifest.entries = new List<PaletteEntry>();
+			for (int i = 0; i < m_brushes.Count; i++)
+			{
+				CustomBrush brush = m_brushes[i];
+				PaletteEntry entry = new PaletteEntry();
+				entry.name = brush.m_name;
+				entry.path = brush.m_relativePath;
+				if (brush.m_isProcedural)
+				{
+					entry.kind = ePaletteEntryKind.Procedural;
+				}
+				else
+				{
+					entry.kind = ePaletteEntryKind.Image;
+				}
+				manifest.entries.Add(entry);
+			}
+			PaletteFile.WriteManifest(m_manifestPath, manifest);
+		}
 
 		public BrushPalette(string root)
 		{
@@ -53,7 +149,8 @@ namespace Bitmute.Storage
 		public CustomBrush AddProcedural(ProceduralBrushShape shape, string suggestedName)
 		{
 			string path = PaletteFile.UniqueResourcePath(m_brushesDirectory, suggestedName, ".brush");
-			WriteShape(shape, path);
+			ProceduralBrushData data = ShapeToData(shape);
+			PaletteFile.WriteShapeData(path, data);
 			string relative = PaletteFile.ToRelative(m_manifestDirectory, path);
 			CustomBrush brush = new CustomBrush(suggestedName, null);
 			brush.m_isProcedural = true;
@@ -68,197 +165,6 @@ namespace Bitmute.Storage
 		{
 			m_brushes.Remove(brush);
 			Save();
-		}
-
-		private static void WriteShape(ProceduralBrushShape shape, string path)
-		{
-			FileStream stream = File.Create(path);
-			Utf8JsonWriter writer = new Utf8JsonWriter(stream);
-			writer.WriteStartObject();
-			writer.WriteNumber("size", shape.m_size);
-			writer.WriteNumber("hardness", shape.m_hardness);
-			writer.WriteNumber("spacing", shape.m_spacing);
-			writer.WriteNumber("fade", shape.m_fade);
-			writer.WriteBoolean("square", shape.m_square);
-			writer.WriteNumber("roundness", shape.m_roundness);
-			writer.WriteNumber("angle", shape.m_angle);
-			writer.WriteNumber("smoothing", shape.m_smoothing);
-			writer.WriteEndObject();
-			writer.Flush();
-			writer.Dispose();
-			stream.Dispose();
-		}
-
-		private static int ReadShapeInt(JsonElement parent, string name)
-		{
-			JsonElement element;
-			if (!parent.TryGetProperty(name, out element))
-			{
-				return 0;
-			}
-			if (element.ValueKind != JsonValueKind.Number)
-			{
-				return 0;
-			}
-			int value;
-			if (!element.TryGetInt32(out value))
-			{
-				return 0;
-			}
-			return value;
-		}
-
-		private static bool ReadShapeBool(JsonElement parent, string name)
-		{
-			JsonElement element;
-			if (!parent.TryGetProperty(name, out element))
-			{
-				return false;
-			}
-			if (element.ValueKind == JsonValueKind.True)
-			{
-				return true;
-			}
-			return false;
-		}
-
-		private static ProceduralBrushShape ReadShape(string path)
-		{
-			if (!File.Exists(path))
-			{
-				return null;
-			}
-			byte[] bytes = File.ReadAllBytes(path);
-			JsonDocument document = JsonDocument.Parse(bytes);
-			JsonElement root = document.RootElement;
-			if (root.ValueKind != JsonValueKind.Object)
-			{
-				document.Dispose();
-				return null;
-			}
-			ProceduralBrushShape shape = new ProceduralBrushShape();
-			shape.m_size = ReadShapeInt(root, "size");
-			shape.m_hardness = ReadShapeInt(root, "hardness");
-			shape.m_spacing = ReadShapeInt(root, "spacing");
-			shape.m_fade = ReadShapeInt(root, "fade");
-			shape.m_square = ReadShapeBool(root, "square");
-			shape.m_roundness = ReadShapeInt(root, "roundness");
-			shape.m_angle = ReadShapeInt(root, "angle");
-			shape.m_smoothing = ReadShapeInt(root, "smoothing");
-			document.Dispose();
-			return shape;
-		}
-
-		private void Load()
-		{
-			byte[] bytes = File.ReadAllBytes(m_manifestPath);
-			JsonDocument document = JsonDocument.Parse(bytes);
-			JsonElement root = document.RootElement;
-			if (root.ValueKind != JsonValueKind.Object)
-			{
-				document.Dispose();
-				return;
-			}
-			JsonElement entries;
-			if (!root.TryGetProperty("entries", out entries))
-			{
-				document.Dispose();
-				return;
-			}
-			if (entries.ValueKind != JsonValueKind.Array)
-			{
-				document.Dispose();
-				return;
-			}
-			foreach (JsonElement entry in entries.EnumerateArray())
-			{
-				if (entry.ValueKind != JsonValueKind.Object)
-				{
-					continue;
-				}
-				JsonElement nameElement;
-				JsonElement pathElement;
-				JsonElement kindElement;
-				if (!entry.TryGetProperty("name", out nameElement))
-				{
-					continue;
-				}
-				if (!entry.TryGetProperty("path", out pathElement))
-				{
-					continue;
-				}
-				if (!entry.TryGetProperty("kind", out kindElement))
-				{
-					continue;
-				}
-				string name = nameElement.GetString();
-				string relative = pathElement.GetString();
-				string kind = kindElement.GetString();
-				if (name == null || relative == null || kind == null)
-				{
-					continue;
-				}
-				string absolute = PaletteFile.ToAbsolute(m_manifestDirectory, relative);
-				if (kind == "image")
-				{
-					SKBitmap tip = PaletteFile.ReadPngUnpremul(absolute);
-					if (tip == null)
-					{
-						continue;
-					}
-					CustomBrush brush = new CustomBrush(name, tip);
-					brush.m_isProcedural = false;
-					brush.m_shape = null;
-					brush.m_relativePath = relative;
-					m_brushes.Add(brush);
-					continue;
-				}
-				if (kind == "procedural")
-				{
-					ProceduralBrushShape shape = ReadShape(absolute);
-					if (shape == null)
-					{
-						continue;
-					}
-					CustomBrush brush = new CustomBrush(name, null);
-					brush.m_isProcedural = true;
-					brush.m_shape = shape;
-					brush.m_relativePath = relative;
-					m_brushes.Add(brush);
-					continue;
-				}
-			}
-			document.Dispose();
-		}
-
-		private void Save()
-		{
-			FileStream stream = File.Create(m_manifestPath);
-			Utf8JsonWriter writer = new Utf8JsonWriter(stream);
-			writer.WriteStartObject();
-			writer.WriteString("type", "brush");
-			writer.WriteStartArray("entries");
-			for (int i = 0; i < m_brushes.Count; i++)
-			{
-				CustomBrush brush = m_brushes[i];
-				writer.WriteStartObject();
-				writer.WriteString("name", brush.m_name);
-				writer.WriteString("path", brush.m_relativePath);
-				if (brush.m_isProcedural)
-				{
-					writer.WriteString("kind", "procedural");
-				}
-				else
-				{
-					writer.WriteString("kind", "image");
-				}
-				writer.WriteEndObject();
-			}
-			writer.WriteEndArray();
-			writer.WriteEndObject();
-			writer.Flush();
-			writer.Dispose();
-			stream.Dispose();
 		}
 	}
 }
