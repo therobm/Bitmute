@@ -87,6 +87,47 @@ namespace Bitmute.Tools
 		private double[] m_dabQueueX;
 		private double[] m_dabQueueY;
 		private int m_dabQueueCount;
+		private double m_fadeLengthPx;
+		private double m_fadeTraveled;
+		private byte[] m_customTipCoverage;
+		private int m_customTipWidth;
+		private int m_customTipHeight;
+
+		public void SetFade(double fadeLengthPx)
+		{
+			m_fadeLengthPx = fadeLengthPx;
+		}
+
+		public void SetCustomTip(SKBitmap tip)
+		{
+			if (tip == null)
+			{
+				m_customTipCoverage = null;
+				m_customTipWidth = 0;
+				m_customTipHeight = 0;
+				return;
+			}
+			int width = tip.Width;
+			int height = tip.Height;
+			byte[] coverage = new byte[width * height];
+			for (int y = 0; y < height; y++)
+			{
+				for (int x = 0; x < width; x++)
+				{
+					SKColor pixel = tip.GetPixel(x, y);
+					int r = pixel.Red;
+					int g = pixel.Green;
+					int b = pixel.Blue;
+					int a = pixel.Alpha;
+					int luminance = ((r * 77) + (g * 150) + (b * 29)) / 256;
+					int value = ((255 - luminance) * a) / 255;
+					coverage[(y * width) + x] = (byte)value;
+				}
+			}
+			m_customTipCoverage = coverage;
+			m_customTipWidth = width;
+			m_customTipHeight = height;
+		}
 
 		public void SetCloneOffset(int offsetX, int offsetY)
 		{
@@ -247,6 +288,11 @@ namespace Bitmute.Tools
 			m_inputY = 0.0;
 			m_hasPen = false;
 			m_distanceSinceStamp = 0.0;
+			m_customTipCoverage = null;
+			m_customTipWidth = 0;
+			m_customTipHeight = 0;
+			m_fadeLengthPx = 0.0;
+			m_fadeTraveled = 0.0;
 			m_red = color.Red;
 			m_green = color.Green;
 			m_blue = color.Blue;
@@ -343,6 +389,23 @@ namespace Bitmute.Tools
 			double localX = (offsetX * m_tipCos) + (offsetY * m_tipSin);
 			double localY = (offsetY * m_tipCos) - (offsetX * m_tipSin);
 			localY = localY / m_tipAspect;
+			if (m_customTipCoverage != null)
+			{
+				double half = m_tipOuter;
+				if (half <= 0.0)
+				{
+					return 0.0;
+				}
+				double u = ((localX + half) / (2.0 * half)) * m_customTipWidth;
+				double v = ((localY + half) / (2.0 * half)) * m_customTipHeight;
+				int tipX = (int)u;
+				int tipY = (int)v;
+				if (tipX < 0 || tipY < 0 || tipX >= m_customTipWidth || tipY >= m_customTipHeight)
+				{
+					return 0.0;
+				}
+				return m_customTipCoverage[(tipY * m_customTipWidth) + tipX] / 255.0;
+			}
 			double distance;
 			if (m_square)
 			{
@@ -642,6 +705,19 @@ namespace Bitmute.Tools
 					{
 						double opacityFactor = PressureOpacityMinimum + (1.0 - PressureOpacityMinimum) * m_currentPressure;
 						opacityCeiling = m_opacity * opacityFactor;
+					}
+					if (m_fadeLengthPx > 0.0)
+					{
+						double fadeFactor = 1.0 - (m_fadeTraveled / m_fadeLengthPx);
+						if (fadeFactor < 0.0)
+						{
+							fadeFactor = 0.0;
+						}
+						if (fadeFactor > 1.0)
+						{
+							fadeFactor = 1.0;
+						}
+						opacityCeiling = opacityCeiling * fadeFactor;
 					}
 					if (finalAlpha > opacityCeiling)
 					{
@@ -1219,6 +1295,7 @@ namespace Bitmute.Tools
 			m_inputY = y;
 			m_hasPen = true;
 			m_distanceSinceStamp = 0.0;
+			m_fadeTraveled = 0.0;
 			MarkDirty(document, x, y, x, y);
 		}
 
@@ -1243,6 +1320,7 @@ namespace Bitmute.Tools
 			{
 				return;
 			}
+			m_fadeTraveled = m_fadeTraveled + segmentLength;
 			double directionX = deltaX / segmentLength;
 			double directionY = deltaY / segmentLength;
 			double traveled = 0.0;
