@@ -1433,6 +1433,43 @@ namespace Bitmute.Imaging
 			MarkComposeDirtyAll();
 		}
 
+		public unsafe void ApplyActiveMask()
+		{
+			Layer layer = ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			if (!layer.HasMask())
+			{
+				return;
+			}
+			SKBitmap bitmap = layer.Bitmap();
+			SKBitmap mask = layer.MaskBitmap();
+			int width = bitmap.Width;
+			int height = bitmap.Height;
+			byte* bitmapBase = (byte*)bitmap.GetPixels().ToPointer();
+			int bitmapRowBytes = bitmap.RowBytes;
+			byte* maskBase = (byte*)mask.GetPixels().ToPointer();
+			int maskRowBytes = mask.RowBytes;
+			for (int y = 0; y < height; y++)
+			{
+				byte* bitmapRow = bitmapBase + (y * bitmapRowBytes);
+				byte* maskRow = maskBase + (y * maskRowBytes);
+				for (int x = 0; x < width; x++)
+				{
+					byte* pixel = bitmapRow + (x * 4);
+					byte* maskPixel = maskRow + (x * 4);
+					int alpha = pixel[3];
+					int maskCoverage = maskPixel[0];
+					int newAlpha = ((alpha * maskCoverage) + 127) / 255;
+					pixel[3] = (byte)newAlpha;
+				}
+			}
+			layer.DeleteMask();
+			MarkComposeDirtyAll();
+		}
+
 		public bool ActiveLayerContentBox(out SKRectI box, out bool isBackground)
 		{
 			box = SKRectI.Empty;
