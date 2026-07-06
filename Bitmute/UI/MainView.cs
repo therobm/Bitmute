@@ -1991,7 +1991,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			m_acceleratorRegistry.Hook(element);
+			m_acceleratorRegistry.RegisterViewHandler(element);
 			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerPressedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGlobalPointerPressed), true);
 			element.AllowDrop = true;
 			element.DragOver += OnElementDragOver;

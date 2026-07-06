@@ -11,75 +11,32 @@ namespace Bitmute.UI.Dialogs
 		private const int DefaultHeight = 600;
 		private const int MaximumSize = 8192;
 
+		private static readonly int[] s_presetSizes = new int[] { 256, 512, 1024, 2048, 4096 };
+
 		private TextField m_nameField;
 		private DualIntField m_sizeField;
+		private ListPicker m_presetField;
 		private ListPicker m_backgroundPicker;
 
-		private void OnPreset256(object sender, EventArgs eventArgs)
+		private string[] BuildPresetItems()
 		{
-			m_sizeField.SetValues(256, 256);
+			string[] items = new string[s_presetSizes.Length + 1];
+			items[0] = "Custom";
+			for (int index = 0; index < s_presetSizes.Length; index++)
+			{
+				items[index + 1] = s_presetSizes[index] + " × " + s_presetSizes[index];
+			}
+			return items;
 		}
 
-		private void OnPreset512(object sender, EventArgs eventArgs)
+		private void OnPresetSelected(int index)
 		{
-			m_sizeField.SetValues(512, 512);
-		}
-
-		private void OnPreset1024(object sender, EventArgs eventArgs)
-		{
-			m_sizeField.SetValues(1024, 1024);
-		}
-
-		private void OnPreset2048(object sender, EventArgs eventArgs)
-		{
-			m_sizeField.SetValues(2048, 2048);
-		}
-
-		private void OnPreset4096(object sender, EventArgs eventArgs)
-		{
-			m_sizeField.SetValues(4096, 4096);
-		}
-
-		private Button PresetButton(string text, EventHandler handler)
-		{
-			Button button = new Button();
-			button.Text = text;
-			button.FontSize = UiConstants.ComponentFontSize;
-			button.HeightRequest = UiConstants.ComponentHeight;
-			button.Padding = new Thickness(0.0);
-			button.CornerRadius = 0;
-			button.BorderWidth = 1.0;
-			button.ThemeBg(UiConstants.ButtonFaceLight, UiConstants.ButtonFaceDark);
-			button.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
-			button.SetAppThemeColor(Button.BorderColorProperty, UiConstants.ButtonBorderLight, UiConstants.ButtonBorderDark);
-			button.Clicked += handler;
-			return button;
-		}
-
-		private View BuildPresetRow()
-		{
-			Label captionLabel = new Label();
-			captionLabel.Text = "Presets";
-			captionLabel.FontSize = UiConstants.PanelFontSize;
-			captionLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
-			captionLabel.WidthRequest = UiConstants.FieldCaptionWidth;
-			captionLabel.VerticalOptions = LayoutOptions.Center;
-
-			Button button256 = PresetButton("256", OnPreset256);
-			Button button512 = PresetButton("512", OnPreset512);
-			Button button1024 = PresetButton("1024", OnPreset1024);
-			Button button2048 = PresetButton("2048", OnPreset2048);
-			Button button4096 = PresetButton("4096", OnPreset4096);
-
-			HorizontalStackLayout presetRow = new HorizontalStackLayout();
-			presetRow.Spacing = UiConstants.DialogRowSpacing;
-			presetRow.Add(captionLabel);
-			presetRow.Add(button256);
-			presetRow.Add(button512);
-			presetRow.Add(button1024);
-			presetRow.Add(button2048);
-			presetRow.Add(button4096);
-			return presetRow;
+			if (index <= 0 || index > s_presetSizes.Length)
+			{
+				return;
+			}
+			int size = s_presetSizes[index - 1];
+			m_sizeField.SetValues(size, size);
 		}
 
 		private void OnCreateClicked(object sender, EventArgs eventArgs)
@@ -115,11 +72,12 @@ namespace Bitmute.UI.Dialogs
 			}
 			m_nameField = new TextField("Name", "Untitled", null);
 			m_sizeField = new DualIntField("Width", "Height", initialWidth, initialHeight, 1, MaximumSize, " px", null);
+			m_presetField = new ListPicker("Presets", BuildPresetItems(), 0, OnPresetSelected);
 			m_backgroundPicker = new ListPicker("Background", new string[] { "White", "Transparent" }, 0, null);
 
 			AddField(m_nameField);
 			AddField(m_sizeField);
-			AddField(BuildPresetRow());
+			AddField(m_presetField);
 			AddField(m_backgroundPicker);
 
 			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);

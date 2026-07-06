@@ -1,13 +1,45 @@
 using SkiaSharp;
 using Bitmute.Tools;
+using System;
+using Windows.System;
+using Bitmute.UI.Operations;
 
 namespace Bitmute.UI
 {
+	public class Accelerator
+	{
+		public VirtualKey m_key;
+		public VirtualKeyModifiers m_modifiers;
+		public Operation m_operation;
+		public Accelerator(Operation operation, VirtualKey key, VirtualKeyModifiers modifiers = VirtualKeyModifiers.None)
+		{
+			m_operation = operation;
+			m_key = key;
+			m_modifiers = modifiers;
+		}
+		public void Trigger(VirtualKeyModifiers additionalModifiers)
+		{
+			if (m_operation != null && m_operation.m_onTrigger != null)
+				m_operation.m_onTrigger(additionalModifiers);
+		}
+		public string GetModifierText()
+		{
+			//todo format string properly
+
+			string modifierString = "(";
+			modifierString += m_key.ToString();
+			modifierString += ")";
+			return modifierString;
+		}
+	}
+
 	public class AcceleratorRegistry
 	{
 		private MainView m_main;
 		private ToolState m_toolState;
 		private Microsoft.UI.Xaml.UIElement m_hookedElement;
+
+
 
 		private static void AddAccelerator(Microsoft.UI.Xaml.UIElement element, Windows.System.VirtualKey key, Windows.Foundation.TypedEventHandler<Microsoft.UI.Xaml.Input.KeyboardAccelerator, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs> handler)
 		{
@@ -511,7 +543,7 @@ namespace Bitmute.UI
 			m_toolState = toolState;
 		}
 
-		public void Hook(Microsoft.UI.Xaml.UIElement element)
+		public void RegisterViewHandler(Microsoft.UI.Xaml.UIElement element)
 		{
 			m_hookedElement = element;
 			AddAccelerator(element, Windows.System.VirtualKey.N, OnAcceleratorNew);
