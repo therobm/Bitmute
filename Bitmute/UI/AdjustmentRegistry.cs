@@ -12,6 +12,8 @@ namespace Bitmute.UI
 		private static readonly string[] s_noLabels = new string[0];
 		private static readonly int[] s_noValues = new int[0];
 		private static readonly string[][] s_noOptions = new string[0][];
+		private static readonly float[] s_noFloats = new float[0];
+		private static readonly bool[] s_noBools = new bool[0];
 
 		private MainView m_main;
 		private ToolState m_toolState;
@@ -36,6 +38,13 @@ namespace Bitmute.UI
 			adjustment.m_choiceLabels = s_noLabels;
 			adjustment.m_choiceOptions = s_noOptions;
 			adjustment.m_choiceDefaults = s_noValues;
+			adjustment.m_floatSliderLabels = s_noLabels;
+			adjustment.m_floatSliderMinimums = s_noFloats;
+			adjustment.m_floatSliderMaximums = s_noFloats;
+			adjustment.m_floatSliderDefaults = s_noFloats;
+			adjustment.m_floatSliderDecimals = s_noValues;
+			adjustment.m_checkLabels = s_noLabels;
+			adjustment.m_checkDefaults = s_noBools;
 			adjustment.m_run = run;
 			m_adjustments.Add(adjustment);
 			return adjustment;
@@ -57,6 +66,13 @@ namespace Bitmute.UI
 			adjustment.m_choiceLabels = s_noLabels;
 			adjustment.m_choiceOptions = s_noOptions;
 			adjustment.m_choiceDefaults = s_noValues;
+			adjustment.m_floatSliderLabels = s_noLabels;
+			adjustment.m_floatSliderMinimums = s_noFloats;
+			adjustment.m_floatSliderMaximums = s_noFloats;
+			adjustment.m_floatSliderDefaults = s_noFloats;
+			adjustment.m_floatSliderDecimals = s_noValues;
+			adjustment.m_checkLabels = s_noLabels;
+			adjustment.m_checkDefaults = s_noBools;
 			adjustment.m_dialogWidth = width;
 			adjustment.m_dialogHeight = height;
 			adjustment.m_run = run;
@@ -80,7 +96,7 @@ namespace Bitmute.UI
 
 		private bool IsFilterCategory(eMenuAction category)
 		{
-			return category == eMenuAction.FilterBlurMenu || category == eMenuAction.FilterDistortMenu || category == eMenuAction.FilterNoiseMenu || category == eMenuAction.FilterPixelateMenu || category == eMenuAction.FilterRenderMenu || category == eMenuAction.FilterSharpenMenu || category == eMenuAction.FilterStylizeMenu || category == eMenuAction.FilterVideoMenu || category == eMenuAction.FilterOtherMenu;
+			return category == eMenuAction.FilterBlurMenu || category == eMenuAction.FilterDistortMenu || category == eMenuAction.FilterNoiseMenu || category == eMenuAction.FilterPixelateMenu || category == eMenuAction.FilterRenderMenu || category == eMenuAction.FilterSharpenMenu || category == eMenuAction.FilterStylizeMenu || category == eMenuAction.FilterVideoMenu || category == eMenuAction.FilterGenerateMenu || category == eMenuAction.FilterOtherMenu;
 		}
 
 		private void RecordLastFilter(Adjustment adjustment, int[] values)
@@ -360,6 +376,16 @@ namespace Bitmute.UI
 		private void RunDeInterlace(SKBitmap bitmap, int[] values)
 		{
 			FilterVideo.DeInterlace(bitmap, values[0], values[1]);
+		}
+
+		private void RunNormalMap(SKBitmap bitmap, int[] values)
+		{
+			float strength = values[0] / 10.0f;
+			bool invertX = values[1] == 1;
+			bool invertY = values[2] == 1;
+			FilterGenerate.eNormalMapKernel kernel = (FilterGenerate.eNormalMapKernel)values[3];
+			FilterGenerate.eNormalMapEdge edge = (FilterGenerate.eNormalMapEdge)values[4];
+			FilterGenerate.NormalMap(bitmap, strength, kernel, invertX, invertY, edge);
 		}
 
 		public Adjustment ForAction(eMenuAction action)
@@ -671,6 +697,15 @@ namespace Bitmute.UI
 			AddInstant(eMenuAction.Solarize, eMenuAction.FilterStylizeMenu, "Solarize", RunSolarize);
 
 			AddChoiceDialog(eMenuAction.DeInterlace, eMenuAction.FilterVideoMenu, "De-Interlace", true, s_noLabels, s_noValues, s_noValues, s_noValues, new string[] { "Eliminate", "Fill" }, new string[][] { new string[] { "Odd Fields", "Even Fields" }, new string[] { "Duplication", "Interpolation" } }, new int[] { 0, 1 }, 360.0, 230.0, RunDeInterlace);
+
+			Adjustment normalMap = AddChoiceDialog(eMenuAction.NormalMap, eMenuAction.FilterGenerateMenu, "Normal Map", true, s_noLabels, s_noValues, s_noValues, s_noValues, new string[] { "Kernel", "Edge" }, new string[][] { new string[] { "Sobel 3x3", "Prewitt 3x3", "5x5", "9x9" }, new string[] { "Wrap", "Clamp" } }, new int[] { 0, 0 }, 360.0, 320.0, RunNormalMap);
+			normalMap.m_floatSliderLabels = new string[] { "Strength" };
+			normalMap.m_floatSliderMinimums = new float[] { 0.1f };
+			normalMap.m_floatSliderMaximums = new float[] { 20.0f };
+			normalMap.m_floatSliderDefaults = new float[] { 2.5f };
+			normalMap.m_floatSliderDecimals = new int[] { 1 };
+			normalMap.m_checkLabels = new string[] { "Invert X (Red)", "Invert Y (Green)" };
+			normalMap.m_checkDefaults = new bool[] { false, false };
 		}
 	}
 }
