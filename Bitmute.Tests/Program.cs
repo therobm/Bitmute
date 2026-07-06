@@ -141,6 +141,7 @@ namespace Bitmute.Tests
 			s_failures = s_failures + GpuFilterStylizeTests.RunAll();
 			s_failures = s_failures + FilterGenerateTests.RunAll();
 			s_failures = s_failures + LayerOrderTests.RunAll();
+			s_failures = s_failures + MarqueeTests.RunAll();
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");

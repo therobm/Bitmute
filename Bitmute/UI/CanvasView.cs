@@ -81,6 +81,8 @@ namespace Bitmute.UI
 		private int m_antEdgesGeneration;
 		private float m_cursorDeviceX;
 		private float m_cursorDeviceY;
+		private float m_selectPressDeviceX;
+		private float m_selectPressDeviceY;
 		private bool m_cursorInside;
 		private bool m_toolStrokeActive;
 		private bool m_zoomDragging;
@@ -840,11 +842,52 @@ namespace Bitmute.UI
 				DrawZoomMarquee(canvas);
 				return;
 			}
+			if (tool is RectangleSelectTool)
+			{
+				RectangleSelectTool rectangleTool = (RectangleSelectTool)tool;
+				if (rectangleTool.HasSizePreview() && rectangleTool.PreviewWidth() > 0)
+				{
+					DrawMarqueeSizeLabel(canvas, rectangleTool.PreviewWidth(), rectangleTool.PreviewHeight());
+				}
+				return;
+			}
+			if (tool is EllipseSelectTool)
+			{
+				EllipseSelectTool ellipseTool = (EllipseSelectTool)tool;
+				if (ellipseTool.HasSizePreview() && ellipseTool.PreviewWidth() > 0)
+				{
+					DrawMarqueeSizeLabel(canvas, ellipseTool.PreviewWidth(), ellipseTool.PreviewHeight());
+				}
+				return;
+			}
 			if (m_cursorInside && ShowsBrushCursor(tool))
 			{
 				DrawClonePreview(canvas, main);
 				DrawBrushCursor(canvas, main);
 			}
+		}
+
+		private void DrawMarqueeSizeLabel(SKCanvas canvas, int width, int height)
+		{
+			string text = width + " x " + height;
+			float labelX = m_cursorDeviceX + 12.0f;
+			float labelY = m_cursorDeviceY + 22.0f;
+			SKFont font = new SKFont();
+			font.Size = 11.0f;
+			SKPaint underlay = new SKPaint();
+			underlay.Style = SKPaintStyle.Stroke;
+			underlay.StrokeWidth = 3.0f;
+			underlay.Color = SKColors.Black;
+			underlay.IsAntialias = true;
+			canvas.DrawText(text, labelX, labelY, SKTextAlign.Left, font, underlay);
+			underlay.Dispose();
+			SKPaint fill = new SKPaint();
+			fill.Style = SKPaintStyle.Fill;
+			fill.Color = SKColors.White;
+			fill.IsAntialias = true;
+			canvas.DrawText(text, labelX, labelY, SKTextAlign.Left, font, fill);
+			fill.Dispose();
+			font.Dispose();
 		}
 
 		private void DrawClonePreview(SKCanvas canvas, MainView main)
@@ -2117,7 +2160,7 @@ namespace Bitmute.UI
 				{
 					snapTolerance = 3;
 				}
-				if (main.SnapTargetGuides())
+				if (main.SnapTargetGuides() && !(tool is RectangleSelectTool || tool is EllipseSelectTool))
 				{
 					Bitmute.Imaging.Guides snapGuides = m_document.Guides();
 					pixelX = snapGuides.SnapX(pixelX, snapTolerance);
@@ -2259,6 +2302,33 @@ namespace Bitmute.UI
 			state.SetSnapLayerBounds(snapMaster && main.SnapTargetLayerBounds());
 			state.SetSnapGridSize(GridCellSize);
 			state.SetSnapTolerance(guideSnapTolerance);
+
+			if (tool is RectangleSelectTool || tool is EllipseSelectTool)
+			{
+				if (eventArgs.ActionType == SKTouchAction.Pressed)
+				{
+					m_selectPressDeviceX = eventArgs.Location.X;
+					m_selectPressDeviceY = eventArgs.Location.Y;
+				}
+				double dx = eventArgs.Location.X - m_selectPressDeviceX;
+				double dy = eventArgs.Location.Y - m_selectPressDeviceY;
+				double travel = Math.Sqrt((dx * dx) + (dy * dy));
+				int marqueeGuideSnap = -1;
+				if (main.SnapEnabled() && main.SnapTargetGuides())
+				{
+					marqueeGuideSnap = guideSnapTolerance;
+				}
+				if (tool is RectangleSelectTool)
+				{
+					((RectangleSelectTool)tool).SetPointerTravel(travel);
+					((RectangleSelectTool)tool).SetGuideSnap(marqueeGuideSnap);
+				}
+				else
+				{
+					((EllipseSelectTool)tool).SetPointerTravel(travel);
+					((EllipseSelectTool)tool).SetGuideSnap(marqueeGuideSnap);
+				}
+			}
 
 			bool changed = false;
 			int preEventWidth = m_document.Width();
