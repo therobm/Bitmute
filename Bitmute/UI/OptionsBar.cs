@@ -609,6 +609,11 @@ namespace Bitmute.UI
 				if (ReferenceEquals(m_fillPatternRows[index], sender))
 				{
 					m_toolState.SetActivePattern(m_fillPatternItems[index]);
+					m_toolState.SetFillContent(eFillContent.Pattern);
+					if (m_fillContentPicker != null)
+					{
+						m_fillContentPicker.SelectedIndex = 1;
+					}
 					m_main.ClosePulldown();
 					return;
 				}

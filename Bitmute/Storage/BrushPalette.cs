@@ -123,7 +123,7 @@ namespace Bitmute.Storage
 			}
 			else
 			{
-				Save();
+				DefaultPalette.SeedBrushes(this);
 			}
 		}
 

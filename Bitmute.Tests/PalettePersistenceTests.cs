@@ -62,10 +62,24 @@ namespace Bitmute.Tests
 			}
 		}
 
+		private static PatternPalette EmptyPatternPalette(string root)
+		{
+			Directory.CreateDirectory(Path.Combine(root, "Palettes"));
+			File.WriteAllText(Path.Combine(root, "Palettes", "patterns.plt"), "{\"version\":1,\"entries\":[]}");
+			return new PatternPalette(root);
+		}
+
+		private static BrushPalette EmptyBrushPalette(string root)
+		{
+			Directory.CreateDirectory(Path.Combine(root, "Palettes"));
+			File.WriteAllText(Path.Combine(root, "Palettes", "brushes.plt"), "{\"version\":1,\"entries\":[]}");
+			return new BrushPalette(root);
+		}
+
 		private static void TestPatternRoundTrip()
 		{
 			string root = FreshRoot();
-			PatternPalette palette = new PatternPalette(root);
+			PatternPalette palette = EmptyPatternPalette(root);
 			SKBitmap tile = BuildMarkedTile();
 			Pattern pattern = palette.AddCaptured(tile, "MarkerPattern");
 			string absolute = Path.GetFullPath(Path.Combine(root, "Palettes", pattern.m_relativePath));
@@ -86,7 +100,7 @@ namespace Bitmute.Tests
 		private static void TestBrushTipRoundTrip()
 		{
 			string root = FreshRoot();
-			BrushPalette palette = new BrushPalette(root);
+			BrushPalette palette = EmptyBrushPalette(root);
 			SKBitmap tip = BuildMarkedTile();
 			CustomBrush brush = palette.AddCapturedTip(tip, "MarkerTip");
 			string absolute = Path.GetFullPath(Path.Combine(root, "Palettes", brush.m_relativePath));
@@ -113,7 +127,7 @@ namespace Bitmute.Tests
 		private static void TestProceduralRoundTrip()
 		{
 			string root = FreshRoot();
-			BrushPalette palette = new BrushPalette(root);
+			BrushPalette palette = EmptyBrushPalette(root);
 			ProceduralBrushShape shape = new ProceduralBrushShape();
 			shape.m_size = 37;
 			shape.m_hardness = 62;
@@ -147,7 +161,7 @@ namespace Bitmute.Tests
 		private static void TestPortableRelativePaths()
 		{
 			string rootA = FreshRoot();
-			PatternPalette palette = new PatternPalette(rootA);
+			PatternPalette palette = EmptyPatternPalette(rootA);
 			SKBitmap tile = BuildMarkedTile();
 			palette.AddCaptured(tile, "PortablePattern");
 			string rootB = FreshRoot();
@@ -172,7 +186,7 @@ namespace Bitmute.Tests
 		private static void TestRemoveKeepsFile()
 		{
 			string root = FreshRoot();
-			PatternPalette palette = new PatternPalette(root);
+			PatternPalette palette = EmptyPatternPalette(root);
 			SKBitmap tile = BuildMarkedTile();
 			Pattern pattern = palette.AddCaptured(tile, "RemovablePattern");
 			string absolute = Path.GetFullPath(Path.Combine(root, "Palettes", pattern.m_relativePath));
@@ -195,6 +209,72 @@ namespace Bitmute.Tests
 			Check(palette.Patterns().Count == 0, "newer manifest version is refused, not misparsed");
 		}
 
+		private static CustomBrush FindBrush(BrushPalette palette, string name)
+		{
+			for (int i = 0; i < palette.CustomBrushes().Count; i++)
+			{
+				CustomBrush brush = palette.CustomBrushes()[i];
+				if (brush.m_name == name)
+				{
+					return brush;
+				}
+			}
+			return null;
+		}
+
+		private static void TestDefaultPatternsSeeded()
+		{
+			string root = FreshRoot();
+			PatternPalette palette = new PatternPalette(root);
+			Check(palette.Patterns().Count == 3, "default patterns seeded (3)");
+			PatternPalette reloaded = new PatternPalette(root);
+			Check(reloaded.Patterns().Count == 3, "default patterns persist and are not re-seeded");
+		}
+
+		private static void TestDefaultBrushesSeeded()
+		{
+			string root = FreshRoot();
+			BrushPalette palette = new BrushPalette(root);
+			Check(palette.CustomBrushes().Count == 2, "default brushes seeded (2)");
+			if (palette.CustomBrushes().Count != 2)
+			{
+				return;
+			}
+			bool allImageTips = true;
+			for (int i = 0; i < palette.CustomBrushes().Count; i++)
+			{
+				CustomBrush brush = palette.CustomBrushes()[i];
+				if (brush.m_isProcedural || brush.m_tip == null)
+				{
+					allImageTips = false;
+				}
+			}
+			Check(allImageTips, "default brushes are image tips");
+			BrushPalette reloaded = new BrushPalette(root);
+			Check(reloaded.CustomBrushes().Count == 2, "default brushes persist and are not re-seeded");
+		}
+
+		private static void TestDefaultTipEncoding()
+		{
+			string root = FreshRoot();
+			BrushPalette palette = new BrushPalette(root);
+			CustomBrush hard = FindBrush(palette, "Hard Round");
+			CustomBrush soft = FindBrush(palette, "Soft Round");
+			if (hard == null || soft == null)
+			{
+				Check(false, "default tips present by name");
+				return;
+			}
+			SKColor hardCenter = hard.m_tip.GetPixel(hard.m_tip.Width / 2, hard.m_tip.Height / 2);
+			Check(hardCenter.Alpha == 255 && hardCenter.Red == 0 && hardCenter.Green == 0 && hardCenter.Blue == 0, "hard tip center is opaque black (full coverage)");
+			SKColor hardCorner = hard.m_tip.GetPixel(0, 0);
+			Check(hardCorner.Alpha == 0, "hard tip corner is transparent (no coverage)");
+			SKColor softCenter = soft.m_tip.GetPixel(soft.m_tip.Width / 2, soft.m_tip.Height / 2);
+			SKColor softEdge = soft.m_tip.GetPixel(soft.m_tip.Width / 2, soft.m_tip.Height - 3);
+			Check(softCenter.Alpha > 200, "soft tip center is near-opaque (high coverage)");
+			Check(softEdge.Alpha < softCenter.Alpha, "soft tip falls off toward the edge");
+		}
+
 		public static int RunAll()
 		{
 			s_failures = 0;
@@ -204,6 +284,9 @@ namespace Bitmute.Tests
 			TestPortableRelativePaths();
 			TestRemoveKeepsFile();
 			TestNewerVersionRefused();
+			TestDefaultPatternsSeeded();
+			TestDefaultBrushesSeeded();
+			TestDefaultTipEncoding();
 			return s_failures;
 		}
 	}

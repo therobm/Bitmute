@@ -68,7 +68,7 @@ namespace Bitmute.Storage
 			}
 			else
 			{
-				Save();
+				DefaultPalette.SeedPatterns(this);
 			}
 		}
 
