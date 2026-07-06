@@ -11,6 +11,9 @@ namespace Bitmute.UI
 	{
 		private Document m_document;
 		private CanvasView m_canvas;
+		private TextEditSession m_textSession;
+		private int m_guideCreateOrientation;
+		private bool m_guidePointerHooked;
 		private Entry m_zoomEntry;
 		private string m_baseTitle;
 		private Ruler m_topRuler;
@@ -224,6 +227,63 @@ namespace Bitmute.UI
 			}
 		}
 
+		protected override void OnHandlerChanged()
+		{
+			base.OnHandlerChanged();
+			if (m_guidePointerHooked || Handler == null)
+			{
+				return;
+			}
+			Microsoft.UI.Xaml.UIElement element = Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerMovedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGuidePointerMoved), true);
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerReleasedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGuidePointerReleased), true);
+			m_guidePointerHooked = true;
+		}
+
+		public void BeginGuideCreation(int orientation)
+		{
+			if (m_document.Guides().IsLocked())
+			{
+				return;
+			}
+			MainView main = MainView.Self;
+			if (main != null)
+			{
+				main.ActivateDocumentWindow(this);
+			}
+			m_guideCreateOrientation = orientation;
+			m_canvas.ResetGuideStickyCache();
+		}
+
+		private void OnGuidePointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs args)
+		{
+			if (m_guideCreateOrientation == 0)
+			{
+				return;
+			}
+			Microsoft.UI.Xaml.UIElement canvasElement = m_canvas.Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (canvasElement == null)
+			{
+				return;
+			}
+			Windows.Foundation.Point position = args.GetCurrentPoint(canvasElement).Position;
+			m_canvas.UpdatePendingGuideFromDip(m_guideCreateOrientation, position.X, position.Y);
+		}
+
+		private void OnGuidePointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs args)
+		{
+			if (m_guideCreateOrientation == 0)
+			{
+				return;
+			}
+			m_guideCreateOrientation = 0;
+			m_canvas.CommitPendingGuide();
+		}
+
 		public CanvasView Canvas()
 		{
 			return m_canvas;
@@ -232,6 +292,33 @@ namespace Bitmute.UI
 		public Document DocumentModel()
 		{
 			return m_document;
+		}
+
+		public TextEditSession TextSession()
+		{
+			if (m_textSession == null)
+			{
+				m_textSession = new TextEditSession(this);
+			}
+			return m_textSession;
+		}
+
+		public TextEditSession TextSessionOrNull()
+		{
+			return m_textSession;
+		}
+
+		public bool IsTextEditActive()
+		{
+			return m_textSession != null && m_textSession.IsActive();
+		}
+
+		public void CommitTextEdit()
+		{
+			if (m_textSession != null)
+			{
+				m_textSession.Commit();
+			}
 		}
 	}
 }

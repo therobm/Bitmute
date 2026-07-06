@@ -55,7 +55,11 @@ namespace Bitmute.UI
 				{
 					orientation = 1;
 				}
-				main.BeginGuideCreation(orientation, m_canvas);
+				DocumentWindow ownerWindow = m_canvas.OwnerWindow();
+				if (ownerWindow != null)
+				{
+					ownerWindow.BeginGuideCreation(orientation);
+				}
 			}
 			eventArgs.Handled = true;
 		}

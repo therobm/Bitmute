@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Bitmute.Imaging;
 using Bitmute.Storage;
@@ -47,8 +47,7 @@ namespace Bitmute.UI
 		private AbsoluteLayout m_overlay;
 		private MenuBar m_menuBar;
 		private OptionsBar m_optionsBar;
-		private TextEditSession m_textEditSession;
-		private List<FloatingPanel> m_documents;
+		private List<DocumentWindow> m_documents;
 		private DocumentWindow m_activeDocumentWindow;
 		private ToolPalette m_toolPalette;
 		private LayersPanel m_layersPanel;
@@ -82,11 +81,9 @@ namespace Bitmute.UI
 		private int m_topZIndex;
 		private ToolBox m_toolBox;
 		private ToolState m_toolState;
-		private int m_guideCreateOrientation;
-		private CanvasView m_guideCreateCanvas;
 		private int m_editingSwatchIndex = -1;
 		private LayerStyle m_layerStyleSnapshot;
-		private int m_layerStyleTargetIndex;
+		private Layer m_layerStyleTargetLayer;
 		private LayerStyle m_copiedLayerStyle;
 		private AdjustmentRegistry m_adjustments;
 		private Button m_focusSink;
@@ -148,12 +145,13 @@ namespace Bitmute.UI
 
 		public void OpenSizeDialog(bool canvasMode)
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			string title = "Image Size";
 			if (canvasMode)
 			{
@@ -172,12 +170,13 @@ namespace Bitmute.UI
 
 		public void DoCanvasOp(eCanvasOperation op)
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			document.BeginCanvasEdit(CanvasOpLabel(op));
 			if (op == eCanvasOperation.FlipHorizontal)
 			{
@@ -246,12 +245,13 @@ namespace Bitmute.UI
 
 		public void ApplyCanvasSize(int width, int height, int anchorX, int anchorY)
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			document.BeginCanvasEdit("Canvas Size");
 			document.ResizeCanvas(width, height, anchorX, anchorY);
 			document.EndCanvasEdit();
@@ -260,12 +260,13 @@ namespace Bitmute.UI
 
 		public void ApplyImageSize(int width, int height, int interpolation)
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			document.BeginCanvasEdit("Image Size");
 			document.ScaleImage(width, height, interpolation);
 			document.EndCanvasEdit();
@@ -357,12 +358,13 @@ namespace Bitmute.UI
 
 		public void DoDesaturate()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			Layer activeLayer = document.ActiveLayer();
 			if (activeLayer == null)
 			{
@@ -376,12 +378,13 @@ namespace Bitmute.UI
 
 		public void DoSelectAll()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			document.CommitFloatingSelection();
 			document.Selection().SelectRect(new SkiaSharp.SKRectI(0, 0, document.Width(), document.Height()));
 			canvas.MarkComposeDirty();
@@ -390,12 +393,13 @@ namespace Bitmute.UI
 
 		public void DoDeselect()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			document.CommitFloatingSelection();
 			document.Selection().Clear();
 			canvas.MarkComposeDirty();
@@ -404,12 +408,13 @@ namespace Bitmute.UI
 
 		public void DoInvertSelection()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			document.CommitFloatingSelection();
 			document.Selection().Invert();
 			canvas.MarkComposeDirty();
@@ -418,30 +423,30 @@ namespace Bitmute.UI
 
 		public void DoUndo()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			if (canvas.CurrentDocument().Undo())
+			if (window.DocumentModel().Undo())
 			{
-				canvas.SyncDocumentSize();
-				canvas.MarkComposeDirty();
+				window.Canvas().SyncDocumentSize();
+				window.Canvas().MarkComposeDirty();
 				RefreshPanels();
 			}
 		}
 
 		public void DoRedo()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			if (canvas.CurrentDocument().Redo())
+			if (window.DocumentModel().Redo())
 			{
-				canvas.SyncDocumentSize();
-				canvas.MarkComposeDirty();
+				window.Canvas().SyncDocumentSize();
+				window.Canvas().MarkComposeDirty();
 				RefreshPanels();
 			}
 		}
@@ -1057,12 +1062,13 @@ namespace Bitmute.UI
 
 		public unsafe void SelectLayerPixels(int layerIndex)
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			List<Layer> layers = document.Layers();
 			if (layerIndex < 0 || layerIndex >= layers.Count)
 			{
@@ -1125,12 +1131,13 @@ namespace Bitmute.UI
 
 		public void SelectLayerBounds(int layerIndex)
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			List<Layer> layers = document.Layers();
 			if (layerIndex < 0 || layerIndex >= layers.Count)
 			{
@@ -1168,27 +1175,13 @@ namespace Bitmute.UI
 		public void TogglePatternPreview()
 		{
 			m_workspaceState.SetPatternPreview(!m_workspaceState.PatternPreview());
-			for (int index = 0; index < m_documents.Count; index++)
-			{
-				DocumentWindow window = m_documents[index] as DocumentWindow;
-				if (window != null)
-				{
-					window.Canvas().InvalidateSurface();
-				}
-			}
+			InvalidateAllDocumentWindows();
 		}
 
 		public void ToggleGrid()
 		{
 			m_workspaceState.SetGridEnabled(!m_workspaceState.GridEnabled());
-			for (int index = 0; index < m_documents.Count; index++)
-			{
-				DocumentWindow window = m_documents[index] as DocumentWindow;
-				if (window != null)
-				{
-					window.Canvas().InvalidateSurface();
-				}
-			}
+			InvalidateAllDocumentWindows();
 		}
 
 		public void OpenRecentFile(string path)
@@ -1237,7 +1230,7 @@ namespace Bitmute.UI
 				return;
 			}
 			m_layerStyleSnapshot = layer.LayerStyle().Clone();
-			m_layerStyleTargetIndex = document.ActiveLayerIndex();
+			m_layerStyleTargetLayer = layer;
 			ShowModal(new LayerStyleDialog(layer.LayerStyle().Clone()), 620.0, 460.0);
 		}
 
@@ -1280,17 +1273,7 @@ namespace Bitmute.UI
 
 		private Layer LayerStyleTargetLayer()
 		{
-			Document document = ActiveDocument();
-			if (document == null)
-			{
-				return null;
-			}
-			System.Collections.Generic.List<Layer> layers = document.Layers();
-			if (m_layerStyleTargetIndex < 0 || m_layerStyleTargetIndex >= layers.Count)
-			{
-				return null;
-			}
-			return layers[m_layerStyleTargetIndex];
+			return m_layerStyleTargetLayer;
 		}
 
 		public void PreviewLayerStyle(LayerStyle style)
@@ -1317,6 +1300,7 @@ namespace Bitmute.UI
 			if (document == null || layer == null || m_layerStyleSnapshot == null)
 			{
 				m_layerStyleSnapshot = null;
+				m_layerStyleTargetLayer = null;
 				CloseModal();
 				return;
 			}
@@ -1325,6 +1309,7 @@ namespace Bitmute.UI
 			layer.SetLayerStyle(style.Clone());
 			document.EndCanvasEdit();
 			m_layerStyleSnapshot = null;
+			m_layerStyleTargetLayer = null;
 			CanvasView canvas = ActiveCanvas();
 			if (canvas != null)
 			{
@@ -1349,6 +1334,7 @@ namespace Bitmute.UI
 				}
 			}
 			m_layerStyleSnapshot = null;
+			m_layerStyleTargetLayer = null;
 			CloseModal();
 		}
 
@@ -1361,12 +1347,13 @@ namespace Bitmute.UI
 		public void ApplyStroke(int width, int position)
 		{
 			CloseModal();
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			Layer layer = document.ActiveLayer();
 			if (layer == null || layer.IsText())
 			{
@@ -1384,22 +1371,19 @@ namespace Bitmute.UI
 			m_workspaceState.SetRulersEnabled(!m_workspaceState.RulersEnabled());
 			for (int index = 0; index < m_documents.Count; index++)
 			{
-				DocumentWindow window = m_documents[index] as DocumentWindow;
-				if (window != null)
-				{
-					window.SetRulersEnabled(m_workspaceState.RulersEnabled());
-				}
+				m_documents[index].SetRulersEnabled(m_workspaceState.RulersEnabled());
 			}
 		}
 
 		public void DoInvert()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			Layer activeLayer = document.ActiveLayer();
 			if (activeLayer == null)
 			{
@@ -1824,7 +1808,7 @@ namespace Bitmute.UI
 			}
 			this.ThemeBg(UiConstants.WorkspaceBackdropLight, UiConstants.WorkspaceBackdropDark);
 
-			m_documents = new List<FloatingPanel>();
+			m_documents = new List<DocumentWindow>();
 			m_modalStack = new System.Collections.Generic.List<ModalEntry>();
 			m_untitledCount = 0;
 			m_cascadeCount = 0;
@@ -1833,8 +1817,6 @@ namespace Bitmute.UI
 			m_toolState = m_toolBox.State();
 			m_adjustments = new AdjustmentRegistry(this, m_toolState);
 			m_acceleratorRegistry = new AcceleratorRegistry(this, m_toolState);
-			m_guideCreateOrientation = 0;
-			m_guideCreateCanvas = null;
 			m_workspaceState = new WorkspaceState();
 			m_menuTitles = new string[] { "File", "Edit", "Image", "Layer", "Select", "Filter", "View", "Window", "Help" };
 			m_overlay = new AbsoluteLayout();
@@ -1846,7 +1828,6 @@ namespace Bitmute.UI
 			m_optionsBar = new OptionsBar(this, m_toolState);
 			View optionsBar = m_optionsBar.Root();
 			View middle = BuildMiddle();
-			m_textEditSession = new TextEditSession(this, m_toolState, m_workspace);
 			View statusBar = BuildStatusBar();
 
 			Grid root = new Grid();
@@ -1939,11 +1920,7 @@ namespace Bitmute.UI
 		{
 			for (int index = 0; index < m_documents.Count; index++)
 			{
-				DocumentWindow window = m_documents[index] as DocumentWindow;
-				if (window == null)
-				{
-					continue;
-				}
+				DocumentWindow window = m_documents[index];
 				Document model = window.DocumentModel();
 				if (model != null && model.IsDirty())
 				{
@@ -1992,8 +1969,6 @@ namespace Bitmute.UI
 			}
 			m_acceleratorRegistry.Hook(element);
 			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerPressedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGlobalPointerPressed), true);
-			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerMovedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGlobalPointerMoved), true);
-			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerReleasedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGlobalPointerReleased), true);
 			element.AllowDrop = true;
 			element.DragOver += OnElementDragOver;
 			element.Drop += OnElementDrop;
@@ -2028,56 +2003,6 @@ namespace Bitmute.UI
 			ClosePulldown();
 		}
 
-		public void BeginGuideCreation(int orientation, CanvasView canvas)
-		{
-			if (canvas == null)
-			{
-				return;
-			}
-			if (canvas.CurrentDocument().Guides().IsLocked())
-			{
-				return;
-			}
-			ActivateDocumentWindow(canvas.OwnerWindow());
-			m_guideCreateOrientation = orientation;
-			m_guideCreateCanvas = canvas;
-			canvas.ResetGuideStickyCache();
-		}
-
-		private void OnGlobalPointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs args)
-		{
-			if (m_guideCreateOrientation == 0)
-			{
-				return;
-			}
-			CanvasView canvas = m_guideCreateCanvas;
-			if (canvas == null)
-			{
-				return;
-			}
-			Microsoft.UI.Xaml.UIElement canvasElement = canvas.Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
-			if (canvasElement == null)
-			{
-				return;
-			}
-			Windows.Foundation.Point position = args.GetCurrentPoint(canvasElement).Position;
-			canvas.UpdatePendingGuideFromDip(m_guideCreateOrientation, position.X, position.Y);
-		}
-
-		private void OnGlobalPointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs args)
-		{
-			if (m_guideCreateOrientation == 0)
-			{
-				return;
-			}
-			CanvasView canvas = m_guideCreateCanvas;
-			m_guideCreateOrientation = 0;
-			m_guideCreateCanvas = null;
-			if (canvas != null)
-			{
-				canvas.CommitPendingGuide();
-			}
-		}
 
 		private void OnElementDragOver(object sender, Microsoft.UI.Xaml.DragEventArgs args)
 		{
@@ -2168,12 +2093,13 @@ namespace Bitmute.UI
 
 		public void MergeSelectedLayers()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			List<int> selected = document.SelectedLayerIndices();
 			if (selected.Count >= 2)
 			{
@@ -2190,12 +2116,13 @@ namespace Bitmute.UI
 
 		public void DoMergeDown()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			if (document.ActiveLayerIndex() <= 0)
 			{
 				return;
@@ -2208,12 +2135,13 @@ namespace Bitmute.UI
 
 		public void DoMergeVisible()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			document.BeginCanvasEdit("Merge Visible");
 			document.MergeVisible();
 			document.EndCanvasEdit();
@@ -2222,12 +2150,13 @@ namespace Bitmute.UI
 
 		public void DoFlattenImage()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			document.BeginCanvasEdit("Flatten Image");
 			document.FlattenImage();
 			document.EndCanvasEdit();
@@ -2242,12 +2171,13 @@ namespace Bitmute.UI
 
 		public void DuplicateActiveLayer()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			document.BeginCanvasEdit("Duplicate Layer");
 			document.DuplicateLayer(document.ActiveLayerIndex());
 			document.EndCanvasEdit();
@@ -2256,12 +2186,13 @@ namespace Bitmute.UI
 
 		public void AddNewLayer()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			if (document == null)
 			{
 				return;
@@ -2275,12 +2206,13 @@ namespace Bitmute.UI
 
 		public void DeleteActiveLayer()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			document.BeginCanvasEdit("Delete Layer");
 			document.DeleteLayer(document.ActiveLayerIndex());
 			document.EndCanvasEdit();
@@ -2289,12 +2221,13 @@ namespace Bitmute.UI
 
 		public void RequestDeleteActiveLayer()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			if (document == null)
 			{
 				return;
@@ -2476,12 +2409,13 @@ namespace Bitmute.UI
 
 		public void CommitCrop()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			Document document = canvas.CurrentDocument();
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
 			m_toolBox.Crop().CommitPending(document);
 			FinishCanvasOp(canvas, document);
 		}
@@ -2507,13 +2441,13 @@ namespace Bitmute.UI
 
 		public void FinalizeLasso()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
 			{
 				return;
 			}
-			m_toolBox.Lasso().FinalizePending(canvas.CurrentDocument(), m_toolState);
-			canvas.InvalidateSurface();
+			m_toolBox.Lasso().FinalizePending(window.DocumentModel(), m_toolState);
+			window.Canvas().InvalidateSurface();
 		}
 
 		public void CancelLasso()
@@ -2668,23 +2602,9 @@ namespace Bitmute.UI
 			AddDocument(window, x, y, width, height);
 		}
 
-		private System.Collections.Generic.List<DocumentWindow> DocumentWindows()
-		{
-			System.Collections.Generic.List<DocumentWindow> windows = new System.Collections.Generic.List<DocumentWindow>();
-			for (int index = 0; index < m_documents.Count; index++)
-			{
-				DocumentWindow window = m_documents[index] as DocumentWindow;
-				if (window != null)
-				{
-					windows.Add(window);
-				}
-			}
-			return windows;
-		}
-
 		public void DoCascadeWindows()
 		{
-			System.Collections.Generic.List<DocumentWindow> windows = DocumentWindows();
+			System.Collections.Generic.List<DocumentWindow> windows = m_documents;
 			double workspaceWidth = WorkspaceWidth();
 			double workspaceHeight = WorkspaceHeight();
 			if (workspaceWidth <= 100.0 || workspaceHeight <= 100.0)
@@ -2704,7 +2624,7 @@ namespace Bitmute.UI
 
 		public void DoTileWindows()
 		{
-			System.Collections.Generic.List<DocumentWindow> windows = DocumentWindows();
+			System.Collections.Generic.List<DocumentWindow> windows = m_documents;
 			int count = windows.Count;
 			if (count == 0)
 			{
@@ -3027,12 +2947,25 @@ namespace Bitmute.UI
 			}
 		}
 
-		public void AddDocument(FloatingPanel panel, double x, double y, double width, double height)
+		public void AddDocument(DocumentWindow window, double x, double y, double width, double height)
 		{
-			m_documents.Add(panel);
-			m_workspace.Add(panel);
-			panel.SetBounds(x, y, width, height);
-			BringToFront(panel);
+			m_documents.Add(window);
+			m_workspace.Add(window);
+			window.SetBounds(x, y, width, height);
+			BringToFront(window);
+		}
+
+		public DocumentWindow ActiveWindow()
+		{
+			return m_activeDocumentWindow;
+		}
+
+		private void InvalidateAllDocumentWindows()
+		{
+			for (int index = 0; index < m_documents.Count; index++)
+			{
+				m_documents[index].Canvas().InvalidateSurface();
+			}
 		}
 
 		public void BringToFront(FloatingPanel panel)
@@ -3042,6 +2975,11 @@ namespace Bitmute.UI
 			DocumentWindow window = panel as DocumentWindow;
 			if (window != null)
 			{
+				if (m_activeDocumentWindow != null && m_activeDocumentWindow != window)
+				{
+					m_activeDocumentWindow.CommitTextEdit();
+					CancelArmedOperation();
+				}
 				m_activeDocumentWindow = window;
 				RefreshDocumentTitleBars();
 				RefreshPanels();
@@ -3052,11 +2990,7 @@ namespace Bitmute.UI
 		{
 			for (int index = 0; index < m_documents.Count; index++)
 			{
-				DocumentWindow window = m_documents[index] as DocumentWindow;
-				if (window == null)
-				{
-					continue;
-				}
+				DocumentWindow window = m_documents[index];
 				window.SetTitleBarActive(window == m_activeDocumentWindow);
 			}
 		}
@@ -3086,12 +3020,11 @@ namespace Bitmute.UI
 
 		public Document ActiveDocument()
 		{
-			CanvasView canvas = ActiveCanvas();
-			if (canvas == null)
+			if (m_activeDocumentWindow == null)
 			{
 				return null;
 			}
-			return canvas.CurrentDocument();
+			return m_activeDocumentWindow.DocumentModel();
 		}
 
 		public void RefreshPanels()
@@ -3292,7 +3225,7 @@ namespace Bitmute.UI
 				}
 				m_layerStyleSnapshot = null;
 			}
-			if (m_modalStack.Count == 0 && m_textEditSession != null)
+			if (m_modalStack.Count == 0)
 			{
 				Dispatcher.Dispatch(FocusKeyboardSinkDeferred);
 			}
@@ -3304,7 +3237,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			if (m_textEditSession != null && m_textEditSession.IsActive())
+			if (IsTextEditActive())
 			{
 				return;
 			}
@@ -3601,11 +3534,7 @@ namespace Bitmute.UI
 			DocumentWindow topmost = null;
 			for (int index = 0; index < m_documents.Count; index++)
 			{
-				DocumentWindow window = m_documents[index] as DocumentWindow;
-				if (window == null)
-				{
-					continue;
-				}
+				DocumentWindow window = m_documents[index];
 				if (topmost == null || window.ZIndex >= topmost.ZIndex)
 				{
 					topmost = window;
@@ -3632,18 +3561,18 @@ namespace Bitmute.UI
 
 		private void RemovePanel(FloatingPanel panel)
 		{
-			if (!m_documents.Contains(panel))
+			DocumentWindow window = panel as DocumentWindow;
+			if (window == null || !m_documents.Contains(window))
 			{
 				return;
 			}
-			m_documents.Remove(panel);
-			m_workspace.Remove(panel);
-			DocumentWindow window = panel as DocumentWindow;
-			if (window != null && window.Canvas() != null)
+			m_documents.Remove(window);
+			m_workspace.Remove(window);
+			if (window.Canvas() != null)
 			{
 				window.Canvas().ReleaseGpuResources();
 			}
-			if (window != null && m_activeDocumentWindow == window)
+			if (m_activeDocumentWindow == window)
 			{
 				m_activeDocumentWindow = null;
 				DocumentWindow next = TopmostDocumentWindow();
@@ -3829,106 +3758,133 @@ namespace Bitmute.UI
 			return new Color(color.Red / 255.0f, color.Green / 255.0f, color.Blue / 255.0f, color.Alpha / 255.0f);
 		}
 
+		public AbsoluteLayout WorkspaceLayout()
+		{
+			return m_workspace;
+		}
+
+		private TextEditSession ActiveTextSession()
+		{
+			if (m_activeDocumentWindow == null)
+			{
+				return null;
+			}
+			return m_activeDocumentWindow.TextSessionOrNull();
+		}
+
 		public bool IsTextEditActive()
 		{
-			if (m_textEditSession == null)
+			TextEditSession session = ActiveTextSession();
+			if (session == null)
 			{
 				return false;
 			}
-			return m_textEditSession.IsActive();
+			return session.IsActive();
 		}
 
 		public CanvasView TextEditCanvas()
 		{
-			if (m_textEditSession == null)
+			TextEditSession session = ActiveTextSession();
+			if (session == null)
 			{
 				return null;
 			}
-			return m_textEditSession.EditCanvas();
+			return session.EditCanvas();
 		}
 
 		public Bitmute.Imaging.Layer TextEditLayer()
 		{
-			if (m_textEditSession == null)
+			TextEditSession session = ActiveTextSession();
+			if (session == null)
 			{
 				return null;
 			}
-			return m_textEditSession.EditLayer();
+			return session.EditLayer();
 		}
 
 		public int TextCaretIndex()
 		{
-			if (m_textEditSession == null)
+			TextEditSession session = ActiveTextSession();
+			if (session == null)
 			{
 				return 0;
 			}
-			return m_textEditSession.CaretIndex();
+			return session.CaretIndex();
 		}
 
 		public int TextSelectionStart()
 		{
-			if (m_textEditSession == null)
+			TextEditSession session = ActiveTextSession();
+			if (session == null)
 			{
 				return 0;
 			}
-			return m_textEditSession.SelectionStart();
+			return session.SelectionStart();
 		}
 
 		public int TextSelectionLength()
 		{
-			if (m_textEditSession == null)
+			TextEditSession session = ActiveTextSession();
+			if (session == null)
 			{
 				return 0;
 			}
-			return m_textEditSession.SelectionLength();
+			return session.SelectionLength();
 		}
 
 		public bool CaretVisible()
 		{
-			if (m_textEditSession == null)
+			TextEditSession session = ActiveTextSession();
+			if (session == null)
 			{
 				return false;
 			}
-			return m_textEditSession.CaretVisible();
+			return session.CaretVisible();
 		}
 
 		public void PlaceText(CanvasView canvas, int x, int y, float deviceX, float deviceY)
 		{
-			if (m_textEditSession != null)
+			DocumentWindow window = canvas.OwnerWindow();
+			if (window == null)
 			{
-				m_textEditSession.PlaceText(canvas, x, y, deviceX, deviceY);
+				return;
 			}
+			window.TextSession().PlaceText(x, y, deviceX, deviceY);
 		}
 
 		public void BeginTextEditForLayer(Bitmute.Imaging.Layer layer)
 		{
-			if (m_textEditSession != null)
+			if (m_activeDocumentWindow == null)
 			{
-				m_textEditSession.BeginForLayer(layer);
+				return;
 			}
+			m_activeDocumentWindow.TextSession().BeginForLayer(layer);
 		}
 
 		public void CommitTextEdit()
 		{
-			if (m_textEditSession != null)
+			TextEditSession session = ActiveTextSession();
+			if (session != null)
 			{
-				m_textEditSession.Commit();
+				session.Commit();
 			}
 		}
 
 		public void DoRasterizeText()
 		{
-			if (m_textEditSession != null)
+			if (m_activeDocumentWindow == null)
 			{
-				m_textEditSession.Rasterize();
+				return;
 			}
+			m_activeDocumentWindow.TextSession().Rasterize();
 		}
 
 		public void RefreshTextEditStyle()
 		{
-			if (m_textEditSession != null)
+			TextEditSession session = ActiveTextSession();
+			if (session != null)
 			{
-				m_textEditSession.RefreshStyle();
+				session.RefreshStyle();
 			}
 		}
 
@@ -4010,11 +3966,7 @@ namespace Bitmute.UI
 			document.SetRulerUnits(units);
 			if (m_activeDocumentWindow != null)
 			{
-				DocumentWindow window = m_activeDocumentWindow as DocumentWindow;
-				if (window != null)
-				{
-					window.RefreshChrome();
-				}
+				m_activeDocumentWindow.RefreshChrome();
 			}
 		}
 
@@ -4057,11 +4009,6 @@ namespace Bitmute.UI
 			{
 				m_layersPanel.Refresh();
 			}
-		}
-
-		public DocumentWindow ActiveDocumentWindow()
-		{
-			return m_activeDocumentWindow;
 		}
 
 		public ToolState CurrentToolState()

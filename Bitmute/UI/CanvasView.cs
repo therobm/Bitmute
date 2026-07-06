@@ -37,8 +37,8 @@ namespace Bitmute.UI
 		private static SKBitmap s_checkerTile;
 
 		private Document m_document;
-		private SKBitmap m_composite;
-		private int m_compositeVersion;
+		private int m_fittedDocWidth = -1;
+		private int m_fittedDocHeight = -1;
 		private int m_channelCacheVersion = -1;
 		private int m_channelCacheKey = -1;
 		private SKPaint m_checkerPaint;
@@ -119,22 +119,6 @@ namespace Bitmute.UI
 			return s_checkerTile;
 		}
 
-		private bool EnsureComposite()
-		{
-			int width = m_document.Width();
-			int height = m_document.Height();
-			if (m_composite != null && m_composite.Width == width && m_composite.Height == height)
-			{
-				return false;
-			}
-			if (m_composite != null)
-			{
-				m_composite.Dispose();
-			}
-			m_composite = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
-			return true;
-		}
-
 		private SKRectI ClampRegionToCanvas(SKRectI rect)
 		{
 			int left = rect.Left;
@@ -192,27 +176,9 @@ namespace Bitmute.UI
 				}
 			}
 
-			bool recreated = EnsureComposite();
-			bool frameUpdatedFull = false;
-			SKRectI frameUpdatedRegion = SKRectI.Empty;
-			if (recreated || m_document.ComposeDirtyAll())
-			{
-				m_document.CompositeInto(m_composite);
-				m_document.ClearComposeDirty();
-				m_compositeVersion = m_compositeVersion + 1;
-				frameUpdatedFull = true;
-			}
-			else if (m_document.ComposeDirtyAny())
-			{
-				SKRectI region = ClampRegionToCanvas(m_document.ComposeDirtyRect());
-				if (region.Width > 0 && region.Height > 0)
-				{
-					m_document.CompositeRegion(m_composite, region);
-					frameUpdatedRegion = region;
-				}
-				m_document.ClearComposeDirty();
-				m_compositeVersion = m_compositeVersion + 1;
-			}
+			bool frameUpdatedFull;
+			SKRectI frameUpdatedRegion;
+			m_document.EnsureComposited(out frameUpdatedFull, out frameUpdatedRegion);
 
 			float docWidth = m_document.Width();
 			float docHeight = m_document.Height();
@@ -235,6 +201,8 @@ namespace Bitmute.UI
 				m_offsetY = (info.Height - (docHeight * m_zoom)) / 2.0f;
 				m_lastViewportWidth = info.Width;
 				m_lastViewportHeight = info.Height;
+				m_fittedDocWidth = m_document.Width();
+				m_fittedDocHeight = m_document.Height();
 				m_viewInitialized = true;
 				ReportZoomInfo();
 			}
@@ -272,7 +240,9 @@ namespace Bitmute.UI
 			canvas.DrawRect(new SKRect(0.0f, 0.0f, rectWidth, rectHeight), m_checkerPaint);
 			canvas.Restore();
 
-			SKBitmap displayBitmap = m_composite;
+			SKBitmap composite = m_document.Composite();
+			int compositeVersion = m_document.CompositeVersion();
+			SKBitmap displayBitmap = composite;
 			MainView channelMain = MainView.Self;
 			if (channelMain != null)
 			{
@@ -281,13 +251,13 @@ namespace Bitmute.UI
 				if (channelMode >= 0 || maskChannels)
 				{
 					bool reallocated = false;
-					if (m_channelBitmap == null || m_channelBitmap.Width != m_composite.Width || m_channelBitmap.Height != m_composite.Height)
+					if (m_channelBitmap == null || m_channelBitmap.Width != composite.Width || m_channelBitmap.Height != composite.Height)
 					{
 						if (m_channelBitmap != null)
 						{
 							m_channelBitmap.Dispose();
 						}
-						m_channelBitmap = new SKBitmap(m_composite.Width, m_composite.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+						m_channelBitmap = new SKBitmap(composite.Width, composite.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
 						reallocated = true;
 					}
 					int channelKey = channelMode + 16;
@@ -311,25 +281,25 @@ namespace Bitmute.UI
 							channelKey = channelKey + 8;
 						}
 					}
-					bool channelStale = reallocated || m_channelCacheVersion != m_compositeVersion || m_channelCacheKey != channelKey;
+					bool channelStale = reallocated || m_channelCacheVersion != compositeVersion || m_channelCacheKey != channelKey;
 					if (channelStale)
 					{
 						if (channelMode >= 0)
 						{
-							Bitmute.Imaging.ChannelRender.Render(m_composite, m_channelBitmap, channelMode);
+							Bitmute.Imaging.ChannelRender.Render(composite, m_channelBitmap, channelMode);
 						}
 						else
 						{
-							Bitmute.Imaging.ChannelRender.ApplyVisibilityMask(m_composite, m_channelBitmap, channelMain.ChannelVisible(0), channelMain.ChannelVisible(1), channelMain.ChannelVisible(2), channelMain.ChannelVisible(3));
+							Bitmute.Imaging.ChannelRender.ApplyVisibilityMask(composite, m_channelBitmap, channelMain.ChannelVisible(0), channelMain.ChannelVisible(1), channelMain.ChannelVisible(2), channelMain.ChannelVisible(3));
 						}
-						m_channelCacheVersion = m_compositeVersion;
+						m_channelCacheVersion = compositeVersion;
 						m_channelCacheKey = channelKey;
 					}
 					displayBitmap = m_channelBitmap;
 				}
 			}
 			int displayKey = -1;
-			if (!object.ReferenceEquals(displayBitmap, m_composite))
+			if (!object.ReferenceEquals(displayBitmap, composite))
 			{
 				displayKey = m_channelCacheKey;
 			}
@@ -356,10 +326,10 @@ namespace Bitmute.UI
 				}
 				if (m_gpuComposite != null)
 				{
-					bool residentCurrent = m_gpuResidentKey == displayKey && m_gpuResidentVersion == m_compositeVersion;
+					bool residentCurrent = m_gpuResidentKey == displayKey && m_gpuResidentVersion == compositeVersion;
 					if (!residentCurrent)
 					{
-						bool regionUploadValid = displayKey == -1 && m_gpuResidentKey == -1 && m_gpuResidentVersion == m_compositeVersion - 1 && !frameUpdatedFull && frameUpdatedRegion.Width > 0 && frameUpdatedRegion.Height > 0;
+						bool regionUploadValid = displayKey == -1 && m_gpuResidentKey == -1 && m_gpuResidentVersion == compositeVersion - 1 && !frameUpdatedFull && frameUpdatedRegion.Width > 0 && frameUpdatedRegion.Height > 0;
 						SKCanvas uploadCanvas = m_gpuComposite.Canvas;
 						SKPaint uploadPaint = new SKPaint();
 						uploadPaint.BlendMode = SKBlendMode.Src;
@@ -391,7 +361,7 @@ namespace Bitmute.UI
 						uploadPixmap.Dispose();
 						uploadPaint.Dispose();
 						m_gpuResidentKey = displayKey;
-						m_gpuResidentVersion = m_compositeVersion;
+						m_gpuResidentVersion = compositeVersion;
 					}
 					SKImage residentSnapshot = m_gpuComposite.Snapshot();
 					canvas.DrawImage(residentSnapshot, destination, sampling, imagePaint);
@@ -492,6 +462,10 @@ namespace Bitmute.UI
 
 		public void ReleaseGpuResources()
 		{
+			if (m_document != null)
+			{
+				m_document.ReleaseComposite();
+			}
 			if (m_gpuFilterPreview != null)
 			{
 				m_gpuFilterPreview.EndSession();
@@ -781,11 +755,11 @@ namespace Bitmute.UI
 
 		public void SyncDocumentSize()
 		{
-			if (m_composite == null)
+			if (m_fittedDocWidth < 0)
 			{
 				return;
 			}
-			if (m_composite.Width != m_document.Width() || m_composite.Height != m_document.Height())
+			if (m_fittedDocWidth != m_document.Width() || m_fittedDocHeight != m_document.Height())
 			{
 				ResetView();
 			}
@@ -898,7 +872,7 @@ namespace Bitmute.UI
 				radius = 1.0f;
 			}
 			SKBitmap layerBitmap = layer.Bitmap();
-			if (!object.ReferenceEquals(m_clonePreviewSource, layerBitmap) || m_clonePreviewVersion != m_compositeVersion)
+			if (!object.ReferenceEquals(m_clonePreviewSource, layerBitmap) || m_clonePreviewVersion != m_document.CompositeVersion())
 			{
 				if (m_clonePreviewImage != null)
 				{
@@ -906,7 +880,7 @@ namespace Bitmute.UI
 				}
 				m_clonePreviewImage = SKImage.FromPixels(layerBitmap.PeekPixels());
 				m_clonePreviewSource = layerBitmap;
-				m_clonePreviewVersion = m_compositeVersion;
+				m_clonePreviewVersion = m_document.CompositeVersion();
 			}
 			SKPathBuilder clipBuilder = new SKPathBuilder();
 			clipBuilder.AddCircle(m_cursorDeviceX, m_cursorDeviceY, radius);

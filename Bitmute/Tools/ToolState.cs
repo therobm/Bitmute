@@ -106,7 +106,7 @@ namespace Bitmute.Tools
 			m_textSize = 32;
 			m_textBold = false;
 			m_textItalic = false;
-			m_textFontFamily = "Segoe UI";
+			m_textFontFamily = "OpenSans-Regular";
 			m_textAlign = 0;
 			m_textAntiAlias = 3;
 			m_textLeadingAuto = true;
