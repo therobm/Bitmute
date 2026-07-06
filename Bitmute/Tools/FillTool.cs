@@ -111,10 +111,35 @@ namespace Bitmute.Tools
 			byte fillBlue = fill.Blue;
 			byte fillAlpha = fill.Alpha;
 			int tolerance = state.FillTolerance();
-			bool seedIsFillColor = targetRed == fillRed && targetGreen == fillGreen && targetBlue == fillBlue && targetAlpha == fillAlpha;
-			if (seedIsFillColor)
+			Pattern pattern = state.ActivePattern();
+			SKBitmap patternBitmap = null;
+			if (pattern != null)
+			{
+				patternBitmap = pattern.m_bitmap;
+			}
+			bool usePattern = state.FillContent() == eFillContent.Pattern && pattern != null && patternBitmap != null && patternBitmap.Width >= 1 && patternBitmap.Height >= 1;
+			if (state.FillContent() == eFillContent.Pattern && !usePattern)
 			{
 				return false;
+			}
+			if (!usePattern)
+			{
+				bool seedIsFillColor = targetRed == fillRed && targetGreen == fillGreen && targetBlue == fillBlue && targetAlpha == fillAlpha;
+				if (seedIsFillColor)
+				{
+					return false;
+				}
+			}
+			int patternWidth = 0;
+			int patternHeight = 0;
+			int patternRowBytes = 0;
+			byte* patternBase = null;
+			if (usePattern)
+			{
+				patternWidth = patternBitmap.Width;
+				patternHeight = patternBitmap.Height;
+				patternRowBytes = patternBitmap.RowBytes;
+				patternBase = (byte*)patternBitmap.GetPixels().ToPointer();
 			}
 
 			int minFilledX = seedX;
@@ -157,7 +182,19 @@ namespace Bitmute.Tools
 				{
 					continue;
 				}
-				BlendPixelByCoverage(current, fillRed, fillGreen, fillBlue, fillAlpha, coverage);
+				if (usePattern)
+				{
+					int canvasX = pixelX + offsetX;
+					int canvasY = pixelY + offsetY;
+					int patX = ((canvasX % patternWidth) + patternWidth) % patternWidth;
+					int patY = ((canvasY % patternHeight) + patternHeight) % patternHeight;
+					byte* patternPixel = patternBase + ((long)patY * patternRowBytes) + (patX * 4);
+					BlendPixelByCoverage(current, patternPixel[0], patternPixel[1], patternPixel[2], patternPixel[3], coverage);
+				}
+				else
+				{
+					BlendPixelByCoverage(current, fillRed, fillGreen, fillBlue, fillAlpha, coverage);
+				}
 				filled[index] = true;
 				if (pixelX < minFilledX)
 				{
@@ -193,11 +230,11 @@ namespace Bitmute.Tools
 				}
 			}
 
-			DilateEdge(pixels, rowBytes, filled, width, height, offsetX, offsetY, clip, selectionMask, selectionOriginX, selectionOriginY, selectionStride, selectionRows, fillRed, fillGreen, fillBlue, fillAlpha, minFilledX, minFilledY, maxFilledX, maxFilledY);
+			DilateEdge(pixels, rowBytes, filled, width, height, offsetX, offsetY, clip, selectionMask, selectionOriginX, selectionOriginY, selectionStride, selectionRows, fillRed, fillGreen, fillBlue, fillAlpha, minFilledX, minFilledY, maxFilledX, maxFilledY, usePattern, patternBase, patternRowBytes, patternWidth, patternHeight);
 			return true;
 		}
 
-		private unsafe void DilateEdge(byte* pixels, int rowBytes, bool[] filled, int width, int height, int offsetX, int offsetY, bool clip, byte[] selectionMask, int selectionOriginX, int selectionOriginY, int selectionStride, int selectionRows, byte fillRed, byte fillGreen, byte fillBlue, byte fillAlpha, int minFilledX, int minFilledY, int maxFilledX, int maxFilledY)
+		private unsafe void DilateEdge(byte* pixels, int rowBytes, bool[] filled, int width, int height, int offsetX, int offsetY, bool clip, byte[] selectionMask, int selectionOriginX, int selectionOriginY, int selectionStride, int selectionRows, byte fillRed, byte fillGreen, byte fillBlue, byte fillAlpha, int minFilledX, int minFilledY, int maxFilledX, int maxFilledY, bool usePattern, byte* patternBase, int patternRowBytes, int patternWidth, int patternHeight)
 		{
 			int scanLeft = minFilledX - 1;
 			int scanTop = minFilledY - 1;
@@ -249,7 +286,19 @@ namespace Bitmute.Tools
 						continue;
 					}
 					byte* current = pixels + ((long)pixelY * rowBytes) + (pixelX * 4);
-					BlendPixelByCoverage(current, fillRed, fillGreen, fillBlue, fillAlpha, coverage);
+					if (usePattern)
+					{
+						int canvasX = pixelX + offsetX;
+						int canvasY = pixelY + offsetY;
+						int patX = ((canvasX % patternWidth) + patternWidth) % patternWidth;
+						int patY = ((canvasY % patternHeight) + patternHeight) % patternHeight;
+						byte* patternPixel = patternBase + ((long)patY * patternRowBytes) + (patX * 4);
+						BlendPixelByCoverage(current, patternPixel[0], patternPixel[1], patternPixel[2], patternPixel[3], coverage);
+					}
+					else
+					{
+						BlendPixelByCoverage(current, fillRed, fillGreen, fillBlue, fillAlpha, coverage);
+					}
 				}
 			}
 		}

@@ -81,6 +81,7 @@ namespace Bitmute.UI
 		private int m_topZIndex;
 		private ToolBox m_toolBox;
 		private ToolState m_toolState;
+		private List<Pattern> m_patterns;
 		private int m_editingSwatchIndex = -1;
 		private LayerStyle m_layerStyleSnapshot;
 		private Layer m_layerStyleTargetLayer;
@@ -631,6 +632,40 @@ namespace Bitmute.UI
 				return;
 			}
 			layer.Bitmap().Erase(SkiaSharp.SKColors.Transparent);
+		}
+
+		public List<Pattern> Patterns()
+		{
+			return m_patterns;
+		}
+
+		public void DoDefinePattern()
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			SkiaSharp.SKBitmap captured = ExtractSelection(document, layer);
+			if (captured == null)
+			{
+				return;
+			}
+			if (captured.Width < 1 || captured.Height < 1)
+			{
+				return;
+			}
+			string name = "Pattern " + (m_patterns.Count + 1);
+			Pattern pattern = new Pattern(name, captured);
+			m_patterns.Add(pattern);
+			m_toolState.SetActivePattern(pattern);
+			m_toolState.SetFillContent(eFillContent.Pattern);
+			RefreshPanels();
 		}
 
 		public async void DoCopy()
@@ -1839,6 +1874,7 @@ namespace Bitmute.UI
 			m_topZIndex = 0;
 			m_toolBox = new ToolBox();
 			m_toolState = m_toolBox.State();
+			m_patterns = new List<Pattern>();
 			m_adjustments = new AdjustmentRegistry(this, m_toolState);
 			m_acceleratorRegistry = new AcceleratorRegistry(this, m_toolState);
 			m_workspaceState = new WorkspaceState();

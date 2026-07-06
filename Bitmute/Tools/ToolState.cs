@@ -20,6 +20,8 @@ namespace Bitmute.Tools
 		private int m_brushStrength;
 		private eBlendMode m_brushMode;
 		private int m_fillTolerance;
+		private eFillContent m_fillContent = eFillContent.Foreground;
+		private Pattern m_activePattern = null;
 		private bool m_spongeSaturate;
 		private int m_colorReplaceMode;
 		private int m_colorReplaceTolerance;
@@ -675,6 +677,26 @@ namespace Bitmute.Tools
 		public void SetFillTolerance(int tolerance)
 		{
 			m_fillTolerance = tolerance;
+		}
+
+		public eFillContent FillContent()
+		{
+			return m_fillContent;
+		}
+
+		public void SetFillContent(eFillContent content)
+		{
+			m_fillContent = content;
+		}
+
+		public Pattern ActivePattern()
+		{
+			return m_activePattern;
+		}
+
+		public void SetActivePattern(Pattern pattern)
+		{
+			m_activePattern = pattern;
 		}
 
 		public bool SpongeSaturate()
