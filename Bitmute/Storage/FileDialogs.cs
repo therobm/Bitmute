@@ -37,6 +37,26 @@ namespace Bitmute.Storage
 			return result.FullPath;
 		}
 
+		public static async Task<string> PickOpenPaletteAsync()
+		{
+			List<string> extensions = new List<string>();
+			extensions.Add(".plt");
+
+			Dictionary<DevicePlatform, IEnumerable<string>> typeMap = new Dictionary<DevicePlatform, IEnumerable<string>>();
+			typeMap.Add(DevicePlatform.WinUI, extensions);
+
+			PickOptions options = new PickOptions();
+			options.PickerTitle = "Import Palette Set";
+			options.FileTypes = new FilePickerFileType(typeMap);
+
+			FileResult result = await FilePicker.Default.PickAsync(options);
+			if (result == null)
+			{
+				return null;
+			}
+			return result.FullPath;
+		}
+
 		public static async Task<string> PickSaveAsync(string suggestedName)
 		{
 			IReadOnlyList<Window> windows = Application.Current.Windows;

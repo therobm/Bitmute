@@ -77,6 +77,7 @@ namespace Bitmute.UI
 		ToggleNavigatorPanel,
 		ToggleSwatchesPanel,
 		ToggleLayersPanel,
+		TogglePatternsPanel,
 		AboutBitmute,
 		OpenRecentMenu,
 		TransformMenu,

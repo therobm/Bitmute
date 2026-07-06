@@ -275,6 +275,129 @@ namespace Bitmute.Tests
 			Check(softEdge.Alpha < softCenter.Alpha, "soft tip falls off toward the edge");
 		}
 
+		private static void TestRenamePersists()
+		{
+			string root = FreshRoot();
+			PatternPalette palette = EmptyPatternPalette(root);
+			SKBitmap tile = BuildMarkedTile();
+			Pattern pattern = palette.AddCaptured(tile, "OriginalName");
+			palette.Rename(pattern, "RenamedName");
+			Check(pattern.m_name == "RenamedName", "rename updates live name");
+
+			PatternPalette reloaded = new PatternPalette(root);
+			Check(reloaded.Patterns().Count == 1, "rename reload has one entry");
+			if (reloaded.Patterns().Count != 1)
+			{
+				return;
+			}
+			Check(reloaded.Patterns()[0].m_name == "RenamedName", "rename persists across reload");
+		}
+
+		private static void TestMoveReorders()
+		{
+			string root = FreshRoot();
+			PatternPalette palette = EmptyPatternPalette(root);
+			palette.AddCaptured(BuildMarkedTile(), "First");
+			palette.AddCaptured(BuildMarkedTile(), "Second");
+			palette.AddCaptured(BuildMarkedTile(), "Third");
+			Pattern third = palette.Patterns()[2];
+			palette.Move(third, 0);
+			Check(palette.Patterns()[0].m_name == "Third", "move places item at target index");
+
+			PatternPalette reloaded = new PatternPalette(root);
+			Check(reloaded.Patterns().Count == 3, "move reload has three entries");
+			if (reloaded.Patterns().Count != 3)
+			{
+				return;
+			}
+			bool orderMatches = reloaded.Patterns()[0].m_name == "Third" && reloaded.Patterns()[1].m_name == "First" && reloaded.Patterns()[2].m_name == "Second";
+			Check(orderMatches, "move order persists across reload");
+		}
+
+		private static void TestImportMerges()
+		{
+			string rootX = FreshRoot();
+			PatternPalette source = EmptyPatternPalette(rootX);
+			source.AddCaptured(BuildMarkedTile(), "AlphaEntry");
+			source.AddCaptured(BuildMarkedTile(), "BetaEntry");
+			string sourceManifest = Path.Combine(rootX, "Palettes", "patterns.plt");
+
+			string rootY = FreshRoot();
+			PatternPalette target = EmptyPatternPalette(rootY);
+			int added = target.ImportFrom(sourceManifest);
+			Check(added == 2, "import returns two added");
+			Check(target.Patterns().Count == 2, "import merges two entries");
+			if (target.Patterns().Count != 2)
+			{
+				return;
+			}
+			Pattern imported = target.Patterns()[0];
+			string copied = Path.GetFullPath(Path.Combine(rootY, "Palettes", imported.m_relativePath));
+			Check(File.Exists(copied), "import copies file into target resource dir");
+			Check(copied.Contains(rootY), "import copy lives under target root");
+			if (imported.m_bitmap == null)
+			{
+				Check(false, "import decodes tile");
+				return;
+			}
+			SKColor marker = imported.m_bitmap.GetPixel(3, 4);
+			Check(marker.Red == 200 && marker.Green == 90 && marker.Blue == 40 && marker.Alpha == 128, "import marker pixel survives");
+		}
+
+		private static void TestExportRoundTrip()
+		{
+			string root = FreshRoot();
+			BrushPalette source = EmptyBrushPalette(root);
+			source.AddCapturedTip(BuildMarkedTile(), "ExportedTip");
+			ProceduralBrushShape shape = new ProceduralBrushShape();
+			shape.m_size = 21;
+			shape.m_hardness = 55;
+			shape.m_spacing = 33;
+			shape.m_fade = 7;
+			shape.m_square = false;
+			shape.m_roundness = 80;
+			shape.m_angle = 45;
+			shape.m_smoothing = 12;
+			source.AddProcedural(shape, "ExportedPreset");
+
+			string exportDirectory = Path.Combine(FreshRoot(), "exported");
+			Directory.CreateDirectory(exportDirectory);
+			string exportManifest = Path.Combine(exportDirectory, "set.plt");
+			source.ExportTo(exportManifest);
+			Check(File.Exists(exportManifest), "export writes manifest");
+
+			string freshRoot = FreshRoot();
+			BrushPalette destination = EmptyBrushPalette(freshRoot);
+			int added = destination.ImportFrom(exportManifest);
+			Check(added == 2, "export round-trip imports two");
+			if (destination.CustomBrushes().Count != 2)
+			{
+				Check(false, "export round-trip has two entries");
+				return;
+			}
+			CustomBrush tipBrush = FindBrush(destination, "ExportedTip");
+			CustomBrush presetBrush = FindBrush(destination, "ExportedPreset");
+			if (tipBrush == null || presetBrush == null)
+			{
+				Check(false, "export round-trip preserves both by name");
+				return;
+			}
+			if (tipBrush.m_tip == null)
+			{
+				Check(false, "export round-trip tip decodes");
+				return;
+			}
+			SKColor marker = tipBrush.m_tip.GetPixel(3, 4);
+			Check(marker.Red == 200 && marker.Green == 90 && marker.Blue == 40 && marker.Alpha == 128, "export round-trip tip pixel survives");
+			if (presetBrush.m_shape == null)
+			{
+				Check(false, "export round-trip preset has shape");
+				return;
+			}
+			bool presetSurvives = presetBrush.m_shape.m_size == 21 && presetBrush.m_shape.m_roundness == 80 && presetBrush.m_shape.m_angle == 45 && presetBrush.m_shape.m_smoothing == 12;
+			Check(presetSurvives, "export round-trip preset params survive");
+		}
+
 		public static int RunAll()
 		{
 			s_failures = 0;
@@ -287,6 +410,10 @@ namespace Bitmute.Tests
 			TestDefaultPatternsSeeded();
 			TestDefaultBrushesSeeded();
 			TestDefaultTipEncoding();
+			TestRenamePersists();
+			TestMoveReorders();
+			TestImportMerges();
+			TestExportRoundTrip();
 			return s_failures;
 		}
 	}
