@@ -21,6 +21,7 @@ namespace Bitmute.Tools
 				return false;
 			}
 			BeginStroke(document, layer, state);
+			m_engine.SetPressure(state.PenPressure(), state.PressureSizeEnabled(), state.PressureOpacityEnabled());
 			m_engine.SetTipShape(state.BrushRoundness(), state.BrushAngle());
 			m_engine.StampFirst(document, layer, x, y, document.Selection());
 			m_lastX = x;
@@ -40,6 +41,7 @@ namespace Bitmute.Tools
 			{
 				return false;
 			}
+			m_engine.SetPressure(state.PenPressure(), state.PressureSizeEnabled(), state.PressureOpacityEnabled());
 			if (m_hasLast)
 			{
 				m_engine.StrokeTo(document, layer, x, y, document.Selection());

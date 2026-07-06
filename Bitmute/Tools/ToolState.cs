@@ -62,6 +62,9 @@ namespace Bitmute.Tools
 		private bool m_textKerningAuto;
 		private bool m_shiftHeld;
 		private bool m_altHeld;
+		private float m_penPressure = 1.0f;
+		private bool m_pressureSizeEnabled = true;
+		private bool m_pressureOpacityEnabled = true;
 
 		public ToolState()
 		{
@@ -496,6 +499,44 @@ namespace Bitmute.Tools
 				opacity = 100;
 			}
 			m_brushOpacity = opacity;
+		}
+
+		public float PenPressure()
+		{
+			return m_penPressure;
+		}
+
+		public void SetPenPressure(float pressure)
+		{
+			if (pressure < 0.0f)
+			{
+				pressure = 0.0f;
+			}
+			if (pressure > 1.0f)
+			{
+				pressure = 1.0f;
+			}
+			m_penPressure = pressure;
+		}
+
+		public bool PressureSizeEnabled()
+		{
+			return m_pressureSizeEnabled;
+		}
+
+		public void SetPressureSizeEnabled(bool enabled)
+		{
+			m_pressureSizeEnabled = enabled;
+		}
+
+		public bool PressureOpacityEnabled()
+		{
+			return m_pressureOpacityEnabled;
+		}
+
+		public void SetPressureOpacityEnabled(bool enabled)
+		{
+			m_pressureOpacityEnabled = enabled;
 		}
 
 		public int BrushFlow()

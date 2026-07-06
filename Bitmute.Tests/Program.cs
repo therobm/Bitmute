@@ -143,6 +143,7 @@ namespace Bitmute.Tests
 			s_failures = s_failures + LayerOrderTests.RunAll();
 			s_failures = s_failures + MarqueeTests.RunAll();
 			s_failures = s_failures + PencilSizeTests.RunAll();
+			s_failures = s_failures + PressureTests.RunAll();
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");

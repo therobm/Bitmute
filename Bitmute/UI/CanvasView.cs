@@ -81,6 +81,7 @@ namespace Bitmute.UI
 		private int m_antEdgesGeneration;
 		private float m_cursorDeviceX;
 		private float m_cursorDeviceY;
+		private float m_currentPenPressure = 1.0f;
 		private float m_selectPressDeviceX;
 		private float m_selectPressDeviceY;
 		private bool m_cursorInside;
@@ -1944,6 +1945,7 @@ namespace Bitmute.UI
 			element.PointerWheelChanged += OnPointerWheel;
 			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerPressedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnPlatformPointerPressed), true);
 			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerReleasedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnPlatformPointerReleased), true);
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerMovedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnPlatformPointerMoved), true);
 			m_wheelHooked = true;
 		}
 
@@ -1954,7 +1956,44 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			CapturePenPressure(element, eventArgs);
 			element.CapturePointer(eventArgs.Pointer);
+		}
+
+		private void OnPlatformPointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs eventArgs)
+		{
+			Microsoft.UI.Xaml.UIElement element = sender as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			CapturePenPressure(element, eventArgs);
+		}
+
+		private void CapturePenPressure(Microsoft.UI.Xaml.UIElement element, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs eventArgs)
+		{
+			Microsoft.UI.Input.PointerPoint point = eventArgs.GetCurrentPoint(element);
+			if (point == null)
+			{
+				return;
+			}
+			if (point.PointerDeviceType == Microsoft.UI.Input.PointerDeviceType.Pen)
+			{
+				float pressure = (float)point.Properties.Pressure;
+				if (pressure < 0.0f)
+				{
+					pressure = 0.0f;
+				}
+				if (pressure > 1.0f)
+				{
+					pressure = 1.0f;
+				}
+				m_currentPenPressure = pressure;
+			}
+			else
+			{
+				m_currentPenPressure = 1.0f;
+			}
 		}
 
 		private void OnPlatformPointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs eventArgs)
@@ -2329,6 +2368,8 @@ namespace Bitmute.UI
 					((EllipseSelectTool)tool).SetGuideSnap(marqueeGuideSnap);
 				}
 			}
+
+			state.SetPenPressure(m_currentPenPressure);
 
 			bool changed = false;
 			int preEventWidth = m_document.Width();
