@@ -94,5 +94,103 @@ namespace Bitmute.Storage
 			m_patterns.Remove(pattern);
 			Save();
 		}
+
+		public void Rename(Pattern pattern, string newName)
+		{
+			if (!m_patterns.Contains(pattern))
+			{
+				return;
+			}
+			pattern.m_name = newName;
+			Save();
+		}
+
+		public void Move(Pattern pattern, int targetIndex)
+		{
+			if (!m_patterns.Contains(pattern))
+			{
+				return;
+			}
+			m_patterns.Remove(pattern);
+			int clamped = targetIndex;
+			if (clamped < 0)
+			{
+				clamped = 0;
+			}
+			if (clamped > m_patterns.Count)
+			{
+				clamped = m_patterns.Count;
+			}
+			m_patterns.Insert(clamped, pattern);
+			Save();
+		}
+
+		public int ImportFrom(string pltPath)
+		{
+			PaletteManifest manifest = PaletteFile.ReadManifest(pltPath);
+			if (manifest == null)
+			{
+				return 0;
+			}
+			string sourceDirectory = Path.GetDirectoryName(pltPath);
+			int added = 0;
+			for (int i = 0; i < manifest.entries.Count; i++)
+			{
+				PaletteEntry entry = manifest.entries[i];
+				if (entry.name == null || entry.path == null)
+				{
+					continue;
+				}
+				string sourceFile = PaletteFile.ToAbsolute(sourceDirectory, entry.path);
+				if (!File.Exists(sourceFile))
+				{
+					continue;
+				}
+				string baseName = Path.GetFileNameWithoutExtension(sourceFile);
+				string copy = PaletteFile.UniqueResourcePath(m_patternsDirectory, baseName, ".png");
+				File.Copy(sourceFile, copy, false);
+				SKBitmap bitmap = PaletteFile.ReadPngUnpremul(copy);
+				if (bitmap == null)
+				{
+					File.Delete(copy);
+					continue;
+				}
+				string relative = PaletteFile.ToRelative(m_manifestDirectory, copy);
+				Pattern pattern = new Pattern(entry.name, bitmap);
+				pattern.m_relativePath = relative;
+				m_patterns.Add(pattern);
+				added = added + 1;
+			}
+			Save();
+			return added;
+		}
+
+		public void ExportTo(string pltPath)
+		{
+			string targetDirectory = Path.GetDirectoryName(pltPath);
+			PaletteFile.EnsureDirectory(targetDirectory);
+			string resourceDirectory = Path.Combine(targetDirectory, "Patterns");
+			PaletteFile.EnsureDirectory(resourceDirectory);
+			PaletteManifest manifest = new PaletteManifest();
+			manifest.entries = new List<PaletteEntry>();
+			for (int i = 0; i < m_patterns.Count; i++)
+			{
+				Pattern pattern = m_patterns[i];
+				string sourceFile = PaletteFile.ToAbsolute(m_manifestDirectory, pattern.m_relativePath);
+				if (!File.Exists(sourceFile))
+				{
+					continue;
+				}
+				string baseName = Path.GetFileNameWithoutExtension(sourceFile);
+				string copy = PaletteFile.UniqueResourcePath(resourceDirectory, baseName, ".png");
+				File.Copy(sourceFile, copy, false);
+				PaletteEntry entry = new PaletteEntry();
+				entry.name = pattern.m_name;
+				entry.path = PaletteFile.ToRelative(targetDirectory, copy);
+				entry.kind = ePaletteEntryKind.Image;
+				manifest.entries.Add(entry);
+			}
+			PaletteFile.WriteManifest(pltPath, manifest);
+		}
 	}
 }

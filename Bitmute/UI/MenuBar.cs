@@ -276,6 +276,9 @@ namespace Bitmute.UI
 				MenuBarItem layersPanel = new MenuBarItem("Layers", eMenuAction.ToggleLayersPanel, () => m_main.ToggleDockPanel(ePanelId.Layers));
 				layersPanel.m_checked = m_main.LayersPanelVisible();
 				items.Add(layersPanel);
+				MenuBarItem patternsPanel = new MenuBarItem("Patterns", eMenuAction.TogglePatternsPanel, () => m_main.ToggleDockPanel(ePanelId.Patterns));
+				patternsPanel.m_checked = m_main.PatternsPanelVisible();
+				items.Add(patternsPanel);
 				return items;
 			}
 			items.Add(new MenuBarItem("About Bitmute", eMenuAction.AboutBitmute, () => m_main.ShowModal(new AboutDialog(), 380.0, 300.0)));

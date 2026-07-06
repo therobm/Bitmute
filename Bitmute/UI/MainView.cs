@@ -55,9 +55,12 @@ namespace Bitmute.UI
 		private NavigatorPanel m_navigatorPanel;
 		private InfoPanel m_infoPanel;
 		private SwatchesPanel m_swatchesPanel;
+		private PatternsPanel m_patternsPanel;
+		private BrushesPanel m_brushesPanel;
 		private PaletteGroup m_navigatorGroup;
 		private PaletteGroup m_swatchesGroup;
 		private PaletteGroup m_layersGroup;
+		private PaletteGroup m_patternsGroup;
 		private List<PaletteGroup> m_paletteOrder;
 		private Grid m_paletteDock;
 		private WorkspaceState m_workspaceState;
@@ -115,6 +118,10 @@ namespace Bitmute.UI
 		public bool SwatchesPanelVisible()
 		{
 			return m_workspaceState.PanelVisible(ePanelId.Swatches);
+		}
+		public bool PatternsPanelVisible()
+		{
+			return m_workspaceState.PanelVisible(ePanelId.Patterns);
 		}
 		public bool LayersPanelVisible()
 		{
@@ -751,6 +758,144 @@ namespace Bitmute.UI
 		public List<Pattern> Patterns()
 		{
 			return m_patternPalette.Patterns();
+		}
+
+		public void ActivatePattern(Pattern pattern)
+		{
+			m_toolState.SetActivePattern(pattern);
+			m_toolState.SetFillContent(eFillContent.Pattern);
+			RefreshPanels();
+		}
+
+		public void ActivateBrush(CustomBrush brush)
+		{
+			if (brush.m_isProcedural)
+			{
+				ProceduralBrushShape shape = brush.m_shape;
+				m_toolState.SetBrushSize(shape.m_size);
+				m_toolState.SetBrushHardness(shape.m_hardness);
+				m_toolState.SetBrushSpacing(shape.m_spacing);
+				m_toolState.SetBrushFadeLength(shape.m_fade);
+				m_toolState.SetBrushSquareTip(shape.m_square);
+				m_toolState.SetBrushRoundness(shape.m_roundness);
+				m_toolState.SetBrushAngle(shape.m_angle);
+				m_toolState.SetBrushSmoothing(shape.m_smoothing);
+				m_toolState.SetActiveCustomTip(null);
+				if (m_optionsBar != null)
+				{
+					m_optionsBar.ShowForTool(m_toolState.Tool());
+				}
+			}
+			else
+			{
+				m_toolState.SetActiveCustomTip(brush.m_tip);
+			}
+			RefreshPanels();
+		}
+
+		public void PromptRenamePattern(Pattern pattern)
+		{
+			ShowModal(new RenamePatternDialog(pattern), 320.0, 160.0);
+		}
+
+		public void ApplyRenamePattern(Pattern pattern, string newName)
+		{
+			string trimmed = newName.Trim();
+			if (trimmed.Length == 0)
+			{
+				return;
+			}
+			m_patternPalette.Rename(pattern, trimmed);
+			RefreshPanels();
+		}
+
+		public void PromptRenameBrush(CustomBrush brush)
+		{
+			ShowModal(new RenameBrushDialog(brush), 320.0, 160.0);
+		}
+
+		public void ApplyRenameBrush(CustomBrush brush, string newName)
+		{
+			string trimmed = newName.Trim();
+			if (trimmed.Length == 0)
+			{
+				return;
+			}
+			m_brushPalette.Rename(brush, trimmed);
+			RefreshPanels();
+		}
+
+		public void DeletePattern(Pattern pattern)
+		{
+			m_patternPalette.Remove(pattern);
+			RefreshPanels();
+		}
+
+		public void DeleteBrush(CustomBrush brush)
+		{
+			m_brushPalette.Remove(brush);
+			RefreshPanels();
+		}
+
+		public void MovePattern(Pattern pattern, int index)
+		{
+			m_patternPalette.Move(pattern, index);
+			RefreshPanels();
+		}
+
+		public void MoveBrush(CustomBrush brush, int index)
+		{
+			m_brushPalette.Move(brush, index);
+			RefreshPanels();
+		}
+
+		public async void ImportPatternSet()
+		{
+			string path = await FileDialogs.PickOpenPaletteAsync();
+			if (path == null)
+			{
+				return;
+			}
+			m_patternPalette.ImportFrom(path);
+			RefreshPanels();
+		}
+
+		public async void ExportPatternSet()
+		{
+			string path = await FileDialogs.PickSaveTypedAsync("patterns", "Palette Set", ".plt");
+			if (path == null)
+			{
+				return;
+			}
+			m_patternPalette.ExportTo(path);
+		}
+
+		public async void ImportBrushSet()
+		{
+			string path = await FileDialogs.PickOpenPaletteAsync();
+			if (path == null)
+			{
+				return;
+			}
+			m_brushPalette.ImportFrom(path);
+			RefreshPanels();
+		}
+
+		public async void ExportBrushSet()
+		{
+			string path = await FileDialogs.PickSaveTypedAsync("brushes", "Palette Set", ".plt");
+			if (path == null)
+			{
+				return;
+			}
+			m_brushPalette.ExportTo(path);
+		}
+
+		public void ReloadPalettes()
+		{
+			m_patternPalette = new PatternPalette(PaletteRoot());
+			m_brushPalette = new BrushPalette(PaletteRoot());
+			RefreshPanels();
 		}
 
 		public void DoDefinePattern()
@@ -1637,6 +1782,10 @@ namespace Bitmute.UI
 			m_channelsPanel = new ChannelsPanel();
 			m_layersGroup = new PaletteGroup(new string[] { "Layers", "Channels" }, new View[] { m_layersPanel, m_channelsPanel });
 
+			m_patternsPanel = new PatternsPanel();
+			m_brushesPanel = new BrushesPanel();
+			m_patternsGroup = new PaletteGroup(new string[] { "Patterns", "Brushes" }, new View[] { m_patternsPanel, m_brushesPanel });
+
 			Grid dock = new Grid();
 			dock.ThemeBg(UiConstants.ChromeLight, UiConstants.ChromeDark);
 			dock.Padding = new Thickness(4.0);
@@ -1646,15 +1795,18 @@ namespace Bitmute.UI
 			dock.RowDefinitions.Add(new RowDefinition(GridLength.Star));
 			dock.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
 			dock.RowDefinitions.Add(new RowDefinition(new GridLength(0.0)));
+			dock.RowDefinitions.Add(new RowDefinition(new GridLength(0.0)));
 
 			dock.Add(m_navigatorGroup);
 			dock.Add(m_swatchesGroup);
 			dock.Add(m_layersGroup);
+			dock.Add(m_patternsGroup);
 
 			m_paletteOrder = new List<PaletteGroup>();
 			m_paletteOrder.Add(m_navigatorGroup);
 			m_paletteOrder.Add(m_swatchesGroup);
 			m_paletteOrder.Add(m_layersGroup);
+			m_paletteOrder.Add(m_patternsGroup);
 
 			m_paletteDock = dock;
 			LoadPanelLayout();
@@ -1676,6 +1828,10 @@ namespace Bitmute.UI
 			{
 				return m_layersGroup;
 			}
+			if (panel == ePanelId.Patterns)
+			{
+				return m_patternsGroup;
+			}
 			return null;
 		}
 
@@ -1692,6 +1848,10 @@ namespace Bitmute.UI
 			if (key == "Layers")
 			{
 				return ePanelId.Layers;
+			}
+			if (key == "Patterns")
+			{
+				return ePanelId.Patterns;
 			}
 			return ePanelId.Info;
 		}
@@ -1793,6 +1953,7 @@ namespace Bitmute.UI
 			m_navigatorGroup.IsVisible = m_workspaceState.PanelVisible(ePanelId.Navigator);
 			m_swatchesGroup.IsVisible = m_workspaceState.PanelVisible(ePanelId.Swatches);
 			m_layersGroup.IsVisible = m_workspaceState.PanelVisible(ePanelId.Layers);
+			m_patternsGroup.IsVisible = m_workspaceState.PanelVisible(ePanelId.Patterns);
 			bool layersStretch = m_workspaceState.PanelVisible(ePanelId.Layers) && !m_layersGroup.IsCollapsed();
 			for (int index = 0; index < m_paletteOrder.Count; index++)
 			{
@@ -3389,6 +3550,14 @@ namespace Bitmute.UI
 			if (m_channelsPanel != null)
 			{
 				m_channelsPanel.Refresh();
+			}
+			if (m_patternsPanel != null)
+			{
+				m_patternsPanel.Refresh();
+			}
+			if (m_brushesPanel != null)
+			{
+				m_brushesPanel.Refresh();
 			}
 		}
 

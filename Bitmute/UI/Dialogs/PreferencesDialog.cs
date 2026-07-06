@@ -13,6 +13,7 @@ namespace Bitmute.UI.Dialogs
 
 		private IntSlider m_undoDepthField;
 		private RadioPicker m_themePicker;
+		private TextField m_paletteRootField;
 
 		private void OnClearRecentClicked(object sender, EventArgs eventArgs)
 		{
@@ -47,6 +48,9 @@ namespace Bitmute.UI.Dialogs
 				return;
 			}
 			main.ApplyUndoDepth(m_undoDepthField.Value());
+			string paletteRoot = m_paletteRootField.Text().Trim();
+			Microsoft.Maui.Storage.Preferences.Default.Set("palette_root", paletteRoot);
+			main.ReloadPalettes();
 			//main.CloseModal();//wtf?
 			base.OnPrimaryClicked(sender, eventArgs);
 		}
@@ -81,6 +85,9 @@ namespace Bitmute.UI.Dialogs
 			}
 			m_themePicker = new RadioPicker("Theme", new string[] { "System", "Dark", "Light" }, themeIndex, OnThemeChanged);
 
+			string currentRoot = Microsoft.Maui.Storage.Preferences.Default.Get("palette_root", "");
+			m_paletteRootField = new TextField("Root", currentRoot, null);
+
 			Button clearRecentButton = CreateButton("Clear Recent Files", OnClearRecentClicked);
 			clearRecentButton.WidthRequest = 150.0;
 			clearRecentButton.HorizontalOptions = LayoutOptions.Start;
@@ -88,12 +95,15 @@ namespace Bitmute.UI.Dialogs
 			m_undoDepthField.Margin = new Thickness(SectionIndent, 0.0, 0.0, 0.0);
 			clearRecentButton.Margin = new Thickness(SectionIndent, 0.0, 0.0, 0.0);
 			m_themePicker.Margin = new Thickness(SectionIndent, 0.0, 0.0, 0.0);
+			m_paletteRootField.Margin = new Thickness(SectionIndent, 0.0, 0.0, 0.0);
 
 			AddField(new SectionHeader("General"));
 			AddField(m_undoDepthField);
 			AddField(clearRecentButton);
 			AddField(new SectionHeader("Interface"));
 			AddField(m_themePicker);
+			AddField(new SectionHeader("Palettes"));
+			AddField(m_paletteRootField);
 
 			Button cancelButton = SecondaryButton("Cancel");
 			Button okButton = PrimaryButton("OK");

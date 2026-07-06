@@ -7,7 +7,8 @@ namespace Bitmute.UI
 		Navigator,
 		Swatches,
 		Layers,
-		Info
+		Info,
+		Patterns
 	}
 
 	public class WorkspaceState
@@ -25,6 +26,7 @@ namespace Bitmute.UI
 		private bool m_swatchesPanelVisible;
 		private bool m_layersPanelVisible;
 		private bool m_infoPanelVisible;
+		private bool m_patternsPanelVisible;
 		private bool m_patternPreview;
 
 		public WorkspaceState()
@@ -42,6 +44,7 @@ namespace Bitmute.UI
 			m_swatchesPanelVisible = true;
 			m_layersPanelVisible = true;
 			m_infoPanelVisible = true;
+			m_patternsPanelVisible = true;
 		}
 
 		public bool RulersEnabled()
@@ -190,6 +193,10 @@ namespace Bitmute.UI
 			{
 				return m_layersPanelVisible;
 			}
+			if (panel == ePanelId.Patterns)
+			{
+				return m_patternsPanelVisible;
+			}
 			return m_infoPanelVisible;
 		}
 
@@ -210,6 +217,10 @@ namespace Bitmute.UI
 			if (panel == ePanelId.Info)
 			{
 				m_infoPanelVisible = value;
+			}
+			if (panel == ePanelId.Patterns)
+			{
+				m_patternsPanelVisible = value;
 			}
 		}
 	}
