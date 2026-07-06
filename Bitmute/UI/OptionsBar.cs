@@ -33,7 +33,8 @@ namespace Bitmute.UI
 		private Slider m_brushSpacingSlider;
 		private Label m_brushSpacingValue;
 		private Slider m_brushFadeSlider;
-		private Label m_brushFadeValue;
+		private Entry m_brushFadeValue;
+		private bool m_updatingFade;
 		private Button m_customTipButton;
 		private List<View> m_customTipRows;
 		private List<CustomBrush> m_customTipBrushes;
@@ -762,12 +763,17 @@ namespace Bitmute.UI
 			m_brushFadeSlider.Value = m_toolState.FadeLength();
 			m_brushFadeSlider.ValueChanged += OnBrushFadePulldownChanged;
 
-			m_brushFadeValue = new Label();
+			m_brushFadeValue = new Entry();
 			m_brushFadeValue.Text = FadeValueText(m_toolState.FadeLength());
-			m_brushFadeValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_brushFadeValue.Keyboard = Keyboard.Numeric;
+			m_brushFadeValue.HorizontalTextAlignment = TextAlignment.End;
+			m_brushFadeValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_brushFadeValue.FontSize = UiConstants.ComponentFontSize;
-			m_brushFadeValue.WidthRequest = 44.0;
+			m_brushFadeValue.WidthRequest = 60.0;
+			m_brushFadeValue.HeightRequest = UiConstants.ComponentHeight;
 			m_brushFadeValue.VerticalOptions = LayoutOptions.Center;
+			m_brushFadeValue.Completed += OnBrushFadeEntryCommitted;
+			m_brushFadeValue.Unfocused += OnBrushFadeEntryUnfocused;
 
 			Grid fadeRow = new Grid();
 			fadeRow.ColumnSpacing = 8.0;
@@ -974,7 +980,7 @@ namespace Bitmute.UI
 
 		private void OnBrushFadePulldownChanged(object sender, ValueChangedEventArgs eventArgs)
 		{
-			if (m_brushFadeSlider == null || m_toolState == null)
+			if (m_updatingFade || m_brushFadeSlider == null || m_toolState == null)
 			{
 				return;
 			}
@@ -984,6 +990,68 @@ namespace Bitmute.UI
 			{
 				m_brushFadeValue.Text = FadeValueText(fade);
 			}
+		}
+
+		private void OnBrushFadeEntryCommitted(object sender, System.EventArgs eventArgs)
+		{
+			CommitBrushFadeEntry();
+		}
+
+		private void OnBrushFadeEntryUnfocused(object sender, FocusEventArgs eventArgs)
+		{
+			CommitBrushFadeEntry();
+		}
+
+		private void CommitBrushFadeEntry()
+		{
+			if (m_updatingFade || m_brushFadeSlider == null || m_toolState == null || m_brushFadeValue == null)
+			{
+				return;
+			}
+			// The slider tops out at its Maximum, but a typed fade is unrestricted (only floored at 0),
+			// so store the raw value and just pin the slider thumb to its range.
+			int fade = ExtractFadeInt(m_brushFadeValue.Text);
+			m_toolState.SetBrushFadeLength(fade);
+			m_updatingFade = true;
+			double thumb = fade;
+			if (thumb > m_brushFadeSlider.Maximum)
+			{
+				thumb = m_brushFadeSlider.Maximum;
+			}
+			m_brushFadeSlider.Value = thumb;
+			m_brushFadeValue.Text = FadeValueText(fade);
+			m_updatingFade = false;
+		}
+
+		private int ExtractFadeInt(string text)
+		{
+			if (text == null)
+			{
+				return 0;
+			}
+			string digits = "";
+			for (int index = 0; index < text.Length; index++)
+			{
+				char character = text[index];
+				if (character >= '0' && character <= '9')
+				{
+					digits = digits + character;
+				}
+				else if (digits.Length > 0)
+				{
+					break;
+				}
+			}
+			if (digits.Length == 0)
+			{
+				return 0;
+			}
+			int result = 0;
+			if (int.TryParse(digits, out result))
+			{
+				return result;
+			}
+			return 0;
 		}
 
 		private void OnCustomTipButtonClicked(object sender, System.EventArgs eventArgs)

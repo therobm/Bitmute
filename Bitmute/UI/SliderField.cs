@@ -18,14 +18,16 @@ namespace Bitmute.UI
 		private Action<int> m_onChanged;
 		private Entry m_valueEntry;
 		private ValueSlider m_popoutSlider;
+		private bool m_enforceRange;
 
-		public SliderField(int minimum, int maximum, int value, string suffix, Action<int> onChanged)
+		public SliderField(int minimum, int maximum, int value, string suffix, Action<int> onChanged, bool enforceRange = false)
 		{
 			m_minimum = minimum;
 			m_maximum = maximum;
 			m_value = value;
 			m_suffix = suffix;
 			m_onChanged = onChanged;
+			m_enforceRange = enforceRange;
 
 			double fontSize = UiConstants.ComponentFontSize;
 			double height = fontSize*2;
@@ -132,7 +134,11 @@ namespace Bitmute.UI
 				UpdateLabel();
 				return;
 			}
-			m_value = ClampValue(parsed);
+			m_value = parsed;
+			if (m_enforceRange)
+			{
+				m_value = ClampValue(m_value);
+			}
 			UpdateLabel();
 			if (m_popoutSlider != null)
 			{

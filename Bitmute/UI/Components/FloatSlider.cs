@@ -18,6 +18,7 @@ namespace Bitmute.UI.Components
 		private bool m_updating;
 		private int m_steps;
 		private double m_scale;
+		private bool m_enforceRange;
 
 		private float ClampValue(float value)
 		{
@@ -66,7 +67,12 @@ namespace Bitmute.UI.Components
 
 		private void ApplyValue(float value, bool moveSlider)
 		{
-			m_value = ClampValue(RoundValue(value));
+			float rounded = RoundValue(value);
+			if (m_enforceRange)
+			{
+				rounded = ClampValue(rounded);
+			}
+			m_value = rounded;
 			m_updating = true;
 			m_entry.Text = FormatValue(m_value);
 			if (moveSlider)
@@ -107,10 +113,9 @@ namespace Bitmute.UI.Components
 				ApplyValue(m_value, true);
 				return;
 			}
-			float clamped = ClampValue(RoundValue((float)parsed));
-			bool changed = clamped != m_value;
-			ApplyValue(clamped, true);
-			if (changed && m_onChanged != null)
+			float previous = m_value;
+			ApplyValue((float)parsed, true);
+			if (m_value != previous && m_onChanged != null)
 			{
 				m_onChanged(m_value);
 			}
@@ -136,12 +141,13 @@ namespace Bitmute.UI.Components
 			ApplyValue(value, true);
 		}
 
-		public FloatSlider(string caption, float minimum, float maximum, float initial, int decimals, string unit, Action<float> onChanged)
+		public FloatSlider(string caption, float minimum, float maximum, float initial, int decimals, string unit, Action<float> onChanged, bool enforceRange = false)
 		{
 			m_minimum = minimum;
 			m_maximum = maximum;
 			m_decimals = decimals;
 			m_onChanged = onChanged;
+			m_enforceRange = enforceRange;
 			m_scale = Math.Pow(10.0, m_decimals);
 			m_steps = (int)Math.Round((double)(m_maximum - m_minimum) * m_scale);
 			if (m_steps < 1)

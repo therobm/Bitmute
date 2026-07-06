@@ -458,9 +458,29 @@ namespace Bitmute.UI
 				m_main.RefreshLayerThumbnails();
 				return;
 			}
+			ApplyDocumentSliderRanges(adjustment);
 			BeginPreview(adjustment);
 			BeginGpuPreview(adjustment);
 			m_main.ShowModal(new AdjustmentDialog(adjustment), adjustment.m_dialogWidth, adjustment.m_dialogHeight);
+		}
+
+		private void ApplyDocumentSliderRanges(Adjustment adjustment)
+		{
+			// Offset ranges depend on the document: a horizontal/vertical shift only makes sense up to
+			// the document's own width/height, so recompute them per-document instead of a fixed cap.
+			if (adjustment.m_menuAction != eMenuAction.Offset)
+			{
+				return;
+			}
+			Bitmute.Imaging.Document document = m_main.ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			int width = document.Width();
+			int height = document.Height();
+			adjustment.m_sliderMinimums = new int[] { -width, -height };
+			adjustment.m_sliderMaximums = new int[] { width, height };
 		}
 
 		public void Apply(Adjustment adjustment, int[] values)

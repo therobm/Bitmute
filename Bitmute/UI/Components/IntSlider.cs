@@ -15,6 +15,7 @@ namespace Bitmute.UI.Components
 		private ValueSlider m_slider;
 		private Entry m_entry;
 		private bool m_updating;
+		private bool m_enforceRange;
 
 		private int ClampValue(int value)
 		{
@@ -31,7 +32,13 @@ namespace Bitmute.UI.Components
 
 		private void ApplyValue(int value, bool moveSlider)
 		{
-			m_value = ClampValue(value);
+			// The slider itself always tracks within [min,max]; a typed value may exceed the range
+			// unless enforcement was requested, so it is stored as-is and only the thumb is clamped.
+			if (m_enforceRange)
+			{
+				value = ClampValue(value);
+			}
+			m_value = value;
 			m_updating = true;
 			m_entry.Text = m_value.ToString();
 			if (moveSlider)
@@ -71,10 +78,9 @@ namespace Bitmute.UI.Components
 				ApplyValue(m_value, true);
 				return;
 			}
-			int clamped = ClampValue(parsed);
-			bool changed = clamped != m_value;
-			ApplyValue(clamped, true);
-			if (changed && m_onChanged != null)
+			int previous = m_value;
+			ApplyValue(parsed, true);
+			if (m_value != previous && m_onChanged != null)
 			{
 				m_onChanged(m_value);
 			}
@@ -100,11 +106,12 @@ namespace Bitmute.UI.Components
 			ApplyValue(value, true);
 		}
 
-		public IntSlider(string caption, int minimum, int maximum, int initial, string unit, Action<int> onChanged)
+		public IntSlider(string caption, int minimum, int maximum, int initial, string unit, Action<int> onChanged, bool enforceRange = false)
 		{
 			m_minimum = minimum;
 			m_maximum = maximum;
 			m_onChanged = onChanged;
+			m_enforceRange = enforceRange;
 
 			Label captionLabel = new Label();
 			captionLabel.Text = caption;

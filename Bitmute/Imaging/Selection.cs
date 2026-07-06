@@ -748,6 +748,9 @@ namespace Bitmute.Imaging
 
 		public void Invert()
 		{
+			// Invert across the whole document, not just the current mask region, so a small
+			// selection inverts to "everything except it" rather than only within its own bounds.
+			GrowToInclude(new SKRectI(0, 0, m_width, m_height));
 			for (int y = m_originY; y < m_originY + m_maskHeight; y++)
 			{
 				int rowStart = MaskRow(y) - m_originX;
