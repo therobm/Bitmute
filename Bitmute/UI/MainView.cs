@@ -474,6 +474,23 @@ namespace Bitmute.UI
 			return m_operations;
 		}
 
+		public bool ToolKeyBlocked()
+		{
+			return m_acceleratorRegistry.ToolKeyBlocked();
+		}
+
+		public void FillSelectionWithForeground()
+		{
+			SKColor foreground = m_toolState.Foreground();
+			FillSelectionWith(new SKColor(foreground.Red, foreground.Green, foreground.Blue, 255), true);
+		}
+
+		public void FillSelectionWithBackground()
+		{
+			SKColor background = m_toolState.Background();
+			FillSelectionWith(new SKColor(background.Red, background.Green, background.Blue, 255), true);
+		}
+
 		public void DoExit()
 		{
 			Application current = Application.Current;
@@ -1951,7 +1968,7 @@ namespace Bitmute.UI
 			m_customBrushes = new List<CustomBrush>();
 			m_adjustments = new AdjustmentRegistry(this, m_toolState);
 			m_operations = new Operations.OperationRegistry(this);
-			m_acceleratorRegistry = new AcceleratorRegistry(this, m_toolState, m_operations);
+			m_acceleratorRegistry = new AcceleratorRegistry(this, m_operations);
 			m_workspaceState = new WorkspaceState();
 			m_menuTitles = new string[] { "File", "Edit", "Image", "Layer", "Select", "Filter", "View", "Window", "Help" };
 			m_overlay = new AbsoluteLayout();

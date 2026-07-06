@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Text;
 using Windows.System;
+using Bitmute.Tools;
 
 namespace Bitmute.UI.Operations
 {
@@ -11,9 +12,9 @@ namespace Bitmute.UI.Operations
 		public eOperation m_operation;
 		private string m_originalName;
 		private string m_visibleName;
-		private Action<VirtualKeyModifiers> m_onTrigger;
+		private Func<Chord, bool> m_onTrigger;
 		private Accelerator m_accelerator;
-		public Operation(eOperation operation, string name, Action<VirtualKeyModifiers> onTrigger)
+		public Operation(eOperation operation, string name, Func<Chord, bool> onTrigger)
 		{
 			m_operation = operation;
 			m_originalName = m_visibleName = name;
@@ -34,10 +35,11 @@ namespace Bitmute.UI.Operations
 			m_accelerator = accelerator;
 			m_visibleName = m_originalName + accelerator.GetModifierText();
 		}
-		public void Trigger(VirtualKeyModifiers additionalModifiers)
+		public bool Trigger(Chord chord)
 		{
 			if (m_onTrigger != null)
-				m_onTrigger(additionalModifiers);
+				return m_onTrigger(chord);
+			return false;
 		}
 	}
 	public class OperationRegistry
@@ -53,6 +55,7 @@ namespace Bitmute.UI.Operations
 
 		private void SetupOperations()
 		{
+			RegisterOperation(eOperation.ToolChange, TriggerToolChange);
 			RegisterOperation(eOperation.ToggleRulers, TriggerToggleRulers);
 			RegisterOperation(eOperation.MergeVisibleLayers, TriggerMergeVisible);
 			RegisterOperation(eOperation.NewDocument, TriggerNewDocument);
@@ -80,9 +83,14 @@ namespace Bitmute.UI.Operations
 			RegisterOperation(eOperation.FreeTransform, TriggerFreeTransform);
 			RegisterOperation(eOperation.LastFilter, TriggerLastFilter);
 			RegisterOperation(eOperation.SwapColors, TriggerSwapColors);
+			RegisterOperation(eOperation.ZoomIn, TriggerZoomIn);
+			RegisterOperation(eOperation.ZoomOut, TriggerZoomOut);
+			RegisterOperation(eOperation.Delete, TriggerDelete);
+			RegisterOperation(eOperation.CommitArmed, TriggerCommitArmed);
+			RegisterOperation(eOperation.CancelArmed, TriggerCancelArmed);
 		}
 
-		public void RegisterOperation(eOperation operation, Action<VirtualKeyModifiers> onTrigger)
+		public void RegisterOperation(eOperation operation, Func<Chord, bool> onTrigger)
 		{
 			string visibleName = PrettifyName(operation.ToString());
 			Operation op = new Operation(operation, visibleName, onTrigger);
@@ -150,219 +158,330 @@ namespace Bitmute.UI.Operations
 
 
 		////////////////////////////////////////////////////
-		///  Operation Definitions 
+		///  Operation Definitions
 		////////////////////////////////////////////////////
-		
 
-		private void TriggerToggleRulers(VirtualKeyModifiers modifiers)
+
+		private bool TriggerToolChange(Chord chord)
+		{
+			if (m_main.ToolKeyBlocked())
+			{
+				return false;
+			}
+			bool cycle = (chord.m_modifiers & VirtualKeyModifiers.Shift) == VirtualKeyModifiers.Shift;
+			eTool tool;
+			switch (chord.m_key)
+			{
+				case VirtualKey.M: tool = eTool.Select; break;
+				case VirtualKey.V: tool = eTool.Move; break;
+				case VirtualKey.L: tool = eTool.Lasso; break;
+				case VirtualKey.W: tool = eTool.MagicWand; break;
+				case VirtualKey.C: tool = eTool.Crop; break;
+				case VirtualKey.B: tool = eTool.Brush; break;
+				case VirtualKey.S: tool = eTool.Clone; break;
+				case VirtualKey.E: tool = eTool.Eraser; break;
+				case VirtualKey.G: tool = eTool.Fill; break;
+				case VirtualKey.O: tool = eTool.DodgeBurn; break;
+				case VirtualKey.R: tool = eTool.Blur; break;
+				case VirtualKey.T: tool = eTool.Text; break;
+				case VirtualKey.U: tool = eTool.Line; break;
+				case VirtualKey.I: tool = eTool.Eyedropper; break;
+				case VirtualKey.H: tool = eTool.Hand; break;
+				case VirtualKey.Z: tool = eTool.Zoom; break;
+				default: return false;
+			}
+			m_main.SelectToolKey(tool, cycle);
+			return true;
+		}
+
+		private bool TriggerToggleRulers(Chord chord)
 		{
 			m_main.ToggleRulers();
+			return true;
 		}
 
-		private void TriggerMergeVisible(VirtualKeyModifiers modifiers)
+		private bool TriggerMergeVisible(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.DoMergeVisible();
+			return true;
 		}
 
-		private void TriggerNewDocument(VirtualKeyModifiers modifiers)
+		private bool TriggerNewDocument(Chord chord)
 		{
 			m_main.ShowNewDocumentDialog();
+			return true;
 		}
 
-		private void TriggerOpen(VirtualKeyModifiers modifiers)
+		private bool TriggerOpen(Chord chord)
 		{
 			m_main.OpenImageFlow();
+			return true;
 		}
 
-		private void TriggerSave(VirtualKeyModifiers modifiers)
+		private bool TriggerSave(Chord chord)
 		{
 			m_main.SaveImageFlow();
+			return true;
 		}
 
-		private void TriggerSaveAs(VirtualKeyModifiers modifiers)
+		private bool TriggerSaveAs(Chord chord)
 		{
 			m_main.SaveAsFlow();
+			return true;
 		}
 
-		private void TriggerExportAs(VirtualKeyModifiers modifiers)
+		private bool TriggerExportAs(Chord chord)
 		{
 			m_main.OpenExportDialog();
+			return true;
 		}
 
-		private void TriggerUndo(VirtualKeyModifiers modifiers)
+		private bool TriggerUndo(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.DoUndoToggle();
+			return true;
 		}
 
-		private void TriggerRedo(VirtualKeyModifiers modifiers)
+		private bool TriggerRedo(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.DoRedo();
+			return true;
 		}
 
-		private void TriggerUndoStep(VirtualKeyModifiers modifiers)
+		private bool TriggerUndoStep(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.DoUndo();
+			return true;
 		}
 
-		private void TriggerRedoStep(VirtualKeyModifiers modifiers)
+		private bool TriggerRedoStep(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.DoRedo();
+			return true;
 		}
 
-		private void TriggerSelectAll(VirtualKeyModifiers modifiers)
+		private bool TriggerSelectAll(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.DoSelectAll();
+			return true;
 		}
 
-		private void TriggerDeselect(VirtualKeyModifiers modifiers)
+		private bool TriggerDeselect(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.DoDeselect();
+			return true;
 		}
 
-		private void TriggerCut(VirtualKeyModifiers modifiers)
+		private bool TriggerCut(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.DoCut();
+			return true;
 		}
 
-		private void TriggerCopy(VirtualKeyModifiers modifiers)
+		private bool TriggerCopy(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.DoCopy();
+			return true;
 		}
 
-		private void TriggerCopyMerged(VirtualKeyModifiers modifiers)
+		private bool TriggerCopyMerged(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.DoCopyMerged();
+			return true;
 		}
 
-		private void TriggerPaste(VirtualKeyModifiers modifiers)
+		private bool TriggerPaste(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.DoPaste();
+			return true;
 		}
 
-		private void TriggerPasteInto(VirtualKeyModifiers modifiers)
+		private bool TriggerPasteInto(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.DoPasteInto();
+			return true;
 		}
 
-		private void TriggerFitOnScreen(VirtualKeyModifiers modifiers)
+		private bool TriggerFitOnScreen(Chord chord)
 		{
 			m_main.DoFit();
+			return true;
 		}
 
-		private void TriggerDuplicateLayer(VirtualKeyModifiers modifiers)
+		private bool TriggerDuplicateLayer(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.DuplicateActiveLayer();
+			return true;
 		}
 
-		private void TriggerMergeDown(VirtualKeyModifiers modifiers)
+		private bool TriggerMergeDown(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.MergeSelectedLayers();
+			return true;
 		}
 
-		private void TriggerImageSize(VirtualKeyModifiers modifiers)
+		private bool TriggerImageSize(Chord chord)
 		{
 			m_main.OpenSizeDialog(false);
+			return true;
 		}
 
-		private void TriggerInvertColors(VirtualKeyModifiers modifiers)
+		private bool TriggerInvertColors(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.DoInvert();
+			return true;
 		}
 
-		private void TriggerInvertSelection(VirtualKeyModifiers modifiers)
+		private bool TriggerInvertSelection(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.DoInvertSelection();
+			return true;
 		}
 
-		private void TriggerFreeTransform(VirtualKeyModifiers modifiers)
+		private bool TriggerFreeTransform(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.BeginTransform(0);
+			return true;
 		}
 
-		private void TriggerLastFilter(VirtualKeyModifiers modifiers)
+		private bool TriggerLastFilter(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.ApplyLastFilter();
+			return true;
 		}
 
-		private void TriggerSwapColors(VirtualKeyModifiers modifiers)
+		private bool TriggerSwapColors(Chord chord)
 		{
 			if (m_main.IsTextEditActive())
 			{
-				return;
+				return false;
 			}
 			m_main.SwapToolColors();
+			return true;
+		}
+
+		private bool TriggerZoomIn(Chord chord)
+		{
+			m_main.DoZoomIn();
+			return true;
+		}
+
+		private bool TriggerZoomOut(Chord chord)
+		{
+			m_main.DoZoomOut();
+			return true;
+		}
+
+		private bool TriggerDelete(Chord chord)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return false;
+			}
+			if ((chord.m_modifiers & VirtualKeyModifiers.Control) == VirtualKeyModifiers.Control)
+			{
+				m_main.FillSelectionWithBackground();
+			}
+			else if ((chord.m_modifiers & VirtualKeyModifiers.Menu) == VirtualKeyModifiers.Menu)
+			{
+				m_main.FillSelectionWithForeground();
+			}
+			else
+			{
+				m_main.DoClearSelection();
+			}
+			return true;
+		}
+
+		private bool TriggerCommitArmed(Chord chord)
+		{
+			return m_main.CommitArmedOperation();
+		}
+
+		private bool TriggerCancelArmed(Chord chord)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return false;
+			}
+			if (m_main.HasOpenModal())
+			{
+				m_main.CloseModal();
+				return true;
+			}
+			return m_main.CancelArmedOperation();
 		}
 	}
 }

@@ -6,6 +6,8 @@ namespace Bitmute.UI.Operations
 {
 	public enum eOperation
 	{
+		ToolChange,
+
 		ToggleRulers,
 		MergeVisibleLayers,
 
@@ -39,5 +41,11 @@ namespace Bitmute.UI.Operations
 		FreeTransform,
 		LastFilter,
 		SwapColors,
+
+		ZoomIn,
+		ZoomOut,
+		Delete,
+		CommitArmed,
+		CancelArmed,
 	}
 }
