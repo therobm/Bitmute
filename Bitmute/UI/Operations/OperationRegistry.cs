@@ -55,6 +55,31 @@ namespace Bitmute.UI.Operations
 		{
 			RegisterOperation(eOperation.ToggleRulers, TriggerToggleRulers);
 			RegisterOperation(eOperation.MergeVisibleLayers, TriggerMergeVisible);
+			RegisterOperation(eOperation.NewDocument, TriggerNewDocument);
+			RegisterOperation(eOperation.Open, TriggerOpen);
+			RegisterOperation(eOperation.Save, TriggerSave);
+			RegisterOperation(eOperation.SaveAs, TriggerSaveAs);
+			RegisterOperation(eOperation.ExportAs, TriggerExportAs);
+			RegisterOperation(eOperation.Undo, TriggerUndo);
+			RegisterOperation(eOperation.Redo, TriggerRedo);
+			RegisterOperation(eOperation.UndoStep, TriggerUndoStep);
+			RegisterOperation(eOperation.RedoStep, TriggerRedoStep);
+			RegisterOperation(eOperation.SelectAll, TriggerSelectAll);
+			RegisterOperation(eOperation.Deselect, TriggerDeselect);
+			RegisterOperation(eOperation.Cut, TriggerCut);
+			RegisterOperation(eOperation.Copy, TriggerCopy);
+			RegisterOperation(eOperation.CopyMerged, TriggerCopyMerged);
+			RegisterOperation(eOperation.Paste, TriggerPaste);
+			RegisterOperation(eOperation.PasteInto, TriggerPasteInto);
+			RegisterOperation(eOperation.FitOnScreen, TriggerFitOnScreen);
+			RegisterOperation(eOperation.DuplicateLayer, TriggerDuplicateLayer);
+			RegisterOperation(eOperation.MergeDown, TriggerMergeDown);
+			RegisterOperation(eOperation.ImageSize, TriggerImageSize);
+			RegisterOperation(eOperation.InvertColors, TriggerInvertColors);
+			RegisterOperation(eOperation.InvertSelection, TriggerInvertSelection);
+			RegisterOperation(eOperation.FreeTransform, TriggerFreeTransform);
+			RegisterOperation(eOperation.LastFilter, TriggerLastFilter);
+			RegisterOperation(eOperation.SwapColors, TriggerSwapColors);
 		}
 
 		public void RegisterOperation(eOperation operation, Action<VirtualKeyModifiers> onTrigger)
@@ -103,11 +128,6 @@ namespace Bitmute.UI.Operations
 			return op.GetAcceleratorText();
 		}
 
-		private static uint ChordKey(VirtualKey key, VirtualKeyModifiers modifiers)
-		{
-			return ((uint)key << 8) | (uint)modifiers;
-		}
-
 		private static string PrettifyName(string raw)
 		{
 			if (string.IsNullOrEmpty(raw))
@@ -146,6 +166,203 @@ namespace Bitmute.UI.Operations
 				return;
 			}
 			m_main.DoMergeVisible();
+		}
+
+		private void TriggerNewDocument(VirtualKeyModifiers modifiers)
+		{
+			m_main.ShowNewDocumentDialog();
+		}
+
+		private void TriggerOpen(VirtualKeyModifiers modifiers)
+		{
+			m_main.OpenImageFlow();
+		}
+
+		private void TriggerSave(VirtualKeyModifiers modifiers)
+		{
+			m_main.SaveImageFlow();
+		}
+
+		private void TriggerSaveAs(VirtualKeyModifiers modifiers)
+		{
+			m_main.SaveAsFlow();
+		}
+
+		private void TriggerExportAs(VirtualKeyModifiers modifiers)
+		{
+			m_main.OpenExportDialog();
+		}
+
+		private void TriggerUndo(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.DoUndoToggle();
+		}
+
+		private void TriggerRedo(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.DoRedo();
+		}
+
+		private void TriggerUndoStep(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.DoUndo();
+		}
+
+		private void TriggerRedoStep(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.DoRedo();
+		}
+
+		private void TriggerSelectAll(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.DoSelectAll();
+		}
+
+		private void TriggerDeselect(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.DoDeselect();
+		}
+
+		private void TriggerCut(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.DoCut();
+		}
+
+		private void TriggerCopy(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.DoCopy();
+		}
+
+		private void TriggerCopyMerged(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.DoCopyMerged();
+		}
+
+		private void TriggerPaste(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.DoPaste();
+		}
+
+		private void TriggerPasteInto(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.DoPasteInto();
+		}
+
+		private void TriggerFitOnScreen(VirtualKeyModifiers modifiers)
+		{
+			m_main.DoFit();
+		}
+
+		private void TriggerDuplicateLayer(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.DuplicateActiveLayer();
+		}
+
+		private void TriggerMergeDown(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.MergeSelectedLayers();
+		}
+
+		private void TriggerImageSize(VirtualKeyModifiers modifiers)
+		{
+			m_main.OpenSizeDialog(false);
+		}
+
+		private void TriggerInvertColors(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.DoInvert();
+		}
+
+		private void TriggerInvertSelection(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.DoInvertSelection();
+		}
+
+		private void TriggerFreeTransform(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.BeginTransform(0);
+		}
+
+		private void TriggerLastFilter(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.ApplyLastFilter();
+		}
+
+		private void TriggerSwapColors(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.SwapToolColors();
 		}
 	}
 }
