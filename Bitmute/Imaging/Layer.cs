@@ -40,6 +40,9 @@ namespace Bitmute.Imaging
 		private byte m_opacity;
 		private eBlendMode m_blendMode;
 		private SKBitmap m_bitmap;
+		private SKBitmap m_maskBitmap;
+		private SKBitmap m_paintRedirect;
+		private bool m_maskEnabled;
 		private int m_offsetX;
 		private int m_offsetY;
 		private bool m_isBackground;
@@ -460,10 +463,82 @@ namespace Bitmute.Imaging
 			return m_bitmap;
 		}
 
+		public SKBitmap PaintTarget()
+		{
+			if (m_paintRedirect != null)
+			{
+				return m_paintRedirect;
+			}
+			return m_bitmap;
+		}
+
+		public void SetPaintRedirect(SKBitmap redirect)
+		{
+			m_paintRedirect = redirect;
+		}
+
 		public void SetBitmap(SKBitmap bitmap)
 		{
 			m_bitmap = bitmap;
+			if (m_maskBitmap != null)
+			{
+				if (bitmap.Width != m_maskBitmap.Width || bitmap.Height != m_maskBitmap.Height)
+				{
+					m_maskBitmap.Dispose();
+					m_maskBitmap = null;
+					m_maskEnabled = false;
+				}
+			}
 			MarkStyleCacheDirty();
+		}
+
+		public bool HasMask()
+		{
+			return m_maskBitmap != null;
+		}
+
+		public bool MaskEnabled()
+		{
+			return m_maskEnabled;
+		}
+
+		public void SetMaskEnabled(bool enabled)
+		{
+			m_maskEnabled = enabled;
+		}
+
+		public SKBitmap MaskBitmap()
+		{
+			return m_maskBitmap;
+		}
+
+		public void CreateMask(bool reveal)
+		{
+			if (m_maskBitmap != null)
+			{
+				m_maskBitmap.Dispose();
+				m_maskBitmap = null;
+			}
+			m_maskBitmap = new SKBitmap(m_bitmap.Width, m_bitmap.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			if (reveal)
+			{
+				m_maskBitmap.Erase(SKColors.White);
+			}
+			else
+			{
+				m_maskBitmap.Erase(SKColors.Black);
+			}
+			m_maskEnabled = true;
+		}
+
+		public void DeleteMask()
+		{
+			if (m_maskBitmap != null)
+			{
+				m_maskBitmap.Dispose();
+				m_maskBitmap = null;
+			}
+			m_maskEnabled = false;
 		}
 
 		public LayerStyle LayerStyle()
@@ -678,6 +753,11 @@ namespace Bitmute.Imaging
 		{
 			Layer copy = new Layer(m_name, m_bitmap.Width, m_bitmap.Height);
 			copy.m_bitmap = m_bitmap.Copy();
+			if (m_maskBitmap != null)
+			{
+				copy.m_maskBitmap = m_maskBitmap.Copy();
+				copy.m_maskEnabled = m_maskEnabled;
+			}
 			copy.m_offsetX = m_offsetX;
 			copy.m_offsetY = m_offsetY;
 			copy.m_visible = m_visible;

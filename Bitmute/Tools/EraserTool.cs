@@ -11,7 +11,12 @@ namespace Bitmute.Tools
 			bool background = layer.IsBackground();
 			eBrushOp op = eBrushOp.Erase;
 			SKColor color = new SKColor(0, 0, 0, 0);
-			if (background)
+			if (document.PaintTarget() == ePaintTarget.Mask && layer.HasMask())
+			{
+				op = eBrushOp.Paint;
+				color = new SKColor(0, 0, 0, 255);
+			}
+			else if (background)
 			{
 				op = eBrushOp.Paint;
 				SKColor fill = state.Background();
