@@ -2308,19 +2308,67 @@ namespace Bitmute.UI
 
 		public void ShowLayerContextMenu(int layerIndex, double anchorX, double anchorY)
 		{
+			Document doc = ActiveDocument();
+			Layer active = null;
+			if (doc != null)
+			{
+				active = doc.ActiveLayer();
+			}
+
+			int rows = 0;
+			int separators = 0;
+
 			VerticalStackLayout menu = new VerticalStackLayout();
 			menu.Spacing = 0.0;
 			menu.Padding = new Thickness(0.0, 4.0, 0.0, 4.0);
 			menu.Add(BuildContextMenuRow("Layer Style…", OnContextLayerStyle));
+			rows++;
 			menu.Add(BuildContextMenuRow("Copy Layer Style", OnContextCopyLayerStyle));
+			rows++;
 			menu.Add(BuildContextMenuRow("Paste Layer Style", OnContextPasteLayerStyle));
+			rows++;
 			menu.Add(BuildContextMenuRow("Layer Properties…", OnContextLayerProperties));
+			rows++;
 			menu.Add(BuildContextMenuRow("Duplicate Layer", OnContextDuplicateLayer));
+			rows++;
 			menu.Add(BuildContextMenuRow("Merge Down", OnContextMergeDown));
+			rows++;
 			menu.Add(BuildContextMenuRow("Rasterize Text", OnContextRasterizeText));
+			rows++;
+
 			menu.Add(MenuBar.BuildMenuSeparator());
+			separators++;
+			if (active != null && active.HasMask())
+			{
+				menu.Add(BuildContextMenuRow("Delete Mask", OnContextDeleteMask));
+				rows++;
+				if (active.MaskEnabled())
+				{
+					menu.Add(BuildContextMenuRow("Disable Mask", OnContextToggleMask));
+					rows++;
+				}
+				else
+				{
+					menu.Add(BuildContextMenuRow("Enable Mask", OnContextToggleMask));
+					rows++;
+				}
+				menu.Add(BuildContextMenuRow("Apply Mask", OnContextApplyMask));
+				rows++;
+			}
+			else
+			{
+				menu.Add(BuildContextMenuRow("Add Layer Mask", OnContextAddMaskReveal));
+				rows++;
+				menu.Add(BuildContextMenuRow("Hide All Mask", OnContextAddMaskHide));
+				rows++;
+			}
+
+			menu.Add(MenuBar.BuildMenuSeparator());
+			separators++;
 			menu.Add(BuildContextMenuRow("Delete Layer", OnContextDeleteLayer));
-			double height = (8.0 * MenuBar.MenuItemHeight) + MenuBar.MenuSeparatorHeight + 8.0;
+			rows++;
+
+			double height = (rows * MenuBar.MenuItemHeight) + (separators * MenuBar.MenuSeparatorHeight) + 8.0;
 			ShowPulldown(menu, anchorX, anchorY, MenuBar.DropdownWidth, height);
 		}
 
@@ -2403,6 +2451,135 @@ namespace Bitmute.UI
 		{
 			ClosePulldown();
 			RequestDeleteActiveLayer();
+		}
+
+		private void OnContextAddMaskReveal(object sender, TappedEventArgs eventArgs)
+		{
+			ClosePulldown();
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			document.BeginCanvasEdit("Add Layer Mask");
+			document.AddMaskToActiveLayer(true);
+			document.EndCanvasEdit();
+			document.SetPaintTarget(ePaintTarget.Mask);
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.MarkComposeDirty();
+				canvas.InvalidateSurface();
+			}
+			RefreshPanels();
+		}
+
+		private void OnContextAddMaskHide(object sender, TappedEventArgs eventArgs)
+		{
+			ClosePulldown();
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			document.BeginCanvasEdit("Add Layer Mask");
+			document.AddMaskToActiveLayer(false);
+			document.EndCanvasEdit();
+			document.SetPaintTarget(ePaintTarget.Mask);
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.MarkComposeDirty();
+				canvas.InvalidateSurface();
+			}
+			RefreshPanels();
+		}
+
+		private void OnContextDeleteMask(object sender, TappedEventArgs eventArgs)
+		{
+			ClosePulldown();
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			document.BeginCanvasEdit("Delete Mask");
+			document.DeleteActiveMask();
+			document.EndCanvasEdit();
+			document.SetPaintTarget(ePaintTarget.Layer);
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.MarkComposeDirty();
+				canvas.InvalidateSurface();
+			}
+			RefreshPanels();
+		}
+
+		private void OnContextToggleMask(object sender, TappedEventArgs eventArgs)
+		{
+			ClosePulldown();
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			document.BeginCanvasEdit("Toggle Mask");
+			document.SetActiveMaskEnabled(!layer.MaskEnabled());
+			document.EndCanvasEdit();
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.MarkComposeDirty();
+				canvas.InvalidateSurface();
+			}
+			RefreshPanels();
+		}
+
+		private void OnContextApplyMask(object sender, TappedEventArgs eventArgs)
+		{
+			ClosePulldown();
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			document.BeginCanvasEdit("Apply Mask");
+			document.ApplyActiveMask();
+			document.EndCanvasEdit();
+			document.SetPaintTarget(ePaintTarget.Layer);
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.MarkComposeDirty();
+				canvas.InvalidateSurface();
+			}
+			RefreshPanels();
 		}
 
 		public bool TransformActive()
