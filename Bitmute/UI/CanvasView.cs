@@ -778,6 +778,17 @@ namespace Bitmute.UI
 				return;
 			}
 			Tool tool = main.CurrentTool();
+			DocumentWindow activeWindow = main.ActiveWindow();
+			bool activeCanvas = activeWindow != null && ReferenceEquals(activeWindow.Canvas(), this);
+			if (!activeCanvas)
+			{
+				if (m_cursorInside && ShowsBrushCursor(tool))
+				{
+					DrawClonePreview(canvas, main);
+					DrawBrushCursor(canvas, main);
+				}
+				return;
+			}
 			if (tool is LineTool)
 			{
 				DrawLinePreview(canvas, (LineTool)tool);

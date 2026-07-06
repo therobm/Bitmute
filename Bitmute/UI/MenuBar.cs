@@ -225,6 +225,9 @@ namespace Bitmute.UI
 				MenuBarItem video = new MenuBarItem("Video", eMenuAction.FilterVideoMenu);
 				video.m_submenu = true;
 				items.Add(video);
+				MenuBarItem generate = new MenuBarItem("Generate", eMenuAction.FilterGenerateMenu);
+				generate.m_submenu = true;
+				items.Add(generate);
 				MenuBarItem other = new MenuBarItem("Other", eMenuAction.FilterOtherMenu);
 				other.m_submenu = true;
 				items.Add(other);

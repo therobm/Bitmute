@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Shapes;
@@ -21,6 +22,15 @@ namespace Bitmute.UI
 		private double m_resizeOriginHeight;
 		private double m_resizeOriginX;
 		private double m_resizeOriginY;
+		private double m_resizeStartPointerX;
+		private double m_resizeStartPointerY;
+		private Border m_leftEdge;
+		private Border m_rightEdge;
+		private Border m_topEdge;
+		private Border m_bottomEdge;
+		private Border m_grip;
+		private Border m_activeResizeStrip;
+		private Dictionary<Microsoft.UI.Xaml.UIElement, Border> m_resizeStrips;
 		private Label m_titleLabel;
 		private Grid m_titleBar;
 		private ContentView m_contentHost;
@@ -117,9 +127,7 @@ namespace Bitmute.UI
 			grip.StrokeThickness = 0.0;
 			grip.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(0.0, 0.0, UiConstants.PanelCornerRadius, 0.0) };
 
-			PanGestureRecognizer resizeGesture = new PanGestureRecognizer();
-			resizeGesture.PanUpdated += OnResizePan;
-			grip.GestureRecognizers.Add(resizeGesture);
+			grip.HandlerChanged += OnResizeHandlerChanged;
 
 			return grip;
 		}
@@ -142,20 +150,132 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void OnResizePan(object sender, PanUpdatedEventArgs eventArgs)
+		private void OnResizeHandlerChanged(object sender, EventArgs eventArgs)
 		{
-			if (eventArgs.StatusType == GestureStatus.Started)
+			Border edge = sender as Border;
+			if (edge == null)
 			{
-				Raise();
-				m_resizeOriginWidth = m_width;
-				m_resizeOriginHeight = m_height;
 				return;
 			}
-
-			if (eventArgs.StatusType == GestureStatus.Running)
+			if (edge.Handler == null)
 			{
-				double targetWidth = m_resizeOriginWidth + eventArgs.TotalX;
-				double targetHeight = m_resizeOriginHeight + eventArgs.TotalY;
+				return;
+			}
+			Microsoft.UI.Xaml.UIElement element = edge.Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			if (m_resizeStrips.ContainsKey(element))
+			{
+				return;
+			}
+			m_resizeStrips[element] = edge;
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerPressedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnResizePointerPressed), true);
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerMovedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnResizePointerMoved), true);
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerReleasedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnResizePointerReleased), true);
+		}
+
+		private void OnResizePointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs eventArgs)
+		{
+			Microsoft.UI.Xaml.UIElement element = sender as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			Border strip;
+			bool found = m_resizeStrips.TryGetValue(element, out strip);
+			if (!found)
+			{
+				return;
+			}
+			Raise();
+			m_activeResizeStrip = strip;
+			Microsoft.UI.Input.PointerPoint point = eventArgs.GetCurrentPoint(null);
+			m_resizeStartPointerX = point.Position.X;
+			m_resizeStartPointerY = point.Position.Y;
+			m_resizeOriginX = m_x;
+			m_resizeOriginY = m_y;
+			m_resizeOriginWidth = m_width;
+			m_resizeOriginHeight = m_height;
+			element.CapturePointer(eventArgs.Pointer);
+		}
+
+		private void OnResizePointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs eventArgs)
+		{
+			if (m_activeResizeStrip == null)
+			{
+				return;
+			}
+			Microsoft.UI.Input.PointerPoint point = eventArgs.GetCurrentPoint(null);
+			double deltaX = point.Position.X - m_resizeStartPointerX;
+			double deltaY = point.Position.Y - m_resizeStartPointerY;
+			ApplyResize(deltaX, deltaY);
+		}
+
+		private void OnResizePointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs eventArgs)
+		{
+			Microsoft.UI.Xaml.UIElement element = sender as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			m_activeResizeStrip = null;
+			element.ReleasePointerCapture(eventArgs.Pointer);
+		}
+
+		private void ApplyResize(double deltaX, double deltaY)
+		{
+			if (m_activeResizeStrip == m_rightEdge)
+			{
+				double targetWidth = m_resizeOriginWidth + deltaX;
+				if (targetWidth < UiConstants.PanelMinWidth)
+				{
+					targetWidth = UiConstants.PanelMinWidth;
+				}
+				ResizeTo(targetWidth, m_height);
+				return;
+			}
+			if (m_activeResizeStrip == m_bottomEdge)
+			{
+				double targetHeight = m_resizeOriginHeight + deltaY;
+				if (targetHeight < UiConstants.PanelMinHeight)
+				{
+					targetHeight = UiConstants.PanelMinHeight;
+				}
+				ResizeTo(m_width, targetHeight);
+				return;
+			}
+			if (m_activeResizeStrip == m_leftEdge)
+			{
+				double delta = deltaX;
+				double targetWidth = m_resizeOriginWidth - delta;
+				if (targetWidth < UiConstants.PanelMinWidth)
+				{
+					delta = m_resizeOriginWidth - UiConstants.PanelMinWidth;
+					targetWidth = UiConstants.PanelMinWidth;
+				}
+				m_x = m_resizeOriginX + delta;
+				ResizeTo(targetWidth, m_height);
+				return;
+			}
+			if (m_activeResizeStrip == m_topEdge)
+			{
+				double delta = deltaY;
+				double targetHeight = m_resizeOriginHeight - delta;
+				if (targetHeight < UiConstants.PanelMinHeight)
+				{
+					delta = m_resizeOriginHeight - UiConstants.PanelMinHeight;
+					targetHeight = UiConstants.PanelMinHeight;
+				}
+				m_y = m_resizeOriginY + delta;
+				ResizeTo(m_width, targetHeight);
+				return;
+			}
+			if (m_activeResizeStrip == m_grip)
+			{
+				double targetWidth = m_resizeOriginWidth + deltaX;
+				double targetHeight = m_resizeOriginHeight + deltaY;
 				if (targetWidth < UiConstants.PanelMinWidth)
 				{
 					targetWidth = UiConstants.PanelMinWidth;
@@ -165,10 +285,11 @@ namespace Bitmute.UI
 					targetHeight = UiConstants.PanelMinHeight;
 				}
 				ResizeTo(targetWidth, targetHeight);
+				return;
 			}
 		}
 
-		private Border BuildResizeEdge(double edgeWidth, double edgeHeight, LayoutOptions horizontalOptions, LayoutOptions verticalOptions, EventHandler<PanUpdatedEventArgs> handler)
+		private Border BuildResizeEdge(double edgeWidth, double edgeHeight, LayoutOptions horizontalOptions, LayoutOptions verticalOptions)
 		{
 			Border edge = new Border();
 			if (edgeWidth > 0.0)
@@ -184,94 +305,8 @@ namespace Bitmute.UI
 			edge.StrokeThickness = 0.0;
 			edge.HorizontalOptions = horizontalOptions;
 			edge.VerticalOptions = verticalOptions;
-			PanGestureRecognizer pan = new PanGestureRecognizer();
-			pan.PanUpdated += handler;
-			edge.GestureRecognizers.Add(pan);
+			edge.HandlerChanged += OnResizeHandlerChanged;
 			return edge;
-		}
-
-		private void OnResizeRightPan(object sender, PanUpdatedEventArgs eventArgs)
-		{
-			if (eventArgs.StatusType == GestureStatus.Started)
-			{
-				Raise();
-				m_resizeOriginWidth = m_width;
-				return;
-			}
-			if (eventArgs.StatusType == GestureStatus.Running)
-			{
-				double targetWidth = m_resizeOriginWidth + eventArgs.TotalX;
-				if (targetWidth < UiConstants.PanelMinWidth)
-				{
-					targetWidth = UiConstants.PanelMinWidth;
-				}
-				ResizeTo(targetWidth, m_height);
-			}
-		}
-
-		private void OnResizeBottomPan(object sender, PanUpdatedEventArgs eventArgs)
-		{
-			if (eventArgs.StatusType == GestureStatus.Started)
-			{
-				Raise();
-				m_resizeOriginHeight = m_height;
-				return;
-			}
-			if (eventArgs.StatusType == GestureStatus.Running)
-			{
-				double targetHeight = m_resizeOriginHeight + eventArgs.TotalY;
-				if (targetHeight < UiConstants.PanelMinHeight)
-				{
-					targetHeight = UiConstants.PanelMinHeight;
-				}
-				ResizeTo(m_width, targetHeight);
-			}
-		}
-
-		private void OnResizeLeftPan(object sender, PanUpdatedEventArgs eventArgs)
-		{
-			if (eventArgs.StatusType == GestureStatus.Started)
-			{
-				Raise();
-				m_resizeOriginX = m_x;
-				m_resizeOriginWidth = m_width;
-				return;
-			}
-			if (eventArgs.StatusType == GestureStatus.Running)
-			{
-				double delta = eventArgs.TotalX;
-				double targetWidth = m_resizeOriginWidth - delta;
-				if (targetWidth < UiConstants.PanelMinWidth)
-				{
-					delta = m_resizeOriginWidth - UiConstants.PanelMinWidth;
-					targetWidth = UiConstants.PanelMinWidth;
-				}
-				m_x = m_resizeOriginX + delta;
-				ResizeTo(targetWidth, m_height);
-			}
-		}
-
-		private void OnResizeTopPan(object sender, PanUpdatedEventArgs eventArgs)
-		{
-			if (eventArgs.StatusType == GestureStatus.Started)
-			{
-				Raise();
-				m_resizeOriginY = m_y;
-				m_resizeOriginHeight = m_height;
-				return;
-			}
-			if (eventArgs.StatusType == GestureStatus.Running)
-			{
-				double delta = eventArgs.TotalY;
-				double targetHeight = m_resizeOriginHeight - delta;
-				if (targetHeight < UiConstants.PanelMinHeight)
-				{
-					delta = m_resizeOriginHeight - UiConstants.PanelMinHeight;
-					targetHeight = UiConstants.PanelMinHeight;
-				}
-				m_y = m_resizeOriginY + delta;
-				ResizeTo(m_width, targetHeight);
-			}
 		}
 
 		private void OnPanelTapped(object sender, TappedEventArgs eventArgs)
@@ -399,6 +434,7 @@ namespace Bitmute.UI
 
 		public FloatingPanel()
 		{
+			m_resizeStrips = new Dictionary<Microsoft.UI.Xaml.UIElement, Border>();
 			Grid root = new Grid();
 
 			Border frame = new Border();
@@ -423,17 +459,17 @@ namespace Bitmute.UI
 			frame.Content = frameContent;
 			root.Add(frame);
 
-			Border leftEdge = BuildResizeEdge(ResizeEdgeThickness, 0.0, LayoutOptions.Start, LayoutOptions.Fill, OnResizeLeftPan);
-			Border rightEdge = BuildResizeEdge(ResizeEdgeThickness, 0.0, LayoutOptions.End, LayoutOptions.Fill, OnResizeRightPan);
-			Border topEdge = BuildResizeEdge(0.0, ResizeEdgeThickness, LayoutOptions.Fill, LayoutOptions.Start, OnResizeTopPan);
-			Border bottomEdge = BuildResizeEdge(0.0, ResizeEdgeThickness, LayoutOptions.Fill, LayoutOptions.End, OnResizeBottomPan);
-			root.Add(leftEdge);
-			root.Add(rightEdge);
-			root.Add(topEdge);
-			root.Add(bottomEdge);
+			m_leftEdge = BuildResizeEdge(ResizeEdgeThickness, 0.0, LayoutOptions.Start, LayoutOptions.Fill);
+			m_rightEdge = BuildResizeEdge(ResizeEdgeThickness, 0.0, LayoutOptions.End, LayoutOptions.Fill);
+			m_topEdge = BuildResizeEdge(0.0, ResizeEdgeThickness, LayoutOptions.Fill, LayoutOptions.Start);
+			m_bottomEdge = BuildResizeEdge(0.0, ResizeEdgeThickness, LayoutOptions.Fill, LayoutOptions.End);
+			root.Add(m_leftEdge);
+			root.Add(m_rightEdge);
+			root.Add(m_topEdge);
+			root.Add(m_bottomEdge);
 
-			Border grip = BuildResizeGrip();
-			root.Add(grip);
+			m_grip = BuildResizeGrip();
+			root.Add(m_grip);
 
 			Content = root;
 		}

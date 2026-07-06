@@ -87,6 +87,7 @@ namespace Bitmute.UI
 		FilterSharpenMenu,
 		FilterStylizeMenu,
 		FilterVideoMenu,
+		FilterGenerateMenu,
 		LastFilter,
 		Clouds,
 		DifferenceClouds,
@@ -118,6 +119,7 @@ namespace Bitmute.UI
 		Spherize,
 		Twirl,
 		Wave,
+		NormalMap,
 		TogglePatternPreview,
 		FilterOtherMenu
 	}

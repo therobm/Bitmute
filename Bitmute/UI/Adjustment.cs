@@ -25,6 +25,13 @@ namespace Bitmute.UI
 		public string[] m_choiceLabels;
 		public string[][] m_choiceOptions;
 		public int[] m_choiceDefaults;
+		public string[] m_floatSliderLabels;
+		public float[] m_floatSliderMinimums;
+		public float[] m_floatSliderMaximums;
+		public float[] m_floatSliderDefaults;
+		public int[] m_floatSliderDecimals;
+		public string[] m_checkLabels;
+		public bool[] m_checkDefaults;
 		public double m_dialogWidth;
 		public double m_dialogHeight;
 		public Action<SKBitmap, int[]> m_run;
