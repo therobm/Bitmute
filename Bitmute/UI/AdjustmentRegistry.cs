@@ -343,6 +343,16 @@ namespace Bitmute.UI
 			FilterSharpen.HighPass(bitmap, values[0]);
 		}
 
+		private void RunOffset(SKBitmap bitmap, int[] values)
+		{
+			int choice = values[2];
+			if (choice < 0 || choice > (int)eOffsetEdge.Transparent)
+			{
+				choice = (int)eOffsetEdge.Wrap;
+			}
+			FilterOther.Offset(bitmap, values[0], values[1], (eOffsetEdge)choice);
+		}
+
 		private void RunSharpenEdges(SKBitmap bitmap, int[] values)
 		{
 			FilterSharpen.SharpenEdges(bitmap);
@@ -684,6 +694,7 @@ namespace Bitmute.UI
 			AddInstant(eMenuAction.SharpenMore, eMenuAction.FilterSharpenMenu, "Sharpen More", RunSharpenMore);
 			AddDialog(eMenuAction.UnsharpMask, eMenuAction.FilterSharpenMenu, "Unsharp Mask", true, new string[] { "Amount", "Radius" }, new int[] { 0, 1 }, new int[] { 300, 30 }, new int[] { 100, 3 }, 360.0, 230.0, RunUnsharpMask);
 			AddDialog(eMenuAction.HighPass, eMenuAction.FilterOtherMenu, "High Pass", true, new string[] { "Radius" }, new int[] { 1 }, new int[] { 30 }, new int[] { 5 }, 360.0, 200.0, RunHighPass);
+			AddChoiceDialog(eMenuAction.Offset, eMenuAction.FilterOtherMenu, "Offset", true, new string[] { "Horizontal", "Vertical" }, new int[] { -512, -512 }, new int[] { 512, 512 }, new int[] { 0, 0 }, new string[] { "Undefined Areas" }, new string[][] { new string[] { "Wrap Around", "Repeat Edge Pixels", "Transparent" } }, new int[] { 0 }, 360.0, 240.0, RunOffset);
 
 			Adjustment diffuse = AddChoiceDialog(eMenuAction.Diffuse, eMenuAction.FilterStylizeMenu, "Diffuse", true, s_noLabels, s_noValues, s_noValues, s_noValues, new string[] { "Mode" }, new string[][] { new string[] { "Normal", "Darken Only", "Lighten Only" } }, new int[] { 0 }, 360.0, 200.0, RunDiffuse);
 			diffuse.m_skslSource = GpuFilterPreview.DiffuseSource;

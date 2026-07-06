@@ -32,6 +32,13 @@ namespace Bitmute.UI
 		private Picker m_brushTipPicker;
 		private Slider m_brushSpacingSlider;
 		private Label m_brushSpacingValue;
+		private Slider m_brushFadeSlider;
+		private Label m_brushFadeValue;
+		private Button m_customTipButton;
+		private List<View> m_customTipRows;
+		private List<CustomBrush> m_customTipBrushes;
+		private double m_brushSettingsAnchorX;
+		private double m_brushSettingsAnchorY;
 		private Slider m_brushRoundnessSlider;
 		private Label m_brushRoundnessValue;
 		private Slider m_brushAngleSlider;
@@ -660,6 +667,8 @@ namespace Bitmute.UI
 				anchorX = m_optionsRow.X + m_brushSettingsButton.X;
 			}
 			double anchorY = UiConstants.MenuBarHeight + 1.0 + UiConstants.OptionsBarHeight + 1.0;
+			m_brushSettingsAnchorX = anchorX;
+			m_brushSettingsAnchorY = anchorY;
 			m_main.ShowPulldown(BuildBrushSettingsContent(), anchorX, anchorY, 288.0, 320.0);
 		}
 
@@ -669,6 +678,8 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			m_brushSettingsAnchorX = anchorX;
+			m_brushSettingsAnchorY = anchorY;
 			m_main.ShowPulldown(BuildBrushSettingsContent(), anchorX, anchorY, 288.0, 320.0);
 		}
 
@@ -735,6 +746,65 @@ namespace Bitmute.UI
 			spacingRow.Add(spacingLabel);
 			spacingRow.Add(m_brushSpacingSlider);
 			spacingRow.Add(m_brushSpacingValue);
+
+			Label fadeLabel = new Label();
+			fadeLabel.Text = "Fade";
+			fadeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			fadeLabel.FontSize = UiConstants.ComponentFontSize;
+			fadeLabel.WidthRequest = 60.0;
+			fadeLabel.VerticalOptions = LayoutOptions.Center;
+
+			m_brushFadeSlider = new Slider();
+			m_brushFadeSlider.Minimum = 0.0;
+			m_brushFadeSlider.Maximum = 1000.0;
+			m_brushFadeSlider.WidthRequest = 140.0;
+			m_brushFadeSlider.VerticalOptions = LayoutOptions.Center;
+			m_brushFadeSlider.Value = m_toolState.FadeLength();
+			m_brushFadeSlider.ValueChanged += OnBrushFadePulldownChanged;
+
+			m_brushFadeValue = new Label();
+			m_brushFadeValue.Text = FadeValueText(m_toolState.FadeLength());
+			m_brushFadeValue.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_brushFadeValue.FontSize = UiConstants.ComponentFontSize;
+			m_brushFadeValue.WidthRequest = 44.0;
+			m_brushFadeValue.VerticalOptions = LayoutOptions.Center;
+
+			Grid fadeRow = new Grid();
+			fadeRow.ColumnSpacing = 8.0;
+			fadeRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			fadeRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			fadeRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			Grid.SetColumn(fadeLabel, 0);
+			Grid.SetColumn(m_brushFadeSlider, 1);
+			Grid.SetColumn(m_brushFadeValue, 2);
+			fadeRow.Add(fadeLabel);
+			fadeRow.Add(m_brushFadeSlider);
+			fadeRow.Add(m_brushFadeValue);
+
+			Label customTipLabel = new Label();
+			customTipLabel.Text = "Tip:";
+			customTipLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			customTipLabel.FontSize = UiConstants.ComponentFontSize;
+			customTipLabel.WidthRequest = 60.0;
+			customTipLabel.VerticalOptions = LayoutOptions.Center;
+
+			m_customTipButton = new Button();
+			m_customTipButton.Text = "Tip";
+			m_customTipButton.FontSize = UiConstants.ComponentFontSize;
+			m_customTipButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
+			m_customTipButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			m_customTipButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_customTipButton.VerticalOptions = LayoutOptions.Center;
+			m_customTipButton.Clicked += OnCustomTipButtonClicked;
+
+			Grid customTipRow = new Grid();
+			customTipRow.ColumnSpacing = 8.0;
+			customTipRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			customTipRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+			Grid.SetColumn(customTipLabel, 0);
+			Grid.SetColumn(m_customTipButton, 1);
+			customTipRow.Add(customTipLabel);
+			customTipRow.Add(m_customTipButton);
 
 			Label roundnessLabel = new Label();
 			roundnessLabel.Text = "Roundness";
@@ -814,6 +884,8 @@ namespace Bitmute.UI
 			body.Padding = new Thickness(12.0);
 			body.Add(tipRow);
 			body.Add(spacingRow);
+			body.Add(fadeRow);
+			body.Add(customTipRow);
 			body.Add(roundnessRow);
 			body.Add(angleRow);
 			body.Add(m_brushTipEditor);
@@ -888,6 +960,125 @@ namespace Bitmute.UI
 			if (m_brushSpacingValue != null)
 			{
 				m_brushSpacingValue.Text = spacing + "%";
+			}
+		}
+
+		private string FadeValueText(int fade)
+		{
+			if (fade <= 0)
+			{
+				return "Off";
+			}
+			return fade + " px";
+		}
+
+		private void OnBrushFadePulldownChanged(object sender, ValueChangedEventArgs eventArgs)
+		{
+			if (m_brushFadeSlider == null || m_toolState == null)
+			{
+				return;
+			}
+			int fade = (int)System.Math.Round(m_brushFadeSlider.Value);
+			m_toolState.SetBrushFadeLength(fade);
+			if (m_brushFadeValue != null)
+			{
+				m_brushFadeValue.Text = FadeValueText(fade);
+			}
+		}
+
+		private void OnCustomTipButtonClicked(object sender, System.EventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			if (m_main.PulldownJustDismissed())
+			{
+				m_main.ClosePulldown();
+				return;
+			}
+			double anchorX = m_brushSettingsAnchorX + 60.0;
+			double anchorY = m_brushSettingsAnchorY;
+			m_main.ShowPulldown(BuildCustomTipPulldownContent(), anchorX, anchorY, 190.0, 200.0);
+		}
+
+		private View BuildCustomTipPulldownContent()
+		{
+			m_customTipRows = new List<View>();
+			m_customTipBrushes = new List<CustomBrush>();
+			VerticalStackLayout list = new VerticalStackLayout();
+			list.Spacing = 2.0;
+			list.Padding = new Thickness(4.0);
+
+			HorizontalStackLayout noneRow = new HorizontalStackLayout();
+			noneRow.Spacing = 6.0;
+			noneRow.Padding = new Thickness(6.0, 3.0, 6.0, 3.0);
+			Label noneName = new Label();
+			noneName.Text = "None (round/square)";
+			noneName.FontSize = UiConstants.ComponentFontSize;
+			noneName.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			noneName.VerticalOptions = LayoutOptions.Center;
+			noneRow.Add(noneName);
+			TapGestureRecognizer noneTap = new TapGestureRecognizer();
+			noneTap.Tapped += OnCustomTipRowTapped;
+			noneRow.GestureRecognizers.Add(noneTap);
+			m_customTipRows.Add(noneRow);
+			m_customTipBrushes.Add(null);
+			list.Add(noneRow);
+
+			List<CustomBrush> brushes = MainView.Self.CustomBrushes();
+			for (int index = 0; index < brushes.Count; index++)
+			{
+				CustomBrush customBrush = brushes[index];
+				HorizontalStackLayout row = new HorizontalStackLayout();
+				row.Spacing = 6.0;
+				row.Padding = new Thickness(6.0, 3.0, 6.0, 3.0);
+				Image swatch = new Image();
+				SkiaSharp.Views.Maui.Controls.SKBitmapImageSource source = new SkiaSharp.Views.Maui.Controls.SKBitmapImageSource();
+				source.Bitmap = customBrush.m_tip;
+				swatch.Source = source;
+				swatch.WidthRequest = 16.0;
+				swatch.HeightRequest = 16.0;
+				swatch.VerticalOptions = LayoutOptions.Center;
+				Label name = new Label();
+				name.Text = customBrush.m_name;
+				name.FontSize = UiConstants.ComponentFontSize;
+				name.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+				name.VerticalOptions = LayoutOptions.Center;
+				row.Add(swatch);
+				row.Add(name);
+				TapGestureRecognizer tap = new TapGestureRecognizer();
+				tap.Tapped += OnCustomTipRowTapped;
+				row.GestureRecognizers.Add(tap);
+				m_customTipRows.Add(row);
+				m_customTipBrushes.Add(customBrush);
+				list.Add(row);
+			}
+			return list;
+		}
+
+		private void OnCustomTipRowTapped(object sender, TappedEventArgs eventArgs)
+		{
+			if (m_toolState == null || m_customTipRows == null)
+			{
+				return;
+			}
+			for (int index = 0; index < m_customTipRows.Count; index++)
+			{
+				if (ReferenceEquals(m_customTipRows[index], sender))
+				{
+					CustomBrush customBrush = m_customTipBrushes[index];
+					if (customBrush == null)
+					{
+						m_toolState.SetActiveCustomTip(null);
+					}
+					else
+					{
+						m_toolState.SetActiveCustomTip(customBrush.m_tip);
+					}
+					m_main.ClosePulldown();
+					return;
+				}
 			}
 		}
 

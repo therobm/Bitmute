@@ -15,6 +15,8 @@ namespace Bitmute.Tools
 		private int m_brushSpacing;
 		private bool m_brushSquareTip;
 		private int m_brushRoundness = 100;
+		private int m_brushFadeLength = 0;
+		private SKBitmap m_activeCustomTip = null;
 		private int m_brushAngle;
 		private int m_brushSmoothing;
 		private int m_brushStrength;
@@ -575,6 +577,30 @@ namespace Bitmute.Tools
 				spacing = 100;
 			}
 			m_brushSpacing = spacing;
+		}
+
+		public int FadeLength()
+		{
+			return m_brushFadeLength;
+		}
+
+		public void SetBrushFadeLength(int lengthPx)
+		{
+			if (lengthPx < 0)
+			{
+				lengthPx = 0;
+			}
+			m_brushFadeLength = lengthPx;
+		}
+
+		public SKBitmap ActiveCustomTip()
+		{
+			return m_activeCustomTip;
+		}
+
+		public void SetActiveCustomTip(SKBitmap tip)
+		{
+			m_activeCustomTip = tip;
 		}
 
 		public bool BrushSquareTip()

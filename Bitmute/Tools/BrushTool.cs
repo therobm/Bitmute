@@ -15,6 +15,8 @@ namespace Bitmute.Tools
 				color = new SKColor((byte)gray, (byte)gray, (byte)gray, 255);
 			}
 			m_engine.Begin(layer, document.StrokeSnapshot(), radius, state.BrushHardness() / 100.0, state.BrushOpacity() / 100.0, state.BrushFlow() / 100.0, state.BrushSquareTip(), state.BrushSpacing() / 100.0, state.BrushSmoothing() / 100.0, eBrushOp.Paint, state.BrushMode(), color);
+			m_engine.SetFade(state.FadeLength());
+			m_engine.SetCustomTip(state.ActiveCustomTip());
 		}
 	}
 }
