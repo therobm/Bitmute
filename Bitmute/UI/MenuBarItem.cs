@@ -18,6 +18,7 @@ namespace Bitmute.UI
 		StrokeDialog,
 		DefinePattern,
 		DefineBrush,
+		SaveBrushPreset,
 		Preferences,
 		FreeTransform,
 		TransformScale,

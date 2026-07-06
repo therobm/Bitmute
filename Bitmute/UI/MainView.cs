@@ -82,8 +82,8 @@ namespace Bitmute.UI
 		private int m_topZIndex;
 		private ToolBox m_toolBox;
 		private ToolState m_toolState;
-		private List<Pattern> m_patterns;
-		private List<CustomBrush> m_customBrushes;
+		private PatternPalette m_patternPalette;
+		private BrushPalette m_brushPalette;
 		private int m_editingSwatchIndex = -1;
 		private LayerStyle m_layerStyleSnapshot;
 		private Layer m_layerStyleTargetLayer;
@@ -537,9 +537,19 @@ namespace Bitmute.UI
 			return layer.Bitmap().Copy();
 		}
 
+		private string PaletteRoot()
+		{
+			string rootOverride = Microsoft.Maui.Storage.Preferences.Default.Get("palette_root", "");
+			if (rootOverride.Length > 0)
+			{
+				return rootOverride;
+			}
+			return System.IO.Path.GetDirectoryName(System.Environment.ProcessPath);
+		}
+
 		public List<CustomBrush> CustomBrushes()
 		{
-			return m_customBrushes;
+			return m_brushPalette.CustomBrushes();
 		}
 
 		public void DoDefineBrush()
@@ -597,9 +607,23 @@ namespace Bitmute.UI
 				canvas.Dispose();
 				tip = scaled;
 			}
-			CustomBrush customBrush = new CustomBrush("Brush " + (m_customBrushes.Count + 1), tip);
-			m_customBrushes.Add(customBrush);
+			CustomBrush customBrush = m_brushPalette.AddCapturedTip(tip, "Brush " + (m_brushPalette.CustomBrushes().Count + 1));
 			m_toolState.SetActiveCustomTip(customBrush.m_tip);
+			RefreshPanels();
+		}
+
+		public void DoSaveBrushPreset()
+		{
+			ProceduralBrushShape shape = new ProceduralBrushShape();
+			shape.m_size = m_toolState.BrushSize();
+			shape.m_hardness = m_toolState.BrushHardness();
+			shape.m_spacing = m_toolState.BrushSpacing();
+			shape.m_fade = m_toolState.FadeLength();
+			shape.m_square = m_toolState.BrushSquareTip();
+			shape.m_roundness = m_toolState.BrushRoundness();
+			shape.m_angle = m_toolState.BrushAngle();
+			shape.m_smoothing = m_toolState.BrushSmoothing();
+			m_brushPalette.AddProcedural(shape, "Brush " + (m_brushPalette.CustomBrushes().Count + 1));
 			RefreshPanels();
 		}
 
@@ -709,7 +733,7 @@ namespace Bitmute.UI
 
 		public List<Pattern> Patterns()
 		{
-			return m_patterns;
+			return m_patternPalette.Patterns();
 		}
 
 		public void DoDefinePattern()
@@ -733,9 +757,7 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			string name = "Pattern " + (m_patterns.Count + 1);
-			Pattern pattern = new Pattern(name, captured);
-			m_patterns.Add(pattern);
+			Pattern pattern = m_patternPalette.AddCaptured(captured, "Pattern " + (m_patternPalette.Patterns().Count + 1));
 			m_toolState.SetActivePattern(pattern);
 			m_toolState.SetFillContent(eFillContent.Pattern);
 			RefreshPanels();
@@ -1947,8 +1969,8 @@ namespace Bitmute.UI
 			m_topZIndex = 0;
 			m_toolBox = new ToolBox();
 			m_toolState = m_toolBox.State();
-			m_patterns = new List<Pattern>();
-			m_customBrushes = new List<CustomBrush>();
+			m_patternPalette = new PatternPalette(PaletteRoot());
+			m_brushPalette = new BrushPalette(PaletteRoot());
 			m_adjustments = new AdjustmentRegistry(this, m_toolState);
 			m_operations = new Operations.OperationRegistry(this);
 			m_acceleratorRegistry = new AcceleratorRegistry(this, m_toolState, m_operations);
