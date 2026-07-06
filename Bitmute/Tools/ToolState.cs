@@ -15,11 +15,15 @@ namespace Bitmute.Tools
 		private int m_brushSpacing;
 		private bool m_brushSquareTip;
 		private int m_brushRoundness = 100;
+		private int m_brushFadeLength = 0;
+		private SKBitmap m_activeCustomTip = null;
 		private int m_brushAngle;
 		private int m_brushSmoothing;
 		private int m_brushStrength;
 		private eBlendMode m_brushMode;
 		private int m_fillTolerance;
+		private eFillContent m_fillContent = eFillContent.Foreground;
+		private Pattern m_activePattern = null;
 		private bool m_spongeSaturate;
 		private int m_colorReplaceMode;
 		private int m_colorReplaceTolerance;
@@ -575,6 +579,30 @@ namespace Bitmute.Tools
 			m_brushSpacing = spacing;
 		}
 
+		public int FadeLength()
+		{
+			return m_brushFadeLength;
+		}
+
+		public void SetBrushFadeLength(int lengthPx)
+		{
+			if (lengthPx < 0)
+			{
+				lengthPx = 0;
+			}
+			m_brushFadeLength = lengthPx;
+		}
+
+		public SKBitmap ActiveCustomTip()
+		{
+			return m_activeCustomTip;
+		}
+
+		public void SetActiveCustomTip(SKBitmap tip)
+		{
+			m_activeCustomTip = tip;
+		}
+
 		public bool BrushSquareTip()
 		{
 			return m_brushSquareTip;
@@ -675,6 +703,26 @@ namespace Bitmute.Tools
 		public void SetFillTolerance(int tolerance)
 		{
 			m_fillTolerance = tolerance;
+		}
+
+		public eFillContent FillContent()
+		{
+			return m_fillContent;
+		}
+
+		public void SetFillContent(eFillContent content)
+		{
+			m_fillContent = content;
+		}
+
+		public Pattern ActivePattern()
+		{
+			return m_activePattern;
+		}
+
+		public void SetActivePattern(Pattern pattern)
+		{
+			m_activePattern = pattern;
 		}
 
 		public bool SpongeSaturate()

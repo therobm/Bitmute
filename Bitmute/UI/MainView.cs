@@ -82,6 +82,8 @@ namespace Bitmute.UI
 		private int m_topZIndex;
 		private ToolBox m_toolBox;
 		private ToolState m_toolState;
+		private List<Pattern> m_patterns;
+		private List<CustomBrush> m_customBrushes;
 		private int m_editingSwatchIndex = -1;
 		private LayerStyle m_layerStyleSnapshot;
 		private Layer m_layerStyleTargetLayer;
@@ -535,6 +537,72 @@ namespace Bitmute.UI
 			return layer.Bitmap().Copy();
 		}
 
+		public List<CustomBrush> CustomBrushes()
+		{
+			return m_customBrushes;
+		}
+
+		public void DoDefineBrush()
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			SkiaSharp.SKBitmap captured = ExtractSelection(document, layer);
+			if (captured == null)
+			{
+				return;
+			}
+			if (captured.Width < 1 || captured.Height < 1)
+			{
+				return;
+			}
+			SkiaSharp.SKBitmap tip = captured;
+			if (captured.Width > 512 || captured.Height > 512)
+			{
+				double scale = 512.0 / captured.Width;
+				double scaleY = 512.0 / captured.Height;
+				if (scaleY < scale)
+				{
+					scale = scaleY;
+				}
+				int targetWidth = (int)(captured.Width * scale);
+				int targetHeight = (int)(captured.Height * scale);
+				if (targetWidth < 1)
+				{
+					targetWidth = 1;
+				}
+				if (targetHeight < 1)
+				{
+					targetHeight = 1;
+				}
+				SkiaSharp.SKBitmap scaled = new SkiaSharp.SKBitmap(targetWidth, targetHeight, SkiaSharp.SKColorType.Rgba8888, SkiaSharp.SKAlphaType.Unpremul);
+				scaled.Erase(SkiaSharp.SKColors.Transparent);
+				SkiaSharp.SKCanvas canvas = new SkiaSharp.SKCanvas(scaled);
+				SkiaSharp.SKRect destination = new SkiaSharp.SKRect(0.0f, 0.0f, targetWidth, targetHeight);
+				SkiaSharp.SKPixmap pixmap = captured.PeekPixels();
+				SkiaSharp.SKImage image = SkiaSharp.SKImage.FromPixels(pixmap);
+				SkiaSharp.SKSamplingOptions sampling = new SkiaSharp.SKSamplingOptions(SkiaSharp.SKFilterMode.Linear, SkiaSharp.SKMipmapMode.None);
+				SkiaSharp.SKPaint imagePaint = new SkiaSharp.SKPaint();
+				canvas.DrawImage(image, destination, sampling, imagePaint);
+				imagePaint.Dispose();
+				image.Dispose();
+				pixmap.Dispose();
+				canvas.Dispose();
+				tip = scaled;
+			}
+			CustomBrush customBrush = new CustomBrush("Brush " + (m_customBrushes.Count + 1), tip);
+			m_customBrushes.Add(customBrush);
+			m_toolState.SetActiveCustomTip(customBrush.m_tip);
+			RefreshPanels();
+		}
+
 		private unsafe SkiaSharp.SKBitmap ExtractSelectionRaw(Layer layer, Selection selection, SkiaSharp.SKRectI bounds, int width, int height)
 		{
 			SkiaSharp.SKBitmap result = new SkiaSharp.SKBitmap(width, height, SkiaSharp.SKColorType.Rgba8888, SkiaSharp.SKAlphaType.Unpremul);
@@ -637,6 +705,40 @@ namespace Bitmute.UI
 				return;
 			}
 			layer.Bitmap().Erase(SkiaSharp.SKColors.Transparent);
+		}
+
+		public List<Pattern> Patterns()
+		{
+			return m_patterns;
+		}
+
+		public void DoDefinePattern()
+		{
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return;
+			}
+			SkiaSharp.SKBitmap captured = ExtractSelection(document, layer);
+			if (captured == null)
+			{
+				return;
+			}
+			if (captured.Width < 1 || captured.Height < 1)
+			{
+				return;
+			}
+			string name = "Pattern " + (m_patterns.Count + 1);
+			Pattern pattern = new Pattern(name, captured);
+			m_patterns.Add(pattern);
+			m_toolState.SetActivePattern(pattern);
+			m_toolState.SetFillContent(eFillContent.Pattern);
+			RefreshPanels();
 		}
 
 		public async void DoCopy()
@@ -1845,6 +1947,8 @@ namespace Bitmute.UI
 			m_topZIndex = 0;
 			m_toolBox = new ToolBox();
 			m_toolState = m_toolBox.State();
+			m_patterns = new List<Pattern>();
+			m_customBrushes = new List<CustomBrush>();
 			m_adjustments = new AdjustmentRegistry(this, m_toolState);
 			m_operations = new Operations.OperationRegistry(this);
 			m_acceleratorRegistry = new AcceleratorRegistry(this, m_toolState, m_operations);
