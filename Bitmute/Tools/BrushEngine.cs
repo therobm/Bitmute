@@ -9,6 +9,8 @@ namespace Bitmute.Tools
 		private const double ShoulderExponent = 1.7;
 		private const long ParallelWorkThreshold = 262144;
 		private const long ParallelBoxAverageWorkThreshold = 16384;
+		private const double PressureSizeMinimum = 0.25;
+		private const double PressureOpacityMinimum = 0.2;
 
 		private static byte[] s_coveragePool;
 		private static int s_coveragePoolWidth;
@@ -36,6 +38,10 @@ namespace Bitmute.Tools
 		private SKBitmap m_original;
 		private bool m_ownsOriginal;
 		private int m_radius;
+		private int m_radiusBase;
+		private double m_currentPressure = 1.0;
+		private bool m_pressureSizeEnabled;
+		private bool m_pressureOpacityEnabled;
 		private double m_hardness;
 		private double m_tipInner;
 		private double m_tipOuter;
@@ -166,6 +172,8 @@ namespace Bitmute.Tools
 				m_ownsOriginal = true;
 			}
 			m_radius = radius;
+			m_radiusBase = radius;
+			m_currentPressure = 1.0;
 			m_hardness = hardness;
 			m_tipOuter = radius;
 			double tipInner = hardness * m_tipOuter;
@@ -252,6 +260,55 @@ namespace Bitmute.Tools
 			m_lockAlpha = layer.LockAlpha();
 			m_dabQueueCount = 0;
 			m_active = true;
+		}
+
+		public void SetPressure(float pressure, bool sizeEnabled, bool opacityEnabled)
+		{
+			m_pressureSizeEnabled = sizeEnabled;
+			m_pressureOpacityEnabled = opacityEnabled;
+			double clampedPressure = pressure;
+			if (clampedPressure < 0.0)
+			{
+				clampedPressure = 0.0;
+			}
+			if (clampedPressure > 1.0)
+			{
+				clampedPressure = 1.0;
+			}
+			m_currentPressure = clampedPressure;
+			if (m_pressureSizeEnabled)
+			{
+				double sizeFactor = PressureSizeMinimum + (1.0 - PressureSizeMinimum) * m_currentPressure;
+				m_radius = (int)Math.Round(m_radiusBase * sizeFactor);
+				if (m_radius < 1)
+				{
+					m_radius = 1;
+				}
+			}
+			else
+			{
+				m_radius = m_radiusBase;
+			}
+			m_tipOuter = m_radius;
+			double tipInner = m_hardness * m_tipOuter;
+			double tipAntialias = m_tipOuter * 0.08;
+			if (tipAntialias > 1.0)
+			{
+				tipAntialias = 1.0;
+			}
+			if (tipAntialias < 0.4)
+			{
+				tipAntialias = 0.4;
+			}
+			if (m_tipOuter - tipInner < tipAntialias)
+			{
+				tipInner = m_tipOuter - tipAntialias;
+			}
+			if (tipInner < 0.0)
+			{
+				tipInner = 0.0;
+			}
+			m_tipInner = tipInner;
 		}
 
 		public bool IsActive()
@@ -580,9 +637,15 @@ namespace Bitmute.Tools
 					}
 					m_coverage[coverageIndex] = (byte)((updated * 255.0) + 0.5);
 					double finalAlpha = updated;
-					if (finalAlpha > m_opacity)
+					double opacityCeiling = m_opacity;
+					if (m_pressureOpacityEnabled)
 					{
-						finalAlpha = m_opacity;
+						double opacityFactor = PressureOpacityMinimum + (1.0 - PressureOpacityMinimum) * m_currentPressure;
+						opacityCeiling = m_opacity * opacityFactor;
+					}
+					if (finalAlpha > opacityCeiling)
+					{
+						finalAlpha = opacityCeiling;
 					}
 					finalAlpha = finalAlpha * selectionFactor;
 					byte* originalPixel = originalPixels + (bitmapY * originalRowBytes) + (bitmapX * 4);
