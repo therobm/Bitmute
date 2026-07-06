@@ -45,6 +45,8 @@ namespace Bitmute.UI.Panels
 		private List<int> m_rowLayers;
 		private List<Image> m_thumbnailImages;
 		private List<int> m_thumbnailLayers;
+		private List<Image> m_maskThumbnailImages;
+		private List<int> m_maskThumbnailLayers;
 
 		private ImageSource BuildThumbnail(Layer layer)
 		{
@@ -80,6 +82,43 @@ namespace Bitmute.UI.Panels
 			}
 
 			SKBitmap source = layer.Bitmap();
+			float sourceAspect = (float)source.Width / (float)source.Height;
+			float thumbnailAspect = (float)ThumbnailWidth / (float)ThumbnailHeight;
+			float destinationWidth = ThumbnailWidth;
+			float destinationHeight = ThumbnailHeight;
+			if (sourceAspect > thumbnailAspect)
+			{
+				destinationHeight = ThumbnailWidth / sourceAspect;
+			}
+			else
+			{
+				destinationWidth = ThumbnailHeight * sourceAspect;
+			}
+			float destinationLeft = (ThumbnailWidth - destinationWidth) / 2.0f;
+			float destinationTop = (ThumbnailHeight - destinationHeight) / 2.0f;
+			SKRect destination = new SKRect(destinationLeft, destinationTop, destinationLeft + destinationWidth, destinationTop + destinationHeight);
+			SKPixmap pixmap = source.PeekPixels();
+			SKImage image = SKImage.FromPixels(pixmap);
+			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None);
+			SKPaint imagePaint = new SKPaint();
+			canvas.DrawImage(image, destination, sampling, imagePaint);
+			imagePaint.Dispose();
+			image.Dispose();
+			pixmap.Dispose();
+			canvas.Dispose();
+			return new SKBitmapImageSource { Bitmap = thumbnail };
+		}
+
+		private ImageSource BuildMaskThumbnail(Layer layer)
+		{
+			SKBitmap source = layer.MaskBitmap();
+			if (source == null)
+			{
+				return null;
+			}
+			SKBitmap thumbnail = new SKBitmap(ThumbnailWidth, ThumbnailHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
+			SKCanvas canvas = new SKCanvas(thumbnail);
+			canvas.Clear(new SKColor(0x80, 0x80, 0x80));
 			float sourceAspect = (float)source.Width / (float)source.Height;
 			float thumbnailAspect = (float)ThumbnailWidth / (float)ThumbnailHeight;
 			float destinationWidth = ThumbnailWidth;
@@ -201,6 +240,21 @@ namespace Bitmute.UI.Panels
 			m_eyeButtons.Add(eye);
 			m_eyeLayers.Add(layerIndex);
 
+			bool isActiveRow = layerIndex == document.ActiveLayerIndex();
+			bool pixelTargetActive = false;
+			bool maskTargetActive = false;
+			if (isActiveRow)
+			{
+				if (document.PaintTarget() == ePaintTarget.Mask)
+				{
+					maskTargetActive = true;
+				}
+				else
+				{
+					pixelTargetActive = true;
+				}
+			}
+
 			Image thumbnail = new Image();
 			thumbnail.WidthRequest = ThumbnailWidth;
 			thumbnail.HeightRequest = ThumbnailHeight;
@@ -211,6 +265,56 @@ namespace Bitmute.UI.Panels
 			thumbnail.GestureRecognizers.Add(thumbnailTap);
 			m_thumbnailImages.Add(thumbnail);
 			m_thumbnailLayers.Add(layerIndex);
+
+			Border thumbnailBorder = new Border();
+			thumbnailBorder.Padding = new Thickness(0.0);
+			thumbnailBorder.BackgroundColor = Colors.Transparent;
+			thumbnailBorder.VerticalOptions = LayoutOptions.Center;
+			thumbnailBorder.Content = thumbnail;
+			if (pixelTargetActive)
+			{
+				thumbnailBorder.StrokeThickness = 2.0;
+				thumbnailBorder.ThemeStroke(UiConstants.AccentLight, UiConstants.AccentDark);
+			}
+			else
+			{
+				thumbnailBorder.StrokeThickness = 0.0;
+			}
+
+			HorizontalStackLayout thumbnailStack = new HorizontalStackLayout();
+			thumbnailStack.Spacing = 3.0;
+			thumbnailStack.VerticalOptions = LayoutOptions.Center;
+			thumbnailStack.Add(thumbnailBorder);
+
+			if (layer.HasMask())
+			{
+				Image maskThumbnail = new Image();
+				maskThumbnail.WidthRequest = ThumbnailHeight;
+				maskThumbnail.HeightRequest = ThumbnailHeight;
+				maskThumbnail.VerticalOptions = LayoutOptions.Center;
+				maskThumbnail.Source = BuildMaskThumbnail(layer);
+				TapGestureRecognizer maskTap = new TapGestureRecognizer();
+				maskTap.Tapped += OnMaskThumbnailTapped;
+				maskThumbnail.GestureRecognizers.Add(maskTap);
+				m_maskThumbnailImages.Add(maskThumbnail);
+				m_maskThumbnailLayers.Add(layerIndex);
+
+				Border maskBorder = new Border();
+				maskBorder.Padding = new Thickness(0.0);
+				maskBorder.BackgroundColor = Colors.Transparent;
+				maskBorder.VerticalOptions = LayoutOptions.Center;
+				maskBorder.Content = maskThumbnail;
+				if (maskTargetActive)
+				{
+					maskBorder.StrokeThickness = 2.0;
+					maskBorder.ThemeStroke(UiConstants.AccentLight, UiConstants.AccentDark);
+				}
+				else
+				{
+					maskBorder.StrokeThickness = 0.0;
+				}
+				thumbnailStack.Add(maskBorder);
+			}
 
 			Label fxGlyph = new Label();
 			if (layer.LayerStyle().HasAnyEffect())
@@ -245,12 +349,12 @@ namespace Bitmute.UI.Panels
 			rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
 			rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 			Grid.SetColumn(eye, 0);
-			Grid.SetColumn(thumbnail, 1);
+			Grid.SetColumn(thumbnailStack, 1);
 			Grid.SetColumn(fxGlyph, 2);
 			Grid.SetColumn(name, 3);
 			Grid.SetColumn(lockGlyph, 4);
 			rowGrid.Add(eye);
-			rowGrid.Add(thumbnail);
+			rowGrid.Add(thumbnailStack);
 			rowGrid.Add(fxGlyph);
 			rowGrid.Add(name);
 			rowGrid.Add(lockGlyph);
@@ -362,7 +466,28 @@ namespace Bitmute.UI.Panels
 					else
 					{
 						document.SetActiveLayerIndex(layerIndex);
+						document.SetPaintTarget(ePaintTarget.Layer);
 					}
+					Refresh();
+					return;
+				}
+			}
+		}
+
+		private void OnMaskThumbnailTapped(object sender, TappedEventArgs eventArgs)
+		{
+			Document document = Doc();
+			if (document == null)
+			{
+				return;
+			}
+			for (int index = 0; index < m_maskThumbnailImages.Count; index++)
+			{
+				if (ReferenceEquals(m_maskThumbnailImages[index], sender))
+				{
+					int layerIndex = m_maskThumbnailLayers[index];
+					document.SetActiveLayerIndex(layerIndex);
+					document.SetPaintTarget(ePaintTarget.Mask);
 					Refresh();
 					return;
 				}
@@ -958,6 +1083,8 @@ namespace Bitmute.UI.Panels
 			m_rowLayers = new List<int>();
 			m_thumbnailImages = new List<Image>();
 			m_thumbnailLayers = new List<int>();
+			m_maskThumbnailImages = new List<Image>();
+			m_maskThumbnailLayers = new List<int>();
 
 			Border addButton = BuildActionButton("layer_add.png", "New layer", OnAddClicked);
 			Border duplicateButton = BuildActionButton("layer_duplicate.png", "Duplicate layer", OnDuplicateClicked);
@@ -1101,6 +1228,8 @@ namespace Bitmute.UI.Panels
 			m_rowLayers.Clear();
 			m_thumbnailImages.Clear();
 			m_thumbnailLayers.Clear();
+			m_maskThumbnailImages.Clear();
+			m_maskThumbnailLayers.Clear();
 
 			Document document = Doc();
 			if (document == null)
