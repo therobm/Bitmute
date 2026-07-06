@@ -36,6 +36,7 @@ namespace Bitmute.UI.Dialogs
 				m_checkedHandlers = new List<Action<bool>>();
 				m_sectionList = new VerticalStackLayout();
 				m_sectionList.Spacing = 2.0;
+				m_sectionList.ThemeBg(UiConstants.MultiModalBgLight, UiConstants.MultiModalBgDark);
 				m_panelHost = new ContentView();
 				m_selectedSection = -1;
 			}
@@ -83,8 +84,8 @@ namespace Bitmute.UI.Dialogs
 
 			Border row = new Border();
 			row.StrokeThickness = 0.0;
-			row.Padding = new Thickness(UiConstants.DialogRowSpacing, 4.0);
-			row.SetAppThemeColor(BackgroundColorProperty, Colors.Transparent, Colors.Transparent);
+			row.Padding = new Thickness(UiConstants.DialogRowSpacing, 1.0);
+			row.SetAppThemeColor(BackgroundColorProperty, UiConstants.MultiModalRowLight, UiConstants.MultiModalRowDark);
 			row.Content = rowContent;
 			TapGestureRecognizer recognizer = new TapGestureRecognizer();
 			recognizer.Tapped += OnSectionTapped;
@@ -119,7 +120,7 @@ namespace Bitmute.UI.Dialogs
 			}
 			if (m_selectedSection >= 0 && m_selectedSection < m_rows.Count)
 			{
-				m_rows[m_selectedSection].SetAppThemeColor(BackgroundColorProperty, Colors.Transparent, Colors.Transparent);
+				m_rows[m_selectedSection].SetAppThemeColor(BackgroundColorProperty, UiConstants.MultiModalRowLight, UiConstants.MultiModalRowDark);
 			}
 			m_selectedSection = index;
 			m_rows[index].SetAppThemeColor(BackgroundColorProperty, UiConstants.MenuOpenLight, UiConstants.MenuOpenDark);

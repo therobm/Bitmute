@@ -12,7 +12,7 @@ namespace Bitmute.UI.Components
 		private int m_maximum;
 		private int m_value;
 		private Action<int> m_onChanged;
-		private Slider m_slider;
+		private ValueSlider m_slider;
 		private Entry m_entry;
 		private bool m_updating;
 
@@ -36,23 +36,22 @@ namespace Bitmute.UI.Components
 			m_entry.Text = m_value.ToString();
 			if (moveSlider)
 			{
-				m_slider.Value = m_value;
+				m_slider.SetValueSilently(m_value);
 			}
 			m_updating = false;
 		}
 
-		private void OnSliderChanged(object sender, ValueChangedEventArgs eventArgs)
+		private void OnSliderValue(int value)
 		{
 			if (m_updating)
 			{
 				return;
 			}
-			int rounded = (int)Math.Round(eventArgs.NewValue);
-			if (rounded == m_value)
+			if (value == m_value)
 			{
 				return;
 			}
-			ApplyValue(rounded, false);
+			ApplyValue(value, false);
 			if (m_onChanged != null)
 			{
 				m_onChanged(m_value);
@@ -114,12 +113,10 @@ namespace Bitmute.UI.Components
 			captionLabel.WidthRequest = UiConstants.FieldCaptionWidth;
 			captionLabel.VerticalOptions = LayoutOptions.Center;
 
-			m_slider = new Slider();
-			m_slider.Minimum = minimum;
-			m_slider.Maximum = maximum;
+			m_slider = new ValueSlider(minimum, maximum, ClampValue(initial), OnSliderValue);
 			m_slider.WidthRequest = UiConstants.FieldSliderWidth;
+			m_slider.HeightRequest = UiConstants.ComponentHeight;
 			m_slider.VerticalOptions = LayoutOptions.Center;
-			m_slider.ValueChanged += OnSliderChanged;
 
 			m_entry = new Entry();
 			m_entry.FontSize = UiConstants.ComponentFontSize;

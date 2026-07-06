@@ -54,7 +54,7 @@ namespace Bitmute.UI
 		{
 			SKCanvas canvas = eventArgs.Surface.Canvas;
 			SKImageInfo info = eventArgs.Info;
-			canvas.Clear(new SKColor(UiConstants.PanelSurface.ToUint()));
+			canvas.Clear(SKColors.Transparent);
 
 			float left = TrackInset;
 			float right = info.Width - TrackInset;

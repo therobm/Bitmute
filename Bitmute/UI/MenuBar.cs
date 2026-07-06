@@ -13,7 +13,7 @@ namespace Bitmute.UI
 {
 	public class MenuBar
 	{
-		public const double MenuItemHeight = 18.0;
+		public const double MenuItemHeight = 20.0;
 		public const double DropdownWidth = 190.0;
 		public const double MenuSeparatorHeight = 9.0;
 
@@ -606,7 +606,7 @@ namespace Bitmute.UI
 
 			Border row = new Border();
 			row.HeightRequest = MenuItemHeight;
-			row.Padding = new Thickness(12.0, 0.0, 12.0, 0.0);
+			row.Padding = new Thickness(12.0, 0.0, 12.0, MenuItemHeight/4);
 			row.ThemeBg(UiConstants.PanelSurfaceLight, UiConstants.PanelSurfaceDark);
 			row.StrokeThickness = 0.0;
 			row.Content = rowContent;

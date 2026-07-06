@@ -61,6 +61,12 @@ namespace Bitmute.UI
 		public static readonly Color MenuOpenDark = Color.FromArgb("#333333");
 		public static readonly Color MenuOpenLight = Color.FromArgb("#C8C8C8");
 
+		public static readonly Color MultiModalBgDark = Color.FromArgb("#0f0f0f");
+		public static readonly Color MultiModalBgLight = Color.FromArgb("#f1f1f1");
+		public static readonly Color MultiModalRowDark = Color.FromArgb("#101010");
+		public static readonly Color MultiModalRowLight = Color.FromArgb("#fafafa");
+
+
 		public static readonly Color DialogSurfaceDark = Color.FromArgb("#202020");
 		public static readonly Color DialogSurfaceLight = Color.FromArgb("#F0F0F0");
 		public static readonly Color ButtonFaceDark = Color.FromArgb("#333333");
