@@ -76,6 +76,7 @@ namespace Bitmute.UI
 		private string[] m_menuTitles;
 		private bool m_acceleratorsHooked;
 		private AcceleratorRegistry m_acceleratorRegistry;
+		private Bitmute.UI.Operations.OperationRegistry m_operations;
 		private int m_untitledCount;
 		private int m_cascadeCount;
 		private int m_topZIndex;
@@ -464,6 +465,11 @@ namespace Bitmute.UI
 				window.Canvas().MarkComposeDirty();
 				RefreshPanels();
 			}
+		}
+
+		public Bitmute.UI.Operations.OperationRegistry Operations()
+		{
+			return m_operations;
 		}
 
 		public void DoExit()
@@ -1840,7 +1846,8 @@ namespace Bitmute.UI
 			m_toolBox = new ToolBox();
 			m_toolState = m_toolBox.State();
 			m_adjustments = new AdjustmentRegistry(this, m_toolState);
-			m_acceleratorRegistry = new AcceleratorRegistry(this, m_toolState);
+			m_operations = new Operations.OperationRegistry(this);
+			m_acceleratorRegistry = new AcceleratorRegistry(this, m_toolState, m_operations);
 			m_workspaceState = new WorkspaceState();
 			m_menuTitles = new string[] { "File", "Edit", "Image", "Layer", "Select", "Filter", "View", "Window", "Help" };
 			m_overlay = new AbsoluteLayout();

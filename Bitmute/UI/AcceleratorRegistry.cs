@@ -3,6 +3,7 @@ using Bitmute.Tools;
 using System;
 using Windows.System;
 using Bitmute.UI.Operations;
+using System.Collections.Generic;
 
 namespace Bitmute.UI
 {
@@ -19,28 +20,72 @@ namespace Bitmute.UI
 		}
 		public void Trigger(VirtualKeyModifiers additionalModifiers)
 		{
-			if (m_operation != null && m_operation.m_onTrigger != null)
-				m_operation.m_onTrigger(additionalModifiers);
+			m_operation.Trigger(additionalModifiers);
 		}
+		public string GetText()
+		{
+			string text = "";
+			if ((m_modifiers & VirtualKeyModifiers.Control) == VirtualKeyModifiers.Control)
+			{
+				text += "Ctrl+";
+			}
+			if ((m_modifiers & VirtualKeyModifiers.Menu) == VirtualKeyModifiers.Menu)
+			{
+				text += "Alt+";
+			}
+			if ((m_modifiers & VirtualKeyModifiers.Shift) == VirtualKeyModifiers.Shift)
+			{
+				text += "Shift+";
+			}
+			if ((m_modifiers & VirtualKeyModifiers.Windows) == VirtualKeyModifiers.Windows)
+			{
+				text += "Win+";
+			}
+			text += KeyName(m_key);
+			return text;
+		}
+
 		public string GetModifierText()
 		{
-			//todo format string properly
+			return " (" + GetText() + ")";
+		}
 
-			string modifierString = "(";
-			modifierString += m_key.ToString();
-			modifierString += ")";
-			return modifierString;
+		private static string KeyName(VirtualKey key)
+		{
+			if (key >= VirtualKey.A && key <= VirtualKey.Z)
+			{
+				return ((char)key).ToString();
+			}
+			if (key >= VirtualKey.Number0 && key <= VirtualKey.Number9)
+			{
+				return ((char)key).ToString();
+			}
+			if (key == VirtualKey.Add || key == (VirtualKey)187)
+			{
+				return "+";
+			}
+			if (key == VirtualKey.Subtract || key == (VirtualKey)189)
+			{
+				return "-";
+			}
+			if (key == VirtualKey.Delete)
+			{
+				return "Del";
+			}
+			if (key == VirtualKey.Enter)
+			{
+				return "Enter";
+			}
+			if (key == VirtualKey.Escape)
+			{
+				return "Esc";
+			}
+			return key.ToString();
 		}
 	}
 
 	public class AcceleratorRegistry
 	{
-		private MainView m_main;
-		private ToolState m_toolState;
-		private Microsoft.UI.Xaml.UIElement m_hookedElement;
-
-
-
 		private static void AddAccelerator(Microsoft.UI.Xaml.UIElement element, Windows.System.VirtualKey key, Windows.Foundation.TypedEventHandler<Microsoft.UI.Xaml.Input.KeyboardAccelerator, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs> handler)
 		{
 			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
@@ -102,6 +147,157 @@ namespace Bitmute.UI
 			accelerator.Modifiers = Windows.System.VirtualKeyModifiers.Control | Windows.System.VirtualKeyModifiers.Menu | Windows.System.VirtualKeyModifiers.Shift;
 			accelerator.Invoked += handler;
 			element.KeyboardAccelerators.Add(accelerator);
+		}
+
+
+		private MainView m_main;
+		private ToolState m_toolState;
+		private Microsoft.UI.Xaml.UIElement m_hookedElement;
+		private OperationRegistry m_operations;
+		Dictionary<eOperation, Accelerator> m_accelerators = new Dictionary<eOperation, Accelerator>();
+		private Dictionary<uint, Accelerator> m_byChord = new Dictionary<uint, Accelerator>();
+
+		public AcceleratorRegistry(MainView main, ToolState toolState, OperationRegistry operations)
+		{
+			m_main = main;
+			m_toolState = toolState;
+			m_operations = operations;
+			SetupAccelerators();
+		}
+
+		private void SetupAccelerators()
+		{
+			RegisterAccelerator(eOperation.ToggleRulers, new Accelerator(m_operations.Get(eOperation.ToggleRulers), VirtualKey.R, VirtualKeyModifiers.Control));
+			RegisterAccelerator(eOperation.MergeVisibleLayers, new Accelerator(m_operations.Get(eOperation.MergeVisibleLayers), VirtualKey.E, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift));
+		}
+
+		public void RegisterAccelerator(eOperation operation, Accelerator accelerator)
+		{
+			m_accelerators[operation] = accelerator;
+			m_byChord[ChordKey(accelerator.m_key, accelerator.m_modifiers)] = m_accelerators[operation];
+			m_operations.AssignAccelerator(operation, m_accelerators[operation]);
+		}
+
+		private void HookOperationAccelerators(Microsoft.UI.Xaml.UIElement element)
+		{
+			foreach (Accelerator accelerator in m_accelerators.Values)
+			{
+				AddOperationAccelerator(element, accelerator.m_key, accelerator.m_modifiers);
+			}
+		}
+
+		private void AddOperationAccelerator(Microsoft.UI.Xaml.UIElement element, VirtualKey key, VirtualKeyModifiers modifiers)
+		{
+			Microsoft.UI.Xaml.Input.KeyboardAccelerator accelerator = new Microsoft.UI.Xaml.Input.KeyboardAccelerator();
+			accelerator.Key = key;
+			accelerator.Modifiers = modifiers;
+			accelerator.Invoked += OnOperationAccelerator;
+			element.KeyboardAccelerators.Add(accelerator);
+		}
+
+		private void OnOperationAccelerator(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+		{
+			Accelerator accelerator = FindByChord(sender.Key, sender.Modifiers);
+			if (accelerator == null)
+			{
+				return;
+			}
+			accelerator.Trigger(sender.Modifiers);
+			args.Handled = true;
+		}
+
+		private Accelerator FindByChord(VirtualKey key, VirtualKeyModifiers modifiers)
+		{
+			uint chord = ChordKey(key, modifiers);
+			if (m_byChord.ContainsKey(chord))
+			{
+				return m_byChord[chord];
+			}
+			return null;
+		}
+
+		private static uint ChordKey(VirtualKey key, VirtualKeyModifiers modifiers)
+		{
+			return ((uint)key << 8) | (uint)modifiers;
+		}
+
+		private void TriggerToggleRulers(VirtualKeyModifiers modifiers)
+		{
+			m_main.ToggleRulers();
+		}
+
+		private void TriggerMergeVisible(VirtualKeyModifiers modifiers)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return;
+			}
+			m_main.DoMergeVisible();
+		}
+
+		public void RegisterViewHandler(Microsoft.UI.Xaml.UIElement element)
+		{
+			m_hookedElement = element;
+			HookOperationAccelerators(element);
+			AddAccelerator(element, Windows.System.VirtualKey.N, OnAcceleratorNew);
+			AddAccelerator(element, Windows.System.VirtualKey.O, OnAcceleratorOpen);
+			AddAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorSave);
+			AddAccelerator(element, Windows.System.VirtualKey.Z, OnAcceleratorUndo);
+			AddAccelerator(element, Windows.System.VirtualKey.Y, OnAcceleratorRedo);
+			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.Z, OnAcceleratorUndoStep);
+			AddCtrlAltAccelerator(element, Windows.System.VirtualKey.Z, OnAcceleratorRedoStep);
+			AddAccelerator(element, Windows.System.VirtualKey.A, OnAcceleratorSelectAll);
+			AddAccelerator(element, Windows.System.VirtualKey.D, OnAcceleratorDeselect);
+			AddAccelerator(element, Windows.System.VirtualKey.C, OnAcceleratorCopy);
+			AddAccelerator(element, Windows.System.VirtualKey.V, OnAcceleratorPaste);
+			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.V, OnAcceleratorPasteInto);
+			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.C, OnAcceleratorCopyMerged);
+			AddAccelerator(element, Windows.System.VirtualKey.X, OnAcceleratorCut);
+			AddAccelerator(element, Windows.System.VirtualKey.Number0, OnAcceleratorFit);
+			AddAccelerator(element, Windows.System.VirtualKey.Add, OnAcceleratorZoomIn);
+			AddAccelerator(element, Windows.System.VirtualKey.Subtract, OnAcceleratorZoomOut);
+			AddAccelerator(element, (Windows.System.VirtualKey)187, OnAcceleratorZoomIn);
+			AddAccelerator(element, (Windows.System.VirtualKey)189, OnAcceleratorZoomOut);
+			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorSaveAs);
+			AddAccelerator(element, Windows.System.VirtualKey.J, OnAcceleratorDuplicateLayer);
+			AddAccelerator(element, Windows.System.VirtualKey.E, OnAcceleratorMergeSelected);
+			AddCtrlAltShiftAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorExport);
+			AddCtrlAltAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorImageSize);
+			AddAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorInvertColors);
+			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorInvertSelection);
+			AddAccelerator(element, Windows.System.VirtualKey.T, OnAcceleratorTransform);
+			AddAccelerator(element, Windows.System.VirtualKey.F, OnAcceleratorLastFilter);
+			AddBareAccelerator(element, Windows.System.VirtualKey.Enter, OnAcceleratorCommitArmed);
+			AddBareAccelerator(element, Windows.System.VirtualKey.Escape, OnAcceleratorCancelArmed);
+			AddBareAccelerator(element, Windows.System.VirtualKey.X, OnAcceleratorSwapColors);
+			AddBareAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDelete);
+			AddAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDeleteBackground);
+			AddAltAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDeleteForeground);
+			AddBareAccelerator(element, Windows.System.VirtualKey.M, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.V, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.L, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.W, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.C, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.B, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.E, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.G, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.O, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.R, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.T, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.U, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.H, OnAcceleratorToolKey);
+			AddBareAccelerator(element, Windows.System.VirtualKey.Z, OnAcceleratorToolKey);
+			AddShiftAccelerator(element, Windows.System.VirtualKey.M, OnAcceleratorToolKey);
+			AddShiftAccelerator(element, Windows.System.VirtualKey.L, OnAcceleratorToolKey);
+			AddShiftAccelerator(element, Windows.System.VirtualKey.B, OnAcceleratorToolKey);
+			AddShiftAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorToolKey);
+			AddShiftAccelerator(element, Windows.System.VirtualKey.G, OnAcceleratorToolKey);
+			AddShiftAccelerator(element, Windows.System.VirtualKey.O, OnAcceleratorToolKey);
+			AddShiftAccelerator(element, Windows.System.VirtualKey.R, OnAcceleratorToolKey);
+			AddShiftAccelerator(element, Windows.System.VirtualKey.U, OnAcceleratorToolKey);
+			element.KeyboardAcceleratorPlacementMode = Microsoft.UI.Xaml.Input.KeyboardAcceleratorPlacementMode.Hidden;
 		}
 
 		private bool TextInputFocused()
@@ -441,22 +637,6 @@ namespace Bitmute.UI
 			args.Handled = true;
 		}
 
-		private void OnAcceleratorMergeVisible(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			if (m_main.IsTextEditActive())
-			{
-				return;
-			}
-			m_main.DoMergeVisible();
-			args.Handled = true;
-		}
-
-		private void OnAcceleratorRulers(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
-		{
-			m_main.ToggleRulers();
-			args.Handled = true;
-		}
-
 		private void OnAcceleratorTransform(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
 		{
 			if (m_main.IsTextEditActive())
@@ -535,78 +715,6 @@ namespace Bitmute.UI
 			SKColor background = m_toolState.Background();
 			m_main.FillSelectionWith(new SKColor(background.Red, background.Green, background.Blue, 255), true);
 			args.Handled = true;
-		}
-
-		public AcceleratorRegistry(MainView main, ToolState toolState)
-		{
-			m_main = main;
-			m_toolState = toolState;
-		}
-
-		public void RegisterViewHandler(Microsoft.UI.Xaml.UIElement element)
-		{
-			m_hookedElement = element;
-			AddAccelerator(element, Windows.System.VirtualKey.N, OnAcceleratorNew);
-			AddAccelerator(element, Windows.System.VirtualKey.O, OnAcceleratorOpen);
-			AddAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorSave);
-			AddAccelerator(element, Windows.System.VirtualKey.Z, OnAcceleratorUndo);
-			AddAccelerator(element, Windows.System.VirtualKey.Y, OnAcceleratorRedo);
-			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.Z, OnAcceleratorUndoStep);
-			AddCtrlAltAccelerator(element, Windows.System.VirtualKey.Z, OnAcceleratorRedoStep);
-			AddAccelerator(element, Windows.System.VirtualKey.A, OnAcceleratorSelectAll);
-			AddAccelerator(element, Windows.System.VirtualKey.D, OnAcceleratorDeselect);
-			AddAccelerator(element, Windows.System.VirtualKey.C, OnAcceleratorCopy);
-			AddAccelerator(element, Windows.System.VirtualKey.V, OnAcceleratorPaste);
-			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.V, OnAcceleratorPasteInto);
-			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.C, OnAcceleratorCopyMerged);
-			AddAccelerator(element, Windows.System.VirtualKey.X, OnAcceleratorCut);
-			AddAccelerator(element, Windows.System.VirtualKey.Number0, OnAcceleratorFit);
-			AddAccelerator(element, Windows.System.VirtualKey.Add, OnAcceleratorZoomIn);
-			AddAccelerator(element, Windows.System.VirtualKey.Subtract, OnAcceleratorZoomOut);
-			AddAccelerator(element, (Windows.System.VirtualKey)187, OnAcceleratorZoomIn);
-			AddAccelerator(element, (Windows.System.VirtualKey)189, OnAcceleratorZoomOut);
-			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorSaveAs);
-			AddAccelerator(element, Windows.System.VirtualKey.J, OnAcceleratorDuplicateLayer);
-			AddAccelerator(element, Windows.System.VirtualKey.E, OnAcceleratorMergeSelected);
-			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.E, OnAcceleratorMergeVisible);
-			AddCtrlAltShiftAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorExport);
-			AddCtrlAltAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorImageSize);
-			AddAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorInvertColors);
-			AddCtrlShiftAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorInvertSelection);
-			AddAccelerator(element, Windows.System.VirtualKey.R, OnAcceleratorRulers);
-			AddAccelerator(element, Windows.System.VirtualKey.T, OnAcceleratorTransform);
-			AddAccelerator(element, Windows.System.VirtualKey.F, OnAcceleratorLastFilter);
-			AddBareAccelerator(element, Windows.System.VirtualKey.Enter, OnAcceleratorCommitArmed);
-			AddBareAccelerator(element, Windows.System.VirtualKey.Escape, OnAcceleratorCancelArmed);
-			AddBareAccelerator(element, Windows.System.VirtualKey.X, OnAcceleratorSwapColors);
-			AddBareAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDelete);
-			AddAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDeleteBackground);
-			AddAltAccelerator(element, Windows.System.VirtualKey.Delete, OnAcceleratorDeleteForeground);
-			AddBareAccelerator(element, Windows.System.VirtualKey.M, OnAcceleratorToolKey);
-			AddBareAccelerator(element, Windows.System.VirtualKey.V, OnAcceleratorToolKey);
-			AddBareAccelerator(element, Windows.System.VirtualKey.L, OnAcceleratorToolKey);
-			AddBareAccelerator(element, Windows.System.VirtualKey.W, OnAcceleratorToolKey);
-			AddBareAccelerator(element, Windows.System.VirtualKey.C, OnAcceleratorToolKey);
-			AddBareAccelerator(element, Windows.System.VirtualKey.B, OnAcceleratorToolKey);
-			AddBareAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorToolKey);
-			AddBareAccelerator(element, Windows.System.VirtualKey.E, OnAcceleratorToolKey);
-			AddBareAccelerator(element, Windows.System.VirtualKey.G, OnAcceleratorToolKey);
-			AddBareAccelerator(element, Windows.System.VirtualKey.O, OnAcceleratorToolKey);
-			AddBareAccelerator(element, Windows.System.VirtualKey.R, OnAcceleratorToolKey);
-			AddBareAccelerator(element, Windows.System.VirtualKey.T, OnAcceleratorToolKey);
-			AddBareAccelerator(element, Windows.System.VirtualKey.U, OnAcceleratorToolKey);
-			AddBareAccelerator(element, Windows.System.VirtualKey.I, OnAcceleratorToolKey);
-			AddBareAccelerator(element, Windows.System.VirtualKey.H, OnAcceleratorToolKey);
-			AddBareAccelerator(element, Windows.System.VirtualKey.Z, OnAcceleratorToolKey);
-			AddShiftAccelerator(element, Windows.System.VirtualKey.M, OnAcceleratorToolKey);
-			AddShiftAccelerator(element, Windows.System.VirtualKey.L, OnAcceleratorToolKey);
-			AddShiftAccelerator(element, Windows.System.VirtualKey.B, OnAcceleratorToolKey);
-			AddShiftAccelerator(element, Windows.System.VirtualKey.S, OnAcceleratorToolKey);
-			AddShiftAccelerator(element, Windows.System.VirtualKey.G, OnAcceleratorToolKey);
-			AddShiftAccelerator(element, Windows.System.VirtualKey.O, OnAcceleratorToolKey);
-			AddShiftAccelerator(element, Windows.System.VirtualKey.R, OnAcceleratorToolKey);
-			AddShiftAccelerator(element, Windows.System.VirtualKey.U, OnAcceleratorToolKey);
-			element.KeyboardAcceleratorPlacementMode = Microsoft.UI.Xaml.Input.KeyboardAcceleratorPlacementMode.Hidden;
 		}
 	}
 }

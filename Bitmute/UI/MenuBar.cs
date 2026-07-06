@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Bitmute.Imaging;
 using Bitmute.Storage;
 using Bitmute.UI.Dialogs;
+using Bitmute.UI.Operations;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Shapes;
@@ -166,7 +167,7 @@ namespace Bitmute.UI
 				MenuBarItem mergeDown = new MenuBarItem("Merge Down", eMenuAction.MergeDown, "Ctrl+E", () => m_main.DoMergeDown());
 				mergeDown.m_enabled = m_main.CanMergeDown();
 				items.Add(mergeDown);
-				items.Add(new MenuBarItem("Merge Visible", eMenuAction.MergeVisible, "Ctrl+Shift+E", () => m_main.DoMergeVisible()));
+				items.Add(new MenuBarItem("Merge Visible", eMenuAction.MergeVisible, m_main.Operations().GetAcceleratorText(eOperation.MergeVisibleLayers), () => m_main.DoMergeVisible()));
 				items.Add(new MenuBarItem("Flatten Image", eMenuAction.FlattenImage, () => m_main.DoFlattenImage()));
 				MenuBarItem layerSeparatorTwo = new MenuBarItem("", eMenuAction.None);
 				layerSeparatorTwo.m_separator = true;
@@ -238,7 +239,7 @@ namespace Bitmute.UI
 				items.Add(new MenuBarItem("Zoom In", eMenuAction.ZoomIn, "Ctrl++", () => m_main.DoZoomIn()));
 				items.Add(new MenuBarItem("Zoom Out", eMenuAction.ZoomOut, "Ctrl+-", () => m_main.DoZoomOut()));
 				items.Add(new MenuBarItem("Fit on Screen", eMenuAction.FitOnScreen, "Ctrl+0", () => m_main.DoFit()));
-				MenuBarItem rulers = new MenuBarItem("Rulers", eMenuAction.ToggleRulers, "Ctrl+R", () => m_main.ToggleRulers());
+				MenuBarItem rulers = new MenuBarItem("Rulers", eMenuAction.ToggleRulers, m_main.Operations().GetAcceleratorText(eOperation.ToggleRulers), () => m_main.ToggleRulers());
 				rulers.m_checked = m_main.RulersEnabled();
 				items.Add(rulers);
 				MenuBarItem grid = new MenuBarItem("Grid", eMenuAction.ToggleGrid, () => m_main.ToggleGrid());
