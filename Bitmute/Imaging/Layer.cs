@@ -41,6 +41,7 @@ namespace Bitmute.Imaging
 		private eBlendMode m_blendMode;
 		private SKBitmap m_bitmap;
 		private SKBitmap m_maskBitmap;
+		private SKBitmap m_paintRedirect;
 		private bool m_maskEnabled;
 		private int m_offsetX;
 		private int m_offsetY;
@@ -460,6 +461,20 @@ namespace Bitmute.Imaging
 		public SKBitmap Bitmap()
 		{
 			return m_bitmap;
+		}
+
+		public SKBitmap PaintTarget()
+		{
+			if (m_paintRedirect != null)
+			{
+				return m_paintRedirect;
+			}
+			return m_bitmap;
+		}
+
+		public void SetPaintRedirect(SKBitmap redirect)
+		{
+			m_paintRedirect = redirect;
 		}
 
 		public void SetBitmap(SKBitmap bitmap)

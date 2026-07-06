@@ -9,13 +9,20 @@ namespace Bitmute.Imaging
 		private SKRectI m_rect;
 		private SKBitmap m_before;
 		private SKBitmap m_after;
+		private bool m_isMask;
 
 		public LayerEditCommand(int layerIndex, SKRectI rect, SKBitmap before, SKBitmap after)
+			: this(layerIndex, rect, before, after, false)
+		{
+		}
+
+		public LayerEditCommand(int layerIndex, SKRectI rect, SKBitmap before, SKBitmap after, bool isMask)
 		{
 			m_layerIndex = layerIndex;
 			m_rect = rect;
 			m_before = before;
 			m_after = after;
+			m_isMask = isMask;
 		}
 
 		public override string Label()
@@ -29,6 +36,10 @@ namespace Bitmute.Imaging
 			if (m_layerIndex < 0 || m_layerIndex >= layers.Count)
 			{
 				return null;
+			}
+			if (m_isMask)
+			{
+				return layers[m_layerIndex].MaskBitmap();
 			}
 			return layers[m_layerIndex].Bitmap();
 		}

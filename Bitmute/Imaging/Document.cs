@@ -45,6 +45,8 @@ namespace Bitmute.Imaging
 		private SKBitmap m_strokeSnapshot;
 		private bool m_strokeSnapshotValid;
 		private int m_strokeLayerIndex;
+		private ePaintTarget m_paintTarget;
+		private ePaintTarget m_strokePaintTarget;
 		private Selection m_selection;
 		private SKBitmap m_composite;
 		private int m_compositeVersion;
@@ -870,6 +872,44 @@ namespace Bitmute.Imaging
 			MarkComposeDirtyAll();
 		}
 
+		public ePaintTarget PaintTarget()
+		{
+			return m_paintTarget;
+		}
+
+		public void SetPaintTarget(ePaintTarget target)
+		{
+			m_paintTarget = target;
+		}
+
+		public SKBitmap ActivePaintBitmap()
+		{
+			Layer active = ActiveLayer();
+			if (active == null)
+			{
+				return null;
+			}
+			if (m_paintTarget == ePaintTarget.Mask && active.HasMask())
+			{
+				return active.MaskBitmap();
+			}
+			return active.Bitmap();
+		}
+
+		private SKBitmap StrokeTargetBitmap()
+		{
+			if (m_strokeLayerIndex < 0 || m_strokeLayerIndex >= m_layers.Count)
+			{
+				return null;
+			}
+			Layer layer = m_layers[m_strokeLayerIndex];
+			if (m_strokePaintTarget == ePaintTarget.Mask && layer.HasMask())
+			{
+				return layer.MaskBitmap();
+			}
+			return layer.Bitmap();
+		}
+
 		public void BeginStroke()
 		{
 			m_strokeSnapshotValid = false;
@@ -878,7 +918,7 @@ namespace Bitmute.Imaging
 			{
 				return;
 			}
-			SKBitmap bitmap = active.Bitmap();
+			SKBitmap bitmap = ActivePaintBitmap();
 			if (m_strokeSnapshot == null || m_strokeSnapshot.Width != bitmap.Width || m_strokeSnapshot.Height != bitmap.Height)
 			{
 				if (m_strokeSnapshot != null)
@@ -889,6 +929,15 @@ namespace Bitmute.Imaging
 			}
 			PixelRegion.CopyPixels(bitmap, m_strokeSnapshot);
 			m_strokeLayerIndex = m_activeLayerIndex;
+			m_strokePaintTarget = m_paintTarget;
+			if (m_paintTarget == ePaintTarget.Mask && active.HasMask())
+			{
+				active.SetPaintRedirect(active.MaskBitmap());
+			}
+			else
+			{
+				active.SetPaintRedirect(null);
+			}
 			m_strokeSnapshotValid = true;
 			m_strokeDirtyRect = SKRectI.Empty;
 			m_strokeDirtyValid = false;
@@ -904,7 +953,11 @@ namespace Bitmute.Imaging
 			{
 				return;
 			}
-			SKBitmap current = m_layers[m_strokeLayerIndex].Bitmap();
+			SKBitmap current = StrokeTargetBitmap();
+			if (current == null)
+			{
+				return;
+			}
 			if (current.Width != m_strokeSnapshot.Width || current.Height != m_strokeSnapshot.Height)
 			{
 				return;
@@ -930,7 +983,12 @@ namespace Bitmute.Imaging
 				return;
 			}
 			m_strokeSnapshotValid = false;
+			bool strokeMask = m_strokePaintTarget == ePaintTarget.Mask;
 			if (m_strokeLayerIndex >= 0 && m_strokeLayerIndex < m_layers.Count)
+			{
+				m_layers[m_strokeLayerIndex].SetPaintRedirect(null);
+			}
+			if (!strokeMask && m_strokeLayerIndex >= 0 && m_strokeLayerIndex < m_layers.Count)
 			{
 				Layer strokeStyledLayer = m_layers[m_strokeLayerIndex];
 				if (strokeStyledLayer.LayerStyle().HasAnyEffect())
@@ -943,7 +1001,11 @@ namespace Bitmute.Imaging
 			{
 				return;
 			}
-			SKBitmap current = m_layers[m_strokeLayerIndex].Bitmap();
+			SKBitmap current = StrokeTargetBitmap();
+			if (current == null)
+			{
+				return;
+			}
 			if (current.Width != m_strokeSnapshot.Width || current.Height != m_strokeSnapshot.Height)
 			{
 				return;
@@ -985,7 +1047,7 @@ namespace Bitmute.Imaging
 			}
 			SKBitmap before = PixelRegion.ExtractRegion(m_strokeSnapshot, rect);
 			SKBitmap after = PixelRegion.ExtractRegion(current, rect);
-			LayerEditCommand command = new LayerEditCommand(m_strokeLayerIndex, rect, before, after);
+			LayerEditCommand command = new LayerEditCommand(m_strokeLayerIndex, rect, before, after, strokeMask);
 			m_undoStack.Add(command);
 			m_redoStack.Clear();
 			if (m_undoStack.Count > s_maxUndoDepth)

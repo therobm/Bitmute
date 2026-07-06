@@ -142,7 +142,7 @@ namespace Bitmute.Tools
 		public void Begin(Layer layer, SKBitmap original, int radius, double hardness, double opacity, double flow, bool square, double spacingFraction, double smoothing, eBrushOp op, eBlendMode mode, SKColor color)
 		{
 			End();
-			SKBitmap bitmap = layer.Bitmap();
+			SKBitmap bitmap = layer.PaintTarget();
 			m_width = bitmap.Width;
 			m_height = bitmap.Height;
 			int coverageLength = m_width * m_height;
@@ -510,7 +510,7 @@ namespace Bitmute.Tools
 			{
 				return;
 			}
-			SKBitmap bitmap = layer.Bitmap();
+			SKBitmap bitmap = layer.PaintTarget();
 			if (bitmap.Width != m_width || bitmap.Height != m_height)
 			{
 				return;
@@ -547,7 +547,7 @@ namespace Bitmute.Tools
 
 		private unsafe void StampDabCore(Layer layer, double centerX, double centerY, Selection selection, int bandTop, int bandBottom)
 		{
-			SKBitmap bitmap = layer.Bitmap();
+			SKBitmap bitmap = layer.PaintTarget();
 			int rowBytes = bitmap.RowBytes;
 			int originalRowBytes = m_original.RowBytes;
 			int layerOffsetX = layer.OffsetX();
@@ -846,7 +846,7 @@ namespace Bitmute.Tools
 
 		private unsafe void StampSmudgeDab(Layer layer, double centerX, double centerY, Selection selection)
 		{
-			SKBitmap bitmap = layer.Bitmap();
+			SKBitmap bitmap = layer.PaintTarget();
 			int rowBytes = bitmap.RowBytes;
 			int layerOffsetX = layer.OffsetX();
 			int layerOffsetY = layer.OffsetY();
@@ -1073,7 +1073,7 @@ namespace Bitmute.Tools
 				m_dabQueueCount = 0;
 				return;
 			}
-			SKBitmap bitmap = layer.Bitmap();
+			SKBitmap bitmap = layer.PaintTarget();
 			if (bitmap.Width != m_width || bitmap.Height != m_height)
 			{
 				m_dabQueueCount = 0;
