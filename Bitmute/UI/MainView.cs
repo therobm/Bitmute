@@ -1188,7 +1188,7 @@ namespace Bitmute.UI
 		{
 			if (!System.IO.File.Exists(path))
 			{
-				SetStatusMessage("File not found â€” removed from recent: " + System.IO.Path.GetFileName(path));
+				SetStatusMessage("File not found — removed from recent: " + System.IO.Path.GetFileName(path));
 				RecentFiles.Remove(path);
 				return;
 			}
@@ -1431,7 +1431,7 @@ namespace Bitmute.UI
 		{
 			if (m_statusInfoLabel != null)
 			{
-				m_statusInfoLabel.Text = zoomPercent + "%      " + width + " Ã— " + height + " px";
+				m_statusInfoLabel.Text = zoomPercent + "%      " + width + " × " + height + " px";
 			}
 			if (m_navigatorPanel != null)
 			{
@@ -1449,7 +1449,7 @@ namespace Bitmute.UI
 			bar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
 
 			m_statusInfoLabel = new Label();
-			m_statusInfoLabel.Text = "100%      800 Ã— 600 px";
+			m_statusInfoLabel.Text = "100%      800 × 600 px";
 			m_statusInfoLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			m_statusInfoLabel.FontSize = UiConstants.ComponentFontSize;
 			m_statusInfoLabel.VerticalOptions = LayoutOptions.Center;
@@ -1457,7 +1457,7 @@ namespace Bitmute.UI
 			bar.Add(m_statusInfoLabel);
 
 			m_statusCursorLabel = new Label();
-			m_statusCursorLabel.Text = "x: â€”   y: â€”";
+			m_statusCursorLabel.Text = "x: —   y: —";
 			m_statusCursorLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
 			m_statusCursorLabel.FontSize = UiConstants.ComponentFontSize;
 			m_statusCursorLabel.HorizontalOptions = LayoutOptions.End;
@@ -2277,10 +2277,10 @@ namespace Bitmute.UI
 			VerticalStackLayout menu = new VerticalStackLayout();
 			menu.Spacing = 0.0;
 			menu.Padding = new Thickness(0.0, 4.0, 0.0, 4.0);
-			menu.Add(BuildContextMenuRow("Layer Styleâ€¦", OnContextLayerStyle));
+			menu.Add(BuildContextMenuRow("Layer Style…", OnContextLayerStyle));
 			menu.Add(BuildContextMenuRow("Copy Layer Style", OnContextCopyLayerStyle));
 			menu.Add(BuildContextMenuRow("Paste Layer Style", OnContextPasteLayerStyle));
-			menu.Add(BuildContextMenuRow("Layer Propertiesâ€¦", OnContextLayerProperties));
+			menu.Add(BuildContextMenuRow("Layer Properties…", OnContextLayerProperties));
 			menu.Add(BuildContextMenuRow("Duplicate Layer", OnContextDuplicateLayer));
 			menu.Add(BuildContextMenuRow("Merge Down", OnContextMergeDown));
 			menu.Add(BuildContextMenuRow("Rasterize Text", OnContextRasterizeText));
@@ -2929,7 +2929,7 @@ namespace Bitmute.UI
 					SetStatusMessage("Saved " + System.IO.Path.GetFileName(sourcePath));
 					return true;
 				}
-				SetStatusMessage("Document no longer fits " + System.IO.Path.GetExtension(sourcePath) + " â€” saving as project");
+				SetStatusMessage("Document no longer fits " + System.IO.Path.GetExtension(sourcePath) + " — saving as project");
 				return await SaveAsBitmuteAsync(model);
 			}
 			catch (System.Exception error)
@@ -3551,7 +3551,7 @@ namespace Bitmute.UI
 			}
 			if (m_statusCursorLabel != null)
 			{
-				m_statusCursorLabel.Text = "x: â€”   y: â€”";
+				m_statusCursorLabel.Text = "x: —   y: —";
 			}
 			if (m_infoPanel != null)
 			{
