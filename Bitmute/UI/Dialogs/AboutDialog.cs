@@ -111,11 +111,11 @@ namespace Bitmute.UI.Dialogs
 				main.OpenRepoLink();
 			}
 		}
-
-		private void OnOkClicked(object sender, EventArgs eventArgs)
+		protected override void OnPrimaryClicked(object sender, EventArgs eventArgs)
 		{
-			CloseModal();
+			base.OnPrimaryClicked(sender, eventArgs);
 		}
+
 
 		public AboutDialog()
 		{
@@ -128,7 +128,7 @@ namespace Bitmute.UI.Dialogs
 			body.Add(BuildDimLabel(".NET " + Environment.Version.ToString() + "  ·  SkiaSharp 4.148", 11.0));
 			body.Add(BuildDimLabel("Apache 2.0 License · © 2026 Rob M", 11.0));
 
-			Button okButton = PrimaryButton("OK", OnOkClicked);
+			Button okButton = PrimaryButton("OK");
 			ComposeDialog("About Bitmute", body, BuildSingleButtonRow(okButton));
 			WidthRequest = DialogWidth;
 		}

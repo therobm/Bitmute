@@ -10,12 +10,12 @@ namespace Bitmute.UI.Dialogs
 		private Pattern m_pattern;
 		private TextField m_nameField;
 
-		private void OnOkClicked(object sender, EventArgs eventArgs)
+		protected override void OnPrimaryClicked(object sender, EventArgs eventArgs)
 		{
 			string text = m_nameField.Text().Trim();
 			if (text.Length == 0)
 			{
-				CloseModal();
+				base.OnPrimaryClicked(sender, eventArgs);
 				return;
 			}
 			MainView main = MainView.Self;
@@ -23,12 +23,7 @@ namespace Bitmute.UI.Dialogs
 			{
 				main.ApplyRenamePattern(m_pattern, text);
 			}
-			CloseModal();
-		}
-
-		private void OnCancelClicked(object sender, EventArgs eventArgs)
-		{
-			CloseModal();
+			base.OnPrimaryClicked(sender, eventArgs);
 		}
 
 		public RenamePatternDialog(Pattern pattern)
@@ -37,8 +32,8 @@ namespace Bitmute.UI.Dialogs
 			m_nameField = new TextField("Name", pattern.m_name, null);
 			AddField(m_nameField);
 
-			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
-			Button okButton = PrimaryButton("OK", OnOkClicked);
+			Button cancelButton = SecondaryButton("Cancel");
+			Button okButton = PrimaryButton("OK");
 			ComposeFields("Rename Pattern", ButtonRow(cancelButton, okButton));
 		}
 	}

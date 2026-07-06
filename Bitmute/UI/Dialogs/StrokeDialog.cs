@@ -9,7 +9,7 @@ namespace Bitmute.UI.Dialogs
 		private IntSlider m_widthField;
 		private ListPicker m_positionPicker;
 
-		private void OnApplyClicked(object sender, EventArgs eventArgs)
+		protected override void OnPrimaryClicked(object sender, EventArgs eventArgs)
 		{
 			MainView main = MainView.Self;
 			if (main == null)
@@ -22,12 +22,11 @@ namespace Bitmute.UI.Dialogs
 				position = 1;
 			}
 			main.ApplyStroke(m_widthField.Value(), position);
+			base.OnPrimaryClicked(sender, eventArgs);
 		}
 
-		private void OnCancelClicked(object sender, EventArgs eventArgs)
-		{
-			CloseModal();
-		}
+
+
 
 		public StrokeDialog()
 		{
@@ -38,8 +37,8 @@ namespace Bitmute.UI.Dialogs
 			AddField(m_positionPicker);
 			AddField(new NoteField("Strokes with the foreground color"));
 
-			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
-			Button applyButton = PrimaryButton("Stroke", OnApplyClicked);
+			Button cancelButton = SecondaryButton("Cancel");
+			Button applyButton = PrimaryButton("Stroke");
 			ComposeFields("Stroke", ButtonRow(cancelButton, applyButton));
 		}
 	}

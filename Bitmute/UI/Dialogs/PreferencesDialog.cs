@@ -40,7 +40,7 @@ namespace Bitmute.UI.Dialogs
 			}
 		}
 
-		private void OnOkClicked(object sender, EventArgs eventArgs)
+		protected override void OnPrimaryClicked(object sender, EventArgs eventArgs)
 		{
 			MainView main = MainView.Self;
 			if (main == null)
@@ -51,12 +51,8 @@ namespace Bitmute.UI.Dialogs
 			string paletteRoot = m_paletteRootField.Text().Trim();
 			Microsoft.Maui.Storage.Preferences.Default.Set("palette_root", paletteRoot);
 			main.ReloadPalettes();
-			main.CloseModal();
-		}
-
-		private void OnCancelClicked(object sender, EventArgs eventArgs)
-		{
-			CloseModal();
+			//main.CloseModal();//wtf?
+			base.OnPrimaryClicked(sender, eventArgs);
 		}
 
 		public PreferencesDialog()
@@ -92,7 +88,7 @@ namespace Bitmute.UI.Dialogs
 			string currentRoot = Microsoft.Maui.Storage.Preferences.Default.Get("palette_root", "");
 			m_paletteRootField = new TextField("Root", currentRoot, null);
 
-			Button clearRecentButton = SecondaryButton("Clear Recent Files", OnClearRecentClicked);
+			Button clearRecentButton = CreateButton("Clear Recent Files", OnClearRecentClicked);
 			clearRecentButton.WidthRequest = 150.0;
 			clearRecentButton.HorizontalOptions = LayoutOptions.Start;
 
@@ -109,8 +105,8 @@ namespace Bitmute.UI.Dialogs
 			AddField(new SectionHeader("Palettes"));
 			AddField(m_paletteRootField);
 
-			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
-			Button okButton = PrimaryButton("OK", OnOkClicked);
+			Button cancelButton = SecondaryButton("Cancel");
+			Button okButton = PrimaryButton("OK");
 			ComposeFields("Preferences", ButtonRow(cancelButton, okButton), 340.0 - (2.0 * UiConstants.DialogPadding));
 		}
 	}

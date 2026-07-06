@@ -18,9 +18,9 @@ namespace Bitmute.UI.Dialogs
 			body.WidthRequest = 320.0;
 			body.Add(message);
 
-			Button saveButton = PrimaryButton("Save", OnSaveClicked);
-			Button dontSaveButton = SecondaryButton("Don't Save", OnDontSaveClicked);
-			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
+			Button saveButton = PrimaryButton("Save");
+			Button dontSaveButton = CreateButton("Don't Save", OnDontSaveClicked);
+			Button cancelButton = SecondaryButton("Cancel");
 			HorizontalStackLayout buttons = new HorizontalStackLayout();
 			buttons.Spacing = 8.0;
 			buttons.HorizontalOptions = LayoutOptions.End;
@@ -30,13 +30,14 @@ namespace Bitmute.UI.Dialogs
 			ComposeDialog("Save Changes", body, buttons);
 		}
 
-		private void OnSaveClicked(object sender, EventArgs eventArgs)
+		protected override void OnPrimaryClicked(object sender, EventArgs eventArgs)
 		{
 			MainView main = MainView.Self;
 			if (main != null)
 			{
 				main.OnCloseSaveChanges();
 			}
+			base.OnPrimaryClicked(sender, eventArgs);
 		}
 
 		private void OnDontSaveClicked(object sender, EventArgs eventArgs)
@@ -48,13 +49,16 @@ namespace Bitmute.UI.Dialogs
 			}
 		}
 
-		private void OnCancelClicked(object sender, EventArgs eventArgs)
+		
+		protected override void OnSecondaryClicked(object sender, EventArgs eventArgs)
 		{
 			MainView main = MainView.Self;
 			if (main != null)
 			{
 				main.OnCloseCancelSave();
 			}
+			base.OnSecondaryClicked(sender, eventArgs);
 		}
+
 	}
 }

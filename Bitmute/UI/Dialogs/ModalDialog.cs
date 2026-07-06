@@ -82,14 +82,38 @@ namespace Bitmute.UI.Dialogs
 			return button;
 		}
 
-		protected Button PrimaryButton(string text, EventHandler handler)
+		protected Button PrimaryButton(string text)
 		{
-			Button button = DialogButton(text, handler);
+			Button button = DialogButton(text, OnPrimaryClicked);
 			button.SetAppThemeColor(Button.BorderColorProperty, UiConstants.AccentLight, UiConstants.AccentDark);
 			return button;
 		}
+		public void ClickPrimary()
+		{
+			OnPrimaryClicked(null, null);
+		}
+		protected virtual void OnPrimaryClicked(object sender, EventArgs eventArgs)
+		{
+			CloseModal();
+		}
+		protected Button SecondaryButton(string text)
+		{
+			Button button = DialogButton(text, OnSecondaryClicked);
+			button.SetAppThemeColor(Button.BorderColorProperty, UiConstants.ButtonBorderLight, UiConstants.ButtonBorderDark);
+			return button;
+		}
+		
+		protected virtual void OnSecondaryClicked(object sender, EventArgs eventArgs)
+		{
+			CloseModal();
+		}
 
-		protected Button SecondaryButton(string text, EventHandler handler)
+		/// <summary>
+		/// Used for custom buttons beyond the primary and secondary ones
+		/// </summary>
+		/// <param name="text"></param>
+		/// <param name="handler"></param>
+		protected virtual Button CreateButton(string text, EventHandler handler)
 		{
 			Button button = DialogButton(text, handler);
 			button.SetAppThemeColor(Button.BorderColorProperty, UiConstants.ButtonBorderLight, UiConstants.ButtonBorderDark);
@@ -136,5 +160,6 @@ namespace Bitmute.UI.Dialogs
 
 			Content = frame;
 		}
+
 	}
 }

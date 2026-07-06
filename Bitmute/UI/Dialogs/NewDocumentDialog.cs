@@ -39,7 +39,7 @@ namespace Bitmute.UI.Dialogs
 			m_sizeField.SetValues(size, size);
 		}
 
-		private void OnCreateClicked(object sender, EventArgs eventArgs)
+		protected override void OnPrimaryClicked(object sender, EventArgs eventArgs)
 		{
 			MainView main = MainView.Self;
 			if (main == null)
@@ -48,13 +48,10 @@ namespace Bitmute.UI.Dialogs
 			}
 			bool transparent = m_backgroundPicker.SelectedIndex() == 1;
 			main.CreateNewDocument(m_sizeField.FirstValue(), m_sizeField.SecondValue(), m_nameField.Text(), transparent);
-			CloseModal();
+			base.OnPrimaryClicked(sender, eventArgs);
 		}
 
-		private void OnCancelClicked(object sender, EventArgs eventArgs)
-		{
-			CloseModal();
-		}
+	
 
 		public NewDocumentDialog() : this(DefaultWidth, DefaultHeight)
 		{
@@ -80,8 +77,8 @@ namespace Bitmute.UI.Dialogs
 			AddField(m_presetField);
 			AddField(m_backgroundPicker);
 
-			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
-			Button createButton = PrimaryButton("Create", OnCreateClicked);
+			Button cancelButton = SecondaryButton("Cancel");
+			Button createButton = PrimaryButton("Create");
 			ComposeFields("New Document", ButtonRow(cancelButton, createButton));
 		}
 	}

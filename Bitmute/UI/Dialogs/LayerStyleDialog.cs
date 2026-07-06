@@ -303,7 +303,7 @@ namespace Bitmute.UI.Dialogs
 			}
 		}
 
-		private void OnApplyClicked(object sender, EventArgs eventArgs)
+		protected override void OnPrimaryClicked(object sender, EventArgs eventArgs)
 		{
 			MainView main = MainView.Self;
 			if (main != null)
@@ -364,8 +364,8 @@ namespace Bitmute.UI.Dialogs
 			AddSection("Bevel & Emboss", bevelPanel, m_style.m_hasBevel, OnBevelEnableChanged);
 			SelectSection(0);
 
-			Button cancelButton = SecondaryButton("Cancel", OnCancelClicked);
-			Button okButton = PrimaryButton("OK", OnApplyClicked);
+			Button cancelButton = SecondaryButton("Cancel");
+			Button okButton = PrimaryButton("OK");
 			ComposeSections("Layer Style", ButtonRow(cancelButton, okButton), 160.0, 340.0);
 		}
 	}
