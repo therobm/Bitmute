@@ -20,6 +20,7 @@
     <Compile Remove="..\Bitmute\Tools\RulerTool.cs" />
     <Compile Include="..\Bitmute\Storage\ImageFile.cs" />
     <Compile Include="..\Bitmute\Storage\TgaFile.cs" />
+    <Compile Include="..\Bitmute\Storage\PngFile.cs" />
     <Compile Include="..\Bitmute\Storage\BitmuteFile.cs" />
     <Compile Include="..\Bitmute\Storage\PaletteFile.cs" />
     <Compile Include="..\Bitmute\Storage\PatternPalette.cs" />
