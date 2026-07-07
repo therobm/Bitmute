@@ -366,6 +366,19 @@ namespace Bitmute.UI
 			m_adjustments.Cancel();
 		}
 
+		public void DoConvertColorDepth(eColorDepth target)
+		{
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
+			{
+				return;
+			}
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
+			document.ConvertColorDepth(target);
+			canvas.MarkComposeDirty();
+		}
+
 		public void DoDesaturate()
 		{
 			DocumentWindow window = ActiveWindow();
