@@ -1241,6 +1241,11 @@ namespace Bitmute.Imaging
 			return m_colorDepth;
 		}
 
+		public void SetColorDepth(eColorDepth depth)
+		{
+			m_colorDepth = depth;
+		}
+
 		public void ConvertColorDepth(eColorDepth target)
 		{
 			if (target == m_colorDepth)
