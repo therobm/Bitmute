@@ -34,6 +34,15 @@ namespace Bitmute.Storage
 			{
 				return TgaFile.Read(path);
 			}
+			if (path.ToLowerInvariant().EndsWith(".png"))
+			{
+				byte[] data = File.ReadAllBytes(path);
+				SKBitmap decoded = PngFile.Decode(data);
+				if (decoded != null)
+				{
+					return decoded;
+				}
+			}
 			FileStream stream = File.OpenRead(path);
 			SKBitmap bitmap = SKBitmap.Decode(stream);
 			stream.Dispose();
@@ -73,7 +82,12 @@ namespace Bitmute.Storage
 
 		public static bool Export(Document document, string path, string format, int quality, bool lossless, bool rle)
 		{
-			SKBitmap composite = new SKBitmap(document.Width(), document.Height(), SKColorType.Rgba8888, SKAlphaType.Premul);
+			SKColorType targetColorType = SKColorType.Rgba8888;
+			if (format == "png" && (document.ColorDepth() == eColorDepth.Sixteen || document.ColorDepth() == eColorDepth.ThirtyTwoFloat))
+			{
+				targetColorType = SKColorType.Rgba16161616;
+			}
+			SKBitmap composite = new SKBitmap(document.Width(), document.Height(), targetColorType, SKAlphaType.Premul);
 			document.CompositeInto(composite);
 			bool success = false;
 			if (format == "png")

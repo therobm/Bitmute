@@ -284,6 +284,7 @@ namespace Bitmute.Imaging
 		public static Document OpenImage(string title, SKBitmap source)
 		{
 			Document document = new Document(title, source.Width, source.Height);
+			document.ConvertColorDepth(source.ColorType.ToColorDepth());
 			document.ActiveLayer().SetPixelsFrom(source);
 			return document;
 		}
