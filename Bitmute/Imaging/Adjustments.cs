@@ -28,6 +28,28 @@ namespace Bitmute.Imaging
 			}
 		}
 
+		private sealed class InvertHighDepthWorker
+		{
+			public PixelAccessor m_accessor;
+			public int m_width;
+
+			public void Band(int start, int end)
+			{
+				for (int y = start; y < end; y++)
+				{
+					for (int x = 0; x < m_width; x++)
+					{
+						float red;
+						float green;
+						float blue;
+						float alpha;
+						m_accessor.ReadNormalized(x, y, out red, out green, out blue, out alpha);
+						m_accessor.WriteNormalized(x, y, 1.0f - red, 1.0f - green, 1.0f - blue, alpha);
+					}
+				}
+			}
+		}
+
 		private sealed unsafe class HueSaturationLightnessWorker
 		{
 			public byte* m_base;
@@ -491,18 +513,27 @@ namespace Bitmute.Imaging
 			int width = bitmap.Width;
 			int height = bitmap.Height;
 			int rowBytes = bitmap.RowBytes;
-			byte[] table = new byte[256];
-			for (int value = 0; value < 256; value++)
+			if (bitmap.ColorType == SKColorType.Rgba8888)
 			{
-				table[value] = (byte)(255 - value);
+				byte[] table = new byte[256];
+				for (int value = 0; value < 256; value++)
+				{
+					table[value] = (byte)(255 - value);
+				}
+				byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
+				LutWorker worker = new LutWorker();
+				worker.m_base = basePointer;
+				worker.m_rowBytes = rowBytes;
+				worker.m_width = width;
+				worker.m_table = table;
+				RowBands.Run(0, height, worker.Band);
+				return;
 			}
-			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
-			LutWorker worker = new LutWorker();
-			worker.m_base = basePointer;
-			worker.m_rowBytes = rowBytes;
-			worker.m_width = width;
-			worker.m_table = table;
-			RowBands.Run(0, height, worker.Band);
+			PixelAccessor accessor = new PixelAccessor(bitmap.GetPixels(), bitmap.RowBytes, bitmap.ColorType);
+			InvertHighDepthWorker highDepthWorker = new InvertHighDepthWorker();
+			highDepthWorker.m_accessor = accessor;
+			highDepthWorker.m_width = width;
+			RowBands.Run(0, height, highDepthWorker.Band);
 		}
 
 		public static unsafe void BrightnessContrast(SKBitmap bitmap, int brightness, int contrast)
