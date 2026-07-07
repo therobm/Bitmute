@@ -119,13 +119,12 @@ namespace Bitmute.Imaging
 		{
 			int width = bitmap.Width;
 			int height = bitmap.Height;
-			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
-			int stride = bitmap.RowBytes;
+			PixelAccessor accessor = new PixelAccessor(bitmap.GetPixels(), bitmap.RowBytes, bitmap.ColorType);
 
 			int minY = -1;
 			for (int y = 0; y < height; y++)
 			{
-				if (RowHasAlpha(basePointer, stride, y, width))
+				if (RowHasAlpha(accessor, y, width))
 				{
 					minY = y;
 					break;
@@ -138,7 +137,7 @@ namespace Bitmute.Imaging
 			int maxY = minY;
 			for (int y = height - 1; y > minY; y--)
 			{
-				if (RowHasAlpha(basePointer, stride, y, width))
+				if (RowHasAlpha(accessor, y, width))
 				{
 					maxY = y;
 					break;
@@ -147,7 +146,7 @@ namespace Bitmute.Imaging
 			int minX = width;
 			for (int x = 0; x < width; x++)
 			{
-				if (ColumnHasAlpha(basePointer, stride, x, minY, maxY))
+				if (ColumnHasAlpha(accessor, x, minY, maxY))
 				{
 					minX = x;
 					break;
@@ -156,7 +155,7 @@ namespace Bitmute.Imaging
 			int maxX = minX;
 			for (int x = width - 1; x > minX; x--)
 			{
-				if (ColumnHasAlpha(basePointer, stride, x, minY, maxY))
+				if (ColumnHasAlpha(accessor, x, minY, maxY))
 				{
 					maxX = x;
 					break;
@@ -165,12 +164,11 @@ namespace Bitmute.Imaging
 			return new SKRectI(minX, minY, maxX + 1, maxY + 1);
 		}
 
-		private static unsafe bool RowHasAlpha(byte* basePointer, int stride, int y, int width)
+		private static bool RowHasAlpha(PixelAccessor accessor, int y, int width)
 		{
-			byte* row = basePointer + ((long)y * stride);
 			for (int x = 0; x < width; x++)
 			{
-				if (row[(x * 4) + 3] != 0)
+				if (accessor.AlphaAt(x, y) > 0.0f)
 				{
 					return true;
 				}
@@ -178,16 +176,14 @@ namespace Bitmute.Imaging
 			return false;
 		}
 
-		private static unsafe bool ColumnHasAlpha(byte* basePointer, int stride, int x, int minY, int maxY)
+		private static bool ColumnHasAlpha(PixelAccessor accessor, int x, int minY, int maxY)
 		{
-			byte* alphaPointer = basePointer + ((long)minY * stride) + (x * 4) + 3;
 			for (int y = minY; y <= maxY; y++)
 			{
-				if (*alphaPointer != 0)
+				if (accessor.AlphaAt(x, y) > 0.0f)
 				{
 					return true;
 				}
-				alphaPointer += stride;
 			}
 			return false;
 		}
