@@ -1241,6 +1241,26 @@ namespace Bitmute.Imaging
 			return m_colorDepth;
 		}
 
+		public void ConvertColorDepth(eColorDepth target)
+		{
+			if (target == m_colorDepth)
+			{
+				return;
+			}
+			for (int index = 0; index < m_layers.Count; index++)
+			{
+				Layer layer = m_layers[index];
+				layer.ConvertDepth(target);
+			}
+			m_colorDepth = target;
+			if (m_composite != null)
+			{
+				m_composite.Dispose();
+				m_composite = null;
+			}
+			MarkComposeDirtyAll();
+		}
+
 		public eRulerUnits RulerUnits()
 		{
 			return m_rulerUnits;

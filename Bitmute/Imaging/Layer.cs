@@ -208,6 +208,26 @@ namespace Bitmute.Imaging
 			return SKBlendMode.SrcOver;
 		}
 
+		private static SKBitmap ConvertBitmap(SKBitmap source, eColorDepth target)
+		{
+			SKBitmap result = new SKBitmap(source.Width, source.Height, target.ToColorType(), SKAlphaType.Unpremul);
+			PixelAccessor sourceAccessor = new PixelAccessor(source.GetPixels(), source.RowBytes, source.ColorType);
+			PixelAccessor resultAccessor = new PixelAccessor(result.GetPixels(), result.RowBytes, result.ColorType);
+			for (int y = 0; y < source.Height; y++)
+			{
+				for (int x = 0; x < source.Width; x++)
+				{
+					float red;
+					float green;
+					float blue;
+					float alpha;
+					sourceAccessor.ReadNormalized(x, y, out red, out green, out blue, out alpha);
+					resultAccessor.WriteNormalized(x, y, red, green, blue, alpha);
+				}
+			}
+			return result;
+		}
+
 		public Layer(string name, int width, int height, eColorDepth depth)
 		{
 			m_name = name;
@@ -488,6 +508,24 @@ namespace Bitmute.Imaging
 					m_maskBitmap = null;
 					m_maskEnabled = false;
 				}
+			}
+			MarkStyleCacheDirty();
+		}
+
+		public void ConvertDepth(eColorDepth target)
+		{
+			if (m_bitmap.ColorType == target.ToColorType())
+			{
+				return;
+			}
+			SKBitmap newBitmap = ConvertBitmap(m_bitmap, target);
+			m_bitmap.Dispose();
+			m_bitmap = newBitmap;
+			if (m_maskBitmap != null)
+			{
+				SKBitmap newMask = ConvertBitmap(m_maskBitmap, target);
+				m_maskBitmap.Dispose();
+				m_maskBitmap = newMask;
 			}
 			MarkStyleCacheDirty();
 		}
