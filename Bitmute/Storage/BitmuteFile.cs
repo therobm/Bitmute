@@ -524,7 +524,7 @@ namespace Bitmute.Storage
 			{
 				return null;
 			}
-			Layer layer = new Layer(name, bitmapWidth, bitmapHeight);
+			Layer layer = new Layer(name, bitmapWidth, bitmapHeight, eColorDepth.Eight);
 			Stream stream = entry.Open();
 			bool loaded = ReadLayerPixels(stream, layer);
 			stream.Dispose();

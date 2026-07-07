@@ -37,6 +37,7 @@ namespace Bitmute.Imaging
 		private int m_width;
 		private int m_height;
 		private string m_title;
+		private eColorDepth m_colorDepth;
 		private List<Layer> m_layers;
 		private int m_activeLayerIndex;
 		private List<int> m_selectedLayerIndices;
@@ -292,8 +293,9 @@ namespace Bitmute.Imaging
 			m_title = title;
 			m_width = width;
 			m_height = height;
+			m_colorDepth = eColorDepth.Eight;
 			m_layers = new List<Layer>();
-			Layer background = new Layer("Background", width, height);
+			Layer background = new Layer("Background", width, height, m_colorDepth);
 			background.FillWhite();
 			background.SetIsBackground(true);
 			m_layers.Add(background);
@@ -1234,6 +1236,11 @@ namespace Bitmute.Imaging
 			return m_height;
 		}
 
+		public eColorDepth ColorDepth()
+		{
+			return m_colorDepth;
+		}
+
 		public eRulerUnits RulerUnits()
 		{
 			return m_rulerUnits;
@@ -1506,7 +1513,7 @@ namespace Bitmute.Imaging
 
 		public Layer AddLayer(string name)
 		{
-			Layer layer = new Layer(name, m_width, m_height);
+			Layer layer = new Layer(name, m_width, m_height, m_colorDepth);
 			m_layers.Add(layer);
 			m_activeLayerIndex = m_layers.Count - 1;
 			ResetLayerSelectionToActive();
@@ -1568,7 +1575,7 @@ namespace Bitmute.Imaging
 			}
 			Layer source = m_layers[index];
 			SKBitmap sourceBitmap = source.Bitmap();
-			Layer copy = new Layer(source.Name() + " copy", sourceBitmap.Width, sourceBitmap.Height);
+			Layer copy = new Layer(source.Name() + " copy", sourceBitmap.Width, sourceBitmap.Height, m_colorDepth);
 			copy.SetBitmap(sourceBitmap.Copy());
 			copy.SetOffset(source.OffsetX(), source.OffsetY());
 			copy.SetOpacity(source.Opacity());
@@ -1691,7 +1698,7 @@ namespace Bitmute.Imaging
 			}
 			paint.Dispose();
 			canvas.Dispose();
-			Layer result = new Layer(m_layers[lowest].Name(), m_width, m_height);
+			Layer result = new Layer(m_layers[lowest].Name(), m_width, m_height, m_colorDepth);
 			result.SetBitmap(merged);
 			result.SetOffset(0, 0);
 			List<Layer> rebuilt = new List<Layer>();
@@ -1754,7 +1761,7 @@ namespace Bitmute.Imaging
 			}
 			paint.Dispose();
 			canvas.Dispose();
-			Layer result = new Layer("Merged", m_width, m_height);
+			Layer result = new Layer("Merged", m_width, m_height, m_colorDepth);
 			result.SetBitmap(merged);
 			result.SetOffset(0, 0);
 			List<Layer> rebuilt = new List<Layer>();
@@ -1799,7 +1806,7 @@ namespace Bitmute.Imaging
 			}
 			paint.Dispose();
 			canvas.Dispose();
-			Layer result = new Layer("Background", m_width, m_height);
+			Layer result = new Layer("Background", m_width, m_height, m_colorDepth);
 			result.SetBitmap(merged);
 			result.SetOffset(0, 0);
 			m_layers = new List<Layer>();
@@ -2072,7 +2079,7 @@ namespace Bitmute.Imaging
 				{
 					m_composite.Dispose();
 				}
-				m_composite = new SKBitmap(m_width, m_height, SKColorType.Rgba8888, SKAlphaType.Premul);
+				m_composite = new SKBitmap(m_width, m_height, m_colorDepth.ToColorType(), SKAlphaType.Premul);
 				recreated = true;
 			}
 			if (recreated || m_composeDirtyAll)
