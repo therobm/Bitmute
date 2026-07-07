@@ -2159,6 +2159,11 @@ namespace Bitmute.Imaging
 
 		public void CompositeRegion(SKBitmap target, SKRectI region)
 		{
+			if (m_colorDepth != eColorDepth.Eight)
+			{
+				CompositeRegionSkia(target, region);
+				return;
+			}
 			if (AllVisibleLayersNormal() && !AnyVisibleLayerHasStyle())
 			{
 				CompositeRegionRaw(target, region);

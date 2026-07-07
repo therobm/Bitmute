@@ -53,6 +53,7 @@ namespace Bitmute.Tests
 			TestEightToSixteenWidensLossless();
 			TestEightToThirtyTwoNormalizes();
 			TestSixteenToEightRoundTrip();
+			TestSixteenBitDocumentCompositesThroughSkia();
 			return s_failures;
 		}
 
@@ -113,6 +114,40 @@ namespace Bitmute.Tests
 			bool blueNear = Near(blue, 200.0f, 1.0f);
 			bool alphaNear = Near(alpha, 128.0f, 1.0f);
 			Check(redNear && greenNear && blueNear && alphaNear, "16 to 8 round-trips within 1 of originals");
+			document.ReleaseComposite();
+		}
+
+		private static bool WithinTolerance(ushort value, int expected, int tolerance)
+		{
+			int delta = value - expected;
+			if (delta < 0)
+			{
+				delta = -delta;
+			}
+			if (delta <= tolerance)
+			{
+				return true;
+			}
+			return false;
+		}
+
+		private static void TestSixteenBitDocumentCompositesThroughSkia()
+		{
+			Document document = new Document("t", 2, 2);
+			document.ActiveLayer().Bitmap().SetPixel(1, 1, new SKColor(10, 100, 200, 255));
+			document.ConvertColorDepth(eColorDepth.Sixteen);
+			SKBitmap target = new SKBitmap(2, 2, SKColorType.Rgba16161616, SKAlphaType.Premul);
+			document.CompositeInto(target);
+			ushort red = RawUshort(target, 1, 1, 0);
+			ushort green = RawUshort(target, 1, 1, 1);
+			ushort blue = RawUshort(target, 1, 1, 2);
+			ushort alpha = RawUshort(target, 1, 1, 3);
+			bool redNear = WithinTolerance(red, 10 * 257, 64);
+			bool greenNear = WithinTolerance(green, 100 * 257, 64);
+			bool blueNear = WithinTolerance(blue, 200 * 257, 64);
+			bool alphaNear = WithinTolerance(alpha, 255 * 257, 64);
+			Check(redNear && greenNear && blueNear && alphaNear, "16-bit document composites through the Skia path");
+			target.Dispose();
 			document.ReleaseComposite();
 		}
 	}
