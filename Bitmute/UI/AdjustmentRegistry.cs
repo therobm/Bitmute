@@ -451,6 +451,12 @@ namespace Bitmute.UI
 
 		public void Open(Adjustment adjustment)
 		{
+			Bitmute.Imaging.Document activeDocument = m_main.ActiveDocument();
+			if (activeDocument != null && activeDocument.ColorDepth() != eColorDepth.Eight && !adjustment.m_depthAware)
+			{
+				m_main.SetStatusMessage(adjustment.m_name + " is only available for 8-bit images");
+				return;
+			}
 			RollSeed();
 			if (adjustment.m_instant)
 			{
@@ -649,10 +655,13 @@ namespace Bitmute.UI
 			m_toolState = toolState;
 			m_adjustments = new List<Adjustment>();
 
-			AddDialog(eMenuAction.BrightnessContrast, eMenuAction.AdjustmentsMenu, "Brightness/Contrast", true, new string[] { "Brightness", "Contrast" }, new int[] { -100, -100 }, new int[] { 100, 100 }, new int[] { 0, 0 }, 360.0, 230.0, RunBrightnessContrast);
+			Adjustment brightnessContrast = AddDialog(eMenuAction.BrightnessContrast, eMenuAction.AdjustmentsMenu, "Brightness/Contrast", true, new string[] { "Brightness", "Contrast" }, new int[] { -100, -100 }, new int[] { 100, 100 }, new int[] { 0, 0 }, 360.0, 230.0, RunBrightnessContrast);
+			brightnessContrast.m_depthAware = true;
 			AddDialog(eMenuAction.HueSaturation, eMenuAction.AdjustmentsMenu, "Hue/Saturation", true, new string[] { "Hue", "Saturation", "Lightness" }, new int[] { -180, -100, -100 }, new int[] { 180, 100, 100 }, new int[] { 0, 0, 0 }, 360.0, 260.0, RunHueSaturation);
-			AddDialog(eMenuAction.Posterize, eMenuAction.AdjustmentsMenu, "Posterize", true, new string[] { "Levels" }, new int[] { 2 }, new int[] { 64 }, new int[] { 8 }, 360.0, 200.0, RunPosterize);
-			AddDialog(eMenuAction.Threshold, eMenuAction.AdjustmentsMenu, "Threshold", true, new string[] { "Level" }, new int[] { 0 }, new int[] { 255 }, new int[] { 128 }, 360.0, 200.0, RunThreshold);
+			Adjustment posterize = AddDialog(eMenuAction.Posterize, eMenuAction.AdjustmentsMenu, "Posterize", true, new string[] { "Levels" }, new int[] { 2 }, new int[] { 64 }, new int[] { 8 }, 360.0, 200.0, RunPosterize);
+			posterize.m_depthAware = true;
+			Adjustment threshold = AddDialog(eMenuAction.Threshold, eMenuAction.AdjustmentsMenu, "Threshold", true, new string[] { "Level" }, new int[] { 0 }, new int[] { 255 }, new int[] { 128 }, 360.0, 200.0, RunThreshold);
+			threshold.m_depthAware = true;
 
 			Adjustment rotate = AddDialog(eMenuAction.RotateArbitrary, eMenuAction.None, "Rotate Arbitrary", false, new string[] { "Angle" }, new int[] { -180 }, new int[] { 180 }, new int[] { 0 }, 360.0, 170.0, null);
 			rotate.m_kind = eAdjustmentKind.Canvas;
@@ -714,7 +723,8 @@ namespace Bitmute.UI
 			AddInstant(eMenuAction.SharpenMore, eMenuAction.FilterSharpenMenu, "Sharpen More", RunSharpenMore);
 			AddDialog(eMenuAction.UnsharpMask, eMenuAction.FilterSharpenMenu, "Unsharp Mask", true, new string[] { "Amount", "Radius" }, new int[] { 0, 1 }, new int[] { 300, 30 }, new int[] { 100, 3 }, 360.0, 230.0, RunUnsharpMask);
 			AddDialog(eMenuAction.HighPass, eMenuAction.FilterOtherMenu, "High Pass", true, new string[] { "Radius" }, new int[] { 1 }, new int[] { 30 }, new int[] { 5 }, 360.0, 200.0, RunHighPass);
-			AddChoiceDialog(eMenuAction.Offset, eMenuAction.FilterOtherMenu, "Offset", true, new string[] { "Horizontal", "Vertical" }, new int[] { -512, -512 }, new int[] { 512, 512 }, new int[] { 0, 0 }, new string[] { "Undefined Areas" }, new string[][] { new string[] { "Wrap Around", "Repeat Edge Pixels", "Transparent" } }, new int[] { 0 }, 360.0, 240.0, RunOffset);
+			Adjustment offset = AddChoiceDialog(eMenuAction.Offset, eMenuAction.FilterOtherMenu, "Offset", true, new string[] { "Horizontal", "Vertical" }, new int[] { -512, -512 }, new int[] { 512, 512 }, new int[] { 0, 0 }, new string[] { "Undefined Areas" }, new string[][] { new string[] { "Wrap Around", "Repeat Edge Pixels", "Transparent" } }, new int[] { 0 }, 360.0, 240.0, RunOffset);
+			offset.m_depthAware = true;
 
 			Adjustment diffuse = AddChoiceDialog(eMenuAction.Diffuse, eMenuAction.FilterStylizeMenu, "Diffuse", true, s_noLabels, s_noValues, s_noValues, s_noValues, new string[] { "Mode" }, new string[][] { new string[] { "Normal", "Darken Only", "Lighten Only" } }, new int[] { 0 }, 360.0, 200.0, RunDiffuse);
 			diffuse.m_skslSource = GpuFilterPreview.DiffuseSource;
@@ -737,6 +747,7 @@ namespace Bitmute.UI
 			normalMap.m_floatSliderDecimals = new int[] { 1 };
 			normalMap.m_checkLabels = new string[] { "Invert X (Red)", "Invert Y (Green)" };
 			normalMap.m_checkDefaults = new bool[] { false, false };
+			normalMap.m_depthAware = true;
 		}
 	}
 }
