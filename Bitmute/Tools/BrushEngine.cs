@@ -13,6 +13,7 @@ namespace Bitmute.Tools
 		private const double PressureOpacityMinimum = 0.2;
 
 		private static byte[] s_coveragePool;
+		private static byte[] s_ceilingPool;
 		private static int s_coveragePoolWidth;
 		private static bool s_coverageDirtyValid;
 		private static int s_coverageDirtyLeft;
@@ -33,6 +34,7 @@ namespace Bitmute.Tools
 		}
 
 		private byte[] m_coverage;
+		private byte[] m_ceiling;
 		private int m_width;
 		private int m_height;
 		private SKBitmap m_original;
@@ -192,6 +194,7 @@ namespace Bitmute.Tools
 			if (s_coveragePool == null || s_coveragePool.Length != coverageLength || s_coveragePoolWidth != m_width)
 			{
 				s_coveragePool = new byte[coverageLength];
+				s_ceilingPool = new byte[coverageLength];
 				s_coveragePoolWidth = m_width;
 				s_coverageDirtyValid = false;
 			}
@@ -200,10 +203,12 @@ namespace Bitmute.Tools
 				for (int y = s_coverageDirtyTop; y < s_coverageDirtyBottom; y++)
 				{
 					System.Array.Clear(s_coveragePool, (y * m_width) + s_coverageDirtyLeft, s_coverageDirtyRight - s_coverageDirtyLeft);
+					System.Array.Clear(s_ceilingPool, (y * m_width) + s_coverageDirtyLeft, s_coverageDirtyRight - s_coverageDirtyLeft);
 				}
 				s_coverageDirtyValid = false;
 			}
 			m_coverage = s_coveragePool;
+			m_ceiling = s_ceilingPool;
 			if (original != null && original.Width == m_width && original.Height == m_height)
 			{
 				m_original = original;
@@ -373,6 +378,7 @@ namespace Bitmute.Tools
 			m_original = null;
 			m_ownsOriginal = false;
 			m_coverage = null;
+			m_ceiling = null;
 			m_dabQueueCount = 0;
 			m_active = false;
 		}
@@ -736,6 +742,15 @@ namespace Bitmute.Tools
 							fadeFactor = 1.0;
 						}
 						opacityCeiling = opacityCeiling * fadeFactor;
+					}
+					double storedCeiling = m_ceiling[coverageIndex] / 255.0;
+					if (opacityCeiling < storedCeiling)
+					{
+						opacityCeiling = storedCeiling;
+					}
+					else
+					{
+						m_ceiling[coverageIndex] = (byte)((opacityCeiling * 255.0) + 0.5);
 					}
 					if (finalAlpha > opacityCeiling)
 					{
