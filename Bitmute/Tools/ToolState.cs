@@ -69,6 +69,7 @@ namespace Bitmute.Tools
 		private float m_penPressure = 1.0f;
 		private bool m_pressureSizeEnabled = true;
 		private bool m_pressureOpacityEnabled = true;
+		private PressureCalibration m_pressureCalibration = new PressureCalibration();
 
 		public ToolState()
 		{
@@ -520,7 +521,12 @@ namespace Bitmute.Tools
 			{
 				pressure = 1.0f;
 			}
-			m_penPressure = pressure;
+			m_penPressure = m_pressureCalibration.Apply(pressure);
+		}
+
+		public PressureCalibration Calibration()
+		{
+			return m_pressureCalibration;
 		}
 
 		public bool PressureSizeEnabled()
