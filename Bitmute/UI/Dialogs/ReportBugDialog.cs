@@ -23,12 +23,12 @@ namespace Bitmute.UI.Dialogs
 			{
 				description = "";
 			}
+			base.OnPrimaryClicked(sender, eventArgs);
 			MainView main = MainView.Self;
 			if (main != null)
 			{
 				main.SubmitBugReport(title, description);
 			}
-			base.OnPrimaryClicked(sender, eventArgs);
 		}
 
 		public ReportBugDialog()
