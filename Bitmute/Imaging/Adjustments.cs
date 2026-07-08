@@ -50,6 +50,113 @@ namespace Bitmute.Imaging
 			}
 		}
 
+		private sealed class BrightnessContrastHighDepthWorker
+		{
+			public PixelAccessor m_accessor;
+			public int m_width;
+			public double m_factor;
+			public double m_brightnessOffset;
+
+			public void Band(int start, int end)
+			{
+				for (int y = start; y < end; y++)
+				{
+					for (int x = 0; x < m_width; x++)
+					{
+						float red;
+						float green;
+						float blue;
+						float alpha;
+						m_accessor.ReadNormalized(x, y, out red, out green, out blue, out alpha);
+						float mappedRed = MapChannel(red);
+						float mappedGreen = MapChannel(green);
+						float mappedBlue = MapChannel(blue);
+						m_accessor.WriteNormalized(x, y, mappedRed, mappedGreen, mappedBlue, alpha);
+					}
+				}
+			}
+
+			private float MapChannel(float normalized)
+			{
+				double value = normalized * 255.0;
+				double mapped = m_factor * ((value + m_brightnessOffset) - 128.0) + 128.0;
+				double result = mapped / 255.0;
+				if (result < 0.0)
+				{
+					return 0.0f;
+				}
+				if (result > 1.0)
+				{
+					return 1.0f;
+				}
+				return (float)result;
+			}
+		}
+
+		private sealed class PosterizeHighDepthWorker
+		{
+			public PixelAccessor m_accessor;
+			public int m_width;
+			public int m_levels;
+
+			public void Band(int start, int end)
+			{
+				for (int y = start; y < end; y++)
+				{
+					for (int x = 0; x < m_width; x++)
+					{
+						float red;
+						float green;
+						float blue;
+						float alpha;
+						m_accessor.ReadNormalized(x, y, out red, out green, out blue, out alpha);
+						float mappedRed = MapChannel(red);
+						float mappedGreen = MapChannel(green);
+						float mappedBlue = MapChannel(blue);
+						m_accessor.WriteNormalized(x, y, mappedRed, mappedGreen, mappedBlue, alpha);
+					}
+				}
+			}
+
+			private float MapChannel(float normalized)
+			{
+				int value = (int)Math.Round(normalized * 255.0);
+				byte result = PosterizeChannel((byte)value, m_levels);
+				return result / 255.0f;
+			}
+		}
+
+		private sealed class ThresholdHighDepthWorker
+		{
+			public PixelAccessor m_accessor;
+			public int m_width;
+			public int m_cutoff;
+
+			public void Band(int start, int end)
+			{
+				for (int y = start; y < end; y++)
+				{
+					for (int x = 0; x < m_width; x++)
+					{
+						float red;
+						float green;
+						float blue;
+						float alpha;
+						m_accessor.ReadNormalized(x, y, out red, out green, out blue, out alpha);
+						double luminance = 0.299 * (red * 255.0) + 0.587 * (green * 255.0) + 0.114 * (blue * 255.0);
+						if (luminance >= m_cutoff)
+						{
+							m_accessor.WriteNormalized(x, y, 1.0f, 1.0f, 1.0f, alpha);
+						}
+						else
+						{
+							m_accessor.WriteNormalized(x, y, 0.0f, 0.0f, 0.0f, alpha);
+						}
+					}
+				}
+			}
+		}
+
 		private sealed unsafe class HueSaturationLightnessWorker
 		{
 			public byte* m_base;
@@ -544,19 +651,30 @@ namespace Bitmute.Imaging
 			double brightnessOffset = brightness * 2.55;
 			double contrastMapped = contrast * 2.55;
 			double factor = (259.0 * (contrastMapped + 255.0)) / (255.0 * (259.0 - contrastMapped));
-			byte[] table = new byte[256];
-			for (int value = 0; value < 256; value++)
+			if (bitmap.ColorType == SKColorType.Rgba8888)
 			{
-				double mapped = factor * ((value + brightnessOffset) - 128.0) + 128.0;
-				table[value] = ClampByte(mapped);
+				byte[] table = new byte[256];
+				for (int value = 0; value < 256; value++)
+				{
+					double mapped = factor * ((value + brightnessOffset) - 128.0) + 128.0;
+					table[value] = ClampByte(mapped);
+				}
+				byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
+				LutWorker worker = new LutWorker();
+				worker.m_base = basePointer;
+				worker.m_rowBytes = rowBytes;
+				worker.m_width = width;
+				worker.m_table = table;
+				RowBands.Run(0, height, worker.Band);
+				return;
 			}
-			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
-			LutWorker worker = new LutWorker();
-			worker.m_base = basePointer;
-			worker.m_rowBytes = rowBytes;
-			worker.m_width = width;
-			worker.m_table = table;
-			RowBands.Run(0, height, worker.Band);
+			PixelAccessor accessor = new PixelAccessor(bitmap.GetPixels(), bitmap.RowBytes, bitmap.ColorType);
+			BrightnessContrastHighDepthWorker highDepthWorker = new BrightnessContrastHighDepthWorker();
+			highDepthWorker.m_accessor = accessor;
+			highDepthWorker.m_width = width;
+			highDepthWorker.m_factor = factor;
+			highDepthWorker.m_brightnessOffset = brightnessOffset;
+			RowBands.Run(0, height, highDepthWorker.Band);
 		}
 
 		public static unsafe void HueSaturationLightness(SKBitmap bitmap, int hue, int saturation, int lightness)
@@ -593,18 +711,28 @@ namespace Bitmute.Imaging
 			int width = bitmap.Width;
 			int height = bitmap.Height;
 			int rowBytes = bitmap.RowBytes;
-			byte[] table = new byte[256];
-			for (int value = 0; value < 256; value++)
+			if (bitmap.ColorType == SKColorType.Rgba8888)
 			{
-				table[value] = PosterizeChannel((byte)value, levels);
+				byte[] table = new byte[256];
+				for (int value = 0; value < 256; value++)
+				{
+					table[value] = PosterizeChannel((byte)value, levels);
+				}
+				byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
+				LutWorker worker = new LutWorker();
+				worker.m_base = basePointer;
+				worker.m_rowBytes = rowBytes;
+				worker.m_width = width;
+				worker.m_table = table;
+				RowBands.Run(0, height, worker.Band);
+				return;
 			}
-			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
-			LutWorker worker = new LutWorker();
-			worker.m_base = basePointer;
-			worker.m_rowBytes = rowBytes;
-			worker.m_width = width;
-			worker.m_table = table;
-			RowBands.Run(0, height, worker.Band);
+			PixelAccessor accessor = new PixelAccessor(bitmap.GetPixels(), bitmap.RowBytes, bitmap.ColorType);
+			PosterizeHighDepthWorker highDepthWorker = new PosterizeHighDepthWorker();
+			highDepthWorker.m_accessor = accessor;
+			highDepthWorker.m_width = width;
+			highDepthWorker.m_levels = levels;
+			RowBands.Run(0, height, highDepthWorker.Band);
 		}
 
 		public static unsafe void Threshold(SKBitmap bitmap, int cutoff)
@@ -612,13 +740,23 @@ namespace Bitmute.Imaging
 			int width = bitmap.Width;
 			int height = bitmap.Height;
 			int rowBytes = bitmap.RowBytes;
-			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
-			ThresholdWorker worker = new ThresholdWorker();
-			worker.m_base = basePointer;
-			worker.m_rowBytes = rowBytes;
-			worker.m_width = width;
-			worker.m_cutoff = cutoff;
-			RowBands.Run(0, height, worker.Band);
+			if (bitmap.ColorType == SKColorType.Rgba8888)
+			{
+				byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
+				ThresholdWorker worker = new ThresholdWorker();
+				worker.m_base = basePointer;
+				worker.m_rowBytes = rowBytes;
+				worker.m_width = width;
+				worker.m_cutoff = cutoff;
+				RowBands.Run(0, height, worker.Band);
+				return;
+			}
+			PixelAccessor accessor = new PixelAccessor(bitmap.GetPixels(), bitmap.RowBytes, bitmap.ColorType);
+			ThresholdHighDepthWorker highDepthWorker = new ThresholdHighDepthWorker();
+			highDepthWorker.m_accessor = accessor;
+			highDepthWorker.m_width = width;
+			highDepthWorker.m_cutoff = cutoff;
+			RowBands.Run(0, height, highDepthWorker.Band);
 		}
 
 		public static void GaussianBlur(SKBitmap bitmap, int radius)
