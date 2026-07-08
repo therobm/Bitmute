@@ -2439,9 +2439,14 @@ namespace Bitmute.Imaging
 				}
 				else
 				{
-					if (layer.HasMask() && layer.MaskEnabled() && !layer.LayerStyle().HasAnyEffect())
+					bool maskedWithoutEffects = layer.HasMask() && layer.MaskEnabled() && !layer.LayerStyle().HasAnyEffect();
+					if (maskedWithoutEffects && layer.BlendMode() == eBlendMode.Normal)
 					{
 						BlendMaskedNormalLayer(target, left, top, right, bottom, layer);
+					}
+					else if (maskedWithoutEffects)
+					{
+						DrawMaskedLayer(target, clipRect, sampling, layer);
 					}
 					else
 					{
@@ -2571,6 +2576,69 @@ namespace Bitmute.Imaging
 					targetPixel[3] = (byte)resultAlpha;
 				}
 			}
+		}
+
+		private void DrawMaskedLayer(SKBitmap target, SKRect clipRect, SKSamplingOptions sampling, Layer layer)
+		{
+			SKCanvas canvas = new SKCanvas(target);
+			canvas.Save();
+			canvas.ClipRect(clipRect);
+			SKBitmap maskedSource = BuildMaskedSource(layer);
+			SKPaint paint = new SKPaint();
+			paint.Color = SKColors.White.WithAlpha(layer.Opacity());
+			paint.BlendMode = Layer.ToSkBlendMode(layer.BlendMode());
+			SKPixmap pixmap = maskedSource.PeekPixels();
+			SKImage image = SKImage.FromPixels(pixmap);
+			canvas.DrawImage(image, layer.OffsetX(), layer.OffsetY(), sampling, paint);
+			image.Dispose();
+			pixmap.Dispose();
+			paint.Dispose();
+			maskedSource.Dispose();
+			canvas.Restore();
+			canvas.Dispose();
+		}
+
+		private unsafe SKBitmap BuildMaskedSource(Layer layer)
+		{
+			SKBitmap source = layer.Bitmap();
+			SKBitmap mask = layer.MaskBitmap();
+			int width = source.Width;
+			int height = source.Height;
+			int maskWidth = mask.Width;
+			int maskHeight = mask.Height;
+			SKBitmap masked = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			byte* sourceBase = (byte*)source.GetPixels().ToPointer();
+			byte* maskBase = (byte*)mask.GetPixels().ToPointer();
+			byte* maskedBase = (byte*)masked.GetPixels().ToPointer();
+			int sourceRowBytes = source.RowBytes;
+			int maskRowBytes = mask.RowBytes;
+			int maskedRowBytes = masked.RowBytes;
+			for (int y = 0; y < height; y++)
+			{
+				byte* sourceRow = sourceBase + (y * sourceRowBytes);
+				byte* maskedRow = maskedBase + (y * maskedRowBytes);
+				byte* maskRow = null;
+				if (y < maskHeight)
+				{
+					maskRow = maskBase + (y * maskRowBytes);
+				}
+				for (int x = 0; x < width; x++)
+				{
+					byte* sourcePixel = sourceRow + (x * 4);
+					byte* maskedPixel = maskedRow + (x * 4);
+					int coverage = 255;
+					if (maskRow != null && x < maskWidth)
+					{
+						coverage = maskRow[x * 4];
+					}
+					int maskedAlpha = ((sourcePixel[3] * coverage) + 127) / 255;
+					maskedPixel[0] = sourcePixel[0];
+					maskedPixel[1] = sourcePixel[1];
+					maskedPixel[2] = sourcePixel[2];
+					maskedPixel[3] = (byte)maskedAlpha;
+				}
+			}
+			return masked;
 		}
 
 		private SKBitmap BakeLayerToCanvas(Layer layer)
