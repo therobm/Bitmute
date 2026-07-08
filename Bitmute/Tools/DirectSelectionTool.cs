@@ -12,6 +12,10 @@ namespace Bitmute.Tools
 		private const int GrabHandleIn = 2;
 		private const int GrabHandleOut = 3;
 
+		public const int HoverNone = 0;
+		public const int HoverAnchor = 1;
+		public const int HoverHandle = 2;
+
 		private int m_pickRadius;
 		private int m_selectedPath;
 		private int m_selectedAnchor;
@@ -48,6 +52,33 @@ namespace Bitmute.Tools
 		public int SelectedAnchor()
 		{
 			return m_selectedAnchor;
+		}
+
+		public int HoverMode(Document document, int x, int y, int radius)
+		{
+			List<PathData> paths = document.Paths();
+			if (m_selectedPath >= 0 && m_selectedPath < paths.Count && m_selectedAnchor >= 0 && m_selectedAnchor < paths[m_selectedPath].m_points.Count)
+			{
+				PathData selectedPath = paths[m_selectedPath];
+				if (selectedPath.HitHandleOut(m_selectedAnchor, x, y, radius))
+				{
+					return HoverHandle;
+				}
+				if (selectedPath.HitHandleIn(m_selectedAnchor, x, y, radius))
+				{
+					return HoverHandle;
+				}
+			}
+			int pathCount = paths.Count;
+			for (int p = 0; p < pathCount; p++)
+			{
+				int anchorIndex = paths[p].HitAnchor(x, y, radius);
+				if (anchorIndex >= 0)
+				{
+					return HoverAnchor;
+				}
+			}
+			return HoverNone;
 		}
 
 		public override bool IsDestructive()

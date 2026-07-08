@@ -766,6 +766,10 @@ namespace Bitmute.UI
 				m_transformHoverKind = kind;
 				desired = TransformCursorShape(kind);
 			}
+			if (desired == Microsoft.UI.Input.InputSystemCursorShape.Arrow && tool is PenTool)
+			{
+				desired = Microsoft.UI.Input.InputSystemCursorShape.Cross;
+			}
 			ApplyCursorShape(desired);
 		}
 
@@ -854,12 +858,14 @@ namespace Bitmute.UI
 			{
 				DrawCommittedPaths(canvas, -1, -1);
 				DrawPenPreview(canvas, (PenTool)tool);
+				DrawPenModeBadge(canvas, (PenTool)tool);
 				return;
 			}
 			if (tool is DirectSelectionTool)
 			{
 				DirectSelectionTool directSelect = (DirectSelectionTool)tool;
 				DrawCommittedPaths(canvas, directSelect.SelectedPath(), directSelect.SelectedAnchor());
+				DrawDirectSelectBadge(canvas, directSelect);
 				return;
 			}
 			if (tool is ZoomTool && m_zoomDragging)
@@ -1291,6 +1297,133 @@ namespace Bitmute.UI
 					anchorStroke.Dispose();
 				}
 			}
+		}
+
+		private void DrawPenModeBadge(SKCanvas canvas, PenTool pen)
+		{
+			if (!m_cursorInside)
+			{
+				return;
+			}
+			float docX = (m_cursorDeviceX - m_offsetX) / m_zoom;
+			float docY = (m_cursorDeviceY - m_offsetY) / m_zoom;
+			int radius = (int)System.Math.Ceiling(9.0 / m_zoom);
+			if (radius < 3)
+			{
+				radius = 3;
+			}
+			int mode = pen.HoverMode(m_document, (int)docX, (int)docY, radius);
+			if (mode == PenTool.ModeDraw)
+			{
+				return;
+			}
+			float badgeX = m_cursorDeviceX + 13.0f;
+			float badgeY = m_cursorDeviceY - 13.0f;
+			DrawBadgeChip(canvas, badgeX, badgeY);
+			if (mode == PenTool.ModeAdd)
+			{
+				DrawBadgePlus(canvas, badgeX, badgeY);
+			}
+			else if (mode == PenTool.ModeDelete)
+			{
+				DrawBadgeMinus(canvas, badgeX, badgeY);
+			}
+			else if (mode == PenTool.ModeClose)
+			{
+				DrawBadgeRing(canvas, badgeX, badgeY);
+			}
+		}
+
+		private void DrawDirectSelectBadge(SKCanvas canvas, DirectSelectionTool directSelect)
+		{
+			if (!m_cursorInside)
+			{
+				return;
+			}
+			float docX = (m_cursorDeviceX - m_offsetX) / m_zoom;
+			float docY = (m_cursorDeviceY - m_offsetY) / m_zoom;
+			int radius = (int)System.Math.Ceiling(9.0 / m_zoom);
+			if (radius < 3)
+			{
+				radius = 3;
+			}
+			int mode = directSelect.HoverMode(m_document, (int)docX, (int)docY, radius);
+			if (mode == DirectSelectionTool.HoverNone)
+			{
+				return;
+			}
+			float badgeX = m_cursorDeviceX + 13.0f;
+			float badgeY = m_cursorDeviceY - 13.0f;
+			DrawBadgeChip(canvas, badgeX, badgeY);
+			if (mode == DirectSelectionTool.HoverAnchor)
+			{
+				DrawBadgeSquare(canvas, badgeX, badgeY);
+			}
+			else
+			{
+				DrawBadgeRing(canvas, badgeX, badgeY);
+			}
+		}
+
+		private void DrawBadgeChip(SKCanvas canvas, float centerX, float centerY)
+		{
+			SKPaint fill = new SKPaint();
+			fill.Style = SKPaintStyle.Fill;
+			fill.Color = SKColors.White;
+			fill.IsAntialias = true;
+			canvas.DrawCircle(centerX, centerY, 7.5f, fill);
+			fill.Dispose();
+			SKPaint stroke = new SKPaint();
+			stroke.Style = SKPaintStyle.Stroke;
+			stroke.StrokeWidth = 1.0f;
+			stroke.Color = SKColors.Black;
+			stroke.IsAntialias = true;
+			canvas.DrawCircle(centerX, centerY, 7.5f, stroke);
+			stroke.Dispose();
+		}
+
+		private void DrawBadgePlus(SKCanvas canvas, float centerX, float centerY)
+		{
+			SKPaint paint = new SKPaint();
+			paint.Style = SKPaintStyle.Stroke;
+			paint.StrokeWidth = 1.5f;
+			paint.Color = SKColors.Black;
+			paint.IsAntialias = true;
+			canvas.DrawLine(centerX - 3.5f, centerY, centerX + 3.5f, centerY, paint);
+			canvas.DrawLine(centerX, centerY - 3.5f, centerX, centerY + 3.5f, paint);
+			paint.Dispose();
+		}
+
+		private void DrawBadgeMinus(SKCanvas canvas, float centerX, float centerY)
+		{
+			SKPaint paint = new SKPaint();
+			paint.Style = SKPaintStyle.Stroke;
+			paint.StrokeWidth = 1.5f;
+			paint.Color = SKColors.Black;
+			paint.IsAntialias = true;
+			canvas.DrawLine(centerX - 3.5f, centerY, centerX + 3.5f, centerY, paint);
+			paint.Dispose();
+		}
+
+		private void DrawBadgeRing(SKCanvas canvas, float centerX, float centerY)
+		{
+			SKPaint paint = new SKPaint();
+			paint.Style = SKPaintStyle.Stroke;
+			paint.StrokeWidth = 1.5f;
+			paint.Color = SKColors.Black;
+			paint.IsAntialias = true;
+			canvas.DrawCircle(centerX, centerY, 3.5f, paint);
+			paint.Dispose();
+		}
+
+		private void DrawBadgeSquare(SKCanvas canvas, float centerX, float centerY)
+		{
+			SKPaint paint = new SKPaint();
+			paint.Style = SKPaintStyle.Fill;
+			paint.Color = SKColors.Black;
+			paint.IsAntialias = true;
+			canvas.DrawRect(centerX - 3.0f, centerY - 3.0f, 6.0f, 6.0f, paint);
+			paint.Dispose();
 		}
 
 		private void DrawZoomMarquee(SKCanvas canvas)
@@ -2313,6 +2446,10 @@ namespace Bitmute.UI
 			Tool hoverTool = main.CurrentTool();
 			bool wantsHoverRepaint = ShowsBrushCursor(hoverTool);
 			if (hoverTool is FreeTransformTool && ((FreeTransformTool)hoverTool).HasPreview())
+			{
+				wantsHoverRepaint = true;
+			}
+			if (hoverTool is PenTool || hoverTool is DirectSelectionTool)
 			{
 				wantsHoverRepaint = true;
 			}

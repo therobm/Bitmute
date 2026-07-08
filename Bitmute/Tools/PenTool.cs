@@ -7,6 +7,11 @@ namespace Bitmute.Tools
 {
 	public class PenTool : Tool
 	{
+		public const int ModeDraw = 0;
+		public const int ModeClose = 1;
+		public const int ModeAdd = 2;
+		public const int ModeDelete = 3;
+
 		private PathData m_currentPath;
 		private bool m_active;
 		private int m_dragStartX;
@@ -101,6 +106,43 @@ namespace Bitmute.Tools
 		public bool HasActivePath()
 		{
 			return m_active && m_currentPath != null && m_currentPath.m_points.Count >= 1;
+		}
+
+		public int HoverMode(Document document, int x, int y, int radius)
+		{
+			if (m_active && m_currentPath != null)
+			{
+				int activeCount = m_currentPath.m_points.Count;
+				if (activeCount >= 2)
+				{
+					PathPoint first = m_currentPath.m_points[0];
+					float distance = Distance(x, y, first.m_x, first.m_y);
+					if (distance <= radius)
+					{
+						return ModeClose;
+					}
+				}
+				return ModeDraw;
+			}
+			List<PathData> paths = document.Paths();
+			int pathCount = paths.Count;
+			for (int p = 0; p < pathCount; p++)
+			{
+				PathData path = paths[p];
+				int anchorIndex = path.HitAnchor(x, y, radius);
+				if (anchorIndex >= 0)
+				{
+					return ModeDelete;
+				}
+				int segmentIndex;
+				float segT;
+				bool onSeg = path.HitSegment(x, y, radius, out segmentIndex, out segT);
+				if (onSeg)
+				{
+					return ModeAdd;
+				}
+			}
+			return ModeDraw;
 		}
 
 		public PathData CurrentPath()
