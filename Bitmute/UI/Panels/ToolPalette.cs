@@ -101,6 +101,7 @@ namespace Bitmute.UI.Panels
 			{ eTool.Eyedropper, "eyedropper.png" },
 			{ eTool.Hand, "hand.png" },
 			{ eTool.Zoom, "zoom.png" },
+			{ eTool.Pen, "pen.png" },
 		};
 		private Dictionary<eTool, string> m_toolTips = new Dictionary<eTool, string>()
 		{
@@ -135,6 +136,7 @@ namespace Bitmute.UI.Panels
 			{ eTool.Eyedropper, "Eyedropper" },
 			{ eTool.Hand, "Hand (drag to pan)" },
 			{ eTool.Zoom, "Zoom (double-click tool = 100%)" },
+			{ eTool.Pen, "Pen (click to add points, drag for curves, click start to close)" },
 		};
 
 		private Border[] m_cellButtons;
@@ -631,7 +633,8 @@ namespace Bitmute.UI.Panels
 				new ToolEntry(3, 0),
 				new ToolEntry(eTool.Heal, 4, 0),
 				new ToolEntry(eTool.Brush, new List<eTool>(){ eTool.Pencil, eTool.ColorReplacement }, 4, 1),
-				new ToolEntry(eTool.Clone, 5, 0),  
+				new ToolEntry(eTool.Clone, 5, 0),
+				new ToolEntry(eTool.Pen, 5, 1),
 				new ToolEntry(eTool.Eraser, 6, 0),
 				new ToolEntry(eTool.Fill, new List<eTool>(){ eTool.Gradient }, 6, 1),
 				new ToolEntry(eTool.Blur, new List<eTool>(){ eTool.Sharpen, eTool.Smudge }, 7, 0),

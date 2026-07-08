@@ -353,6 +353,45 @@ namespace Bitmute.Storage
 			}
 			writer.WriteEndArray();
 			writer.WriteEndObject();
+
+			List<PathData> paths = document.Paths();
+			if (paths.Count > 0)
+			{
+				writer.WriteStartArray("paths");
+				for (int p = 0; p < paths.Count; p++)
+				{
+					PathData path = paths[p];
+					writer.WriteStartObject();
+					if (path.m_name != null)
+					{
+						writer.WriteString("name", path.m_name);
+					}
+					writer.WriteBoolean("closed", path.m_isClosed);
+					writer.WriteNumber("colorRed", (int)path.m_strokeColor.Red);
+					writer.WriteNumber("colorGreen", (int)path.m_strokeColor.Green);
+					writer.WriteNumber("colorBlue", (int)path.m_strokeColor.Blue);
+					writer.WriteNumber("colorAlpha", (int)path.m_strokeColor.Alpha);
+					writer.WriteStartArray("points");
+					for (int pt = 0; pt < path.m_points.Count; pt++)
+					{
+						PathPoint point = path.m_points[pt];
+						writer.WriteStartObject();
+						writer.WriteNumber("x", point.m_x);
+						writer.WriteNumber("y", point.m_y);
+						writer.WriteBoolean("hasControlIn", point.m_hasControlIn);
+						writer.WriteBoolean("hasControlOut", point.m_hasControlOut);
+						writer.WriteNumber("controlInX", point.m_controlInX);
+						writer.WriteNumber("controlInY", point.m_controlInY);
+						writer.WriteNumber("controlOutX", point.m_controlOutX);
+						writer.WriteNumber("controlOutY", point.m_controlOutY);
+						writer.WriteEndObject();
+					}
+					writer.WriteEndArray();
+					writer.WriteEndObject();
+				}
+				writer.WriteEndArray();
+			}
+
 			writer.WriteEndObject();
 			writer.Flush();
 			writer.Dispose();
@@ -789,6 +828,39 @@ namespace Bitmute.Storage
 					{
 						guides.SetLocked(true);
 					}
+				}
+			}
+			System.Text.Json.JsonElement pathsElement;
+			if (root.TryGetProperty("paths", out pathsElement))
+			{
+				foreach (System.Text.Json.JsonElement pathElement in pathsElement.EnumerateArray())
+				{
+					PathData path = new PathData();
+					path.m_name = ReadString(pathElement, "name", "Path");
+					path.m_isClosed = ReadBool(pathElement, "closed", false);
+					int cr = ReadInt(pathElement, "colorRed", 0);
+					int cg = ReadInt(pathElement, "colorGreen", 0);
+					int cb = ReadInt(pathElement, "colorBlue", 0);
+					int ca = ReadInt(pathElement, "colorAlpha", 255);
+					path.m_strokeColor = new SKColor(ClampByte(cr), ClampByte(cg), ClampByte(cb), ClampByte(ca));
+					System.Text.Json.JsonElement pointsElement;
+					if (pathElement.TryGetProperty("points", out pointsElement))
+					{
+						foreach (System.Text.Json.JsonElement ptElement in pointsElement.EnumerateArray())
+						{
+							PathPoint point = new PathPoint();
+							point.m_x = ReadFloat(ptElement, "x", 0.0f);
+							point.m_y = ReadFloat(ptElement, "y", 0.0f);
+							point.m_hasControlIn = ReadBool(ptElement, "hasControlIn", false);
+							point.m_hasControlOut = ReadBool(ptElement, "hasControlOut", false);
+							point.m_controlInX = ReadFloat(ptElement, "controlInX", point.m_x);
+							point.m_controlInY = ReadFloat(ptElement, "controlInY", point.m_y);
+							point.m_controlOutX = ReadFloat(ptElement, "controlOutX", point.m_x);
+							point.m_controlOutY = ReadFloat(ptElement, "controlOutY", point.m_y);
+							path.m_points.Add(point);
+						}
+					}
+					document.AddPath(path);
 				}
 			}
 			manifest.Dispose();

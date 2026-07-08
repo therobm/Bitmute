@@ -60,6 +60,7 @@ namespace Bitmute.Imaging
 		private eRulerUnits m_rulerUnits;
 		private string m_sourcePath;
 		private Guides m_guides;
+		private List<PathData> m_paths;
 		private DocumentStateCommand m_pendingDocEdit;
 		private bool m_floatActive;
 		private SKBitmap m_floatBitmap;
@@ -314,6 +315,7 @@ namespace Bitmute.Imaging
 			m_dirty = false;
 			m_sourcePath = null;
 			m_guides = new Guides();
+			m_paths = new List<PathData>();
 			m_pendingDocEdit = null;
 			m_floatActive = false;
 			m_floatBitmap = null;
@@ -1067,6 +1069,16 @@ namespace Bitmute.Imaging
 		public Guides Guides()
 		{
 			return m_guides;
+		}
+
+		public void AddPath(PathData path)
+		{
+			m_paths.Add(path);
+		}
+
+		public List<PathData> Paths()
+		{
+			return m_paths;
 		}
 
 		public List<Layer> CloneLayers()

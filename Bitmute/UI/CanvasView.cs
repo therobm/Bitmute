@@ -850,6 +850,11 @@ namespace Bitmute.UI
 				DrawShapePreview(canvas, (ShapeTool)tool);
 				return;
 			}
+			if (tool is PenTool)
+			{
+				DrawPenPreview(canvas, (PenTool)tool);
+				return;
+			}
 			if (tool is ZoomTool && m_zoomDragging)
 			{
 				DrawZoomMarquee(canvas);
@@ -1079,6 +1084,71 @@ namespace Bitmute.UI
 			canvas.DrawCircle(startX, startY, 3.0f, overlay);
 			canvas.DrawCircle(endX, endY, 3.0f, overlay);
 			overlay.Dispose();
+		}
+
+		private void DrawPenPreview(SKCanvas canvas, PenTool pen)
+		{
+			if (!pen.HasPreview())
+			{
+				return;
+			}
+			PathData path = pen.CurrentPath();
+			if (path == null || path.m_points.Count == 0)
+			{
+				return;
+			}
+
+			SKPath skPath = path.ToSKPath();
+			if (skPath == null || skPath.IsEmpty)
+			{
+				skPath.Dispose();
+				return;
+			}
+
+			SKMatrix scaleMatrix = SKMatrix.CreateScale(m_zoom, m_zoom);
+			SKMatrix translateMatrix = SKMatrix.CreateTranslation(m_offsetX, m_offsetY);
+			SKMatrix combined = scaleMatrix.PostConcat(translateMatrix);
+			skPath.Transform(combined);
+
+			SKPaint underlay = new SKPaint();
+			underlay.Style = SKPaintStyle.Stroke;
+			underlay.StrokeWidth = 3.0f;
+			underlay.Color = SKColors.Black;
+			underlay.IsAntialias = true;
+			canvas.DrawPath(skPath, underlay);
+			underlay.Dispose();
+
+			SKPaint overlay = new SKPaint();
+			overlay.Style = SKPaintStyle.Stroke;
+			overlay.StrokeWidth = 1.5f;
+			overlay.Color = SKColors.White;
+			overlay.IsAntialias = true;
+			canvas.DrawPath(skPath, overlay);
+			overlay.Dispose();
+
+			for (int i = 0; i < path.m_points.Count; i++)
+			{
+				PathPoint pt = path.m_points[i];
+				float sx = m_offsetX + (pt.m_x * m_zoom);
+				float sy = m_offsetY + (pt.m_y * m_zoom);
+
+				SKPaint anchorFill = new SKPaint();
+				anchorFill.Style = SKPaintStyle.Fill;
+				anchorFill.Color = SKColors.White;
+				anchorFill.IsAntialias = true;
+				canvas.DrawRect(sx - 3.0f, sy - 3.0f, 6.0f, 6.0f, anchorFill);
+				anchorFill.Dispose();
+
+				SKPaint anchorStroke = new SKPaint();
+				anchorStroke.Style = SKPaintStyle.Stroke;
+				anchorStroke.StrokeWidth = 1.0f;
+				anchorStroke.Color = SKColors.Black;
+				anchorStroke.IsAntialias = true;
+				canvas.DrawRect(sx - 3.0f, sy - 3.0f, 6.0f, 6.0f, anchorStroke);
+				anchorStroke.Dispose();
+			}
+
+			skPath.Dispose();
 		}
 
 		private void DrawZoomMarquee(SKCanvas canvas)
