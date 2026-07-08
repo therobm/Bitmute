@@ -1,4 +1,5 @@
 using System;
+using Bitmute.Reporting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Controls.Hosting;
 using Microsoft.Maui.Hosting;
@@ -15,6 +16,7 @@ namespace Bitmute
 	{
 		public static MauiApp CreateMauiApp()
 		{
+			CrashReporter.Install();
 			MauiAppBuilder builder = MauiApp.CreateBuilder();
 			builder.UseMauiApp<App>();
 			builder.UseSkiaSharp();
@@ -56,8 +58,19 @@ namespace Bitmute
 			windows.OnWindowCreated(OnNativeWindowCreated);
 		}
 
+		private static bool s_crashHandlerHooked;
+
 		private static void OnNativeWindowCreated(Microsoft.UI.Xaml.Window window)
 		{
+			if (!s_crashHandlerHooked)
+			{
+				s_crashHandlerHooked = true;
+				Microsoft.UI.Xaml.Application winUiApp = Microsoft.UI.Xaml.Application.Current;
+				if (winUiApp != null)
+				{
+					winUiApp.UnhandledException += OnWinUiUnhandledException;
+				}
+			}
 			if (!Microsoft.UI.Windowing.AppWindowTitleBar.IsCustomizationSupported())
 			{
 				return;
@@ -85,6 +98,11 @@ namespace Bitmute
 				return;
 			}
 			window.DispatcherQueue.TryEnqueue(Bitmute.UI.TitleBarChrome.Apply);
+		}
+
+		private static void OnWinUiUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs eventArgs)
+		{
+			CrashReporter.RecordException(eventArgs.Exception);
 		}
 
 		private static void RegisterFonts(IFontCollection fonts)

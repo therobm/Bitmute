@@ -2233,6 +2233,40 @@ namespace Bitmute.UI
 			outer.Add(m_overlay);
 
 			Content = outer;
+			this.Loaded += OnMainViewLoaded;
+		}
+
+		private void OnMainViewLoaded(object sender, EventArgs eventArgs)
+		{
+			this.Loaded -= OnMainViewLoaded;
+			CheckForCrashReportsOnStartup();
+		}
+
+		private void CheckForCrashReportsOnStartup()
+		{
+			if (!CrashReporter.HasPendingCrashes())
+			{
+				return;
+			}
+			MessageDialog dialog = new MessageDialog("Bitmute closed unexpectedly", "Bitmute ran into a problem the last time it ran. Send a crash report to help fix it?", new string[] { "Not now", "Send report" }, OnCrashPromptChoice);
+			ShowModal(dialog, 420.0, 220.0);
+		}
+
+		private void OnCrashPromptChoice(int choice)
+		{
+			if (choice == 1)
+			{
+				SendCrashReportsAsync();
+			}
+			else
+			{
+				CrashReporter.DiscardPendingCrashes();
+			}
+		}
+
+		private async void SendCrashReportsAsync()
+		{
+			await CrashReporter.SendAllPendingAsync();
 		}
 
 		private void HookAppWindowClosing()
