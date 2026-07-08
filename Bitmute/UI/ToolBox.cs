@@ -48,6 +48,8 @@ namespace Bitmute.UI
 			m_tools.Add(eTool.Ruler, new RulerTool());
 			m_tools.Add(eTool.Crop, new CropTool());
 			m_tools.Add(eTool.FreeTransform, m_freeTransformTool);
+			m_tools.Add(eTool.Pen, new PenTool());
+			m_tools.Add(eTool.DirectSelect, new DirectSelectionTool());
 		}
 
 		public ToolState State()

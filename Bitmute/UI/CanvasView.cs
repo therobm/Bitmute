@@ -88,6 +88,8 @@ namespace Bitmute.UI
 		private float m_selectPressDeviceY;
 		private bool m_cursorInside;
 		private bool m_toolStrokeActive;
+		private bool m_ctrlHeld;
+		private bool m_penDirectOverride;
 		private bool m_zoomDragging;
 		private float m_zoomDragStartX;
 		private float m_zoomDragStartY;
@@ -768,6 +770,38 @@ namespace Bitmute.UI
 			return Microsoft.UI.Input.InputSystemCursorShape.Arrow;
 		}
 
+		private Tool EffectiveTool(Tool current)
+		{
+			if (!(current is PenTool))
+			{
+				return current;
+			}
+			bool useDirect;
+			if (m_toolStrokeActive)
+			{
+				useDirect = m_penDirectOverride;
+			}
+			else
+			{
+				useDirect = m_ctrlHeld;
+			}
+			if (!useDirect)
+			{
+				return current;
+			}
+			MainView main = MainView.Self;
+			if (main == null)
+			{
+				return current;
+			}
+			Tool directTool = main.ToolInstance(eTool.DirectSelect);
+			if (directTool == null)
+			{
+				return current;
+			}
+			return directTool;
+		}
+
 		private void UpdateHoverCursor(Tool tool, int pixelX, int pixelY)
 		{
 			m_transformHoverKind = 0;
@@ -794,6 +828,10 @@ namespace Bitmute.UI
 				int kind = ((FreeTransformTool)tool).HitTestKind(pixelX, pixelY);
 				m_transformHoverKind = kind;
 				desired = TransformCursorShape(kind);
+			}
+			if (desired == Microsoft.UI.Input.InputSystemCursorShape.Arrow && tool is PenTool)
+			{
+				desired = Microsoft.UI.Input.InputSystemCursorShape.Cross;
 			}
 			ApplyCursorShape(desired);
 		}
@@ -823,6 +861,7 @@ namespace Bitmute.UI
 				return;
 			}
 			Tool tool = main.CurrentTool();
+			tool = EffectiveTool(tool);
 			DocumentWindow activeWindow = main.ActiveWindow();
 			bool activeCanvas = activeWindow != null && ReferenceEquals(activeWindow.Canvas(), this);
 			if (!activeCanvas)
@@ -877,6 +916,20 @@ namespace Bitmute.UI
 			if (tool is ShapeTool)
 			{
 				DrawShapePreview(canvas, (ShapeTool)tool);
+				return;
+			}
+			if (tool is PenTool)
+			{
+				DrawCommittedPaths(canvas, -1, -1);
+				DrawPenPreview(canvas, (PenTool)tool);
+				DrawPenModeBadge(canvas, (PenTool)tool);
+				return;
+			}
+			if (tool is DirectSelectionTool)
+			{
+				DirectSelectionTool directSelect = (DirectSelectionTool)tool;
+				DrawCommittedPaths(canvas, directSelect.SelectedPath(), directSelect.SelectedAnchor());
+				DrawDirectSelectBadge(canvas, directSelect);
 				return;
 			}
 			if (tool is ZoomTool && m_zoomDragging)
@@ -1108,6 +1161,333 @@ namespace Bitmute.UI
 			canvas.DrawCircle(startX, startY, 3.0f, overlay);
 			canvas.DrawCircle(endX, endY, 3.0f, overlay);
 			overlay.Dispose();
+		}
+
+		private void DrawPenPreview(SKCanvas canvas, PenTool pen)
+		{
+			if (!pen.HasPreview())
+			{
+				return;
+			}
+			PathData path = pen.CurrentPath();
+			if (path == null || path.m_points.Count == 0)
+			{
+				return;
+			}
+
+			SKPath skPath = path.ToSKPath();
+			if (skPath == null || skPath.IsEmpty)
+			{
+				skPath.Dispose();
+				return;
+			}
+
+			SKMatrix scaleMatrix = SKMatrix.CreateScale(m_zoom, m_zoom);
+			SKMatrix translateMatrix = SKMatrix.CreateTranslation(m_offsetX, m_offsetY);
+			SKMatrix combined = scaleMatrix.PostConcat(translateMatrix);
+			skPath.Transform(combined);
+
+			SKPaint underlay = new SKPaint();
+			underlay.Style = SKPaintStyle.Stroke;
+			underlay.StrokeWidth = 3.0f;
+			underlay.Color = SKColors.Black;
+			underlay.IsAntialias = true;
+			canvas.DrawPath(skPath, underlay);
+			underlay.Dispose();
+
+			SKPaint overlay = new SKPaint();
+			overlay.Style = SKPaintStyle.Stroke;
+			overlay.StrokeWidth = 1.5f;
+			overlay.Color = SKColors.White;
+			overlay.IsAntialias = true;
+			canvas.DrawPath(skPath, overlay);
+			overlay.Dispose();
+
+			for (int i = 0; i < path.m_points.Count; i++)
+			{
+				PathPoint pt = path.m_points[i];
+				float sx = m_offsetX + (pt.m_x * m_zoom);
+				float sy = m_offsetY + (pt.m_y * m_zoom);
+
+				SKPaint anchorFill = new SKPaint();
+				anchorFill.Style = SKPaintStyle.Fill;
+				anchorFill.Color = SKColors.White;
+				anchorFill.IsAntialias = true;
+				canvas.DrawRect(sx - 3.0f, sy - 3.0f, 6.0f, 6.0f, anchorFill);
+				anchorFill.Dispose();
+
+				SKPaint anchorStroke = new SKPaint();
+				anchorStroke.Style = SKPaintStyle.Stroke;
+				anchorStroke.StrokeWidth = 1.0f;
+				anchorStroke.Color = SKColors.Black;
+				anchorStroke.IsAntialias = true;
+				canvas.DrawRect(sx - 3.0f, sy - 3.0f, 6.0f, 6.0f, anchorStroke);
+				anchorStroke.Dispose();
+			}
+
+			skPath.Dispose();
+		}
+
+		private void DrawCommittedPaths(SKCanvas canvas, int selectedPathIndex, int selectedAnchorIndex)
+		{
+			System.Collections.Generic.List<PathData> paths = m_document.Paths();
+			if (paths == null)
+			{
+				return;
+			}
+			for (int pathIndex = 0; pathIndex < paths.Count; pathIndex++)
+			{
+				PathData path = paths[pathIndex];
+				if (path == null || path.m_points.Count == 0)
+				{
+					continue;
+				}
+
+				SKPath skPath = path.ToSKPath();
+				if (skPath == null || skPath.IsEmpty)
+				{
+					if (skPath != null)
+					{
+						skPath.Dispose();
+					}
+					continue;
+				}
+
+				SKMatrix scaleMatrix = SKMatrix.CreateScale(m_zoom, m_zoom);
+				SKMatrix translateMatrix = SKMatrix.CreateTranslation(m_offsetX, m_offsetY);
+				SKMatrix combined = scaleMatrix.PostConcat(translateMatrix);
+				skPath.Transform(combined);
+
+				SKPaint underlay = new SKPaint();
+				underlay.Style = SKPaintStyle.Stroke;
+				underlay.StrokeWidth = 3.0f;
+				underlay.Color = SKColors.Black;
+				underlay.IsAntialias = true;
+				canvas.DrawPath(skPath, underlay);
+				underlay.Dispose();
+
+				SKPaint overlay = new SKPaint();
+				overlay.Style = SKPaintStyle.Stroke;
+				overlay.StrokeWidth = 1.5f;
+				overlay.Color = SKColors.White;
+				overlay.IsAntialias = true;
+				canvas.DrawPath(skPath, overlay);
+				overlay.Dispose();
+
+				skPath.Dispose();
+
+				bool pathSelected = pathIndex == selectedPathIndex && selectedAnchorIndex >= 0 && selectedAnchorIndex < path.m_points.Count;
+
+				for (int i = 0; i < path.m_points.Count; i++)
+				{
+					PathPoint pt = path.m_points[i];
+					float sx = m_offsetX + (pt.m_x * m_zoom);
+					float sy = m_offsetY + (pt.m_y * m_zoom);
+
+					if (pathSelected && i == selectedAnchorIndex)
+					{
+						if (pt.m_hasControlIn)
+						{
+							float hx = m_offsetX + (pt.m_controlInX * m_zoom);
+							float hy = m_offsetY + (pt.m_controlInY * m_zoom);
+							SKPaint handleLine = new SKPaint();
+							handleLine.Style = SKPaintStyle.Stroke;
+							handleLine.StrokeWidth = 1.0f;
+							handleLine.Color = SKColors.Gray;
+							handleLine.IsAntialias = true;
+							canvas.DrawLine(sx, sy, hx, hy, handleLine);
+							handleLine.Dispose();
+							SKPaint handleFill = new SKPaint();
+							handleFill.Style = SKPaintStyle.Fill;
+							handleFill.Color = SKColors.White;
+							handleFill.IsAntialias = true;
+							canvas.DrawCircle(hx, hy, 3.0f, handleFill);
+							handleFill.Dispose();
+							SKPaint handleStroke = new SKPaint();
+							handleStroke.Style = SKPaintStyle.Stroke;
+							handleStroke.StrokeWidth = 1.0f;
+							handleStroke.Color = SKColors.Black;
+							handleStroke.IsAntialias = true;
+							canvas.DrawCircle(hx, hy, 3.0f, handleStroke);
+							handleStroke.Dispose();
+						}
+						if (pt.m_hasControlOut)
+						{
+							float hx = m_offsetX + (pt.m_controlOutX * m_zoom);
+							float hy = m_offsetY + (pt.m_controlOutY * m_zoom);
+							SKPaint handleLine = new SKPaint();
+							handleLine.Style = SKPaintStyle.Stroke;
+							handleLine.StrokeWidth = 1.0f;
+							handleLine.Color = SKColors.Gray;
+							handleLine.IsAntialias = true;
+							canvas.DrawLine(sx, sy, hx, hy, handleLine);
+							handleLine.Dispose();
+							SKPaint handleFill = new SKPaint();
+							handleFill.Style = SKPaintStyle.Fill;
+							handleFill.Color = SKColors.White;
+							handleFill.IsAntialias = true;
+							canvas.DrawCircle(hx, hy, 3.0f, handleFill);
+							handleFill.Dispose();
+							SKPaint handleStroke = new SKPaint();
+							handleStroke.Style = SKPaintStyle.Stroke;
+							handleStroke.StrokeWidth = 1.0f;
+							handleStroke.Color = SKColors.Black;
+							handleStroke.IsAntialias = true;
+							canvas.DrawCircle(hx, hy, 3.0f, handleStroke);
+							handleStroke.Dispose();
+						}
+					}
+
+					SKPaint anchorFill = new SKPaint();
+					anchorFill.Style = SKPaintStyle.Fill;
+					if (pathSelected && i == selectedAnchorIndex)
+					{
+						anchorFill.Color = SKColors.DodgerBlue;
+					}
+					else
+					{
+						anchorFill.Color = SKColors.White;
+					}
+					anchorFill.IsAntialias = true;
+					canvas.DrawRect(sx - 3.0f, sy - 3.0f, 6.0f, 6.0f, anchorFill);
+					anchorFill.Dispose();
+
+					SKPaint anchorStroke = new SKPaint();
+					anchorStroke.Style = SKPaintStyle.Stroke;
+					anchorStroke.StrokeWidth = 1.0f;
+					anchorStroke.Color = SKColors.Black;
+					anchorStroke.IsAntialias = true;
+					canvas.DrawRect(sx - 3.0f, sy - 3.0f, 6.0f, 6.0f, anchorStroke);
+					anchorStroke.Dispose();
+				}
+			}
+		}
+
+		private void DrawPenModeBadge(SKCanvas canvas, PenTool pen)
+		{
+			if (!m_cursorInside)
+			{
+				return;
+			}
+			float docX = (m_cursorDeviceX - m_offsetX) / m_zoom;
+			float docY = (m_cursorDeviceY - m_offsetY) / m_zoom;
+			int radius = (int)System.Math.Ceiling(9.0 / m_zoom);
+			if (radius < 3)
+			{
+				radius = 3;
+			}
+			int mode = pen.HoverMode(m_document, (int)docX, (int)docY, radius);
+			if (mode == PenTool.ModeDraw)
+			{
+				return;
+			}
+			float badgeX = m_cursorDeviceX + 13.0f;
+			float badgeY = m_cursorDeviceY - 13.0f;
+			DrawBadgeChip(canvas, badgeX, badgeY);
+			if (mode == PenTool.ModeAdd)
+			{
+				DrawBadgePlus(canvas, badgeX, badgeY);
+			}
+			else if (mode == PenTool.ModeDelete)
+			{
+				DrawBadgeMinus(canvas, badgeX, badgeY);
+			}
+			else if (mode == PenTool.ModeClose)
+			{
+				DrawBadgeRing(canvas, badgeX, badgeY);
+			}
+		}
+
+		private void DrawDirectSelectBadge(SKCanvas canvas, DirectSelectionTool directSelect)
+		{
+			if (!m_cursorInside)
+			{
+				return;
+			}
+			float docX = (m_cursorDeviceX - m_offsetX) / m_zoom;
+			float docY = (m_cursorDeviceY - m_offsetY) / m_zoom;
+			int radius = (int)System.Math.Ceiling(9.0 / m_zoom);
+			if (radius < 3)
+			{
+				radius = 3;
+			}
+			int mode = directSelect.HoverMode(m_document, (int)docX, (int)docY, radius);
+			if (mode == DirectSelectionTool.HoverNone)
+			{
+				return;
+			}
+			float badgeX = m_cursorDeviceX + 13.0f;
+			float badgeY = m_cursorDeviceY - 13.0f;
+			DrawBadgeChip(canvas, badgeX, badgeY);
+			if (mode == DirectSelectionTool.HoverAnchor)
+			{
+				DrawBadgeSquare(canvas, badgeX, badgeY);
+			}
+			else
+			{
+				DrawBadgeRing(canvas, badgeX, badgeY);
+			}
+		}
+
+		private void DrawBadgeChip(SKCanvas canvas, float centerX, float centerY)
+		{
+			SKPaint fill = new SKPaint();
+			fill.Style = SKPaintStyle.Fill;
+			fill.Color = SKColors.White;
+			fill.IsAntialias = true;
+			canvas.DrawCircle(centerX, centerY, 7.5f, fill);
+			fill.Dispose();
+			SKPaint stroke = new SKPaint();
+			stroke.Style = SKPaintStyle.Stroke;
+			stroke.StrokeWidth = 1.0f;
+			stroke.Color = SKColors.Black;
+			stroke.IsAntialias = true;
+			canvas.DrawCircle(centerX, centerY, 7.5f, stroke);
+			stroke.Dispose();
+		}
+
+		private void DrawBadgePlus(SKCanvas canvas, float centerX, float centerY)
+		{
+			SKPaint paint = new SKPaint();
+			paint.Style = SKPaintStyle.Stroke;
+			paint.StrokeWidth = 1.5f;
+			paint.Color = SKColors.Black;
+			paint.IsAntialias = true;
+			canvas.DrawLine(centerX - 3.5f, centerY, centerX + 3.5f, centerY, paint);
+			canvas.DrawLine(centerX, centerY - 3.5f, centerX, centerY + 3.5f, paint);
+			paint.Dispose();
+		}
+
+		private void DrawBadgeMinus(SKCanvas canvas, float centerX, float centerY)
+		{
+			SKPaint paint = new SKPaint();
+			paint.Style = SKPaintStyle.Stroke;
+			paint.StrokeWidth = 1.5f;
+			paint.Color = SKColors.Black;
+			paint.IsAntialias = true;
+			canvas.DrawLine(centerX - 3.5f, centerY, centerX + 3.5f, centerY, paint);
+			paint.Dispose();
+		}
+
+		private void DrawBadgeRing(SKCanvas canvas, float centerX, float centerY)
+		{
+			SKPaint paint = new SKPaint();
+			paint.Style = SKPaintStyle.Stroke;
+			paint.StrokeWidth = 1.5f;
+			paint.Color = SKColors.Black;
+			paint.IsAntialias = true;
+			canvas.DrawCircle(centerX, centerY, 3.5f, paint);
+			paint.Dispose();
+		}
+
+		private void DrawBadgeSquare(SKCanvas canvas, float centerX, float centerY)
+		{
+			SKPaint paint = new SKPaint();
+			paint.Style = SKPaintStyle.Fill;
+			paint.Color = SKColors.Black;
+			paint.IsAntialias = true;
+			canvas.DrawRect(centerX - 3.0f, centerY - 3.0f, 6.0f, 6.0f, paint);
+			paint.Dispose();
 		}
 
 		private void DrawZoomMarquee(SKCanvas canvas)
@@ -2133,6 +2513,10 @@ namespace Bitmute.UI
 			{
 				wantsHoverRepaint = true;
 			}
+			if (hoverTool is PenTool || hoverTool is DirectSelectionTool)
+			{
+				wantsHoverRepaint = true;
+			}
 			if (eventArgs.ActionType == SKTouchAction.Moved && !eventArgs.InContact && wantsHoverRepaint)
 			{
 				InvalidateSurface();
@@ -2226,6 +2610,13 @@ namespace Bitmute.UI
 				eventArgs.Handled = true;
 				return;
 			}
+			Windows.UI.Core.CoreVirtualKeyStates ctrlState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control);
+			m_ctrlHeld = (ctrlState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
+			if (tool is PenTool && eventArgs.ActionType == SKTouchAction.Pressed)
+			{
+				m_penDirectOverride = m_ctrlHeld;
+			}
+			tool = EffectiveTool(tool);
 
 			if (tool is FreeTransformTool)
 			{
@@ -2235,6 +2626,26 @@ namespace Bitmute.UI
 					pickRadius = 3;
 				}
 				((FreeTransformTool)tool).SetPickRadius(pickRadius);
+			}
+
+			if (tool is PenTool)
+			{
+				int penPick = (int)System.Math.Ceiling(9.0 / m_zoom);
+				if (penPick < 3)
+				{
+					penPick = 3;
+				}
+				((PenTool)tool).SetPickRadius(penPick);
+			}
+
+			if (tool is DirectSelectionTool)
+			{
+				int selectPick = (int)System.Math.Ceiling(9.0 / m_zoom);
+				if (selectPick < 3)
+				{
+					selectPick = 3;
+				}
+				((DirectSelectionTool)tool).SetPickRadius(selectPick);
 			}
 
 			UpdateHoverCursor(tool, pixelX, pixelY);
@@ -2481,10 +2892,15 @@ namespace Bitmute.UI
 				StopAirbrush();
 			}
 
+			bool overlayOnlyTool = tool is PenTool || tool is DirectSelectionTool;
 			bool needsRepaint = changed || m_document.ComposeDirtyAny();
 			if (needsRepaint)
 			{
 				if (m_document.ComposeDirtyAny())
+				{
+					InvalidateSurface();
+				}
+				else if (overlayOnlyTool)
 				{
 					InvalidateSurface();
 				}

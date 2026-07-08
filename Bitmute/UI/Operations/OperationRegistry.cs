@@ -188,6 +188,8 @@ namespace Bitmute.UI.Operations
 				case VirtualKey.I: tool = eTool.Eyedropper; break;
 				case VirtualKey.H: tool = eTool.Hand; break;
 				case VirtualKey.Z: tool = eTool.Zoom; break;
+				case VirtualKey.P: tool = eTool.Pen; break;
+				case VirtualKey.A: tool = eTool.DirectSelect; break;
 				default: return false;
 			}
 			m_main.SelectToolKey(tool, cycle);
@@ -449,6 +451,11 @@ namespace Bitmute.UI.Operations
 			if (m_main.IsTextEditActive())
 			{
 				return false;
+			}
+			bool handledPathAnchor = m_main.DeleteSelectedPathAnchor();
+			if (handledPathAnchor)
+			{
+				return true;
 			}
 			if ((chord.m_modifiers & VirtualKeyModifiers.Control) == VirtualKeyModifiers.Control)
 			{

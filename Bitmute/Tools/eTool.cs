@@ -33,6 +33,8 @@ namespace Bitmute.Tools
 		FreeTransform,
 		Sponge,
 		ColorReplacement,
-		Heal
+		Heal,
+		Pen,
+		DirectSelect
 	}
 }

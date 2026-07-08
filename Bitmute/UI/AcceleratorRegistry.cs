@@ -146,6 +146,8 @@ namespace Bitmute.UI
 				new Chord(VirtualKey.I, VirtualKeyModifiers.None),
 				new Chord(VirtualKey.H, VirtualKeyModifiers.None),
 				new Chord(VirtualKey.Z, VirtualKeyModifiers.None),
+				new Chord(VirtualKey.P, VirtualKeyModifiers.None),
+				new Chord(VirtualKey.A, VirtualKeyModifiers.None),
 			};
 			RegisterAccelerator(eOperation.ToolChange, toolChords);
 
