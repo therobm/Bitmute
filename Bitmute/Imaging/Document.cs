@@ -2439,12 +2439,12 @@ namespace Bitmute.Imaging
 				}
 				else
 				{
-					bool maskedWithoutEffects = layer.HasMask() && layer.MaskEnabled() && !layer.LayerStyle().HasAnyEffect();
-					if (maskedWithoutEffects && layer.BlendMode() == eBlendMode.Normal)
+					bool masked = layer.HasMask() && layer.MaskEnabled();
+					if (masked && layer.BlendMode() == eBlendMode.Normal && !layer.LayerStyle().HasAnyEffect())
 					{
 						BlendMaskedNormalLayer(target, left, top, right, bottom, layer);
 					}
-					else if (maskedWithoutEffects)
+					else if (masked)
 					{
 						DrawMaskedLayer(target, clipRect, sampling, layer);
 					}
@@ -2583,6 +2583,7 @@ namespace Bitmute.Imaging
 			SKCanvas canvas = new SKCanvas(target);
 			canvas.Save();
 			canvas.ClipRect(clipRect);
+			layer.DrawStyleUnder(canvas, sampling);
 			SKBitmap maskedSource = BuildMaskedSource(layer);
 			SKPaint paint = new SKPaint();
 			paint.Color = SKColors.White.WithAlpha(layer.Opacity());
@@ -2594,6 +2595,7 @@ namespace Bitmute.Imaging
 			pixmap.Dispose();
 			paint.Dispose();
 			maskedSource.Dispose();
+			layer.DrawStyleOver(canvas, sampling);
 			canvas.Restore();
 			canvas.Dispose();
 		}
