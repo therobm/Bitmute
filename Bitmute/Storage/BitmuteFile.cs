@@ -384,6 +384,7 @@ namespace Bitmute.Storage
 						writer.WriteNumber("controlInY", point.m_controlInY);
 						writer.WriteNumber("controlOutX", point.m_controlOutX);
 						writer.WriteNumber("controlOutY", point.m_controlOutY);
+						writer.WriteBoolean("smooth", point.m_smooth);
 						writer.WriteEndObject();
 					}
 					writer.WriteEndArray();
@@ -857,6 +858,7 @@ namespace Bitmute.Storage
 							point.m_controlInY = ReadFloat(ptElement, "controlInY", point.m_y);
 							point.m_controlOutX = ReadFloat(ptElement, "controlOutX", point.m_x);
 							point.m_controlOutY = ReadFloat(ptElement, "controlOutY", point.m_y);
+							point.m_smooth = ReadBool(ptElement, "smooth", false);
 							path.m_points.Add(point);
 						}
 					}

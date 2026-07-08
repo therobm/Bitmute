@@ -62,6 +62,7 @@ namespace Bitmute.Imaging
 		private Guides m_guides;
 		private List<PathData> m_paths;
 		private DocumentStateCommand m_pendingDocEdit;
+		private PathEditCommand m_pendingPathEdit;
 		private bool m_floatActive;
 		private SKBitmap m_floatBitmap;
 		private int m_floatDeltaX;
@@ -317,6 +318,7 @@ namespace Bitmute.Imaging
 			m_guides = new Guides();
 			m_paths = new List<PathData>();
 			m_pendingDocEdit = null;
+			m_pendingPathEdit = null;
 			m_floatActive = false;
 			m_floatBitmap = null;
 			m_floatDeltaX = 0;
@@ -1081,6 +1083,21 @@ namespace Bitmute.Imaging
 			return m_paths;
 		}
 
+		public List<PathData> ClonePaths()
+		{
+			List<PathData> copy = new List<PathData>();
+			for (int index = 0; index < m_paths.Count; index++)
+			{
+				copy.Add(m_paths[index].Clone());
+			}
+			return copy;
+		}
+
+		public void ReplacePaths(List<PathData> paths)
+		{
+			m_paths = paths;
+		}
+
 		public List<Layer> CloneLayers()
 		{
 			List<Layer> copy = new List<Layer>();
@@ -1144,6 +1161,27 @@ namespace Bitmute.Imaging
 			m_pendingDocEdit.CaptureAfter(this);
 			PushCommand(m_pendingDocEdit);
 			m_pendingDocEdit = null;
+		}
+
+		public void BeginPathEdit(string label)
+		{
+			if (m_pendingPathEdit != null)
+			{
+				return;
+			}
+			m_pendingPathEdit = new PathEditCommand(label);
+			m_pendingPathEdit.CaptureBefore(this);
+		}
+
+		public void EndPathEdit()
+		{
+			if (m_pendingPathEdit == null)
+			{
+				return;
+			}
+			m_pendingPathEdit.CaptureAfter(this);
+			PushCommand(m_pendingPathEdit);
+			m_pendingPathEdit = null;
 		}
 
 		public bool Undo()
