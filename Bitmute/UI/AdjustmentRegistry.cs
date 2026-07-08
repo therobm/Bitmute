@@ -657,7 +657,8 @@ namespace Bitmute.UI
 
 			Adjustment brightnessContrast = AddDialog(eMenuAction.BrightnessContrast, eMenuAction.AdjustmentsMenu, "Brightness/Contrast", true, new string[] { "Brightness", "Contrast" }, new int[] { -100, -100 }, new int[] { 100, 100 }, new int[] { 0, 0 }, 360.0, 230.0, RunBrightnessContrast);
 			brightnessContrast.m_depthAware = true;
-			AddDialog(eMenuAction.HueSaturation, eMenuAction.AdjustmentsMenu, "Hue/Saturation", true, new string[] { "Hue", "Saturation", "Lightness" }, new int[] { -180, -100, -100 }, new int[] { 180, 100, 100 }, new int[] { 0, 0, 0 }, 360.0, 260.0, RunHueSaturation);
+			Adjustment hueSaturation = AddDialog(eMenuAction.HueSaturation, eMenuAction.AdjustmentsMenu, "Hue/Saturation", true, new string[] { "Hue", "Saturation", "Lightness" }, new int[] { -180, -100, -100 }, new int[] { 180, 100, 100 }, new int[] { 0, 0, 0 }, 360.0, 260.0, RunHueSaturation);
+			hueSaturation.m_depthAware = true;
 			Adjustment posterize = AddDialog(eMenuAction.Posterize, eMenuAction.AdjustmentsMenu, "Posterize", true, new string[] { "Levels" }, new int[] { 2 }, new int[] { 64 }, new int[] { 8 }, 360.0, 200.0, RunPosterize);
 			posterize.m_depthAware = true;
 			Adjustment threshold = AddDialog(eMenuAction.Threshold, eMenuAction.AdjustmentsMenu, "Threshold", true, new string[] { "Level" }, new int[] { 0 }, new int[] { 255 }, new int[] { 128 }, 360.0, 200.0, RunThreshold);
@@ -668,14 +669,19 @@ namespace Bitmute.UI
 			Adjustment feather = AddDialog(eMenuAction.FeatherSelection, eMenuAction.None, "Feather Selection", false, new string[] { "Radius" }, new int[] { 1 }, new int[] { 100 }, new int[] { 4 }, 360.0, 170.0, null);
 			feather.m_kind = eAdjustmentKind.Selection;
 
-			AddInstant(eMenuAction.AverageBlur, eMenuAction.FilterBlurMenu, "Average", RunAverage);
-			AddInstant(eMenuAction.Blur, eMenuAction.FilterBlurMenu, "Blur", RunBlur);
-			AddInstant(eMenuAction.BlurMore, eMenuAction.FilterBlurMenu, "Blur More", RunBlurMore);
+			Adjustment averageBlur = AddInstant(eMenuAction.AverageBlur, eMenuAction.FilterBlurMenu, "Average", RunAverage);
+			averageBlur.m_depthAware = true;
+			Adjustment blur = AddInstant(eMenuAction.Blur, eMenuAction.FilterBlurMenu, "Blur", RunBlur);
+			blur.m_depthAware = true;
+			Adjustment blurMore = AddInstant(eMenuAction.BlurMore, eMenuAction.FilterBlurMenu, "Blur More", RunBlurMore);
+			blurMore.m_depthAware = true;
 			Adjustment boxBlur = AddDialog(eMenuAction.BoxBlur, eMenuAction.FilterBlurMenu, "Box Blur", true, new string[] { "Radius" }, new int[] { 1 }, new int[] { 100 }, new int[] { 10 }, 360.0, 200.0, RunBoxBlur);
 			boxBlur.m_skslSource = GpuFilterPreview.BoxBlurSource;
 			boxBlur.m_skslPasses = 2;
+			boxBlur.m_depthAware = true;
 			Adjustment gaussianBlur = AddDialog(eMenuAction.GaussianBlur, eMenuAction.FilterBlurMenu, "Gaussian Blur", true, new string[] { "Radius" }, new int[] { 1 }, new int[] { 30 }, new int[] { 5 }, 360.0, 200.0, RunGaussianBlur);
 			gaussianBlur.m_builtinBlurPreview = true;
+			gaussianBlur.m_depthAware = true;
 			Adjustment motionBlur = AddDialog(eMenuAction.MotionBlur, eMenuAction.FilterBlurMenu, "Motion Blur", true, new string[] { "Angle", "Distance" }, new int[] { -90, 1 }, new int[] { 90, 200 }, new int[] { 0, 10 }, 360.0, 230.0, RunMotionBlur);
 			motionBlur.m_skslSource = GpuFilterPreview.MotionBlurSource;
 			motionBlur.m_skslPasses = 1;
@@ -718,10 +724,12 @@ namespace Bitmute.UI
 			AddInstant(eMenuAction.Clouds, eMenuAction.FilterRenderMenu, "Clouds", RunClouds);
 			AddInstant(eMenuAction.DifferenceClouds, eMenuAction.FilterRenderMenu, "Difference Clouds", RunDifferenceClouds);
 
-			AddInstant(eMenuAction.Sharpen, eMenuAction.FilterSharpenMenu, "Sharpen", RunSharpen);
+			Adjustment sharpen = AddInstant(eMenuAction.Sharpen, eMenuAction.FilterSharpenMenu, "Sharpen", RunSharpen);
+			sharpen.m_depthAware = true;
 			AddInstant(eMenuAction.SharpenEdges, eMenuAction.FilterSharpenMenu, "Sharpen Edges", RunSharpenEdges);
 			AddInstant(eMenuAction.SharpenMore, eMenuAction.FilterSharpenMenu, "Sharpen More", RunSharpenMore);
-			AddDialog(eMenuAction.UnsharpMask, eMenuAction.FilterSharpenMenu, "Unsharp Mask", true, new string[] { "Amount", "Radius" }, new int[] { 0, 1 }, new int[] { 300, 30 }, new int[] { 100, 3 }, 360.0, 230.0, RunUnsharpMask);
+			Adjustment unsharpMask = AddDialog(eMenuAction.UnsharpMask, eMenuAction.FilterSharpenMenu, "Unsharp Mask", true, new string[] { "Amount", "Radius" }, new int[] { 0, 1 }, new int[] { 300, 30 }, new int[] { 100, 3 }, 360.0, 230.0, RunUnsharpMask);
+			unsharpMask.m_depthAware = true;
 			AddDialog(eMenuAction.HighPass, eMenuAction.FilterOtherMenu, "High Pass", true, new string[] { "Radius" }, new int[] { 1 }, new int[] { 30 }, new int[] { 5 }, 360.0, 200.0, RunHighPass);
 			Adjustment offset = AddChoiceDialog(eMenuAction.Offset, eMenuAction.FilterOtherMenu, "Offset", true, new string[] { "Horizontal", "Vertical" }, new int[] { -512, -512 }, new int[] { 512, 512 }, new int[] { 0, 0 }, new string[] { "Undefined Areas" }, new string[][] { new string[] { "Wrap Around", "Repeat Edge Pixels", "Transparent" } }, new int[] { 0 }, 360.0, 240.0, RunOffset);
 			offset.m_depthAware = true;

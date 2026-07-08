@@ -109,6 +109,129 @@ namespace Bitmute.Imaging
 			}
 		}
 
+		private sealed class PremultiplyHighDepthWorker
+		{
+			public PixelAccessor m_sourceAccessor;
+			public PixelAccessor m_destinationAccessor;
+			public int m_width;
+
+			public void Band(int start, int end)
+			{
+				for (int y = start; y < end; y++)
+				{
+					for (int x = 0; x < m_width; x++)
+					{
+						float red;
+						float green;
+						float blue;
+						float alpha;
+						m_sourceAccessor.ReadNormalized(x, y, out red, out green, out blue, out alpha);
+						m_destinationAccessor.WriteNormalized(x, y, red * alpha, green * alpha, blue * alpha, alpha);
+					}
+				}
+			}
+		}
+
+		private sealed class SharpenHighDepthWorker
+		{
+			public PixelAccessor m_sourceAccessor;
+			public PixelAccessor m_destinationAccessor;
+			public int m_width;
+			public int m_height;
+			public double m_strength;
+
+			public void Band(int start, int end)
+			{
+				for (int y = start; y < end; y++)
+				{
+					for (int x = 0; x < m_width; x++)
+					{
+						float sumRed;
+						float sumGreen;
+						float sumBlue;
+						float sumAlpha;
+						SumWindowHighDepth(m_sourceAccessor, m_width, m_height, x, y, out sumRed, out sumGreen, out sumBlue, out sumAlpha);
+						float centerRed;
+						float centerGreen;
+						float centerBlue;
+						float centerAlpha;
+						m_sourceAccessor.ReadNormalized(x, y, out centerRed, out centerGreen, out centerBlue, out centerAlpha);
+						float red = SharpenChannelHighDepth(centerRed, sumRed, m_strength);
+						float green = SharpenChannelHighDepth(centerGreen, sumGreen, m_strength);
+						float blue = SharpenChannelHighDepth(centerBlue, sumBlue, m_strength);
+						float alpha = SharpenChannelHighDepth(centerAlpha, sumAlpha, m_strength);
+						WriteUnpremultipliedHighDepth(m_destinationAccessor, x, y, red, green, blue, alpha);
+					}
+				}
+			}
+		}
+
+		private static void SumWindowHighDepth(PixelAccessor accessor, int width, int height, int x, int y, out float sumRed, out float sumGreen, out float sumBlue, out float sumAlpha)
+		{
+			sumRed = 0.0f;
+			sumGreen = 0.0f;
+			sumBlue = 0.0f;
+			sumAlpha = 0.0f;
+			for (int offsetY = -1; offsetY <= 1; offsetY++)
+			{
+				int sampleY = y + offsetY;
+				if (sampleY < 0)
+				{
+					sampleY = 0;
+				}
+				if (sampleY > height - 1)
+				{
+					sampleY = height - 1;
+				}
+				for (int offsetX = -1; offsetX <= 1; offsetX++)
+				{
+					int sampleX = x + offsetX;
+					if (sampleX < 0)
+					{
+						sampleX = 0;
+					}
+					if (sampleX > width - 1)
+					{
+						sampleX = width - 1;
+					}
+					float red;
+					float green;
+					float blue;
+					float alpha;
+					accessor.ReadNormalized(sampleX, sampleY, out red, out green, out blue, out alpha);
+					sumRed = sumRed + red;
+					sumGreen = sumGreen + green;
+					sumBlue = sumBlue + blue;
+					sumAlpha = sumAlpha + alpha;
+				}
+			}
+		}
+
+		private static float SharpenChannelHighDepth(float source, float windowSum, double strength)
+		{
+			double average = windowSum / 9.0;
+			double value = source + (strength * (source - average));
+			if (value < 0.0)
+			{
+				return 0.0f;
+			}
+			if (value > 1.0)
+			{
+				return 1.0f;
+			}
+			return (float)value;
+		}
+
+		private static void WriteUnpremultipliedHighDepth(PixelAccessor accessor, int x, int y, float red, float green, float blue, float alpha)
+		{
+			if (alpha <= 0.0f)
+			{
+				accessor.WriteNormalized(x, y, 0.0f, 0.0f, 0.0f, 0.0f);
+				return;
+			}
+			accessor.WriteNormalized(x, y, red / alpha, green / alpha, blue / alpha, alpha);
+		}
+
 		private static unsafe void SumWindow(byte* sourceBase, int sourceStride, int width, int height, int x, int y, out int sumRed, out int sumGreen, out int sumBlue, out int sumAlpha)
 		{
 			sumRed = 0;
@@ -258,6 +381,19 @@ namespace Bitmute.Imaging
 			RowBands.Run(0, height, worker.Band);
 		}
 
+		private static void PremultiplyHighDepth(SKBitmap source, SKBitmap destination)
+		{
+			int width = source.Width;
+			int height = source.Height;
+			PixelAccessor sourceAccessor = new PixelAccessor(source.GetPixels(), source.RowBytes, source.ColorType);
+			PixelAccessor destinationAccessor = new PixelAccessor(destination.GetPixels(), destination.RowBytes, destination.ColorType);
+			PremultiplyHighDepthWorker worker = new PremultiplyHighDepthWorker();
+			worker.m_sourceAccessor = sourceAccessor;
+			worker.m_destinationAccessor = destinationAccessor;
+			worker.m_width = width;
+			RowBands.Run(0, height, worker.Band);
+		}
+
 		private sealed unsafe class HighPassWorker
 		{
 			public byte* m_sourceBase;
@@ -291,20 +427,36 @@ namespace Bitmute.Imaging
 		{
 			int width = bitmap.Width;
 			int height = bitmap.Height;
-			SKBitmap scratch = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-			Premultiply(bitmap, scratch);
-			byte* sourceBase = (byte*)scratch.GetPixels().ToPointer();
-			byte* destinationBase = (byte*)bitmap.GetPixels().ToPointer();
-			SharpenWorker worker = new SharpenWorker();
-			worker.m_sourceBase = sourceBase;
-			worker.m_destinationBase = destinationBase;
-			worker.m_sourceStride = scratch.RowBytes;
-			worker.m_destinationStride = bitmap.RowBytes;
-			worker.m_width = width;
-			worker.m_height = height;
-			worker.m_strength = strength;
-			RowBands.Run(0, height, worker.Band);
-			scratch.Dispose();
+			if (bitmap.ColorType == SKColorType.Rgba8888)
+			{
+				SKBitmap scratch = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				Premultiply(bitmap, scratch);
+				byte* sourceBase = (byte*)scratch.GetPixels().ToPointer();
+				byte* destinationBase = (byte*)bitmap.GetPixels().ToPointer();
+				SharpenWorker worker = new SharpenWorker();
+				worker.m_sourceBase = sourceBase;
+				worker.m_destinationBase = destinationBase;
+				worker.m_sourceStride = scratch.RowBytes;
+				worker.m_destinationStride = bitmap.RowBytes;
+				worker.m_width = width;
+				worker.m_height = height;
+				worker.m_strength = strength;
+				RowBands.Run(0, height, worker.Band);
+				scratch.Dispose();
+				return;
+			}
+			SKBitmap highScratch = new SKBitmap(width, height, bitmap.ColorType, SKAlphaType.Unpremul);
+			PremultiplyHighDepth(bitmap, highScratch);
+			PixelAccessor sourceAccessor = new PixelAccessor(highScratch.GetPixels(), highScratch.RowBytes, highScratch.ColorType);
+			PixelAccessor destinationAccessor = new PixelAccessor(bitmap.GetPixels(), bitmap.RowBytes, bitmap.ColorType);
+			SharpenHighDepthWorker highDepthWorker = new SharpenHighDepthWorker();
+			highDepthWorker.m_sourceAccessor = sourceAccessor;
+			highDepthWorker.m_destinationAccessor = destinationAccessor;
+			highDepthWorker.m_width = width;
+			highDepthWorker.m_height = height;
+			highDepthWorker.m_strength = strength;
+			RowBands.Run(0, height, highDepthWorker.Band);
+			highScratch.Dispose();
 		}
 
 		public static void Sharpen(SKBitmap bitmap)
