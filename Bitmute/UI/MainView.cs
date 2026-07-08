@@ -4196,6 +4196,19 @@ namespace Bitmute.UI
 			}
 			if (m_toolBox != null)
 			{
+				Tool penTool = m_toolBox.Instance(eTool.Pen);
+				if (penTool is PenTool)
+				{
+					PenTool pen = (PenTool)penTool;
+					if (pen.HasActivePath())
+					{
+						DocumentWindow window = ActiveWindow();
+						if (window != null)
+						{
+							pen.FinishPath(window.DocumentModel());
+						}
+					}
+				}
 				m_toolBox.ResetAll();
 			}
 		}
