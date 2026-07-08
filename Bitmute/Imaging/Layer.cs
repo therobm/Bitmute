@@ -905,6 +905,20 @@ namespace Bitmute.Imaging
 			image.Dispose();
 			canvas.Dispose();
 			m_bitmap = grown;
+			if (m_maskBitmap != null)
+			{
+				SKBitmap grownMask = new SKBitmap(newWidth, newHeight, m_maskBitmap.ColorType, SKAlphaType.Unpremul);
+				grownMask.Erase(SKColors.White);
+				SKCanvas maskCanvas = new SKCanvas(grownMask);
+				SKImage maskImage = SKImage.FromBitmap(m_maskBitmap);
+				SKPaint maskPaint = new SKPaint();
+				maskCanvas.DrawImage(maskImage, m_offsetX - coverLeft, m_offsetY - coverTop, sampling, maskPaint);
+				maskPaint.Dispose();
+				maskImage.Dispose();
+				maskCanvas.Dispose();
+				m_maskBitmap.Dispose();
+				m_maskBitmap = grownMask;
+			}
 			m_offsetX = coverLeft;
 			m_offsetY = coverTop;
 			MarkStyleCacheDirty();
