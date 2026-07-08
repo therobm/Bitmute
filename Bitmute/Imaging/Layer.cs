@@ -907,6 +907,7 @@ namespace Bitmute.Imaging
 			m_bitmap = grown;
 			m_offsetX = coverLeft;
 			m_offsetY = coverTop;
+			MarkStyleCacheDirty();
 		}
 
 		public void SetPixelCanvas(int canvasX, int canvasY, SKColor color)
