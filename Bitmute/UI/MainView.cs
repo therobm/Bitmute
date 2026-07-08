@@ -2177,6 +2177,14 @@ namespace Bitmute.UI
 			m_topZIndex = 0;
 			m_toolBox = new ToolBox();
 			m_toolState = m_toolBox.State();
+			int pressureCalibMinimum = Microsoft.Maui.Storage.Preferences.Default.Get("pressure_calib_min", 0);
+			int pressureCalibMaximum = Microsoft.Maui.Storage.Preferences.Default.Get("pressure_calib_max", 100);
+			int pressureCalibSensitivity = Microsoft.Maui.Storage.Preferences.Default.Get("pressure_calib_sensitivity", 100);
+			m_toolState.Calibration().SetValues(pressureCalibMinimum, pressureCalibMaximum, pressureCalibSensitivity);
+			int pressureMinimumSize = Microsoft.Maui.Storage.Preferences.Default.Get("pressure_min_size", 1);
+			m_toolState.SetPressureMinimumSizePercent(pressureMinimumSize);
+			int pressureMinimumOpacity = Microsoft.Maui.Storage.Preferences.Default.Get("pressure_min_opacity", 20);
+			m_toolState.SetPressureMinimumOpacityPercent(pressureMinimumOpacity);
 			m_patternPalette = new PatternPalette(PaletteRoot());
 			m_brushPalette = new BrushPalette(PaletteRoot());
 			m_adjustments = new AdjustmentRegistry(this, m_toolState);
@@ -3527,6 +3535,30 @@ namespace Bitmute.UI
 		{
 			Document.SetMaxUndoDepth(depth);
 			Microsoft.Maui.Storage.Preferences.Default.Set("undo_depth", Document.MaxUndoDepth());
+		}
+
+		public void ApplyPenCalibration(int minimumPercent, int maximumPercent, int sensitivityPercent)
+		{
+			if (m_toolState != null)
+			{
+				m_toolState.Calibration().SetValues(minimumPercent, maximumPercent, sensitivityPercent);
+			}
+		}
+
+		public void ApplyPenSizeMinimum(int percent)
+		{
+			if (m_toolState != null)
+			{
+				m_toolState.SetPressureMinimumSizePercent(percent);
+			}
+		}
+
+		public void ApplyPenOpacityMinimum(int percent)
+		{
+			if (m_toolState != null)
+			{
+				m_toolState.SetPressureMinimumOpacityPercent(percent);
+			}
 		}
 
 		public async void OpenRepoLink()
