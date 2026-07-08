@@ -21,6 +21,8 @@ namespace Bitmute.UI.Dialogs
 		private IntSlider m_pressureMaxField;
 		private IntSlider m_pressureSensitivityField;
 		private Image m_pressurePreview;
+		private IntSlider m_pressureMinSizeField;
+		private IntSlider m_pressureMinOpacityField;
 
 		private void OnClearRecentClicked(object sender, EventArgs eventArgs)
 		{
@@ -62,6 +64,10 @@ namespace Bitmute.UI.Dialogs
 			Microsoft.Maui.Storage.Preferences.Default.Set("pressure_calib_max", m_pressureMaxField.Value());
 			Microsoft.Maui.Storage.Preferences.Default.Set("pressure_calib_sensitivity", m_pressureSensitivityField.Value());
 			main.ApplyPenCalibration(m_pressureMinField.Value(), m_pressureMaxField.Value(), m_pressureSensitivityField.Value());
+			Microsoft.Maui.Storage.Preferences.Default.Set("pressure_min_size", m_pressureMinSizeField.Value());
+			main.ApplyPenSizeMinimum(m_pressureMinSizeField.Value());
+			Microsoft.Maui.Storage.Preferences.Default.Set("pressure_min_opacity", m_pressureMinOpacityField.Value());
+			main.ApplyPenOpacityMinimum(m_pressureMinOpacityField.Value());
 			//main.CloseModal();//wtf?
 			base.OnPrimaryClicked(sender, eventArgs);
 		}
@@ -73,6 +79,24 @@ namespace Bitmute.UI.Dialogs
 			if (main != null)
 			{
 				main.ApplyPenCalibration(m_pressureMinField.Value(), m_pressureMaxField.Value(), m_pressureSensitivityField.Value());
+			}
+		}
+
+		private void OnPressureSizeMinimumChanged(int value)
+		{
+			MainView main = MainView.Self;
+			if (main != null)
+			{
+				main.ApplyPenSizeMinimum(m_pressureMinSizeField.Value());
+			}
+		}
+
+		private void OnPressureOpacityMinimumChanged(int value)
+		{
+			MainView main = MainView.Self;
+			if (main != null)
+			{
+				main.ApplyPenOpacityMinimum(m_pressureMinOpacityField.Value());
 			}
 		}
 
@@ -157,6 +181,10 @@ namespace Bitmute.UI.Dialogs
 			m_pressureMinField = new IntSlider("Min", 0, 90, pressureMinimum, "%", OnPressureCalibrationChanged);
 			m_pressureMaxField = new IntSlider("Max", 10, 100, pressureMaximum, "%", OnPressureCalibrationChanged);
 			m_pressureSensitivityField = new IntSlider("Sensitivity", 50, 200, pressureSensitivity, "%", OnPressureCalibrationChanged);
+			int pressureMinSize = Microsoft.Maui.Storage.Preferences.Default.Get("pressure_min_size", 1);
+			m_pressureMinSizeField = new IntSlider("Min size", 1, 100, pressureMinSize, "%", OnPressureSizeMinimumChanged);
+			int pressureMinOpacity = Microsoft.Maui.Storage.Preferences.Default.Get("pressure_min_opacity", 20);
+			m_pressureMinOpacityField = new IntSlider("Min opacity", 1, 100, pressureMinOpacity, "%", OnPressureOpacityMinimumChanged);
 			m_pressurePreview = new Image();
 			m_pressurePreview.WidthRequest = 220.0;
 			m_pressurePreview.HeightRequest = 110.0;
@@ -175,6 +203,8 @@ namespace Bitmute.UI.Dialogs
 			m_pressureMinField.Margin = new Thickness(SectionIndent, 0.0, 0.0, 0.0);
 			m_pressureMaxField.Margin = new Thickness(SectionIndent, 0.0, 0.0, 0.0);
 			m_pressureSensitivityField.Margin = new Thickness(SectionIndent, 0.0, 0.0, 0.0);
+			m_pressureMinSizeField.Margin = new Thickness(SectionIndent, 0.0, 0.0, 0.0);
+			m_pressureMinOpacityField.Margin = new Thickness(SectionIndent, 0.0, 0.0, 0.0);
 
 			AddField(new SectionHeader("General"));
 			AddField(m_undoDepthField);
@@ -188,6 +218,8 @@ namespace Bitmute.UI.Dialogs
 			AddField(m_pressureMaxField);
 			AddField(m_pressureSensitivityField);
 			AddField(m_pressurePreview);
+			AddField(m_pressureMinSizeField);
+			AddField(m_pressureMinOpacityField);
 
 			Button cancelButton = SecondaryButton("Cancel");
 			Button okButton = PrimaryButton("OK");

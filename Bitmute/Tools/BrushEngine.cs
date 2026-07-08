@@ -9,8 +9,6 @@ namespace Bitmute.Tools
 		private const double ShoulderExponent = 1.7;
 		private const long ParallelWorkThreshold = 262144;
 		private const long ParallelBoxAverageWorkThreshold = 16384;
-		private const double PressureSizeMinimum = 0.25;
-		private const double PressureOpacityMinimum = 0.2;
 
 		private static byte[] s_coveragePool;
 		private static byte[] s_ceilingPool;
@@ -44,6 +42,7 @@ namespace Bitmute.Tools
 		private double m_currentPressure = 1.0;
 		private bool m_pressureSizeEnabled;
 		private bool m_pressureOpacityEnabled;
+		private double m_pressureOpacityMinimum;
 		private double m_hardness;
 		private double m_tipInner;
 		private double m_tipOuter;
@@ -315,10 +314,11 @@ namespace Bitmute.Tools
 			m_active = true;
 		}
 
-		public void SetPressure(float pressure, bool sizeEnabled, bool opacityEnabled)
+		public void SetPressure(float pressure, bool sizeEnabled, bool opacityEnabled, double sizeMinimum, double opacityMinimum)
 		{
 			m_pressureSizeEnabled = sizeEnabled;
 			m_pressureOpacityEnabled = opacityEnabled;
+			m_pressureOpacityMinimum = opacityMinimum;
 			double clampedPressure = pressure;
 			if (clampedPressure < 0.0)
 			{
@@ -331,7 +331,7 @@ namespace Bitmute.Tools
 			m_currentPressure = clampedPressure;
 			if (m_pressureSizeEnabled)
 			{
-				double sizeFactor = PressureSizeMinimum + (1.0 - PressureSizeMinimum) * m_currentPressure;
+				double sizeFactor = sizeMinimum + (1.0 - sizeMinimum) * m_currentPressure;
 				m_radius = (int)Math.Round(m_radiusBase * sizeFactor);
 				if (m_radius < 1)
 				{
@@ -727,7 +727,7 @@ namespace Bitmute.Tools
 					double opacityCeiling = m_opacity;
 					if (m_pressureOpacityEnabled)
 					{
-						double opacityFactor = PressureOpacityMinimum + (1.0 - PressureOpacityMinimum) * m_currentPressure;
+						double opacityFactor = m_pressureOpacityMinimum + (1.0 - m_pressureOpacityMinimum) * m_currentPressure;
 						opacityCeiling = m_opacity * opacityFactor;
 					}
 					if (m_fadeLengthPx > 0.0)
