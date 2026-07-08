@@ -86,6 +86,8 @@ namespace Bitmute.UI
 		private float m_selectPressDeviceY;
 		private bool m_cursorInside;
 		private bool m_toolStrokeActive;
+		private bool m_ctrlHeld;
+		private bool m_penDirectOverride;
 		private bool m_zoomDragging;
 		private float m_zoomDragStartX;
 		private float m_zoomDragStartY;
@@ -739,6 +741,38 @@ namespace Bitmute.UI
 			return Microsoft.UI.Input.InputSystemCursorShape.Arrow;
 		}
 
+		private Tool EffectiveTool(Tool current)
+		{
+			if (!(current is PenTool))
+			{
+				return current;
+			}
+			bool useDirect;
+			if (m_toolStrokeActive)
+			{
+				useDirect = m_penDirectOverride;
+			}
+			else
+			{
+				useDirect = m_ctrlHeld;
+			}
+			if (!useDirect)
+			{
+				return current;
+			}
+			MainView main = MainView.Self;
+			if (main == null)
+			{
+				return current;
+			}
+			Tool directTool = main.ToolInstance(eTool.DirectSelect);
+			if (directTool == null)
+			{
+				return current;
+			}
+			return directTool;
+		}
+
 		private void UpdateHoverCursor(Tool tool, int pixelX, int pixelY)
 		{
 			m_transformHoverKind = 0;
@@ -798,6 +832,7 @@ namespace Bitmute.UI
 				return;
 			}
 			Tool tool = main.CurrentTool();
+			tool = EffectiveTool(tool);
 			DocumentWindow activeWindow = main.ActiveWindow();
 			bool activeCanvas = activeWindow != null && ReferenceEquals(activeWindow.Canvas(), this);
 			if (!activeCanvas)
@@ -2546,6 +2581,13 @@ namespace Bitmute.UI
 				eventArgs.Handled = true;
 				return;
 			}
+			Windows.UI.Core.CoreVirtualKeyStates ctrlState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control);
+			m_ctrlHeld = (ctrlState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
+			if (tool is PenTool && eventArgs.ActionType == SKTouchAction.Pressed)
+			{
+				m_penDirectOverride = m_ctrlHeld;
+			}
+			tool = EffectiveTool(tool);
 
 			if (tool is FreeTransformTool)
 			{

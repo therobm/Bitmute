@@ -4620,6 +4620,11 @@ namespace Bitmute.UI
 			return m_toolBox.Instance(m_toolState.Tool());
 		}
 
+		public Tool ToolInstance(eTool tool)
+		{
+			return m_toolBox.Instance(tool);
+		}
+
 		public bool SnapEnabled()
 		{
 			return m_workspaceState.SnapEnabled();
