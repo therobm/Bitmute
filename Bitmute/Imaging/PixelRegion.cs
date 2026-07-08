@@ -201,7 +201,7 @@ namespace Bitmute.Imaging
 
 		public static unsafe SKBitmap ExtractRegion(SKBitmap source, SKRectI rect)
 		{
-			SKBitmap region = new SKBitmap(rect.Width, rect.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			SKBitmap region = new SKBitmap(rect.Width, rect.Height, source.ColorType, SKAlphaType.Unpremul);
 			int copyLeft = rect.Left;
 			int copyTop = rect.Top;
 			int copyRight = rect.Right;
@@ -230,11 +230,11 @@ namespace Bitmute.Imaging
 			byte* regionBase = (byte*)region.GetPixels().ToPointer();
 			int sourceStride = source.RowBytes;
 			int regionStride = region.RowBytes;
-			long rowLength = (long)(copyRight - copyLeft) * 4;
+			long rowLength = (long)(copyRight - copyLeft) * source.BytesPerPixel;
 			for (int y = copyTop; y < copyBottom; y++)
 			{
-				byte* sourceRow = sourceBase + ((long)y * sourceStride) + (copyLeft * 4);
-				byte* regionRow = regionBase + ((long)(y - rect.Top) * regionStride) + ((copyLeft - rect.Left) * 4);
+				byte* sourceRow = sourceBase + ((long)y * sourceStride) + (copyLeft * source.BytesPerPixel);
+				byte* regionRow = regionBase + ((long)(y - rect.Top) * regionStride) + ((copyLeft - rect.Left) * source.BytesPerPixel);
 				Buffer.MemoryCopy(sourceRow, regionRow, rowLength, rowLength);
 			}
 			return region;
@@ -270,11 +270,11 @@ namespace Bitmute.Imaging
 			byte* targetBase = (byte*)target.GetPixels().ToPointer();
 			int regionStride = region.RowBytes;
 			int targetStride = target.RowBytes;
-			long rowLength = (long)(copyRight - copyLeft) * 4;
+			long rowLength = (long)(copyRight - copyLeft) * region.BytesPerPixel;
 			for (int row = copyTop; row < copyBottom; row++)
 			{
-				byte* sourceRow = regionBase + ((long)(row - y) * regionStride) + ((copyLeft - x) * 4);
-				byte* targetRow = targetBase + ((long)row * targetStride) + (copyLeft * 4);
+				byte* sourceRow = regionBase + ((long)(row - y) * regionStride) + ((copyLeft - x) * region.BytesPerPixel);
+				byte* targetRow = targetBase + ((long)row * targetStride) + (copyLeft * region.BytesPerPixel);
 				Buffer.MemoryCopy(sourceRow, targetRow, rowLength, rowLength);
 			}
 		}

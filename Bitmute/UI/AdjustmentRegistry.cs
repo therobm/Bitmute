@@ -136,6 +136,11 @@ namespace Bitmute.UI
 			{
 				return false;
 			}
+			Bitmute.Imaging.Document activeDocument = m_main.ActiveDocument();
+			if (activeDocument != null && activeDocument.ColorDepth() != eColorDepth.Eight)
+			{
+				return false;
+			}
 			if (adjustment.m_skslSource == null && !adjustment.m_builtinBlurPreview)
 			{
 				return false;
