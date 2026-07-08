@@ -3310,8 +3310,38 @@ namespace Bitmute.UI
 
 		public void FitToView()
 		{
-			m_viewInitialized = false;
+			float docWidth = m_document.Width();
+			float docHeight = m_document.Height();
+			if (m_lastViewportWidth <= 0.0f || m_lastViewportHeight <= 0.0f || docWidth <= 0.0f || docHeight <= 0.0f)
+			{
+				m_viewInitialized = false;
+				ReportZoomInfo();
+				InvalidateSurface();
+				return;
+			}
+			float fitX = m_lastViewportWidth / docWidth;
+			float fitY = m_lastViewportHeight / docHeight;
+			float fit = fitX;
+			if (fitY < fit)
+			{
+				fit = fitY;
+			}
+			if (fit < 0.05f)
+			{
+				fit = 0.05f;
+			}
+			if (fit > 32.0f)
+			{
+				fit = 32.0f;
+			}
+			m_zoom = fit;
+			m_offsetX = (m_lastViewportWidth - (docWidth * m_zoom)) / 2.0f;
+			m_offsetY = (m_lastViewportHeight - (docHeight * m_zoom)) / 2.0f;
+			m_fittedDocWidth = m_document.Width();
+			m_fittedDocHeight = m_document.Height();
+			m_viewInitialized = true;
 			ReportZoomInfo();
+			NotifyChrome();
 			InvalidateSurface();
 		}
 
