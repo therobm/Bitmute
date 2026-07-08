@@ -601,6 +601,10 @@ namespace Bitmute.Tools
 
 		private unsafe void CaptureColorReplaceSample(Layer layer, double centerX, double centerY)
 		{
+			if (m_highDepth)
+			{
+				return;
+			}
 			int layerOffsetX = layer.OffsetX();
 			int layerOffsetY = layer.OffsetY();
 			int originalRowBytes = m_original.RowBytes;
@@ -780,6 +784,10 @@ namespace Bitmute.Tools
 						double highOutGreen = ((highSourceGreen * finalAlpha) + (highOriginalGreen * highWeightedOriginal)) / highOutAlpha;
 						double highOutBlue = ((highSourceBlue * finalAlpha) + (highOriginalBlue * highWeightedOriginal)) / highOutAlpha;
 						destinationAccessor.WriteNormalized(bitmapX, bitmapY, (float)highOutRed, (float)highOutGreen, (float)highOutBlue, (float)highOutAlpha);
+						continue;
+					}
+					if (m_highDepth)
+					{
 						continue;
 					}
 					byte* originalPixel = originalPixels + (bitmapY * originalRowBytes) + (bitmapX * 4);
@@ -980,6 +988,10 @@ namespace Bitmute.Tools
 
 		private unsafe void StampSmudgeDab(Layer layer, double centerX, double centerY, Selection selection)
 		{
+			if (m_highDepth)
+			{
+				return;
+			}
 			SKBitmap bitmap = layer.PaintTarget();
 			int rowBytes = bitmap.RowBytes;
 			int layerOffsetX = layer.OffsetX();

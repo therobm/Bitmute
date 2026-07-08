@@ -454,7 +454,8 @@ namespace Bitmute.UI
 			Bitmute.Imaging.Document activeDocument = m_main.ActiveDocument();
 			if (activeDocument != null && activeDocument.ColorDepth() != eColorDepth.Eight && !adjustment.m_depthAware)
 			{
-				m_main.SetStatusMessage(adjustment.m_name + " is only available for 8-bit images");
+				string message = adjustment.m_name + " is not available for 16-bit or 32-bit images. Convert the image to 8-bit with Image > Mode to use it.";
+				m_main.ShowModal(new MessageDialog(adjustment.m_name, message, new string[] { "OK" }, null), 360.0, 180.0);
 				return;
 			}
 			RollSeed();
