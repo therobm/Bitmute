@@ -208,13 +208,33 @@ namespace Bitmute.Imaging
 			return SKBlendMode.SrcOver;
 		}
 
-		public Layer(string name, int width, int height)
+		private static SKBitmap ConvertBitmap(SKBitmap source, eColorDepth target)
+		{
+			SKBitmap result = new SKBitmap(source.Width, source.Height, target.ToColorType(), SKAlphaType.Unpremul);
+			PixelAccessor sourceAccessor = new PixelAccessor(source.GetPixels(), source.RowBytes, source.ColorType);
+			PixelAccessor resultAccessor = new PixelAccessor(result.GetPixels(), result.RowBytes, result.ColorType);
+			for (int y = 0; y < source.Height; y++)
+			{
+				for (int x = 0; x < source.Width; x++)
+				{
+					float red;
+					float green;
+					float blue;
+					float alpha;
+					sourceAccessor.ReadNormalized(x, y, out red, out green, out blue, out alpha);
+					resultAccessor.WriteNormalized(x, y, red, green, blue, alpha);
+				}
+			}
+			return result;
+		}
+
+		public Layer(string name, int width, int height, eColorDepth depth)
 		{
 			m_name = name;
 			m_visible = true;
 			m_opacity = 255;
 			m_blendMode = eBlendMode.Normal;
-			m_bitmap = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			m_bitmap = new SKBitmap(width, height, depth.ToColorType(), SKAlphaType.Unpremul);
 			m_bitmap.Erase(SKColors.Transparent);
 			m_offsetX = 0;
 			m_offsetY = 0;
@@ -492,6 +512,24 @@ namespace Bitmute.Imaging
 			MarkStyleCacheDirty();
 		}
 
+		public void ConvertDepth(eColorDepth target)
+		{
+			if (m_bitmap.ColorType == target.ToColorType())
+			{
+				return;
+			}
+			SKBitmap newBitmap = ConvertBitmap(m_bitmap, target);
+			m_bitmap.Dispose();
+			m_bitmap = newBitmap;
+			if (m_maskBitmap != null)
+			{
+				SKBitmap newMask = ConvertBitmap(m_maskBitmap, target);
+				m_maskBitmap.Dispose();
+				m_maskBitmap = newMask;
+			}
+			MarkStyleCacheDirty();
+		}
+
 		public bool HasMask()
 		{
 			return m_maskBitmap != null;
@@ -519,7 +557,7 @@ namespace Bitmute.Imaging
 				m_maskBitmap.Dispose();
 				m_maskBitmap = null;
 			}
-			m_maskBitmap = new SKBitmap(m_bitmap.Width, m_bitmap.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			m_maskBitmap = new SKBitmap(m_bitmap.Width, m_bitmap.Height, m_bitmap.ColorType, SKAlphaType.Unpremul);
 			if (reveal)
 			{
 				m_maskBitmap.Erase(SKColors.White);
@@ -751,7 +789,7 @@ namespace Bitmute.Imaging
 
 		public Layer Clone()
 		{
-			Layer copy = new Layer(m_name, m_bitmap.Width, m_bitmap.Height);
+			Layer copy = new Layer(m_name, m_bitmap.Width, m_bitmap.Height, m_bitmap.ColorType.ToColorDepth());
 			copy.m_bitmap = m_bitmap.Copy();
 			if (m_maskBitmap != null)
 			{
@@ -856,7 +894,7 @@ namespace Bitmute.Imaging
 			{
 				return;
 			}
-			SKBitmap grown = new SKBitmap(newWidth, newHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			SKBitmap grown = new SKBitmap(newWidth, newHeight, m_bitmap.ColorType, SKAlphaType.Unpremul);
 			grown.Erase(SKColors.Transparent);
 			SKCanvas canvas = new SKCanvas(grown);
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);

@@ -366,6 +366,22 @@ namespace Bitmute.UI
 			m_adjustments.Cancel();
 		}
 
+		public void DoConvertColorDepth(eColorDepth target)
+		{
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
+			{
+				return;
+			}
+			CanvasView canvas = window.Canvas();
+			Document document = window.DocumentModel();
+			document.BeginCanvasEdit("Mode");
+			document.ConvertColorDepth(target);
+			document.EndCanvasEdit();
+			canvas.MarkComposeDirty();
+			window.RefreshTitleDepth();
+		}
+
 		public void DoDesaturate()
 		{
 			DocumentWindow window = ActiveWindow();
@@ -3936,7 +3952,7 @@ namespace Bitmute.UI
 			ShowModal(dialog, 320.0, 280.0);
 		}
 
-		public void CreateNewDocument(int width, int height, string name, bool transparent)
+		public void CreateNewDocument(int width, int height, string name, bool transparent, eColorDepth colorDepth)
 		{
 			m_untitledCount = m_untitledCount + 1;
 			string title = name;
@@ -3951,6 +3967,10 @@ namespace Bitmute.UI
 				background.Bitmap().Erase(SKColors.Transparent);
 				background.SetIsBackground(false);
 				background.SetName("Layer 1");
+			}
+			if (colorDepth != eColorDepth.Eight)
+			{
+				model.ConvertColorDepth(colorDepth);
 			}
 			DocumentWindow window = new DocumentWindow(model);
 			PlaceAndAdd(window);

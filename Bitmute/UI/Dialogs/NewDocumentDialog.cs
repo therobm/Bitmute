@@ -2,6 +2,7 @@ using System;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
 using Bitmute.UI.Components;
+using Bitmute.Imaging;
 
 namespace Bitmute.UI.Dialogs
 {
@@ -17,6 +18,21 @@ namespace Bitmute.UI.Dialogs
 		private DualIntField m_sizeField;
 		private ListPicker m_presetField;
 		private ListPicker m_backgroundPicker;
+		private ListPicker m_colorDepthPicker;
+
+		private eColorDepth SelectedColorDepth()
+		{
+			int index = m_colorDepthPicker.SelectedIndex();
+			if (index == 1)
+			{
+				return eColorDepth.Sixteen;
+			}
+			if (index == 2)
+			{
+				return eColorDepth.ThirtyTwoFloat;
+			}
+			return eColorDepth.Eight;
+		}
 
 		private string[] BuildPresetItems()
 		{
@@ -47,7 +63,7 @@ namespace Bitmute.UI.Dialogs
 				return;
 			}
 			bool transparent = m_backgroundPicker.SelectedIndex() == 1;
-			main.CreateNewDocument(m_sizeField.FirstValue(), m_sizeField.SecondValue(), m_nameField.Text(), transparent);
+			main.CreateNewDocument(m_sizeField.FirstValue(), m_sizeField.SecondValue(), m_nameField.Text(), transparent, SelectedColorDepth());
 			base.OnPrimaryClicked(sender, eventArgs);
 		}
 
@@ -71,11 +87,13 @@ namespace Bitmute.UI.Dialogs
 			m_sizeField = new DualIntField("Width", "Height", initialWidth, initialHeight, 1, MaximumSize, " px", null);
 			m_presetField = new ListPicker("Presets", BuildPresetItems(), 0, OnPresetSelected);
 			m_backgroundPicker = new ListPicker("Background", new string[] { "White", "Transparent" }, 0, null);
+			m_colorDepthPicker = new ListPicker("Color Depth", new string[] { "8 Bits/Channel", "16 Bits/Channel", "32 Bits/Channel (float)" }, 0, null);
 
 			AddField(m_nameField);
 			AddField(m_sizeField);
 			AddField(m_presetField);
 			AddField(m_backgroundPicker);
+			AddField(m_colorDepthPicker);
 
 			Button cancelButton = SecondaryButton("Cancel");
 			Button createButton = PrimaryButton("Create");

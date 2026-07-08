@@ -39,5 +39,6 @@ namespace Bitmute.UI
 		public int m_skslPasses;
 		public bool m_builtinBlurPreview;
 		public bool m_skslRawSource;
+		public bool m_depthAware;
 	}
 }

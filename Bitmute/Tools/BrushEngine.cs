@@ -83,6 +83,7 @@ namespace Bitmute.Tools
 		private int m_colorReplaceSampleG;
 		private int m_colorReplaceSampleB;
 		private bool m_lockAlpha;
+		private bool m_highDepth;
 		private bool m_active;
 		private double[] m_dabQueueX;
 		private double[] m_dabQueueY;
@@ -184,6 +185,7 @@ namespace Bitmute.Tools
 		{
 			End();
 			SKBitmap bitmap = layer.PaintTarget();
+			m_highDepth = bitmap.ColorType != SKColorType.Rgba8888;
 			m_width = bitmap.Width;
 			m_height = bitmap.Height;
 			int coverageLength = m_width * m_height;
@@ -475,6 +477,13 @@ namespace Bitmute.Tools
 			return effective * 255.0;
 		}
 
+		private double EffectiveSourceNormalized(double originalChannel, double sourceChannel, double originalAlpha)
+		{
+			double blended = BlendChannel(originalChannel, sourceChannel);
+			double effective = ((1.0 - originalAlpha) * sourceChannel) + (originalAlpha * blended);
+			return effective;
+		}
+
 		private double RangeWeight(double luminance)
 		{
 			if (m_dodgeBurnRange == 0)
@@ -592,6 +601,10 @@ namespace Bitmute.Tools
 
 		private unsafe void CaptureColorReplaceSample(Layer layer, double centerX, double centerY)
 		{
+			if (m_highDepth)
+			{
+				return;
+			}
 			int layerOffsetX = layer.OffsetX();
 			int layerOffsetY = layer.OffsetY();
 			int originalRowBytes = m_original.RowBytes;
@@ -617,6 +630,11 @@ namespace Bitmute.Tools
 			int layerOffsetY = layer.OffsetY();
 			byte* pixels = (byte*)bitmap.GetPixels().ToPointer();
 			byte* originalPixels = (byte*)m_original.GetPixels().ToPointer();
+			PixelAccessor destinationAccessor = new PixelAccessor(bitmap.GetPixels(), rowBytes, bitmap.ColorType);
+			PixelAccessor originalAccessor = new PixelAccessor(m_original.GetPixels(), originalRowBytes, m_original.ColorType);
+			double brushRedNormalized = m_red / 255.0;
+			double brushGreenNormalized = m_green / 255.0;
+			double brushBlueNormalized = m_blue / 255.0;
 			bool clip = selection != null && selection.IsActive();
 			int radius = m_radius;
 			int minCanvasX = (int)System.Math.Floor(centerX) - radius - 1;
@@ -724,6 +742,54 @@ namespace Bitmute.Tools
 						finalAlpha = opacityCeiling;
 					}
 					finalAlpha = finalAlpha * selectionFactor;
+					if (m_highDepth && (m_op == eBrushOp.Paint || m_op == eBrushOp.Erase))
+					{
+						float highOriginalRed;
+						float highOriginalGreen;
+						float highOriginalBlue;
+						float highOriginalAlpha;
+						originalAccessor.ReadNormalized(bitmapX, bitmapY, out highOriginalRed, out highOriginalGreen, out highOriginalBlue, out highOriginalAlpha);
+						if (m_lockAlpha && highOriginalAlpha <= 0.0f)
+						{
+							continue;
+						}
+						if (m_op == eBrushOp.Erase)
+						{
+							if (m_lockAlpha)
+							{
+								continue;
+							}
+							double highErasedAlpha = highOriginalAlpha * (1.0 - finalAlpha);
+							destinationAccessor.WriteNormalized(bitmapX, bitmapY, highOriginalRed, highOriginalGreen, highOriginalBlue, (float)highErasedAlpha);
+							continue;
+						}
+						double highSourceRed = brushRedNormalized;
+						double highSourceGreen = brushGreenNormalized;
+						double highSourceBlue = brushBlueNormalized;
+						if (m_mode != eBlendMode.Normal)
+						{
+							highSourceRed = EffectiveSourceNormalized(highOriginalRed, brushRedNormalized, highOriginalAlpha);
+							highSourceGreen = EffectiveSourceNormalized(highOriginalGreen, brushGreenNormalized, highOriginalAlpha);
+							highSourceBlue = EffectiveSourceNormalized(highOriginalBlue, brushBlueNormalized, highOriginalAlpha);
+						}
+						double highInverse = 1.0 - finalAlpha;
+						double highOutAlpha = finalAlpha + (highOriginalAlpha * highInverse);
+						if (highOutAlpha <= 0.0)
+						{
+							destinationAccessor.WriteNormalized(bitmapX, bitmapY, 0.0f, 0.0f, 0.0f, 0.0f);
+							continue;
+						}
+						double highWeightedOriginal = highOriginalAlpha * highInverse;
+						double highOutRed = ((highSourceRed * finalAlpha) + (highOriginalRed * highWeightedOriginal)) / highOutAlpha;
+						double highOutGreen = ((highSourceGreen * finalAlpha) + (highOriginalGreen * highWeightedOriginal)) / highOutAlpha;
+						double highOutBlue = ((highSourceBlue * finalAlpha) + (highOriginalBlue * highWeightedOriginal)) / highOutAlpha;
+						destinationAccessor.WriteNormalized(bitmapX, bitmapY, (float)highOutRed, (float)highOutGreen, (float)highOutBlue, (float)highOutAlpha);
+						continue;
+					}
+					if (m_highDepth)
+					{
+						continue;
+					}
 					byte* originalPixel = originalPixels + (bitmapY * originalRowBytes) + (bitmapX * 4);
 					byte* destinationPixel = pixels + (bitmapY * rowBytes) + (bitmapX * 4);
 					double originalAlpha = originalPixel[3] / 255.0;
@@ -922,6 +988,10 @@ namespace Bitmute.Tools
 
 		private unsafe void StampSmudgeDab(Layer layer, double centerX, double centerY, Selection selection)
 		{
+			if (m_highDepth)
+			{
+				return;
+			}
 			SKBitmap bitmap = layer.PaintTarget();
 			int rowBytes = bitmap.RowBytes;
 			int layerOffsetX = layer.OffsetX();

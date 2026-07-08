@@ -307,6 +307,314 @@ namespace Bitmute.Imaging
 			}
 		}
 
+		private sealed class PremultiplyHighDepthWorker
+		{
+			public PixelAccessor m_sourceAccessor;
+			public PixelAccessor m_destinationAccessor;
+			public int m_width;
+
+			public void Band(int start, int end)
+			{
+				for (int y = start; y < end; y++)
+				{
+					for (int x = 0; x < m_width; x++)
+					{
+						float red;
+						float green;
+						float blue;
+						float alpha;
+						m_sourceAccessor.ReadNormalized(x, y, out red, out green, out blue, out alpha);
+						m_destinationAccessor.WriteNormalized(x, y, red * alpha, green * alpha, blue * alpha, alpha);
+					}
+				}
+			}
+		}
+
+		private sealed class UnpremultiplyHighDepthWorker
+		{
+			public PixelAccessor m_sourceAccessor;
+			public PixelAccessor m_destinationAccessor;
+			public int m_width;
+
+			public void Band(int start, int end)
+			{
+				for (int y = start; y < end; y++)
+				{
+					for (int x = 0; x < m_width; x++)
+					{
+						float red;
+						float green;
+						float blue;
+						float alpha;
+						m_sourceAccessor.ReadNormalized(x, y, out red, out green, out blue, out alpha);
+						if (alpha <= 0.0f)
+						{
+							m_destinationAccessor.WriteNormalized(x, y, 0.0f, 0.0f, 0.0f, 0.0f);
+							continue;
+						}
+						m_destinationAccessor.WriteNormalized(x, y, red / alpha, green / alpha, blue / alpha, alpha);
+					}
+				}
+			}
+		}
+
+		private sealed class Kernel3x3HighDepthWorker
+		{
+			public PixelAccessor m_sourceAccessor;
+			public PixelAccessor m_destinationAccessor;
+			public int m_width;
+			public int m_height;
+
+			public void Band(int start, int end)
+			{
+				for (int y = start; y < end; y++)
+				{
+					int yUp = y - 1;
+					if (yUp < 0)
+					{
+						yUp = 0;
+					}
+					int yDown = y + 1;
+					if (yDown > m_height - 1)
+					{
+						yDown = m_height - 1;
+					}
+					for (int x = 0; x < m_width; x++)
+					{
+						int xLeft = x - 1;
+						if (xLeft < 0)
+						{
+							xLeft = 0;
+						}
+						int xRight = x + 1;
+						if (xRight > m_width - 1)
+						{
+							xRight = m_width - 1;
+						}
+						float sumRed;
+						float sumGreen;
+						float sumBlue;
+						float sumAlpha;
+						AccumulateWeighted(m_sourceAccessor, xLeft, yUp, 1.0f, out sumRed, out sumGreen, out sumBlue, out sumAlpha);
+						AddWeighted(m_sourceAccessor, x, yUp, 2.0f, ref sumRed, ref sumGreen, ref sumBlue, ref sumAlpha);
+						AddWeighted(m_sourceAccessor, xRight, yUp, 1.0f, ref sumRed, ref sumGreen, ref sumBlue, ref sumAlpha);
+						AddWeighted(m_sourceAccessor, xLeft, y, 2.0f, ref sumRed, ref sumGreen, ref sumBlue, ref sumAlpha);
+						AddWeighted(m_sourceAccessor, x, y, 4.0f, ref sumRed, ref sumGreen, ref sumBlue, ref sumAlpha);
+						AddWeighted(m_sourceAccessor, xRight, y, 2.0f, ref sumRed, ref sumGreen, ref sumBlue, ref sumAlpha);
+						AddWeighted(m_sourceAccessor, xLeft, yDown, 1.0f, ref sumRed, ref sumGreen, ref sumBlue, ref sumAlpha);
+						AddWeighted(m_sourceAccessor, x, yDown, 2.0f, ref sumRed, ref sumGreen, ref sumBlue, ref sumAlpha);
+						AddWeighted(m_sourceAccessor, xRight, yDown, 1.0f, ref sumRed, ref sumGreen, ref sumBlue, ref sumAlpha);
+						m_destinationAccessor.WriteNormalized(x, y, sumRed / 16.0f, sumGreen / 16.0f, sumBlue / 16.0f, sumAlpha / 16.0f);
+					}
+				}
+			}
+
+			private static void AccumulateWeighted(PixelAccessor accessor, int x, int y, float weight, out float sumRed, out float sumGreen, out float sumBlue, out float sumAlpha)
+			{
+				float red;
+				float green;
+				float blue;
+				float alpha;
+				accessor.ReadNormalized(x, y, out red, out green, out blue, out alpha);
+				sumRed = red * weight;
+				sumGreen = green * weight;
+				sumBlue = blue * weight;
+				sumAlpha = alpha * weight;
+			}
+
+			private static void AddWeighted(PixelAccessor accessor, int x, int y, float weight, ref float sumRed, ref float sumGreen, ref float sumBlue, ref float sumAlpha)
+			{
+				float red;
+				float green;
+				float blue;
+				float alpha;
+				accessor.ReadNormalized(x, y, out red, out green, out blue, out alpha);
+				sumRed = sumRed + (red * weight);
+				sumGreen = sumGreen + (green * weight);
+				sumBlue = sumBlue + (blue * weight);
+				sumAlpha = sumAlpha + (alpha * weight);
+			}
+		}
+
+		private sealed class BoxBlurHorizontalHighDepthWorker
+		{
+			public PixelAccessor m_sourceAccessor;
+			public PixelAccessor m_destinationAccessor;
+			public int m_width;
+			public int m_radius;
+			public int m_windowLength;
+
+			public void Band(int start, int end)
+			{
+				for (int y = start; y < end; y++)
+				{
+					double sumRed = 0.0;
+					double sumGreen = 0.0;
+					double sumBlue = 0.0;
+					double sumAlpha = 0.0;
+					for (int offset = -m_radius; offset <= m_radius; offset++)
+					{
+						int sampleX = offset;
+						if (sampleX < 0)
+						{
+							sampleX = 0;
+						}
+						if (sampleX > m_width - 1)
+						{
+							sampleX = m_width - 1;
+						}
+						float red;
+						float green;
+						float blue;
+						float alpha;
+						m_sourceAccessor.ReadNormalized(sampleX, y, out red, out green, out blue, out alpha);
+						sumRed = sumRed + red;
+						sumGreen = sumGreen + green;
+						sumBlue = sumBlue + blue;
+						sumAlpha = sumAlpha + alpha;
+					}
+					for (int x = 0; x < m_width; x++)
+					{
+						m_destinationAccessor.WriteNormalized(x, y, (float)(sumRed / m_windowLength), (float)(sumGreen / m_windowLength), (float)(sumBlue / m_windowLength), (float)(sumAlpha / m_windowLength));
+						int leavingX = x - m_radius;
+						if (leavingX < 0)
+						{
+							leavingX = 0;
+						}
+						if (leavingX > m_width - 1)
+						{
+							leavingX = m_width - 1;
+						}
+						int enteringX = x + m_radius + 1;
+						if (enteringX < 0)
+						{
+							enteringX = 0;
+						}
+						if (enteringX > m_width - 1)
+						{
+							enteringX = m_width - 1;
+						}
+						float leavingRed;
+						float leavingGreen;
+						float leavingBlue;
+						float leavingAlpha;
+						m_sourceAccessor.ReadNormalized(leavingX, y, out leavingRed, out leavingGreen, out leavingBlue, out leavingAlpha);
+						float enteringRed;
+						float enteringGreen;
+						float enteringBlue;
+						float enteringAlpha;
+						m_sourceAccessor.ReadNormalized(enteringX, y, out enteringRed, out enteringGreen, out enteringBlue, out enteringAlpha);
+						sumRed = sumRed + enteringRed - leavingRed;
+						sumGreen = sumGreen + enteringGreen - leavingGreen;
+						sumBlue = sumBlue + enteringBlue - leavingBlue;
+						sumAlpha = sumAlpha + enteringAlpha - leavingAlpha;
+					}
+				}
+			}
+		}
+
+		private sealed class BoxBlurVerticalHighDepthWorker
+		{
+			public PixelAccessor m_sourceAccessor;
+			public PixelAccessor m_destinationAccessor;
+			public int m_height;
+			public int m_radius;
+			public int m_windowLength;
+
+			public void Band(int start, int end)
+			{
+				for (int x = start; x < end; x++)
+				{
+					double sumRed = 0.0;
+					double sumGreen = 0.0;
+					double sumBlue = 0.0;
+					double sumAlpha = 0.0;
+					for (int offset = -m_radius; offset <= m_radius; offset++)
+					{
+						int sampleY = offset;
+						if (sampleY < 0)
+						{
+							sampleY = 0;
+						}
+						if (sampleY > m_height - 1)
+						{
+							sampleY = m_height - 1;
+						}
+						float red;
+						float green;
+						float blue;
+						float alpha;
+						m_sourceAccessor.ReadNormalized(x, sampleY, out red, out green, out blue, out alpha);
+						sumRed = sumRed + red;
+						sumGreen = sumGreen + green;
+						sumBlue = sumBlue + blue;
+						sumAlpha = sumAlpha + alpha;
+					}
+					for (int y = 0; y < m_height; y++)
+					{
+						m_destinationAccessor.WriteNormalized(x, y, (float)(sumRed / m_windowLength), (float)(sumGreen / m_windowLength), (float)(sumBlue / m_windowLength), (float)(sumAlpha / m_windowLength));
+						int leavingY = y - m_radius;
+						if (leavingY < 0)
+						{
+							leavingY = 0;
+						}
+						if (leavingY > m_height - 1)
+						{
+							leavingY = m_height - 1;
+						}
+						int enteringY = y + m_radius + 1;
+						if (enteringY < 0)
+						{
+							enteringY = 0;
+						}
+						if (enteringY > m_height - 1)
+						{
+							enteringY = m_height - 1;
+						}
+						float leavingRed;
+						float leavingGreen;
+						float leavingBlue;
+						float leavingAlpha;
+						m_sourceAccessor.ReadNormalized(x, leavingY, out leavingRed, out leavingGreen, out leavingBlue, out leavingAlpha);
+						float enteringRed;
+						float enteringGreen;
+						float enteringBlue;
+						float enteringAlpha;
+						m_sourceAccessor.ReadNormalized(x, enteringY, out enteringRed, out enteringGreen, out enteringBlue, out enteringAlpha);
+						sumRed = sumRed + enteringRed - leavingRed;
+						sumGreen = sumGreen + enteringGreen - leavingGreen;
+						sumBlue = sumBlue + enteringBlue - leavingBlue;
+						sumAlpha = sumAlpha + enteringAlpha - leavingAlpha;
+					}
+				}
+			}
+		}
+
+		private sealed class FillRgbHighDepthWorker
+		{
+			public PixelAccessor m_accessor;
+			public int m_width;
+			public float m_red;
+			public float m_green;
+			public float m_blue;
+
+			public void Band(int start, int end)
+			{
+				for (int y = start; y < end; y++)
+				{
+					for (int x = 0; x < m_width; x++)
+					{
+						float red;
+						float green;
+						float blue;
+						float alpha;
+						m_accessor.ReadNormalized(x, y, out red, out green, out blue, out alpha);
+						m_accessor.WriteNormalized(x, y, m_red, m_green, m_blue, alpha);
+					}
+				}
+			}
+		}
+
 		private sealed unsafe class MotionBlurWorker
 		{
 			public byte* m_sourceBase;
@@ -519,6 +827,19 @@ namespace Bitmute.Imaging
 			return (byte)Math.Round(value);
 		}
 
+		private static float ClampUnit(double value)
+		{
+			if (value < 0.0)
+			{
+				return 0.0f;
+			}
+			if (value > 1.0)
+			{
+				return 1.0f;
+			}
+			return (float)value;
+		}
+
 		private static unsafe void Premultiply(SKBitmap source, SKBitmap destination)
 		{
 			int width = source.Width;
@@ -611,72 +932,206 @@ namespace Bitmute.Imaging
 			RowBands.Run(0, width, worker.Band);
 		}
 
+		private static void PremultiplyHighDepth(SKBitmap source, SKBitmap destination)
+		{
+			int width = source.Width;
+			int height = source.Height;
+			PixelAccessor sourceAccessor = new PixelAccessor(source.GetPixels(), source.RowBytes, source.ColorType);
+			PixelAccessor destinationAccessor = new PixelAccessor(destination.GetPixels(), destination.RowBytes, destination.ColorType);
+			PremultiplyHighDepthWorker worker = new PremultiplyHighDepthWorker();
+			worker.m_sourceAccessor = sourceAccessor;
+			worker.m_destinationAccessor = destinationAccessor;
+			worker.m_width = width;
+			RowBands.Run(0, height, worker.Band);
+		}
+
+		private static void UnpremultiplyHighDepth(SKBitmap source, SKBitmap destination)
+		{
+			int width = source.Width;
+			int height = source.Height;
+			PixelAccessor sourceAccessor = new PixelAccessor(source.GetPixels(), source.RowBytes, source.ColorType);
+			PixelAccessor destinationAccessor = new PixelAccessor(destination.GetPixels(), destination.RowBytes, destination.ColorType);
+			UnpremultiplyHighDepthWorker worker = new UnpremultiplyHighDepthWorker();
+			worker.m_sourceAccessor = sourceAccessor;
+			worker.m_destinationAccessor = destinationAccessor;
+			worker.m_width = width;
+			RowBands.Run(0, height, worker.Band);
+		}
+
+		private static void Kernel3x3HighDepth(SKBitmap source, SKBitmap destination)
+		{
+			int width = source.Width;
+			int height = source.Height;
+			PixelAccessor sourceAccessor = new PixelAccessor(source.GetPixels(), source.RowBytes, source.ColorType);
+			PixelAccessor destinationAccessor = new PixelAccessor(destination.GetPixels(), destination.RowBytes, destination.ColorType);
+			Kernel3x3HighDepthWorker worker = new Kernel3x3HighDepthWorker();
+			worker.m_sourceAccessor = sourceAccessor;
+			worker.m_destinationAccessor = destinationAccessor;
+			worker.m_width = width;
+			worker.m_height = height;
+			RowBands.Run(0, height, worker.Band);
+		}
+
+		private static void BoxBlurHorizontalHighDepth(SKBitmap source, SKBitmap destination, int radius)
+		{
+			int width = source.Width;
+			int height = source.Height;
+			PixelAccessor sourceAccessor = new PixelAccessor(source.GetPixels(), source.RowBytes, source.ColorType);
+			PixelAccessor destinationAccessor = new PixelAccessor(destination.GetPixels(), destination.RowBytes, destination.ColorType);
+			int windowLength = (2 * radius) + 1;
+			BoxBlurHorizontalHighDepthWorker worker = new BoxBlurHorizontalHighDepthWorker();
+			worker.m_sourceAccessor = sourceAccessor;
+			worker.m_destinationAccessor = destinationAccessor;
+			worker.m_width = width;
+			worker.m_radius = radius;
+			worker.m_windowLength = windowLength;
+			RowBands.Run(0, height, worker.Band);
+		}
+
+		private static void BoxBlurVerticalHighDepth(SKBitmap source, SKBitmap destination, int radius)
+		{
+			int width = source.Width;
+			int height = source.Height;
+			PixelAccessor sourceAccessor = new PixelAccessor(source.GetPixels(), source.RowBytes, source.ColorType);
+			PixelAccessor destinationAccessor = new PixelAccessor(destination.GetPixels(), destination.RowBytes, destination.ColorType);
+			int windowLength = (2 * radius) + 1;
+			BoxBlurVerticalHighDepthWorker worker = new BoxBlurVerticalHighDepthWorker();
+			worker.m_sourceAccessor = sourceAccessor;
+			worker.m_destinationAccessor = destinationAccessor;
+			worker.m_height = height;
+			worker.m_radius = radius;
+			worker.m_windowLength = windowLength;
+			RowBands.Run(0, width, worker.Band);
+		}
+
 		public static unsafe void Average(SKBitmap bitmap)
 		{
 			int width = bitmap.Width;
 			int height = bitmap.Height;
 			int rowBytes = bitmap.RowBytes;
-			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
-			long sumRed = 0;
-			long sumGreen = 0;
-			long sumBlue = 0;
-			long sumAlpha = 0;
+			if (bitmap.ColorType == SKColorType.Rgba8888)
+			{
+				byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
+				long sumRed = 0;
+				long sumGreen = 0;
+				long sumBlue = 0;
+				long sumAlpha = 0;
+				for (int y = 0; y < height; y++)
+				{
+					byte* row = basePointer + ((long)y * rowBytes);
+					for (int x = 0; x < width; x++)
+					{
+						byte* pixel = row + (x * 4);
+						int alpha = pixel[3];
+						sumRed += pixel[0] * alpha;
+						sumGreen += pixel[1] * alpha;
+						sumBlue += pixel[2] * alpha;
+						sumAlpha += alpha;
+					}
+				}
+				if (sumAlpha == 0)
+				{
+					return;
+				}
+				byte meanRed = ClampByte((double)sumRed / sumAlpha);
+				byte meanGreen = ClampByte((double)sumGreen / sumAlpha);
+				byte meanBlue = ClampByte((double)sumBlue / sumAlpha);
+				FillRgbWorker worker = new FillRgbWorker();
+				worker.m_base = basePointer;
+				worker.m_rowBytes = rowBytes;
+				worker.m_width = width;
+				worker.m_red = meanRed;
+				worker.m_green = meanGreen;
+				worker.m_blue = meanBlue;
+				RowBands.Run(0, height, worker.Band);
+				return;
+			}
+			PixelAccessor accessor = new PixelAccessor(bitmap.GetPixels(), bitmap.RowBytes, bitmap.ColorType);
+			double highSumRed = 0.0;
+			double highSumGreen = 0.0;
+			double highSumBlue = 0.0;
+			double highSumAlpha = 0.0;
 			for (int y = 0; y < height; y++)
 			{
-				byte* row = basePointer + ((long)y * rowBytes);
 				for (int x = 0; x < width; x++)
 				{
-					byte* pixel = row + (x * 4);
-					int alpha = pixel[3];
-					sumRed += pixel[0] * alpha;
-					sumGreen += pixel[1] * alpha;
-					sumBlue += pixel[2] * alpha;
-					sumAlpha += alpha;
+					float red;
+					float green;
+					float blue;
+					float alpha;
+					accessor.ReadNormalized(x, y, out red, out green, out blue, out alpha);
+					highSumRed = highSumRed + (red * alpha);
+					highSumGreen = highSumGreen + (green * alpha);
+					highSumBlue = highSumBlue + (blue * alpha);
+					highSumAlpha = highSumAlpha + alpha;
 				}
 			}
-			if (sumAlpha == 0)
+			if (highSumAlpha <= 0.0)
 			{
 				return;
 			}
-			byte meanRed = ClampByte((double)sumRed / sumAlpha);
-			byte meanGreen = ClampByte((double)sumGreen / sumAlpha);
-			byte meanBlue = ClampByte((double)sumBlue / sumAlpha);
-			FillRgbWorker worker = new FillRgbWorker();
-			worker.m_base = basePointer;
-			worker.m_rowBytes = rowBytes;
-			worker.m_width = width;
-			worker.m_red = meanRed;
-			worker.m_green = meanGreen;
-			worker.m_blue = meanBlue;
-			RowBands.Run(0, height, worker.Band);
+			float meanHighRed = ClampUnit(highSumRed / highSumAlpha);
+			float meanHighGreen = ClampUnit(highSumGreen / highSumAlpha);
+			float meanHighBlue = ClampUnit(highSumBlue / highSumAlpha);
+			FillRgbHighDepthWorker highDepthWorker = new FillRgbHighDepthWorker();
+			highDepthWorker.m_accessor = accessor;
+			highDepthWorker.m_width = width;
+			highDepthWorker.m_red = meanHighRed;
+			highDepthWorker.m_green = meanHighGreen;
+			highDepthWorker.m_blue = meanHighBlue;
+			RowBands.Run(0, height, highDepthWorker.Band);
 		}
 
 		public static void Blur(SKBitmap bitmap)
 		{
 			int width = bitmap.Width;
 			int height = bitmap.Height;
-			SKBitmap bufferA = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-			SKBitmap bufferB = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-			Premultiply(bitmap, bufferA);
-			Kernel3x3(bufferA, bufferB);
-			Unpremultiply(bufferB, bitmap);
-			bufferA.Dispose();
-			bufferB.Dispose();
+			if (bitmap.ColorType == SKColorType.Rgba8888)
+			{
+				SKBitmap bufferA = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				SKBitmap bufferB = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				Premultiply(bitmap, bufferA);
+				Kernel3x3(bufferA, bufferB);
+				Unpremultiply(bufferB, bitmap);
+				bufferA.Dispose();
+				bufferB.Dispose();
+				return;
+			}
+			SKBitmap highBufferA = new SKBitmap(width, height, bitmap.ColorType, SKAlphaType.Unpremul);
+			SKBitmap highBufferB = new SKBitmap(width, height, bitmap.ColorType, SKAlphaType.Unpremul);
+			PremultiplyHighDepth(bitmap, highBufferA);
+			Kernel3x3HighDepth(highBufferA, highBufferB);
+			UnpremultiplyHighDepth(highBufferB, bitmap);
+			highBufferA.Dispose();
+			highBufferB.Dispose();
 		}
 
 		public static void BlurMore(SKBitmap bitmap)
 		{
 			int width = bitmap.Width;
 			int height = bitmap.Height;
-			SKBitmap bufferA = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-			SKBitmap bufferB = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-			Premultiply(bitmap, bufferA);
-			Kernel3x3(bufferA, bufferB);
-			Kernel3x3(bufferB, bufferA);
-			Kernel3x3(bufferA, bufferB);
-			Unpremultiply(bufferB, bitmap);
-			bufferA.Dispose();
-			bufferB.Dispose();
+			if (bitmap.ColorType == SKColorType.Rgba8888)
+			{
+				SKBitmap bufferA = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				SKBitmap bufferB = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				Premultiply(bitmap, bufferA);
+				Kernel3x3(bufferA, bufferB);
+				Kernel3x3(bufferB, bufferA);
+				Kernel3x3(bufferA, bufferB);
+				Unpremultiply(bufferB, bitmap);
+				bufferA.Dispose();
+				bufferB.Dispose();
+				return;
+			}
+			SKBitmap highBufferA = new SKBitmap(width, height, bitmap.ColorType, SKAlphaType.Unpremul);
+			SKBitmap highBufferB = new SKBitmap(width, height, bitmap.ColorType, SKAlphaType.Unpremul);
+			PremultiplyHighDepth(bitmap, highBufferA);
+			Kernel3x3HighDepth(highBufferA, highBufferB);
+			Kernel3x3HighDepth(highBufferB, highBufferA);
+			Kernel3x3HighDepth(highBufferA, highBufferB);
+			UnpremultiplyHighDepth(highBufferB, bitmap);
+			highBufferA.Dispose();
+			highBufferB.Dispose();
 		}
 
 		public static void BoxBlur(SKBitmap bitmap, int radius)
@@ -691,14 +1146,26 @@ namespace Bitmute.Imaging
 			}
 			int width = bitmap.Width;
 			int height = bitmap.Height;
-			SKBitmap bufferA = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-			SKBitmap bufferB = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-			Premultiply(bitmap, bufferA);
-			BoxBlurHorizontal(bufferA, bufferB, radius);
-			BoxBlurVertical(bufferB, bufferA, radius);
-			Unpremultiply(bufferA, bitmap);
-			bufferA.Dispose();
-			bufferB.Dispose();
+			if (bitmap.ColorType == SKColorType.Rgba8888)
+			{
+				SKBitmap bufferA = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				SKBitmap bufferB = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				Premultiply(bitmap, bufferA);
+				BoxBlurHorizontal(bufferA, bufferB, radius);
+				BoxBlurVertical(bufferB, bufferA, radius);
+				Unpremultiply(bufferA, bitmap);
+				bufferA.Dispose();
+				bufferB.Dispose();
+				return;
+			}
+			SKBitmap highBufferA = new SKBitmap(width, height, bitmap.ColorType, SKAlphaType.Unpremul);
+			SKBitmap highBufferB = new SKBitmap(width, height, bitmap.ColorType, SKAlphaType.Unpremul);
+			PremultiplyHighDepth(bitmap, highBufferA);
+			BoxBlurHorizontalHighDepth(highBufferA, highBufferB, radius);
+			BoxBlurVerticalHighDepth(highBufferB, highBufferA, radius);
+			UnpremultiplyHighDepth(highBufferA, bitmap);
+			highBufferA.Dispose();
+			highBufferB.Dispose();
 		}
 
 		public static unsafe void MotionBlur(SKBitmap bitmap, int angle, int distance)

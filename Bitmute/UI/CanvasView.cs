@@ -43,6 +43,8 @@ namespace Bitmute.UI
 		private int m_channelCacheKey = -1;
 		private SKPaint m_checkerPaint;
 		private SKSurface m_gpuComposite;
+		private SKBitmap m_displayComposite;
+		private int m_displayCompositeVersion = -1;
 		private GRRecordingContext m_gpuContext;
 		private int m_gpuWidth;
 		private int m_gpuHeight;
@@ -258,6 +260,28 @@ namespace Bitmute.UI
 
 			SKBitmap composite = m_document.Composite();
 			int compositeVersion = m_document.CompositeVersion();
+			if (composite.ColorType != SKColorType.Rgba8888)
+			{
+				if (m_displayComposite == null || m_displayComposite.Width != composite.Width || m_displayComposite.Height != composite.Height)
+				{
+					if (m_displayComposite != null)
+					{
+						m_displayComposite.Dispose();
+					}
+					m_displayComposite = new SKBitmap(composite.Width, composite.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
+					m_displayCompositeVersion = -1;
+				}
+				if (m_displayCompositeVersion != compositeVersion)
+				{
+					SKPixmap sourcePixmap = composite.PeekPixels();
+					SKPixmap targetPixmap = m_displayComposite.PeekPixels();
+					sourcePixmap.ReadPixels(targetPixmap);
+					sourcePixmap.Dispose();
+					targetPixmap.Dispose();
+					m_displayCompositeVersion = compositeVersion;
+				}
+				composite = m_displayComposite;
+			}
 			SKBitmap displayBitmap = composite;
 			MainView channelMain = MainView.Self;
 			if (channelMain != null)
@@ -497,6 +521,11 @@ namespace Bitmute.UI
 			{
 				m_gpuComposite.Dispose();
 				m_gpuComposite = null;
+			}
+			if (m_displayComposite != null)
+			{
+				m_displayComposite.Dispose();
+				m_displayComposite = null;
 			}
 			m_gpuContext = null;
 			m_gpuWidth = 0;

@@ -139,6 +139,9 @@ namespace Bitmute.UI
 				items.Add(imageSeparator);
 				items.Add(new MenuBarItem("Image Size…", eMenuAction.ImageSize, "Ctrl+Alt+I", () => m_main.OpenSizeDialog(false)));
 				items.Add(new MenuBarItem("Canvas Size…", eMenuAction.CanvasSize, () => m_main.OpenSizeDialog(true)));
+				MenuBarItem mode = new MenuBarItem("Mode", eMenuAction.ModeMenu);
+				mode.m_submenu = true;
+				items.Add(mode);
 				items.Add(new MenuBarItem("Flip Horizontal", eMenuAction.FlipHorizontal, () => m_main.DoCanvasOp(eCanvasOperation.FlipHorizontal)));
 				items.Add(new MenuBarItem("Flip Vertical", eMenuAction.FlipVertical, () => m_main.DoCanvasOp(eCanvasOperation.FlipVertical)));
 				items.Add(new MenuBarItem("Rotate 90° CW", eMenuAction.Rotate90Clockwise, () => m_main.DoCanvasOp(eCanvasOperation.Rotate90Clockwise)));
@@ -346,6 +349,26 @@ namespace Bitmute.UI
 				items.Add(adjustSeparatorTwo);
 				items.Add(new MenuBarItem("Posterize…", eMenuAction.Posterize, () => m_main.OpenAdjustment(eMenuAction.Posterize)));
 				items.Add(new MenuBarItem("Threshold…", eMenuAction.Threshold, () => m_main.OpenAdjustment(eMenuAction.Threshold)));
+				return items;
+			}
+			if (parent == eMenuAction.ModeMenu)
+			{
+				Document modeDocument = m_main.ActiveDocument();
+				bool hasModeDocument = modeDocument != null;
+				eColorDepth activeDepth = eColorDepth.Eight;
+				if (hasModeDocument)
+				{
+					activeDepth = modeDocument.ColorDepth();
+				}
+				MenuBarItem mode8 = new MenuBarItem("8 Bits/Channel", eMenuAction.Mode8, () => m_main.DoConvertColorDepth(eColorDepth.Eight));
+				mode8.m_checked = hasModeDocument && activeDepth == eColorDepth.Eight;
+				items.Add(mode8);
+				MenuBarItem mode16 = new MenuBarItem("16 Bits/Channel", eMenuAction.Mode16, () => m_main.DoConvertColorDepth(eColorDepth.Sixteen));
+				mode16.m_checked = hasModeDocument && activeDepth == eColorDepth.Sixteen;
+				items.Add(mode16);
+				MenuBarItem mode32 = new MenuBarItem("32 Bits/Channel (float)", eMenuAction.Mode32, () => m_main.DoConvertColorDepth(eColorDepth.ThirtyTwoFloat));
+				mode32.m_checked = hasModeDocument && activeDepth == eColorDepth.ThirtyTwoFloat;
+				items.Add(mode32);
 				return items;
 			}
 			if (m_main.BuildsFilterSubmenu(parent))

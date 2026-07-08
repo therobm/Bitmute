@@ -140,6 +140,14 @@ namespace Bitmute.Tests
 			s_failures = s_failures + GpuFilterDistortTests.RunAll();
 			s_failures = s_failures + GpuFilterStylizeTests.RunAll();
 			s_failures = s_failures + FilterGenerateTests.RunAll();
+			s_failures = s_failures + FilterGenerateDepthTests.RunAll();
+			s_failures = s_failures + AdjustmentsCommonDepthTests.RunAll();
+			s_failures = s_failures + StrokeSnapshotDepthTests.RunAll();
+			s_failures = s_failures + RegionDepthTests.RunAll();
+			s_failures = s_failures + BrushDepthTests.RunAll();
+			s_failures = s_failures + BrushSafetyDepthTests.RunAll();
+			s_failures = s_failures + ColorDepthUndoTests.RunAll();
+			s_failures = s_failures + FilterDepthBatchTests.RunAll();
 			s_failures = s_failures + LayerOrderTests.RunAll();
 			s_failures = s_failures + MarqueeTests.RunAll();
 			s_failures = s_failures + PencilSizeTests.RunAll();
@@ -150,6 +158,12 @@ namespace Bitmute.Tests
 			s_failures = s_failures + LayerMaskPersistTests.RunAll();
 			s_failures = s_failures + PatternFillTests.RunAll();
 			s_failures = s_failures + FilterOtherTests.RunAll();
+			s_failures = s_failures + PixelAccessorTests.RunAll();
+			s_failures = s_failures + AdjustmentsDepthTests.RunAll();
+			s_failures = s_failures + DocumentDepthTests.RunAll();
+			s_failures = s_failures + BitmuteDepthIoTests.RunAll();
+			s_failures = s_failures + PngFileTests.RunAll();
+			s_failures = s_failures + PngRoundTripTests.RunAll();
 			s_failures = s_failures + BrushDynamicsTests.RunAll();
 			s_failures = s_failures + PalettePersistenceTests.RunAll();
 			if (s_failures == 0)

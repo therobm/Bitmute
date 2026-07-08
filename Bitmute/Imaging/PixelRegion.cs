@@ -33,7 +33,7 @@ namespace Bitmute.Imaging
 			worker.m_destinationBase = destination.GetPixels();
 			worker.m_sourceStride = source.RowBytes;
 			worker.m_destinationStride = destination.RowBytes;
-			worker.m_rowLength = (long)source.Width * 4;
+			worker.m_rowLength = (long)source.Width * source.BytesPerPixel;
 			RowBands.Run(0, source.Height, worker.Band);
 		}
 
@@ -74,6 +74,7 @@ namespace Bitmute.Imaging
 			byte* afterBase = (byte*)after.GetPixels().ToPointer();
 			int beforeStride = before.RowBytes;
 			int afterStride = after.RowBytes;
+			int bytesPerPixel = before.BytesPerPixel;
 
 			int minX = width;
 			int minY = height;
@@ -82,11 +83,21 @@ namespace Bitmute.Imaging
 
 			for (int y = scanTop; y < scanBottom; y++)
 			{
-				uint* beforeRow = (uint*)(beforeBase + ((long)y * beforeStride));
-				uint* afterRow = (uint*)(afterBase + ((long)y * afterStride));
+				byte* beforeRow = beforeBase + ((long)y * beforeStride);
+				byte* afterRow = afterBase + ((long)y * afterStride);
 				for (int x = scanLeft; x < scanRight; x++)
 				{
-					if (beforeRow[x] != afterRow[x])
+					int pixelOffset = x * bytesPerPixel;
+					bool pixelChanged = false;
+					for (int byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++)
+					{
+						if (beforeRow[pixelOffset + byteIndex] != afterRow[pixelOffset + byteIndex])
+						{
+							pixelChanged = true;
+							break;
+						}
+					}
+					if (pixelChanged)
 					{
 						if (x < minX)
 						{
@@ -119,13 +130,12 @@ namespace Bitmute.Imaging
 		{
 			int width = bitmap.Width;
 			int height = bitmap.Height;
-			byte* basePointer = (byte*)bitmap.GetPixels().ToPointer();
-			int stride = bitmap.RowBytes;
+			PixelAccessor accessor = new PixelAccessor(bitmap.GetPixels(), bitmap.RowBytes, bitmap.ColorType);
 
 			int minY = -1;
 			for (int y = 0; y < height; y++)
 			{
-				if (RowHasAlpha(basePointer, stride, y, width))
+				if (RowHasAlpha(accessor, y, width))
 				{
 					minY = y;
 					break;
@@ -138,7 +148,7 @@ namespace Bitmute.Imaging
 			int maxY = minY;
 			for (int y = height - 1; y > minY; y--)
 			{
-				if (RowHasAlpha(basePointer, stride, y, width))
+				if (RowHasAlpha(accessor, y, width))
 				{
 					maxY = y;
 					break;
@@ -147,7 +157,7 @@ namespace Bitmute.Imaging
 			int minX = width;
 			for (int x = 0; x < width; x++)
 			{
-				if (ColumnHasAlpha(basePointer, stride, x, minY, maxY))
+				if (ColumnHasAlpha(accessor, x, minY, maxY))
 				{
 					minX = x;
 					break;
@@ -156,7 +166,7 @@ namespace Bitmute.Imaging
 			int maxX = minX;
 			for (int x = width - 1; x > minX; x--)
 			{
-				if (ColumnHasAlpha(basePointer, stride, x, minY, maxY))
+				if (ColumnHasAlpha(accessor, x, minY, maxY))
 				{
 					maxX = x;
 					break;
@@ -165,12 +175,11 @@ namespace Bitmute.Imaging
 			return new SKRectI(minX, minY, maxX + 1, maxY + 1);
 		}
 
-		private static unsafe bool RowHasAlpha(byte* basePointer, int stride, int y, int width)
+		private static bool RowHasAlpha(PixelAccessor accessor, int y, int width)
 		{
-			byte* row = basePointer + ((long)y * stride);
 			for (int x = 0; x < width; x++)
 			{
-				if (row[(x * 4) + 3] != 0)
+				if (accessor.AlphaAt(x, y) > 0.0f)
 				{
 					return true;
 				}
@@ -178,23 +187,21 @@ namespace Bitmute.Imaging
 			return false;
 		}
 
-		private static unsafe bool ColumnHasAlpha(byte* basePointer, int stride, int x, int minY, int maxY)
+		private static bool ColumnHasAlpha(PixelAccessor accessor, int x, int minY, int maxY)
 		{
-			byte* alphaPointer = basePointer + ((long)minY * stride) + (x * 4) + 3;
 			for (int y = minY; y <= maxY; y++)
 			{
-				if (*alphaPointer != 0)
+				if (accessor.AlphaAt(x, y) > 0.0f)
 				{
 					return true;
 				}
-				alphaPointer += stride;
 			}
 			return false;
 		}
 
 		public static unsafe SKBitmap ExtractRegion(SKBitmap source, SKRectI rect)
 		{
-			SKBitmap region = new SKBitmap(rect.Width, rect.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			SKBitmap region = new SKBitmap(rect.Width, rect.Height, source.ColorType, SKAlphaType.Unpremul);
 			int copyLeft = rect.Left;
 			int copyTop = rect.Top;
 			int copyRight = rect.Right;
@@ -223,11 +230,11 @@ namespace Bitmute.Imaging
 			byte* regionBase = (byte*)region.GetPixels().ToPointer();
 			int sourceStride = source.RowBytes;
 			int regionStride = region.RowBytes;
-			long rowLength = (long)(copyRight - copyLeft) * 4;
+			long rowLength = (long)(copyRight - copyLeft) * source.BytesPerPixel;
 			for (int y = copyTop; y < copyBottom; y++)
 			{
-				byte* sourceRow = sourceBase + ((long)y * sourceStride) + (copyLeft * 4);
-				byte* regionRow = regionBase + ((long)(y - rect.Top) * regionStride) + ((copyLeft - rect.Left) * 4);
+				byte* sourceRow = sourceBase + ((long)y * sourceStride) + (copyLeft * source.BytesPerPixel);
+				byte* regionRow = regionBase + ((long)(y - rect.Top) * regionStride) + ((copyLeft - rect.Left) * source.BytesPerPixel);
 				Buffer.MemoryCopy(sourceRow, regionRow, rowLength, rowLength);
 			}
 			return region;
@@ -263,11 +270,11 @@ namespace Bitmute.Imaging
 			byte* targetBase = (byte*)target.GetPixels().ToPointer();
 			int regionStride = region.RowBytes;
 			int targetStride = target.RowBytes;
-			long rowLength = (long)(copyRight - copyLeft) * 4;
+			long rowLength = (long)(copyRight - copyLeft) * region.BytesPerPixel;
 			for (int row = copyTop; row < copyBottom; row++)
 			{
-				byte* sourceRow = regionBase + ((long)(row - y) * regionStride) + ((copyLeft - x) * 4);
-				byte* targetRow = targetBase + ((long)row * targetStride) + (copyLeft * 4);
+				byte* sourceRow = regionBase + ((long)(row - y) * regionStride) + ((copyLeft - x) * region.BytesPerPixel);
+				byte* targetRow = targetBase + ((long)row * targetStride) + (copyLeft * region.BytesPerPixel);
 				Buffer.MemoryCopy(sourceRow, targetRow, rowLength, rowLength);
 			}
 		}

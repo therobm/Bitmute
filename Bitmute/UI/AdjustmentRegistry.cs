@@ -136,6 +136,11 @@ namespace Bitmute.UI
 			{
 				return false;
 			}
+			Bitmute.Imaging.Document activeDocument = m_main.ActiveDocument();
+			if (activeDocument != null && activeDocument.ColorDepth() != eColorDepth.Eight)
+			{
+				return false;
+			}
 			if (adjustment.m_skslSource == null && !adjustment.m_builtinBlurPreview)
 			{
 				return false;
@@ -451,6 +456,13 @@ namespace Bitmute.UI
 
 		public void Open(Adjustment adjustment)
 		{
+			Bitmute.Imaging.Document activeDocument = m_main.ActiveDocument();
+			if (activeDocument != null && activeDocument.ColorDepth() != eColorDepth.Eight && !adjustment.m_depthAware)
+			{
+				string message = adjustment.m_name + " is not available for 16-bit or 32-bit images. Convert the image to 8-bit with Image > Mode to use it.";
+				m_main.ShowModal(new MessageDialog(adjustment.m_name, message, new string[] { "OK" }, null), 360.0, 180.0);
+				return;
+			}
 			RollSeed();
 			if (adjustment.m_instant)
 			{
@@ -649,24 +661,33 @@ namespace Bitmute.UI
 			m_toolState = toolState;
 			m_adjustments = new List<Adjustment>();
 
-			AddDialog(eMenuAction.BrightnessContrast, eMenuAction.AdjustmentsMenu, "Brightness/Contrast", true, new string[] { "Brightness", "Contrast" }, new int[] { -100, -100 }, new int[] { 100, 100 }, new int[] { 0, 0 }, 360.0, 230.0, RunBrightnessContrast);
-			AddDialog(eMenuAction.HueSaturation, eMenuAction.AdjustmentsMenu, "Hue/Saturation", true, new string[] { "Hue", "Saturation", "Lightness" }, new int[] { -180, -100, -100 }, new int[] { 180, 100, 100 }, new int[] { 0, 0, 0 }, 360.0, 260.0, RunHueSaturation);
-			AddDialog(eMenuAction.Posterize, eMenuAction.AdjustmentsMenu, "Posterize", true, new string[] { "Levels" }, new int[] { 2 }, new int[] { 64 }, new int[] { 8 }, 360.0, 200.0, RunPosterize);
-			AddDialog(eMenuAction.Threshold, eMenuAction.AdjustmentsMenu, "Threshold", true, new string[] { "Level" }, new int[] { 0 }, new int[] { 255 }, new int[] { 128 }, 360.0, 200.0, RunThreshold);
+			Adjustment brightnessContrast = AddDialog(eMenuAction.BrightnessContrast, eMenuAction.AdjustmentsMenu, "Brightness/Contrast", true, new string[] { "Brightness", "Contrast" }, new int[] { -100, -100 }, new int[] { 100, 100 }, new int[] { 0, 0 }, 360.0, 230.0, RunBrightnessContrast);
+			brightnessContrast.m_depthAware = true;
+			Adjustment hueSaturation = AddDialog(eMenuAction.HueSaturation, eMenuAction.AdjustmentsMenu, "Hue/Saturation", true, new string[] { "Hue", "Saturation", "Lightness" }, new int[] { -180, -100, -100 }, new int[] { 180, 100, 100 }, new int[] { 0, 0, 0 }, 360.0, 260.0, RunHueSaturation);
+			hueSaturation.m_depthAware = true;
+			Adjustment posterize = AddDialog(eMenuAction.Posterize, eMenuAction.AdjustmentsMenu, "Posterize", true, new string[] { "Levels" }, new int[] { 2 }, new int[] { 64 }, new int[] { 8 }, 360.0, 200.0, RunPosterize);
+			posterize.m_depthAware = true;
+			Adjustment threshold = AddDialog(eMenuAction.Threshold, eMenuAction.AdjustmentsMenu, "Threshold", true, new string[] { "Level" }, new int[] { 0 }, new int[] { 255 }, new int[] { 128 }, 360.0, 200.0, RunThreshold);
+			threshold.m_depthAware = true;
 
 			Adjustment rotate = AddDialog(eMenuAction.RotateArbitrary, eMenuAction.None, "Rotate Arbitrary", false, new string[] { "Angle" }, new int[] { -180 }, new int[] { 180 }, new int[] { 0 }, 360.0, 170.0, null);
 			rotate.m_kind = eAdjustmentKind.Canvas;
 			Adjustment feather = AddDialog(eMenuAction.FeatherSelection, eMenuAction.None, "Feather Selection", false, new string[] { "Radius" }, new int[] { 1 }, new int[] { 100 }, new int[] { 4 }, 360.0, 170.0, null);
 			feather.m_kind = eAdjustmentKind.Selection;
 
-			AddInstant(eMenuAction.AverageBlur, eMenuAction.FilterBlurMenu, "Average", RunAverage);
-			AddInstant(eMenuAction.Blur, eMenuAction.FilterBlurMenu, "Blur", RunBlur);
-			AddInstant(eMenuAction.BlurMore, eMenuAction.FilterBlurMenu, "Blur More", RunBlurMore);
+			Adjustment averageBlur = AddInstant(eMenuAction.AverageBlur, eMenuAction.FilterBlurMenu, "Average", RunAverage);
+			averageBlur.m_depthAware = true;
+			Adjustment blur = AddInstant(eMenuAction.Blur, eMenuAction.FilterBlurMenu, "Blur", RunBlur);
+			blur.m_depthAware = true;
+			Adjustment blurMore = AddInstant(eMenuAction.BlurMore, eMenuAction.FilterBlurMenu, "Blur More", RunBlurMore);
+			blurMore.m_depthAware = true;
 			Adjustment boxBlur = AddDialog(eMenuAction.BoxBlur, eMenuAction.FilterBlurMenu, "Box Blur", true, new string[] { "Radius" }, new int[] { 1 }, new int[] { 100 }, new int[] { 10 }, 360.0, 200.0, RunBoxBlur);
 			boxBlur.m_skslSource = GpuFilterPreview.BoxBlurSource;
 			boxBlur.m_skslPasses = 2;
+			boxBlur.m_depthAware = true;
 			Adjustment gaussianBlur = AddDialog(eMenuAction.GaussianBlur, eMenuAction.FilterBlurMenu, "Gaussian Blur", true, new string[] { "Radius" }, new int[] { 1 }, new int[] { 30 }, new int[] { 5 }, 360.0, 200.0, RunGaussianBlur);
 			gaussianBlur.m_builtinBlurPreview = true;
+			gaussianBlur.m_depthAware = true;
 			Adjustment motionBlur = AddDialog(eMenuAction.MotionBlur, eMenuAction.FilterBlurMenu, "Motion Blur", true, new string[] { "Angle", "Distance" }, new int[] { -90, 1 }, new int[] { 90, 200 }, new int[] { 0, 10 }, 360.0, 230.0, RunMotionBlur);
 			motionBlur.m_skslSource = GpuFilterPreview.MotionBlurSource;
 			motionBlur.m_skslPasses = 1;
@@ -709,12 +730,15 @@ namespace Bitmute.UI
 			AddInstant(eMenuAction.Clouds, eMenuAction.FilterRenderMenu, "Clouds", RunClouds);
 			AddInstant(eMenuAction.DifferenceClouds, eMenuAction.FilterRenderMenu, "Difference Clouds", RunDifferenceClouds);
 
-			AddInstant(eMenuAction.Sharpen, eMenuAction.FilterSharpenMenu, "Sharpen", RunSharpen);
+			Adjustment sharpen = AddInstant(eMenuAction.Sharpen, eMenuAction.FilterSharpenMenu, "Sharpen", RunSharpen);
+			sharpen.m_depthAware = true;
 			AddInstant(eMenuAction.SharpenEdges, eMenuAction.FilterSharpenMenu, "Sharpen Edges", RunSharpenEdges);
 			AddInstant(eMenuAction.SharpenMore, eMenuAction.FilterSharpenMenu, "Sharpen More", RunSharpenMore);
-			AddDialog(eMenuAction.UnsharpMask, eMenuAction.FilterSharpenMenu, "Unsharp Mask", true, new string[] { "Amount", "Radius" }, new int[] { 0, 1 }, new int[] { 300, 30 }, new int[] { 100, 3 }, 360.0, 230.0, RunUnsharpMask);
+			Adjustment unsharpMask = AddDialog(eMenuAction.UnsharpMask, eMenuAction.FilterSharpenMenu, "Unsharp Mask", true, new string[] { "Amount", "Radius" }, new int[] { 0, 1 }, new int[] { 300, 30 }, new int[] { 100, 3 }, 360.0, 230.0, RunUnsharpMask);
+			unsharpMask.m_depthAware = true;
 			AddDialog(eMenuAction.HighPass, eMenuAction.FilterOtherMenu, "High Pass", true, new string[] { "Radius" }, new int[] { 1 }, new int[] { 30 }, new int[] { 5 }, 360.0, 200.0, RunHighPass);
-			AddChoiceDialog(eMenuAction.Offset, eMenuAction.FilterOtherMenu, "Offset", true, new string[] { "Horizontal", "Vertical" }, new int[] { -512, -512 }, new int[] { 512, 512 }, new int[] { 0, 0 }, new string[] { "Undefined Areas" }, new string[][] { new string[] { "Wrap Around", "Repeat Edge Pixels", "Transparent" } }, new int[] { 0 }, 360.0, 240.0, RunOffset);
+			Adjustment offset = AddChoiceDialog(eMenuAction.Offset, eMenuAction.FilterOtherMenu, "Offset", true, new string[] { "Horizontal", "Vertical" }, new int[] { -512, -512 }, new int[] { 512, 512 }, new int[] { 0, 0 }, new string[] { "Undefined Areas" }, new string[][] { new string[] { "Wrap Around", "Repeat Edge Pixels", "Transparent" } }, new int[] { 0 }, 360.0, 240.0, RunOffset);
+			offset.m_depthAware = true;
 
 			Adjustment diffuse = AddChoiceDialog(eMenuAction.Diffuse, eMenuAction.FilterStylizeMenu, "Diffuse", true, s_noLabels, s_noValues, s_noValues, s_noValues, new string[] { "Mode" }, new string[][] { new string[] { "Normal", "Darken Only", "Lighten Only" } }, new int[] { 0 }, 360.0, 200.0, RunDiffuse);
 			diffuse.m_skslSource = GpuFilterPreview.DiffuseSource;
@@ -737,6 +761,7 @@ namespace Bitmute.UI
 			normalMap.m_floatSliderDecimals = new int[] { 1 };
 			normalMap.m_checkLabels = new string[] { "Invert X (Red)", "Invert Y (Green)" };
 			normalMap.m_checkDefaults = new bool[] { false, false };
+			normalMap.m_depthAware = true;
 		}
 	}
 }

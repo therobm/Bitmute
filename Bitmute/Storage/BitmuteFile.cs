@@ -218,6 +218,7 @@ namespace Bitmute.Storage
 			}
 			writer.WriteNumber("width", document.Width());
 			writer.WriteNumber("height", document.Height());
+			writer.WriteNumber("colorDepth", (int)document.ColorDepth());
 			writer.WriteNumber("activeLayerIndex", document.ActiveLayerIndex());
 			writer.WriteNumber("rulerUnits", (int)document.RulerUnits());
 			writer.WriteStartArray("layers");
@@ -421,7 +422,7 @@ namespace Bitmute.Storage
 			Stream stream = entry.Open();
 			WriteInt32(stream, width);
 			WriteInt32(stream, height);
-			int rowLength = width * 4;
+			int rowLength = width * bitmap.BytesPerPixel;
 			byte[] rowBuffer = new byte[rowLength];
 			IntPtr basePointer = bitmap.GetPixels();
 			int rowBytes = bitmap.RowBytes;
@@ -442,7 +443,7 @@ namespace Bitmute.Storage
 			Stream stream = entry.Open();
 			WriteInt32(stream, width);
 			WriteInt32(stream, height);
-			int rowLength = width * 4;
+			int rowLength = width * bitmap.BytesPerPixel;
 			byte[] rowBuffer = new byte[rowLength];
 			IntPtr basePointer = bitmap.GetPixels();
 			int rowBytes = bitmap.RowBytes;
@@ -477,7 +478,7 @@ namespace Bitmute.Storage
 			{
 				return false;
 			}
-			int rowLength = width * 4;
+			int rowLength = width * bitmap.BytesPerPixel;
 			byte[] rowBuffer = new byte[rowLength];
 			IntPtr basePointer = bitmap.GetPixels();
 			int rowBytes = bitmap.RowBytes;
@@ -498,7 +499,7 @@ namespace Bitmute.Storage
 			{
 				return false;
 			}
-			int rowLength = width * 4;
+			int rowLength = width * bitmap.BytesPerPixel;
 			byte[] rowBuffer = new byte[rowLength];
 			IntPtr basePointer = bitmap.GetPixels();
 			int rowBytes = bitmap.RowBytes;
@@ -510,7 +511,7 @@ namespace Bitmute.Storage
 			return true;
 		}
 
-		private static Layer ReadLayer(ZipArchive archive, JsonElement layerElement, int index, int documentWidth, int documentHeight)
+		private static Layer ReadLayer(ZipArchive archive, JsonElement layerElement, int index, int documentWidth, int documentHeight, eColorDepth colorDepth)
 		{
 			string name = ReadString(layerElement, "name", "Layer");
 			int bitmapWidth = ReadInt(layerElement, "bitmapWidth", documentWidth);
@@ -524,7 +525,7 @@ namespace Bitmute.Storage
 			{
 				return null;
 			}
-			Layer layer = new Layer(name, bitmapWidth, bitmapHeight);
+			Layer layer = new Layer(name, bitmapWidth, bitmapHeight, colorDepth);
 			Stream stream = entry.Open();
 			bool loaded = ReadLayerPixels(stream, layer);
 			stream.Dispose();
@@ -723,6 +724,16 @@ namespace Bitmute.Storage
 				manifest.Dispose();
 				return null;
 			}
+			int storedColorDepth = ReadInt(root, "colorDepth", (int)eColorDepth.Eight);
+			eColorDepth colorDepth = eColorDepth.Eight;
+			if (storedColorDepth == (int)eColorDepth.Sixteen)
+			{
+				colorDepth = eColorDepth.Sixteen;
+			}
+			else if (storedColorDepth == (int)eColorDepth.ThirtyTwoFloat)
+			{
+				colorDepth = eColorDepth.ThirtyTwoFloat;
+			}
 			JsonElement layersElement;
 			if (!root.TryGetProperty("layers", out layersElement))
 			{
@@ -736,11 +747,12 @@ namespace Bitmute.Storage
 			}
 			string title = ReadString(root, "title", "Untitled");
 			Document document = new Document(title, width, height);
+			document.SetColorDepth(colorDepth);
 			document.Layers().Clear();
 			int layerIndex = 0;
 			foreach (JsonElement layerElement in layersElement.EnumerateArray())
 			{
-				Layer layer = ReadLayer(archive, layerElement, layerIndex, width, height);
+				Layer layer = ReadLayer(archive, layerElement, layerIndex, width, height, colorDepth);
 				if (layer == null)
 				{
 					manifest.Dispose();
