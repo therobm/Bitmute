@@ -34,6 +34,7 @@ namespace Bitmute.Tools
 		Sponge,
 		ColorReplacement,
 		Heal,
-		Pen
+		Pen,
+		DirectSelect
 	}
 }

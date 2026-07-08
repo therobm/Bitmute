@@ -153,6 +153,7 @@ namespace Bitmute.Tests
 			s_failures = s_failures + BrushDynamicsTests.RunAll();
 			s_failures = s_failures + PalettePersistenceTests.RunAll();
 			s_failures = s_failures + PathDataTests.RunAll();
+			s_failures = s_failures + PenToolTests.RunAll();
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");
