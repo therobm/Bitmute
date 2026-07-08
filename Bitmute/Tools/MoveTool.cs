@@ -459,9 +459,11 @@ namespace Bitmute.Tools
 					if (layer.OffsetX() != m_oldOffsetX || layer.OffsetY() != m_oldOffsetY)
 					{
 						SKBitmap oldBitmap = layer.Bitmap();
+						SKBitmap oldMask = layer.MaskBitmap();
 						layer.ExpandToCover(document.Width(), document.Height());
 						SKBitmap newBitmap = layer.Bitmap();
-						document.PushCommand(new MoveLayerCommand(document.ActiveLayerIndex(), oldBitmap, m_oldOffsetX, m_oldOffsetY, newBitmap, layer.OffsetX(), layer.OffsetY()));
+						SKBitmap newMask = layer.MaskBitmap();
+						document.PushCommand(new MoveLayerCommand(document.ActiveLayerIndex(), oldBitmap, oldMask, m_oldOffsetX, m_oldOffsetY, newBitmap, newMask, layer.OffsetX(), layer.OffsetY()));
 					}
 				}
 			}

@@ -512,6 +512,15 @@ namespace Bitmute.Imaging
 			MarkStyleCacheDirty();
 		}
 
+		public void RestoreMoveState(SKBitmap bitmap, SKBitmap mask, int offsetX, int offsetY)
+		{
+			m_bitmap = bitmap;
+			m_maskBitmap = mask;
+			m_offsetX = offsetX;
+			m_offsetY = offsetY;
+			MarkStyleCacheDirty();
+		}
+
 		public void ConvertDepth(eColorDepth target)
 		{
 			if (m_bitmap.ColorType == target.ToColorType())
@@ -916,7 +925,6 @@ namespace Bitmute.Imaging
 				maskPaint.Dispose();
 				maskImage.Dispose();
 				maskCanvas.Dispose();
-				m_maskBitmap.Dispose();
 				m_maskBitmap = grownMask;
 			}
 			m_offsetX = coverLeft;
