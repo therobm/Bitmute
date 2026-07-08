@@ -450,6 +450,11 @@ namespace Bitmute.UI.Operations
 			{
 				return false;
 			}
+			bool handledPathAnchor = m_main.DeleteSelectedPathAnchor();
+			if (handledPathAnchor)
+			{
+				return true;
+			}
 			if ((chord.m_modifiers & VirtualKeyModifiers.Control) == VirtualKeyModifiers.Control)
 			{
 				m_main.FillSelectionWithBackground();

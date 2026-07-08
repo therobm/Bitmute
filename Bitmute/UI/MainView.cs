@@ -2976,6 +2976,21 @@ namespace Bitmute.UI
 			{
 				return false;
 			}
+			Tool penCandidate = CurrentTool();
+			if (penCandidate is PenTool)
+			{
+				PenTool pen = (PenTool)penCandidate;
+				if (pen.HasActivePath())
+				{
+					DocumentWindow window = ActiveWindow();
+					if (window != null)
+					{
+						pen.FinishPath(window.DocumentModel());
+						window.Canvas().Redraw();
+						return true;
+					}
+				}
+			}
 			if (TransformActive())
 			{
 				CommitTransform();
@@ -3000,6 +3015,21 @@ namespace Bitmute.UI
 			{
 				return false;
 			}
+			Tool penCandidate = CurrentTool();
+			if (penCandidate is PenTool)
+			{
+				PenTool pen = (PenTool)penCandidate;
+				if (pen.HasActivePath())
+				{
+					DocumentWindow window = ActiveWindow();
+					if (window != null)
+					{
+						pen.CancelPath();
+						window.Canvas().Redraw();
+						return true;
+					}
+				}
+			}
 			if (TransformActive())
 			{
 				CancelTransform();
@@ -3016,6 +3046,31 @@ namespace Bitmute.UI
 				return true;
 			}
 			return false;
+		}
+
+		public bool DeleteSelectedPathAnchor()
+		{
+			Tool tool = CurrentTool();
+			if (!(tool is DirectSelectionTool))
+			{
+				return false;
+			}
+			DirectSelectionTool directSelect = (DirectSelectionTool)tool;
+			if (directSelect.SelectedAnchor() < 0)
+			{
+				return false;
+			}
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
+			{
+				return false;
+			}
+			bool deleted = directSelect.DeleteSelected(window.DocumentModel());
+			if (deleted)
+			{
+				window.Canvas().Redraw();
+			}
+			return deleted;
 		}
 
 		private void RefreshTransformCanvas()
