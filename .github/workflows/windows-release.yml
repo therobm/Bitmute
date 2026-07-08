@@ -37,7 +37,8 @@ jobs:
           -p:WindowsPackageType=None
           -p:PublishSingleFile=true
           --self-contained true
-          -p:DebugType=none
+          -p:DebugType=embedded
+          -p:AllowedReferenceRelatedFileExtensions=none
           -p:WindowsAppSDKSelfContained=true
           -p:ApplicationDisplayVersion=${{ steps.version.outputs.base }}
           -p:ApplicationVersion=${{ github.run_number }}
