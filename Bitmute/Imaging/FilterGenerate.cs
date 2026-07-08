@@ -97,6 +97,78 @@ namespace Bitmute.Imaging
 			}
 		}
 
+		private sealed class NormalMapHighDepthWorker
+		{
+			public float[] m_heightBuffer;
+			public PixelAccessor m_accessor;
+			public int m_width;
+			public int m_height;
+			public float[] m_kernelHorizontal;
+			public float[] m_kernelVertical;
+			public int m_kernelSize;
+			public int m_kernelRadius;
+			public float m_kernelDivisor;
+			public float m_strength;
+			public bool m_invertX;
+			public bool m_invertY;
+			public eNormalMapEdge m_edge;
+
+			public void Band(int start, int end)
+			{
+				int size = m_kernelSize;
+				int radius = m_kernelRadius;
+				int width = m_width;
+				int height = m_height;
+				float divisor = m_kernelDivisor;
+				float strength = m_strength;
+				for (int y = start; y < end; y++)
+				{
+					for (int x = 0; x < width; x++)
+					{
+						float rawDx = 0.0f;
+						float rawDy = 0.0f;
+						float centerHeight = m_heightBuffer[(y * width) + x];
+						for (int kernelRow = 0; kernelRow < size; kernelRow++)
+						{
+							int sampleY = SampleIndex(y + (kernelRow - radius), height, m_edge);
+							int heightRowStart = sampleY * width;
+							for (int kernelColumn = 0; kernelColumn < size; kernelColumn++)
+							{
+								int sampleX = SampleIndex(x + (kernelColumn - radius), width, m_edge);
+								float sampleHeight = m_heightBuffer[heightRowStart + sampleX] - centerHeight;
+								int kernelIndex = (kernelRow * size) + kernelColumn;
+								rawDx = rawDx + (m_kernelHorizontal[kernelIndex] * sampleHeight);
+								rawDy = rawDy + (m_kernelVertical[kernelIndex] * sampleHeight);
+							}
+						}
+						float dx = rawDx / divisor;
+						float dy = rawDy / divisor;
+						if (m_invertX)
+						{
+							dx = -dx;
+						}
+						if (m_invertY)
+						{
+							dy = -dy;
+						}
+						float vectorX = -dx * strength;
+						float vectorY = -dy * strength;
+						float vectorZ = 1.0f;
+						double length = Math.Sqrt((double)((vectorX * vectorX) + (vectorY * vectorY) + (vectorZ * vectorZ)));
+						if (length < 0.0000001)
+						{
+							length = 1.0;
+						}
+						double normalizedX = vectorX / length;
+						double normalizedY = vectorY / length;
+						double normalizedZ = vectorZ / length;
+						float alpha = m_accessor.AlphaAt(x, y);
+						m_accessor.WriteNormalized(x, y, EncodeNormalized(normalizedX), EncodeNormalized(normalizedY), EncodeNormalized(normalizedZ), alpha);
+					}
+				}
+			}
+		}
+
 		private static int SampleIndex(int index, int count, eNormalMapEdge edge)
 		{
 			if (edge == eNormalMapEdge.Wrap)
@@ -132,6 +204,20 @@ namespace Bitmute.Imaging
 				return 255;
 			}
 			return (byte)rounded;
+		}
+
+		private static float EncodeNormalized(double value)
+		{
+			double mapped = (value * 0.5) + 0.5;
+			if (mapped < 0.0)
+			{
+				return 0.0f;
+			}
+			if (mapped > 1.0)
+			{
+				return 1.0f;
+			}
+			return (float)mapped;
 		}
 
 		private static int[] BinomialRow(int order)
@@ -268,6 +354,23 @@ namespace Bitmute.Imaging
 			}
 		}
 
+		private static void BuildHeightBufferHighDepth(PixelAccessor accessor, float[] heightBuffer, int width, int height)
+		{
+			for (int y = 0; y < height; y++)
+			{
+				int rowStart = y * width;
+				for (int x = 0; x < width; x++)
+				{
+					float red;
+					float green;
+					float blue;
+					float alpha;
+					accessor.ReadNormalized(x, y, out red, out green, out blue, out alpha);
+					heightBuffer[rowStart + x] = (0.299f * red) + (0.587f * green) + (0.114f * blue);
+				}
+			}
+		}
+
 		public static unsafe void NormalMap(SKBitmap bitmap, float strength, eNormalMapKernel kernel, bool invertX, bool invertY, eNormalMapEdge edge)
 		{
 			int width = bitmap.Width;
@@ -287,28 +390,50 @@ namespace Bitmute.Imaging
 			{
 				divisor = 1.0f;
 			}
-			float[] heightBuffer = new float[width * height];
-			BuildHeightBuffer(bitmap, heightBuffer);
-			fixed (float* heightBase = heightBuffer)
+			if (bitmap.ColorType == SKColorType.Rgba8888)
 			{
-				byte* destinationBase = (byte*)bitmap.GetPixels().ToPointer();
-				NormalMapWorker worker = new NormalMapWorker();
-				worker.m_heightBase = heightBase;
-				worker.m_destinationBase = destinationBase;
-				worker.m_destinationStride = bitmap.RowBytes;
-				worker.m_width = width;
-				worker.m_height = height;
-				worker.m_kernelHorizontal = horizontalKernel;
-				worker.m_kernelVertical = verticalKernel;
-				worker.m_kernelSize = size;
-				worker.m_kernelRadius = size / 2;
-				worker.m_kernelDivisor = divisor;
-				worker.m_strength = strength;
-				worker.m_invertX = invertX;
-				worker.m_invertY = invertY;
-				worker.m_edge = edge;
-				RowBands.Run(0, height, worker.Band);
+				float[] heightBuffer = new float[width * height];
+				BuildHeightBuffer(bitmap, heightBuffer);
+				fixed (float* heightBase = heightBuffer)
+				{
+					byte* destinationBase = (byte*)bitmap.GetPixels().ToPointer();
+					NormalMapWorker worker = new NormalMapWorker();
+					worker.m_heightBase = heightBase;
+					worker.m_destinationBase = destinationBase;
+					worker.m_destinationStride = bitmap.RowBytes;
+					worker.m_width = width;
+					worker.m_height = height;
+					worker.m_kernelHorizontal = horizontalKernel;
+					worker.m_kernelVertical = verticalKernel;
+					worker.m_kernelSize = size;
+					worker.m_kernelRadius = size / 2;
+					worker.m_kernelDivisor = divisor;
+					worker.m_strength = strength;
+					worker.m_invertX = invertX;
+					worker.m_invertY = invertY;
+					worker.m_edge = edge;
+					RowBands.Run(0, height, worker.Band);
+				}
+				return;
 			}
+			PixelAccessor accessor = new PixelAccessor(bitmap.GetPixels(), bitmap.RowBytes, bitmap.ColorType);
+			float[] highDepthHeightBuffer = new float[width * height];
+			BuildHeightBufferHighDepth(accessor, highDepthHeightBuffer, width, height);
+			NormalMapHighDepthWorker highDepthWorker = new NormalMapHighDepthWorker();
+			highDepthWorker.m_heightBuffer = highDepthHeightBuffer;
+			highDepthWorker.m_accessor = accessor;
+			highDepthWorker.m_width = width;
+			highDepthWorker.m_height = height;
+			highDepthWorker.m_kernelHorizontal = horizontalKernel;
+			highDepthWorker.m_kernelVertical = verticalKernel;
+			highDepthWorker.m_kernelSize = size;
+			highDepthWorker.m_kernelRadius = size / 2;
+			highDepthWorker.m_kernelDivisor = divisor;
+			highDepthWorker.m_strength = strength;
+			highDepthWorker.m_invertX = invertX;
+			highDepthWorker.m_invertY = invertY;
+			highDepthWorker.m_edge = edge;
+			RowBands.Run(0, height, highDepthWorker.Band);
 		}
 	}
 }
