@@ -145,6 +145,7 @@ namespace Bitmute.Tests
 			s_failures = s_failures + StrokeSnapshotDepthTests.RunAll();
 			s_failures = s_failures + BrushDepthTests.RunAll();
 			s_failures = s_failures + BrushSafetyDepthTests.RunAll();
+			s_failures = s_failures + ColorDepthUndoTests.RunAll();
 			s_failures = s_failures + FilterDepthBatchTests.RunAll();
 			s_failures = s_failures + LayerOrderTests.RunAll();
 			s_failures = s_failures + MarqueeTests.RunAll();

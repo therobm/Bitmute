@@ -9,6 +9,7 @@ namespace Bitmute.Imaging
 		private int m_beforeWidth;
 		private int m_beforeHeight;
 		private int m_beforeActive;
+		private eColorDepth m_beforeColorDepth;
 		private List<Layer> m_beforeLayers;
 		private byte[] m_beforeMask;
 		private SKRectI m_beforeMaskRect;
@@ -17,6 +18,7 @@ namespace Bitmute.Imaging
 		private int m_afterWidth;
 		private int m_afterHeight;
 		private int m_afterActive;
+		private eColorDepth m_afterColorDepth;
 		private List<Layer> m_afterLayers;
 		private byte[] m_afterMask;
 		private SKRectI m_afterMaskRect;
@@ -44,6 +46,7 @@ namespace Bitmute.Imaging
 			m_beforeWidth = document.Width();
 			m_beforeHeight = document.Height();
 			m_beforeActive = document.ActiveLayerIndex();
+			m_beforeColorDepth = document.ColorDepth();
 			Selection selection = document.Selection();
 			m_beforeSelActive = selection.IsActive();
 			m_beforeBounds = selection.Bounds();
@@ -64,6 +67,7 @@ namespace Bitmute.Imaging
 			m_afterWidth = document.Width();
 			m_afterHeight = document.Height();
 			m_afterActive = document.ActiveLayerIndex();
+			m_afterColorDepth = document.ColorDepth();
 			Selection selection = document.Selection();
 			m_afterSelActive = selection.IsActive();
 			m_afterBounds = selection.Bounds();
@@ -80,12 +84,14 @@ namespace Bitmute.Imaging
 
 		public override void ApplyBefore(Document document)
 		{
+			document.SetColorDepth(m_beforeColorDepth);
 			document.ReplaceLayers(m_beforeLayers, m_beforeWidth, m_beforeHeight, m_beforeActive);
 			document.RestoreSelection(m_beforeMask, m_beforeMaskRect, m_beforeBounds, m_beforeSelActive);
 		}
 
 		public override void ApplyAfter(Document document)
 		{
+			document.SetColorDepth(m_afterColorDepth);
 			document.ReplaceLayers(m_afterLayers, m_afterWidth, m_afterHeight, m_afterActive);
 			document.RestoreSelection(m_afterMask, m_afterMaskRect, m_afterBounds, m_afterSelActive);
 		}
