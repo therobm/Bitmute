@@ -97,6 +97,7 @@ namespace Bitmute.UI
 		private float m_zoomDragCurrentY;
 		private int m_pendingGuideKind;
 		private int m_pendingGuidePos;
+		private int m_pendingGuidePosVert;
 		private int m_guideDragKind;
 		private int m_guideDragIndex;
 		private int m_guideStickyState;
@@ -630,15 +631,20 @@ namespace Bitmute.UI
 				pendingPaint.StrokeWidth = 1.0f;
 				pendingPaint.Color = new SKColor(0, 170, 255, 140);
 				pendingPaint.IsAntialias = false;
+				if (m_pendingGuideKind == 1 || m_pendingGuideKind == 3)
+				{
+					float sy = (float)System.Math.Floor(m_offsetY + (m_pendingGuidePos * m_zoom)) + 0.5f;
+					canvas.DrawLine(0.0f, sy, viewWidth, sy, pendingPaint);
+				}
 				if (m_pendingGuideKind == 2)
 				{
 					float sx = (float)System.Math.Floor(m_offsetX + (m_pendingGuidePos * m_zoom)) + 0.5f;
 					canvas.DrawLine(sx, 0.0f, sx, viewHeight, pendingPaint);
 				}
-				else
+				if (m_pendingGuideKind == 3)
 				{
-					float sy = (float)System.Math.Floor(m_offsetY + (m_pendingGuidePos * m_zoom)) + 0.5f;
-					canvas.DrawLine(0.0f, sy, viewWidth, sy, pendingPaint);
+					float sxVertical = (float)System.Math.Floor(m_offsetX + (m_pendingGuidePosVert * m_zoom)) + 0.5f;
+					canvas.DrawLine(sxVertical, 0.0f, sxVertical, viewHeight, pendingPaint);
 				}
 				pendingPaint.Dispose();
 			}
@@ -649,6 +655,14 @@ namespace Bitmute.UI
 		{
 			m_pendingGuideKind = kind;
 			m_pendingGuidePos = pos;
+			InvalidateSurface();
+		}
+
+		public void SetPendingGuideBoth(int posHorizontal, int posVertical)
+		{
+			m_pendingGuideKind = 3;
+			m_pendingGuidePos = posHorizontal;
+			m_pendingGuidePosVert = posVertical;
 			InvalidateSurface();
 		}
 
@@ -667,6 +681,17 @@ namespace Bitmute.UI
 				if (pos >= 0 && pos <= m_document.Width())
 				{
 					guides.AddVertical(pos);
+				}
+			}
+			else if (kind == 3)
+			{
+				if (pos >= 0 && pos <= m_document.Height())
+				{
+					guides.AddHorizontal(pos);
+				}
+				if (m_pendingGuidePosVert >= 0 && m_pendingGuidePosVert <= m_document.Width())
+				{
+					guides.AddVertical(m_pendingGuidePosVert);
 				}
 			}
 			else
@@ -704,6 +729,10 @@ namespace Bitmute.UI
 			if (orientation == 1)
 			{
 				SetPendingGuide(1, SnapGuideToBox(docY, false));
+			}
+			else if (orientation == 3)
+			{
+				SetPendingGuideBoth(SnapGuideToBox(docY, false), SnapGuideToBox(docX, true));
 			}
 			else
 			{
@@ -3310,8 +3339,38 @@ namespace Bitmute.UI
 
 		public void FitToView()
 		{
-			m_viewInitialized = false;
+			float docWidth = m_document.Width();
+			float docHeight = m_document.Height();
+			if (m_lastViewportWidth <= 0.0f || m_lastViewportHeight <= 0.0f || docWidth <= 0.0f || docHeight <= 0.0f)
+			{
+				m_viewInitialized = false;
+				ReportZoomInfo();
+				InvalidateSurface();
+				return;
+			}
+			float fitX = m_lastViewportWidth / docWidth;
+			float fitY = m_lastViewportHeight / docHeight;
+			float fit = fitX;
+			if (fitY < fit)
+			{
+				fit = fitY;
+			}
+			if (fit < 0.05f)
+			{
+				fit = 0.05f;
+			}
+			if (fit > 32.0f)
+			{
+				fit = 32.0f;
+			}
+			m_zoom = fit;
+			m_offsetX = (m_lastViewportWidth - (docWidth * m_zoom)) / 2.0f;
+			m_offsetY = (m_lastViewportHeight - (docHeight * m_zoom)) / 2.0f;
+			m_fittedDocWidth = m_document.Width();
+			m_fittedDocHeight = m_document.Height();
+			m_viewInitialized = true;
 			ReportZoomInfo();
+			NotifyChrome();
 			InvalidateSurface();
 		}
 

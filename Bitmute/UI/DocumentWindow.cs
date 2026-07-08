@@ -60,7 +60,10 @@ namespace Bitmute.UI
 			m_verticalScrollbar = new CanvasScrollbar(m_canvas, false);
 
 			m_rulerCorner = new BoxView();
-			m_rulerCorner.ThemeColor(UiConstants.CanvasPaperLight, UiConstants.CanvasPaperDark);
+			m_rulerCorner.ThemeColor(UiConstants.RulerLight, UiConstants.RulerDark);
+			PointerGestureRecognizer cornerPointer = new PointerGestureRecognizer();
+			cornerPointer.PointerPressed += OnCornerPointerPressed;
+			m_rulerCorner.GestureRecognizers.Add(cornerPointer);
 
 			Grid layout = new Grid();
 			m_rulerColumn = new ColumnDefinition(new GridLength(UiConstants.RulerThickness));
@@ -308,6 +311,11 @@ namespace Bitmute.UI
 			}
 			m_guideCreateOrientation = 0;
 			m_canvas.CommitPendingGuide();
+		}
+
+		private void OnCornerPointerPressed(object sender, PointerEventArgs args)
+		{
+			BeginGuideCreation(3);
 		}
 
 		public CanvasView Canvas()

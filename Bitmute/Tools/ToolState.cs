@@ -69,6 +69,9 @@ namespace Bitmute.Tools
 		private float m_penPressure = 1.0f;
 		private bool m_pressureSizeEnabled = true;
 		private bool m_pressureOpacityEnabled = true;
+		private PressureCalibration m_pressureCalibration = new PressureCalibration();
+		private int m_pressureMinimumSizePercent = 1;
+		private int m_pressureMinimumOpacityPercent = 20;
 
 		public ToolState()
 		{
@@ -79,7 +82,7 @@ namespace Bitmute.Tools
 			m_brushHardness = 100;
 			m_brushOpacity = 100;
 			m_brushFlow = 100;
-			m_brushSpacing = 25;
+			m_brushSpacing = 10;
 			m_brushSquareTip = false;
 			m_brushSmoothing = 0;
 			m_brushStrength = 50;
@@ -520,7 +523,58 @@ namespace Bitmute.Tools
 			{
 				pressure = 1.0f;
 			}
-			m_penPressure = pressure;
+			m_penPressure = m_pressureCalibration.Apply(pressure);
+		}
+
+		public PressureCalibration Calibration()
+		{
+			return m_pressureCalibration;
+		}
+
+		public int PressureMinimumSizePercent()
+		{
+			return m_pressureMinimumSizePercent;
+		}
+
+		public void SetPressureMinimumSizePercent(int percent)
+		{
+			if (percent < 1)
+			{
+				percent = 1;
+			}
+			if (percent > 100)
+			{
+				percent = 100;
+			}
+			m_pressureMinimumSizePercent = percent;
+		}
+
+		public double PressureMinimumSize()
+		{
+			return m_pressureMinimumSizePercent / 100.0;
+		}
+
+		public int PressureMinimumOpacityPercent()
+		{
+			return m_pressureMinimumOpacityPercent;
+		}
+
+		public void SetPressureMinimumOpacityPercent(int percent)
+		{
+			if (percent < 1)
+			{
+				percent = 1;
+			}
+			if (percent > 100)
+			{
+				percent = 100;
+			}
+			m_pressureMinimumOpacityPercent = percent;
+		}
+
+		public double PressureMinimumOpacity()
+		{
+			return m_pressureMinimumOpacityPercent / 100.0;
 		}
 
 		public bool PressureSizeEnabled()

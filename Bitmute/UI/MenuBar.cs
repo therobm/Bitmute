@@ -126,7 +126,7 @@ namespace Bitmute.UI
 				items.Add(new MenuBarItem("Define Pattern", eMenuAction.DefinePattern, () => m_main.DoDefinePattern()));
 				items.Add(new MenuBarItem("Define Brush", eMenuAction.DefineBrush, () => m_main.DoDefineBrush()));
 				items.Add(new MenuBarItem("Save Brush Preset", eMenuAction.SaveBrushPreset, () => m_main.DoSaveBrushPreset()));
-				items.Add(new MenuBarItem("Preferences…", eMenuAction.Preferences, () => m_main.ShowModal(new PreferencesDialog(), 340.0, 260.0)));
+				items.Add(new MenuBarItem("Preferences…", eMenuAction.Preferences, () => m_main.ShowModal(new PreferencesDialog(), 340.0, 520.0)));
 				return items;
 			}
 			if (title == "Image")
