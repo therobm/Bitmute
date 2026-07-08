@@ -512,6 +512,15 @@ namespace Bitmute.Imaging
 			MarkStyleCacheDirty();
 		}
 
+		public void RestoreMoveState(SKBitmap bitmap, SKBitmap mask, int offsetX, int offsetY)
+		{
+			m_bitmap = bitmap;
+			m_maskBitmap = mask;
+			m_offsetX = offsetX;
+			m_offsetY = offsetY;
+			MarkStyleCacheDirty();
+		}
+
 		public void ConvertDepth(eColorDepth target)
 		{
 			if (m_bitmap.ColorType == target.ToColorType())
@@ -905,8 +914,22 @@ namespace Bitmute.Imaging
 			image.Dispose();
 			canvas.Dispose();
 			m_bitmap = grown;
+			if (m_maskBitmap != null)
+			{
+				SKBitmap grownMask = new SKBitmap(newWidth, newHeight, m_maskBitmap.ColorType, SKAlphaType.Unpremul);
+				grownMask.Erase(SKColors.White);
+				SKCanvas maskCanvas = new SKCanvas(grownMask);
+				SKImage maskImage = SKImage.FromBitmap(m_maskBitmap);
+				SKPaint maskPaint = new SKPaint();
+				maskCanvas.DrawImage(maskImage, m_offsetX - coverLeft, m_offsetY - coverTop, sampling, maskPaint);
+				maskPaint.Dispose();
+				maskImage.Dispose();
+				maskCanvas.Dispose();
+				m_maskBitmap = grownMask;
+			}
 			m_offsetX = coverLeft;
 			m_offsetY = coverTop;
+			MarkStyleCacheDirty();
 		}
 
 		public void SetPixelCanvas(int canvasX, int canvasY, SKColor color)

@@ -3926,6 +3926,15 @@ namespace Bitmute.UI
 
 		private void OnFocusSinkPreviewKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs eventArgs)
 		{
+			if (IsSelectionNudgeKey(eventArgs.Key))
+			{
+				if (TryNudgeSelection(eventArgs.Key))
+				{
+					eventArgs.Handled = true;
+				}
+				return;
+			}
+
 			if (eventArgs.Key != Windows.System.VirtualKey.Enter)
 			{
 				return;
@@ -3945,6 +3954,95 @@ namespace Bitmute.UI
 			}
 
 			CommitArmedOperation();
+		}
+
+		private bool IsSelectionNudgeKey(Windows.System.VirtualKey key)
+		{
+			return key == Windows.System.VirtualKey.Left
+				|| key == Windows.System.VirtualKey.Right
+				|| key == Windows.System.VirtualKey.Up
+				|| key == Windows.System.VirtualKey.Down;
+		}
+
+		private bool IsSelectionToolActive()
+		{
+			eTool tool = m_toolState.Tool();
+			return tool == eTool.Select
+				|| tool == eTool.EllipseSelect
+				|| tool == eTool.Lasso
+				|| tool == eTool.FreehandLasso
+				|| tool == eTool.MagneticLasso
+				|| tool == eTool.MagicWand;
+		}
+
+		private bool TryNudgeSelection(Windows.System.VirtualKey key)
+		{
+			if (IsTextEditActive())
+			{
+				return false;
+			}
+			if (HasOpenModal())
+			{
+				return false;
+			}
+			if (!IsSelectionToolActive())
+			{
+				return false;
+			}
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
+			{
+				return false;
+			}
+			Document document = window.DocumentModel();
+			Selection selection = document.Selection();
+			if (!selection.IsActive())
+			{
+				return false;
+			}
+			int step = 1;
+			Windows.UI.Core.CoreVirtualKeyStates shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift);
+			if ((shiftState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down)
+			{
+				step = 10;
+			}
+			int deltaX = 0;
+			int deltaY = 0;
+			if (key == Windows.System.VirtualKey.Left)
+			{
+				deltaX = -step;
+			}
+			else if (key == Windows.System.VirtualKey.Right)
+			{
+				deltaX = step;
+			}
+			else if (key == Windows.System.VirtualKey.Up)
+			{
+				deltaY = -step;
+			}
+			else
+			{
+				deltaY = step;
+			}
+			NudgeActiveSelection(window, document, selection, deltaX, deltaY);
+			return true;
+		}
+
+		private void NudgeActiveSelection(DocumentWindow window, Document document, Selection selection, int deltaX, int deltaY)
+		{
+			if (document.HasFloatingSelection())
+			{
+				document.SetFloatingSelectionDelta(document.FloatDeltaX() + deltaX, document.FloatDeltaY() + deltaY);
+			}
+			else
+			{
+				byte[] mask = selection.MaskCopy();
+				SkiaSharp.SKRectI maskRect = new SkiaSharp.SKRectI(selection.MaskOriginX(), selection.MaskOriginY(), selection.MaskOriginX() + selection.MaskWidth(), selection.MaskOriginY() + selection.MaskHeight());
+				selection.SetShifted(mask, maskRect, selection.Bounds(), deltaX, deltaY);
+			}
+			CanvasView canvas = window.Canvas();
+			canvas.MarkComposeDirty();
+			canvas.Redraw();
 		}
 
 		private void FocusKeyboardSinkDeferred()
