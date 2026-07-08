@@ -353,9 +353,22 @@ namespace Bitmute.UI
 			}
 			if (parent == eMenuAction.ModeMenu)
 			{
-				items.Add(new MenuBarItem("8 Bits/Channel", eMenuAction.Mode8, () => m_main.DoConvertColorDepth(eColorDepth.Eight)));
-				items.Add(new MenuBarItem("16 Bits/Channel", eMenuAction.Mode16, () => m_main.DoConvertColorDepth(eColorDepth.Sixteen)));
-				items.Add(new MenuBarItem("32 Bits/Channel (float)", eMenuAction.Mode32, () => m_main.DoConvertColorDepth(eColorDepth.ThirtyTwoFloat)));
+				Document modeDocument = m_main.ActiveDocument();
+				bool hasModeDocument = modeDocument != null;
+				eColorDepth activeDepth = eColorDepth.Eight;
+				if (hasModeDocument)
+				{
+					activeDepth = modeDocument.ColorDepth();
+				}
+				MenuBarItem mode8 = new MenuBarItem("8 Bits/Channel", eMenuAction.Mode8, () => m_main.DoConvertColorDepth(eColorDepth.Eight));
+				mode8.m_checked = hasModeDocument && activeDepth == eColorDepth.Eight;
+				items.Add(mode8);
+				MenuBarItem mode16 = new MenuBarItem("16 Bits/Channel", eMenuAction.Mode16, () => m_main.DoConvertColorDepth(eColorDepth.Sixteen));
+				mode16.m_checked = hasModeDocument && activeDepth == eColorDepth.Sixteen;
+				items.Add(mode16);
+				MenuBarItem mode32 = new MenuBarItem("32 Bits/Channel (float)", eMenuAction.Mode32, () => m_main.DoConvertColorDepth(eColorDepth.ThirtyTwoFloat));
+				mode32.m_checked = hasModeDocument && activeDepth == eColorDepth.ThirtyTwoFloat;
+				items.Add(mode32);
 				return items;
 			}
 			if (m_main.BuildsFilterSubmenu(parent))

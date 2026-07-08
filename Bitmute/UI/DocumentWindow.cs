@@ -16,6 +16,7 @@ namespace Bitmute.UI
 		private bool m_guidePointerHooked;
 		private Entry m_zoomEntry;
 		private string m_baseTitle;
+		private int m_zoomPercent;
 		private Ruler m_topRuler;
 		private Ruler m_leftRuler;
 		private CanvasScrollbar m_horizontalScrollbar;
@@ -25,10 +26,28 @@ namespace Bitmute.UI
 		private RowDefinition m_rulerRow;
 		private bool m_rulersEnabled;
 
+		private static string ColorDepthLabel(eColorDepth depth)
+		{
+			if (depth == eColorDepth.Eight)
+			{
+				return "8-bit";
+			}
+			if (depth == eColorDepth.Sixteen)
+			{
+				return "16-bit";
+			}
+			if (depth == eColorDepth.ThirtyTwoFloat)
+			{
+				return "32-bit float";
+			}
+			return "8-bit";
+		}
+
 		public DocumentWindow(Document document)
 		{
 			m_document = document;
-			m_baseTitle = document.Title();
+			m_baseTitle = document.Title() + " (" + ColorDepthLabel(document.ColorDepth()) + ")";
+			m_zoomPercent = 100;
 			SetTitle(m_baseTitle);
 
 			m_canvas = new CanvasView(document);
@@ -220,11 +239,18 @@ namespace Bitmute.UI
 
 		public void SetZoomPercent(int percent)
 		{
+			m_zoomPercent = percent;
 			SetTitle(m_baseTitle + "  —  " + percent + "%");
 			if (m_zoomEntry != null && !m_zoomEntry.IsFocused)
 			{
 				m_zoomEntry.Text = percent + "%";
 			}
+		}
+
+		public void RefreshTitleDepth()
+		{
+			m_baseTitle = m_document.Title() + " (" + ColorDepthLabel(m_document.ColorDepth()) + ")";
+			SetZoomPercent(m_zoomPercent);
 		}
 
 		protected override void OnHandlerChanged()

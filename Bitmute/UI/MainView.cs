@@ -377,6 +377,7 @@ namespace Bitmute.UI
 			Document document = window.DocumentModel();
 			document.ConvertColorDepth(target);
 			canvas.MarkComposeDirty();
+			window.RefreshTitleDepth();
 		}
 
 		public void DoDesaturate()
