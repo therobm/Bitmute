@@ -83,6 +83,7 @@ namespace Bitmute.UI
 		ToggleLayersPanel,
 		TogglePatternsPanel,
 		AboutBitmute,
+		ReportBug,
 		OpenRecentMenu,
 		TransformMenu,
 		AdjustmentsMenu,

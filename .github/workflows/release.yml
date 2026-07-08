@@ -57,6 +57,7 @@ jobs:
           -p:WindowsAppSDKSelfContained=true
           -p:ApplicationDisplayVersion=${{ steps.version.outputs.version }}
           -p:ApplicationVersion=${{ github.run_number }}
+          -p:ReportToken=${{ secrets.BITMUTE_REPORT_TOKEN }}
           -o publish
 
       - name: Stage release artifact

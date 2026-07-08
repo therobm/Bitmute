@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Bitmute.Imaging;
+using Bitmute.Reporting;
 using Bitmute.Storage;
 using Bitmute.Tools;
 using Bitmute.UI.Dialogs;
@@ -816,6 +817,31 @@ namespace Bitmute.UI
 		public void PromptRenamePattern(Pattern pattern)
 		{
 			ShowModal(new RenamePatternDialog(pattern), 320.0, 160.0);
+		}
+
+		public void ShowReportBugDialog()
+		{
+			ShowModal(new ReportBugDialog(), 460.0, 400.0);
+		}
+
+		public void SubmitBugReport(string title, string description)
+		{
+			SubmitBugReportAsync(title, description);
+		}
+
+		private async void SubmitBugReportAsync(string title, string description)
+		{
+			bool sent = await BugReportClient.SubmitAsync(eReportKind.UserReport, title, description, "");
+			string message;
+			if (sent)
+			{
+				message = "Thanks, your report was sent.";
+			}
+			else
+			{
+				message = "The report couldn't be sent right now. Please try again later.";
+			}
+			ShowModal(new MessageDialog("Report a Bug", message, new string[] { "OK" }, null), 380.0, 200.0);
 		}
 
 		public void ApplyRenamePattern(Pattern pattern, string newName)

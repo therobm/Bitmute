@@ -284,6 +284,7 @@ namespace Bitmute.UI
 				items.Add(patternsPanel);
 				return items;
 			}
+			items.Add(new MenuBarItem("Report Bug…", eMenuAction.ReportBug, () => m_main.ShowReportBugDialog()));
 			items.Add(new MenuBarItem("About Bitmute", eMenuAction.AboutBitmute, () => m_main.ShowModal(new AboutDialog(), 380.0, 300.0)));
 			return items;
 		}

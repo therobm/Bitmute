@@ -41,6 +41,7 @@ jobs:
           -p:WindowsAppSDKSelfContained=true
           -p:ApplicationDisplayVersion=${{ steps.version.outputs.base }}
           -p:ApplicationVersion=${{ github.run_number }}
+          -p:ReportToken=${{ secrets.BITMUTE_REPORT_TOKEN }}
           -o publish
 
       - name: Upload artifact
