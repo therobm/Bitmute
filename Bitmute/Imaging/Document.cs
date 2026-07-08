@@ -923,13 +923,13 @@ namespace Bitmute.Imaging
 				return;
 			}
 			SKBitmap bitmap = ActivePaintBitmap();
-			if (m_strokeSnapshot == null || m_strokeSnapshot.Width != bitmap.Width || m_strokeSnapshot.Height != bitmap.Height)
+			if (m_strokeSnapshot == null || m_strokeSnapshot.Width != bitmap.Width || m_strokeSnapshot.Height != bitmap.Height || m_strokeSnapshot.ColorType != bitmap.ColorType)
 			{
 				if (m_strokeSnapshot != null)
 				{
 					m_strokeSnapshot.Dispose();
 				}
-				m_strokeSnapshot = new SKBitmap(bitmap.Width, bitmap.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+				m_strokeSnapshot = new SKBitmap(bitmap.Width, bitmap.Height, bitmap.ColorType, SKAlphaType.Unpremul);
 			}
 			PixelRegion.CopyPixels(bitmap, m_strokeSnapshot);
 			m_strokeLayerIndex = m_activeLayerIndex;
@@ -970,7 +970,7 @@ namespace Bitmute.Imaging
 			int sourceRowBytes = m_strokeSnapshot.RowBytes;
 			byte* targetBase = (byte*)current.GetPixels().ToPointer();
 			int targetRowBytes = current.RowBytes;
-			long rowLength = (long)current.Width * 4;
+			long rowLength = (long)current.Width * current.BytesPerPixel;
 			int height = current.Height;
 			for (int y = 0; y < height; y++)
 			{

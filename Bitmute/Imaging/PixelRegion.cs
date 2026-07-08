@@ -33,7 +33,7 @@ namespace Bitmute.Imaging
 			worker.m_destinationBase = destination.GetPixels();
 			worker.m_sourceStride = source.RowBytes;
 			worker.m_destinationStride = destination.RowBytes;
-			worker.m_rowLength = (long)source.Width * 4;
+			worker.m_rowLength = (long)source.Width * source.BytesPerPixel;
 			RowBands.Run(0, source.Height, worker.Band);
 		}
 
@@ -74,6 +74,7 @@ namespace Bitmute.Imaging
 			byte* afterBase = (byte*)after.GetPixels().ToPointer();
 			int beforeStride = before.RowBytes;
 			int afterStride = after.RowBytes;
+			int bytesPerPixel = before.BytesPerPixel;
 
 			int minX = width;
 			int minY = height;
@@ -82,11 +83,21 @@ namespace Bitmute.Imaging
 
 			for (int y = scanTop; y < scanBottom; y++)
 			{
-				uint* beforeRow = (uint*)(beforeBase + ((long)y * beforeStride));
-				uint* afterRow = (uint*)(afterBase + ((long)y * afterStride));
+				byte* beforeRow = beforeBase + ((long)y * beforeStride);
+				byte* afterRow = afterBase + ((long)y * afterStride);
 				for (int x = scanLeft; x < scanRight; x++)
 				{
-					if (beforeRow[x] != afterRow[x])
+					int pixelOffset = x * bytesPerPixel;
+					bool pixelChanged = false;
+					for (int byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++)
+					{
+						if (beforeRow[pixelOffset + byteIndex] != afterRow[pixelOffset + byteIndex])
+						{
+							pixelChanged = true;
+							break;
+						}
+					}
+					if (pixelChanged)
 					{
 						if (x < minX)
 						{
