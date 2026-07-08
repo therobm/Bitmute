@@ -11,7 +11,7 @@ namespace Bitmute.Reporting
 
 		public static string AppVersion()
 		{
-			return AppInfo.Current.VersionString;
+			return AppInfo.Current.VersionString + " (" + AppInfo.Current.BuildString + ")";
 		}
 
 		public static string OperatingSystem()
