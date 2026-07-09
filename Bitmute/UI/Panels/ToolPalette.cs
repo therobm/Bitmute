@@ -89,7 +89,8 @@ namespace Bitmute.UI.Panels
 			{ eTool.Blur, "blur.png" },
 			{ eTool.Sharpen, "sharpen.png" },
 			{ eTool.Smudge, "smudge.png" },
-			{ eTool.DodgeBurn, "dodge.png" },
+			{ eTool.Dodge, "dodge.png" },
+			{ eTool.Burn, "burn.png" },
 			{ eTool.Sponge, "sponge.png" },
 			{ eTool.Text, "text.png" },
 			{ eTool.Line, "line.png" },
@@ -125,7 +126,8 @@ namespace Bitmute.UI.Panels
 			{ eTool.Blur, "Blur" },
 			{ eTool.Sharpen, "Sharpen" },
 			{ eTool.Smudge, "Smudge" },
-			{ eTool.DodgeBurn, "Dodge / Burn (Alt = Burn)" },
+			{ eTool.Dodge, "Dodge (Alt = Burn)" },
+			{ eTool.Burn, "Burn (Alt = Dodge)" },
 			{ eTool.Sponge, "Sponge (Saturate / Desaturate)" },
 			{ eTool.Text, "Text" },
 			{ eTool.Line, "Line" },
@@ -246,6 +248,17 @@ namespace Bitmute.UI.Panels
 		private void OnResetCornerTapped(object sender, TappedEventArgs eventArgs)
 		{
 			OnResetTapped(sender, eventArgs);
+		}
+
+		private string ComposeTooltip(eTool tool)
+		{
+			string tip = m_toolTips[tool];
+			string shortcut = Bitmute.UI.Operations.OperationRegistry.ShortcutForTool(tool);
+			if (shortcut != "")
+			{
+				return tip + " (" + shortcut + ")";
+			}
+			return tip;
 		}
 
 		private Border BuildCornerButton(View content, string tip, EventHandler<TappedEventArgs> handler)
@@ -378,7 +391,7 @@ namespace Bitmute.UI.Panels
 			button.StrokeThickness = 0.0;
 			button.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(3.0) };
 			button.Content = content;
-			ToolTipProperties.SetText(button, m_toolTips[activeTool]);
+			ToolTipProperties.SetText(button, ComposeTooltip(activeTool));
 
 			TapGestureRecognizer tap = new TapGestureRecognizer();
 			tap.Tapped += OnCellTapped;
@@ -536,7 +549,7 @@ namespace Bitmute.UI.Panels
 				memberButton.StrokeThickness = 0.0;
 				memberButton.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(3.0) };
 				memberButton.Content = memberIcon;
-				ToolTipProperties.SetText(memberButton, m_toolTips[memberTool]);
+				ToolTipProperties.SetText(memberButton, ComposeTooltip(memberTool));
 				TapGestureRecognizer memberTap = new TapGestureRecognizer();
 				memberTap.Tapped += OnFlyoutMemberTapped;
 				memberButton.GestureRecognizers.Add(memberTap);
@@ -596,7 +609,7 @@ namespace Bitmute.UI.Panels
 			m_selectedTool = tool;
 			m_tools[entryIndex].m_activeToolIndex = memberIndex;
 			m_cellIcons[entryIndex].SetIcon(m_toolIcons[tool]);
-			ToolTipProperties.SetText(m_cellButtons[entryIndex], m_toolTips[tool]);
+			ToolTipProperties.SetText(m_cellButtons[entryIndex], ComposeTooltip(tool));
 
 			for (int index = 0; index < m_cellButtons.Length; index++)
 			{
@@ -613,7 +626,6 @@ namespace Bitmute.UI.Panels
 				{
 					m_cellButtons[index].ThemeBg(UiConstants.ToolButtonChipLight, UiConstants.ToolButtonChipDark);
 				}
-				m_cellIcons[index].SetSelected(selected);
 			}
 
 			MainView main = MainView.Self;
@@ -632,16 +644,15 @@ namespace Bitmute.UI.Panels
 				new ToolEntry(eTool.Lasso, new List<eTool>(){ eTool.FreehandLasso, eTool.MagneticLasso }, 1, 0),
 				new ToolEntry(eTool.MagicWand, 1, 1),
 				new ToolEntry(eTool.Crop, 2, 0),   
-				new ToolEntry(eTool.DirectSelect, 2, 1),
 				new ToolEntry(3, 0),
 				new ToolEntry(eTool.Heal, 4, 0),
 				new ToolEntry(eTool.Brush, new List<eTool>(){ eTool.Pencil, eTool.ColorReplacement }, 4, 1),
 				new ToolEntry(eTool.Clone, 5, 0),
-				new ToolEntry(eTool.Pen, 5, 1),
+				new ToolEntry(eTool.Pen, new List<eTool>(){ eTool.DirectSelect }, 5, 1),
 				new ToolEntry(eTool.Eraser, 6, 0),
 				new ToolEntry(eTool.Fill, new List<eTool>(){ eTool.Gradient }, 6, 1),
 				new ToolEntry(eTool.Blur, new List<eTool>(){ eTool.Sharpen, eTool.Smudge }, 7, 0),
-				new ToolEntry(eTool.DodgeBurn, new List<eTool>(){ eTool.Sponge }, 7, 1),
+				new ToolEntry(eTool.Dodge, new List<eTool>(){ eTool.Burn, eTool.Sponge }, 7, 1),
 				new ToolEntry(8, 0),
 				new ToolEntry(eTool.Text, 9, 0),
 				new ToolEntry(eTool.Line, new List<eTool>(){ eTool.RectangleShape, eTool.RoundedRectangleShape, eTool.EllipseShape, eTool.PolygonShape }, 9, 1),

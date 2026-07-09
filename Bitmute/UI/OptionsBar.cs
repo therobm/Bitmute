@@ -2403,7 +2403,7 @@ namespace Bitmute.UI
 			bool isSponge = tool == eTool.Sponge;
 			bool isColorReplace = tool == eTool.ColorReplacement;
 			bool isStrengthTool = tool == eTool.Blur || tool == eTool.Sharpen || tool == eTool.Smudge;
-			bool isBrushFamily = tool == eTool.Brush || tool == eTool.Eraser || tool == eTool.Clone || tool == eTool.Heal || tool == eTool.Blur || tool == eTool.Sharpen || tool == eTool.Smudge || tool == eTool.DodgeBurn || isSponge || isColorReplace;
+			bool isBrushFamily = tool == eTool.Brush || tool == eTool.Eraser || tool == eTool.Clone || tool == eTool.Heal || tool == eTool.Blur || tool == eTool.Sharpen || tool == eTool.Smudge || tool == eTool.Dodge || tool == eTool.Burn || isSponge || isColorReplace;
 			bool showsBlendMode = isBrushFamily && !isSponge && !isColorReplace && !isStrengthTool;
 			bool usesSize = isBrushFamily || tool == eTool.Pencil || tool == eTool.Line;
 			if (m_brushSizeLabel != null)
@@ -2445,7 +2445,7 @@ namespace Bitmute.UI
 				m_colorReplaceModePicker.IsVisible = isColorReplace;
 				m_colorReplaceToleranceLabel.IsVisible = isColorReplace;
 				m_colorReplaceToleranceField.IsVisible = isColorReplace;
-				bool isDodgeBurn = tool == eTool.DodgeBurn;
+				bool isDodgeBurn = tool == eTool.Dodge || tool == eTool.Burn;
 				m_dodgeBurnRangeLabel.IsVisible = isDodgeBurn;
 				m_dodgeBurnRangePicker.IsVisible = isDodgeBurn;
 				m_dodgeBurnExposureLabel.IsVisible = isDodgeBurn;

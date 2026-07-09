@@ -87,9 +87,16 @@ namespace Bitmute.UI
 		private float m_selectPressDeviceX;
 		private float m_selectPressDeviceY;
 		private bool m_cursorInside;
+		private static SKBitmap s_eyedropperCursor;
+		private static bool s_eyedropperCursorLoadStarted;
+		private const float EyedropperHotspotX = 1.0f;
+		private const float EyedropperHotspotY = 125.0f;
+		private const int CursorImageSize = 32;
 		private bool m_toolStrokeActive;
+		private bool m_altColorSampling;
 		private bool m_ctrlHeld;
 		private bool m_penDirectOverride;
+		private bool m_ctrlMoveOverride;
 		private bool m_zoomDragging;
 		private float m_zoomDragStartX;
 		private float m_zoomDragStartY;
@@ -103,8 +110,10 @@ namespace Bitmute.UI
 		private int m_guideStickyState;
 		private SKRectI m_guideStickyBox;
 		private bool m_guideStickyIsBackground;
-		private bool m_hasCursorShape;
-		private Microsoft.UI.Input.InputSystemCursorShape m_currentCursorShape;
+		private bool m_hasCursorSpec;
+		private eCursorKind m_lastCursorKind;
+		private Microsoft.UI.Input.InputSystemCursorShape m_lastCursorShape;
+		private string m_lastCursorImageKey;
 		private int m_transformHoverKind;
 		private static System.Reflection.PropertyInfo s_protectedCursorProp = typeof(Microsoft.UI.Xaml.UIElement).GetProperty("ProtectedCursor", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
@@ -740,14 +749,12 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void ApplyCursorShape(Microsoft.UI.Input.InputSystemCursorShape shape)
+		private void ApplyCursor(CursorSpec spec)
 		{
-			if (m_hasCursorShape && m_currentCursorShape == shape)
+			if (m_hasCursorSpec && m_lastCursorKind == spec.m_kind && m_lastCursorShape == spec.m_systemShape && m_lastCursorImageKey == spec.m_imageKey)
 			{
 				return;
 			}
-			m_currentCursorShape = shape;
-			m_hasCursorShape = true;
 			if (s_protectedCursorProp == null)
 			{
 				return;
@@ -761,13 +768,54 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			Microsoft.UI.Input.InputCursor cursor = ResolveCursor(spec);
+			if (cursor == null)
+			{
+				return;
+			}
 			try
 			{
-				s_protectedCursorProp.SetValue(element, Microsoft.UI.Input.InputSystemCursor.Create(shape));
+				s_protectedCursorProp.SetValue(element, cursor);
+				m_hasCursorSpec = true;
+				m_lastCursorKind = spec.m_kind;
+				m_lastCursorShape = spec.m_systemShape;
+				m_lastCursorImageKey = spec.m_imageKey;
 			}
 			catch (System.Exception)
 			{
 			}
+		}
+
+		private Microsoft.UI.Input.InputCursor ResolveCursor(CursorSpec spec)
+		{
+			if (spec.m_kind == eCursorKind.HiddenWithOverlay)
+			{
+				Microsoft.UI.Input.InputCursor transparent = Bitmute.Platforms.Windows.NativeCursors.Transparent();
+				if (transparent != null)
+				{
+					return transparent;
+				}
+				return Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.Arrow);
+			}
+			if (spec.m_kind == eCursorKind.Image)
+			{
+				if (s_eyedropperCursor == null)
+				{
+					if (!s_eyedropperCursorLoadStarted)
+					{
+						s_eyedropperCursorLoadStarted = true;
+						LoadEyedropperCursor();
+					}
+					return null;
+				}
+				Microsoft.UI.Input.InputCursor image = Bitmute.Platforms.Windows.NativeCursors.FromBitmap(s_eyedropperCursor, spec.m_imageKey, spec.m_hotspotX, spec.m_hotspotY, CursorImageSize);
+				if (image != null)
+				{
+					return image;
+				}
+				return Microsoft.UI.Input.InputSystemCursor.Create(spec.m_systemShape);
+			}
+			return Microsoft.UI.Input.InputSystemCursor.Create(spec.m_systemShape);
 		}
 
 		private static Microsoft.UI.Input.InputSystemCursorShape TransformCursorShape(int kind)
@@ -801,20 +849,47 @@ namespace Bitmute.UI
 
 		private Tool EffectiveTool(Tool current)
 		{
-			if (!(current is PenTool))
+			if (current is PenTool)
 			{
-				return current;
+				bool useDirect;
+				if (m_toolStrokeActive)
+				{
+					useDirect = m_penDirectOverride;
+				}
+				else
+				{
+					useDirect = m_ctrlHeld;
+				}
+				if (!useDirect)
+				{
+					return current;
+				}
+				MainView penMain = MainView.Self;
+				if (penMain == null)
+				{
+					return current;
+				}
+				Tool directTool = penMain.ToolInstance(eTool.DirectSelect);
+				if (directTool == null)
+				{
+					return current;
+				}
+				return directTool;
 			}
-			bool useDirect;
+			bool useMove;
 			if (m_toolStrokeActive)
 			{
-				useDirect = m_penDirectOverride;
+				useMove = m_ctrlMoveOverride;
 			}
 			else
 			{
-				useDirect = m_ctrlHeld;
+				useMove = m_ctrlHeld;
 			}
-			if (!useDirect)
+			if (!useMove)
+			{
+				return current;
+			}
+			if (current is MoveTool || current is HandTool || current is DirectSelectionTool || current is FreeTransformTool || current is ZoomTool)
 			{
 				return current;
 			}
@@ -823,18 +898,18 @@ namespace Bitmute.UI
 			{
 				return current;
 			}
-			Tool directTool = main.ToolInstance(eTool.DirectSelect);
-			if (directTool == null)
+			Tool moveTool = main.ToolInstance(eTool.Move);
+			if (moveTool == null)
 			{
 				return current;
 			}
-			return directTool;
+			return moveTool;
 		}
 
 		private void UpdateHoverCursor(Tool tool, int pixelX, int pixelY)
 		{
 			m_transformHoverKind = 0;
-			Microsoft.UI.Input.InputSystemCursorShape desired = Microsoft.UI.Input.InputSystemCursorShape.Arrow;
+			CursorSpec spec = new CursorSpec(eCursorKind.System, Microsoft.UI.Input.InputSystemCursorShape.Arrow, "", 0, 0);
 			Bitmute.Imaging.Guides guides = m_document.Guides();
 			if (!guides.IsLocked())
 			{
@@ -845,24 +920,44 @@ namespace Bitmute.UI
 				}
 				if (guides.HitVertical(pixelX, tolerance) >= 0)
 				{
-					desired = Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast;
+					spec = new CursorSpec(eCursorKind.System, Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast, "", 0, 0);
 				}
 				else if (guides.HitHorizontal(pixelY, tolerance) >= 0)
 				{
-					desired = Microsoft.UI.Input.InputSystemCursorShape.SizeNorthSouth;
+					spec = new CursorSpec(eCursorKind.System, Microsoft.UI.Input.InputSystemCursorShape.SizeNorthSouth, "", 0, 0);
 				}
 			}
-			if (desired == Microsoft.UI.Input.InputSystemCursorShape.Arrow && tool is FreeTransformTool)
+			if (IsArrowSystem(spec) && tool is FreeTransformTool)
 			{
 				int kind = ((FreeTransformTool)tool).HitTestKind(pixelX, pixelY);
 				m_transformHoverKind = kind;
-				desired = TransformCursorShape(kind);
+				if (kind == 5)
+				{
+					spec = new CursorSpec(eCursorKind.HiddenWithOverlay, Microsoft.UI.Input.InputSystemCursorShape.Arrow, "", 0, 0);
+				}
+				else if (kind != 0)
+				{
+					spec = new CursorSpec(eCursorKind.System, TransformCursorShape(kind), "", 0, 0);
+				}
 			}
-			if (desired == Microsoft.UI.Input.InputSystemCursorShape.Arrow && tool is PenTool)
+			if (IsArrowSystem(spec) && ShowsBrushCursor(tool))
 			{
-				desired = Microsoft.UI.Input.InputSystemCursorShape.Cross;
+				spec = new CursorSpec(eCursorKind.HiddenWithOverlay, Microsoft.UI.Input.InputSystemCursorShape.Arrow, "", 0, 0);
 			}
-			ApplyCursorShape(desired);
+			if (IsArrowSystem(spec) && tool is PenTool)
+			{
+				spec = new CursorSpec(eCursorKind.System, Microsoft.UI.Input.InputSystemCursorShape.Cross, "", 0, 0);
+			}
+			if (IsArrowSystem(spec) && tool is EyedropperTool)
+			{
+				spec = new CursorSpec(eCursorKind.Image, Microsoft.UI.Input.InputSystemCursorShape.Cross, "eyedropper", (int)EyedropperHotspotX, (int)EyedropperHotspotY);
+			}
+			ApplyCursor(spec);
+		}
+
+		private static bool IsArrowSystem(CursorSpec spec)
+		{
+			return spec.m_kind == eCursorKind.System && spec.m_systemShape == Microsoft.UI.Input.InputSystemCursorShape.Arrow;
 		}
 
 		public void SyncDocumentSize()
@@ -874,6 +969,20 @@ namespace Bitmute.UI
 			if (m_fittedDocWidth != m_document.Width() || m_fittedDocHeight != m_document.Height())
 			{
 				ResetView();
+			}
+		}
+
+		private static async void LoadEyedropperCursor()
+		{
+			try
+			{
+				System.IO.Stream stream = await Microsoft.Maui.Storage.FileSystem.OpenAppPackageFileAsync("eyedropper.png");
+				SKBitmap bitmap = SKBitmap.Decode(stream);
+				stream.Dispose();
+				s_eyedropperCursor = bitmap;
+			}
+			catch (System.Exception)
+			{
 			}
 		}
 
@@ -2529,7 +2638,7 @@ namespace Bitmute.UI
 			if (eventArgs.ActionType == SKTouchAction.Exited || eventArgs.ActionType == SKTouchAction.Cancelled)
 			{
 				m_cursorInside = false;
-				ApplyCursorShape(Microsoft.UI.Input.InputSystemCursorShape.Arrow);
+				ApplyCursor(new CursorSpec(eCursorKind.System, Microsoft.UI.Input.InputSystemCursorShape.Arrow, "", 0, 0));
 				InvalidateSurface();
 			}
 			else
@@ -2537,7 +2646,7 @@ namespace Bitmute.UI
 				m_cursorInside = true;
 			}
 			Tool hoverTool = main.CurrentTool();
-			bool wantsHoverRepaint = ShowsBrushCursor(hoverTool);
+			bool wantsHoverRepaint = ShowsBrushCursor(hoverTool) || hoverTool is EyedropperTool;
 			if (hoverTool is FreeTransformTool && ((FreeTransformTool)hoverTool).HasPreview())
 			{
 				wantsHoverRepaint = true;
@@ -2641,9 +2750,16 @@ namespace Bitmute.UI
 			}
 			Windows.UI.Core.CoreVirtualKeyStates ctrlState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control);
 			m_ctrlHeld = (ctrlState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
-			if (tool is PenTool && eventArgs.ActionType == SKTouchAction.Pressed)
+			if (eventArgs.ActionType == SKTouchAction.Pressed)
 			{
-				m_penDirectOverride = m_ctrlHeld;
+				if (tool is PenTool)
+				{
+					m_penDirectOverride = m_ctrlHeld;
+				}
+				else
+				{
+					m_ctrlMoveOverride = m_ctrlHeld;
+				}
 			}
 			tool = EffectiveTool(tool);
 
@@ -2677,6 +2793,16 @@ namespace Bitmute.UI
 				((DirectSelectionTool)tool).SetPickRadius(selectPick);
 			}
 
+			if (tool is LassoTool)
+			{
+				int lassoClose = (int)System.Math.Ceiling(6.0 / m_zoom);
+				if (lassoClose < 3)
+				{
+					lassoClose = 3;
+				}
+				((LassoTool)tool).SetCloseRadius(lassoClose);
+			}
+
 			UpdateHoverCursor(tool, pixelX, pixelY);
 
 			if (HandleGuideDrag(eventArgs, pixelX, pixelY))
@@ -2698,12 +2824,12 @@ namespace Bitmute.UI
 					pixelX = snapGuides.SnapX(pixelX, snapTolerance);
 					pixelY = snapGuides.SnapY(pixelY, snapTolerance);
 				}
-				if (main.SnapTargetGrid())
+				if (main.SnapTargetGrid() && !(tool is RectangleSelectTool || tool is EllipseSelectTool))
 				{
 					pixelX = SnapToGrid(pixelX, snapTolerance);
 					pixelY = SnapToGrid(pixelY, snapTolerance);
 				}
-				if (main.SnapTargetEdges())
+				if (main.SnapTargetEdges() && !(tool is RectangleSelectTool || tool is EllipseSelectTool))
 				{
 					pixelX = SnapToEdge(pixelX, m_document.Width(), snapTolerance);
 					pixelY = SnapToEdge(pixelY, m_document.Height(), snapTolerance);
@@ -2822,10 +2948,14 @@ namespace Bitmute.UI
 			Windows.UI.Core.CoreVirtualKeyStates altState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Menu);
 			bool altHeld = (altState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
 			state.SetAltHeld(altHeld);
-			int guideSnapTolerance = (int)System.Math.Ceiling(6.0 / m_zoom);
-			if (guideSnapTolerance < 3)
+			int guideSnapTolerance;
+			if (m_zoom > 1.0)
 			{
-				guideSnapTolerance = 3;
+				guideSnapTolerance = 0;
+			}
+			else
+			{
+				guideSnapTolerance = (int)System.Math.Ceiling(6.0 / m_zoom);
 			}
 			bool snapMaster = main.SnapEnabled();
 			state.SetSnapToGuides(snapMaster && main.SnapTargetGuides());
@@ -2863,6 +2993,34 @@ namespace Bitmute.UI
 			}
 
 			state.SetPenPressure(m_currentPenPressure);
+
+			bool altSampleTool = tool is BrushTool || tool is PencilTool || tool is FillTool || tool is GradientTool;
+			if (altSampleTool)
+			{
+				if (eventArgs.ActionType == SKTouchAction.Pressed)
+				{
+					m_altColorSampling = altHeld;
+				}
+				if (m_altColorSampling)
+				{
+					if (eventArgs.ActionType == SKTouchAction.Pressed || (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact))
+					{
+						Bitmute.Imaging.Layer sampleLayer = m_document.ActiveLayer();
+						if (sampleLayer != null)
+						{
+							SKColor sampledColor = sampleLayer.GetPixelCanvas(pixelX, pixelY);
+							state.SetForeground(sampledColor);
+							main.OnCanvasInteracted();
+						}
+					}
+					if (eventArgs.ActionType == SKTouchAction.Released)
+					{
+						m_altColorSampling = false;
+					}
+					eventArgs.Handled = true;
+					return;
+				}
+			}
 
 			bool changed = false;
 			int preEventWidth = m_document.Width();
@@ -3426,16 +3584,56 @@ namespace Bitmute.UI
 
 		public void SetPanOffsetX(float offsetX)
 		{
-			m_offsetX = offsetX;
+			m_offsetX = ClampOffsetX(offsetX);
 			InvalidateSurface();
 			NotifyChrome();
 		}
 
 		public void SetPanOffsetY(float offsetY)
 		{
-			m_offsetY = offsetY;
+			m_offsetY = ClampOffsetY(offsetY);
 			InvalidateSurface();
 			NotifyChrome();
+		}
+
+		private float ClampOffsetX(float offsetX)
+		{
+			float content = m_document.Width() * m_zoom;
+			float viewport = CanvasSize.Width;
+			if (content <= viewport)
+			{
+				return (viewport - content) / 2.0f;
+			}
+			if (offsetX > 0.0f)
+			{
+				return 0.0f;
+			}
+			float minimum = viewport - content;
+			if (offsetX < minimum)
+			{
+				return minimum;
+			}
+			return offsetX;
+		}
+
+		private float ClampOffsetY(float offsetY)
+		{
+			float content = m_document.Height() * m_zoom;
+			float viewport = CanvasSize.Height;
+			if (content <= viewport)
+			{
+				return (viewport - content) / 2.0f;
+			}
+			if (offsetY > 0.0f)
+			{
+				return 0.0f;
+			}
+			float minimum = viewport - content;
+			if (offsetY < minimum)
+			{
+				return minimum;
+			}
+			return offsetY;
 		}
 
 		private void NotifyChrome()

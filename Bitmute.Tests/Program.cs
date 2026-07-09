@@ -64,6 +64,7 @@ namespace Bitmute.Tests
 			TestGaussianBlur();
 			TestGaussianBlurAlpha();
 			TestLayerMerging();
+			TestMergeSkipsHiddenLayers();
 			TestChannelVisibilityMask();
 			TestDodgeBurnRange();
 			TestChannelRender();
@@ -82,6 +83,7 @@ namespace Bitmute.Tests
 			TestTransformScaleCommit();
 			TestTransformSelectionLiftCancel();
 			TestTransformBackgroundStaysCanvas();
+			TestTransformSelectionMoveKeepsContent();
 			TestCanvasOpUndo();
 			TestStructuralLayerUndo();
 			TestGuidesModel();
@@ -98,6 +100,7 @@ namespace Bitmute.Tests
 			TestLayerStylePreviewTickEquivalence();
 			TestFeatherActive();
 			TestBrightnessContrastMatchesReference();
+			TestBlendAdjustedIntoSelection();
 			TestHueSaturationLightnessMatchesReference();
 			TestDesaturateMatchesReference();
 			TestPosterizeMatchesReference();
@@ -122,6 +125,7 @@ namespace Bitmute.Tests
 			TestStrokeSnapshotPoolReuse();
 			TestCoveragePoolClearedBetweenStrokes();
 			TestMarqueeDragSequence();
+			TestMarqueeNoSelectionConstraints();
 			TestEllipseDragScratchReuse();
 			TestSetShiftedPartialClip();
 			TestShiftTranslatableFlags();
@@ -168,6 +172,10 @@ namespace Bitmute.Tests
 			s_failures = s_failures + PalettePersistenceTests.RunAll();
 			s_failures = s_failures + PathDataTests.RunAll();
 			s_failures = s_failures + PenToolTests.RunAll();
+			s_failures = s_failures + LassoCloseTests.RunAll();
+			s_failures = s_failures + DeleteBackgroundTests.RunAll();
+			s_failures = s_failures + OpenImageBackgroundTests.RunAll();
+
 			if (s_failures == 0)
 			{
 				Console.WriteLine("ALL PASS");
@@ -656,6 +664,37 @@ namespace Bitmute.Tests
 			Check(doc.ActiveLayer().IsBackground(), "background stays a background layer");
 			SKColor exposed = doc.ActiveLayer().GetPixelCanvas(7, 7);
 			Check(exposed.Alpha == 255, "background exposed area stays opaque");
+		}
+
+		private static void TestTransformSelectionMoveKeepsContent()
+		{
+			Document doc = new Document("t", 64, 64);
+			Layer pasted = doc.AddLayer("p");
+			SKBitmap small = new SKBitmap(12, 12, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			SKColor green = new SKColor(0, 200, 0, 255);
+			small.Erase(green);
+			pasted.SetBitmap(small);
+			pasted.SetOffset(10, 10);
+			doc.Selection().SelectRect(new SKRectI(10, 10, 22, 22));
+			FreeTransformTool transform = new FreeTransformTool();
+			transform.SetPickRadius(2);
+			bool armed = transform.Begin(doc, 1, new SKColor(255, 255, 255, 255));
+			Check(armed, "transform selection-move arms");
+			ToolState state = new ToolState();
+			transform.OnPressed(doc, 16, 16, state);
+			transform.OnDragged(doc, 46, 41, state);
+			transform.OnReleased(doc, 46, 41, state);
+			transform.Commit(doc);
+			SKColor moved = pasted.GetPixelCanvas(46, 41);
+			Check(moved.Green > 150 && moved.Alpha > 200, "transform selection-move keeps content at new position 46,41 (rgba " + moved.Red + "," + moved.Green + "," + moved.Blue + "," + moved.Alpha + ")");
+			SKColor movedTopLeft = pasted.GetPixelCanvas(41, 36);
+			Check(movedTopLeft.Green > 150 && movedTopLeft.Alpha > 200, "transform selection-move keeps content near new top-left 41,36");
+			bool undone = doc.Undo();
+			Check(undone, "transform selection-move is undoable");
+			Check(pasted.Bitmap().Width == 12 && pasted.Bitmap().Height == 12, "transform selection-move undo restores original 12x12 bitmap");
+			Check(pasted.OffsetX() == 10 && pasted.OffsetY() == 10, "transform selection-move undo restores original offset");
+			SKColor undoHome = pasted.GetPixelCanvas(15, 15);
+			Check(undoHome.Green == 200 && undoHome.Alpha == 255, "transform selection-move undo restores pixels home 15,15");
 		}
 
 		private static void TestCanvasOpUndo()
@@ -1157,6 +1196,48 @@ namespace Bitmute.Tests
 			Check(selectedMerged.GetPixelCanvas(0, 0).Alpha == 0, "merge selected stays transparent where neither layer had pixels");
 		}
 
+		private static void TestMergeSkipsHiddenLayers()
+		{
+			Document downDoc = new Document("t", 8, 8);
+			downDoc.ActiveLayer().Bitmap().Erase(new SKColor(200, 0, 0, 255));
+			Layer hiddenTop = downDoc.AddLayer("top");
+			hiddenTop.Bitmap().Erase(new SKColor(0, 200, 0, 255));
+			hiddenTop.SetVisible(false);
+			downDoc.MergeDown(1);
+			Check(downDoc.Layers().Count == 1, "merge down of a hidden top collapses to one layer");
+			Layer downResult = downDoc.ActiveLayer();
+			Check(downResult.GetPixelCanvas(4, 4).Red > 180 && downResult.GetPixelCanvas(4, 4).Green < 80, "merge down discards the hidden top layer's pixels");
+			Check(downResult.IsVisible(), "merge down result stays visible");
+
+			Document baseHiddenDoc = new Document("t", 8, 8);
+			baseHiddenDoc.ActiveLayer().Bitmap().Erase(new SKColor(200, 0, 0, 255));
+			baseHiddenDoc.ActiveLayer().SetVisible(false);
+			Layer visibleTop = baseHiddenDoc.AddLayer("top");
+			visibleTop.Bitmap().Erase(new SKColor(0, 0, 200, 255));
+			baseHiddenDoc.MergeDown(1);
+			Layer baseHiddenResult = baseHiddenDoc.ActiveLayer();
+			Check(baseHiddenResult.GetPixelCanvas(4, 4).Blue > 180, "merge down keeps the visible top when the base was hidden");
+			Check(baseHiddenResult.IsVisible(), "merge down turns the result visible when only the top was visible");
+
+			Document selDoc = new Document("t", 8, 8);
+			selDoc.ActiveLayer().Bitmap().Erase(new SKColor(200, 0, 0, 255));
+			Layer selVisible = selDoc.AddLayer("a");
+			selVisible.Bitmap().Erase(SKColors.Transparent);
+			selVisible.Bitmap().SetPixel(1, 1, new SKColor(0, 200, 0, 255));
+			Layer selHidden = selDoc.AddLayer("b");
+			selHidden.Bitmap().Erase(SKColors.Transparent);
+			selHidden.Bitmap().SetPixel(2, 2, new SKColor(0, 0, 200, 255));
+			selHidden.SetVisible(false);
+			List<int> mergeSet = new List<int>();
+			mergeSet.Add(1);
+			mergeSet.Add(2);
+			selDoc.MergeLayers(mergeSet);
+			Check(selDoc.Layers().Count == 2, "merge selected with a hidden member still collapses the selection");
+			Layer selResult = selDoc.Layers()[1];
+			Check(selResult.GetPixelCanvas(1, 1).Green > 180, "merge selected keeps the visible member's pixels");
+			Check(selResult.GetPixelCanvas(2, 2).Alpha == 0, "merge selected discards the hidden member's pixels");
+		}
+
 		private static void TestChannelVisibilityMask()
 		{
 			SKBitmap source = new SKBitmap(2, 1, SKColorType.Rgba8888, SKAlphaType.Premul);
@@ -1211,7 +1292,7 @@ namespace Bitmute.Tests
 			state.SetAltHeld(true);
 			state.SetDodgeBurnRange(range);
 			state.SetDodgeBurnExposure(exposure);
-			DodgeBurnTool tool = new DodgeBurnTool();
+			DodgeTool tool = new DodgeTool();
 			doc.BeginStroke();
 			tool.OnPressed(doc, 16, 16, state);
 			tool.OnReleased(doc, 16, 16, state);
@@ -2798,6 +2879,43 @@ namespace Bitmute.Tests
 			random.Dispose();
 		}
 
+		private static void TestBlendAdjustedIntoSelection()
+		{
+			SKColor original = new SKColor(10, 20, 30, 255);
+			SKColor adjustedColor = new SKColor(200, 100, 50, 255);
+
+			Document doc = new Document("t", 16, 16);
+			Layer layer = doc.ActiveLayer();
+			layer.SetIsBackground(false);
+			layer.Bitmap().Erase(original);
+			SKBitmap adjusted = new SKBitmap(layer.Bitmap().Info);
+			adjusted.Erase(adjustedColor);
+			doc.Selection().SelectRect(new SKRectI(4, 4, 10, 10));
+			PixelRegion.BlendAdjustedIntoSelection(layer.Bitmap(), adjusted, layer.OffsetX(), layer.OffsetY(), doc.Selection());
+			SKColor inside = layer.GetPixelCanvas(6, 6);
+			Check(inside.Red == 200 && inside.Green == 100 && inside.Blue == 50, "adjustment inside selection is applied (rgb " + inside.Red + "," + inside.Green + "," + inside.Blue + ")");
+			SKColor outside = layer.GetPixelCanvas(1, 1);
+			Check(outside.Red == 10 && outside.Green == 20 && outside.Blue == 30, "adjustment outside selection is untouched (rgb " + outside.Red + "," + outside.Green + "," + outside.Blue + ")");
+			adjusted.Dispose();
+
+			Document offsetDoc = new Document("t", 32, 32);
+			Layer offsetLayer = offsetDoc.ActiveLayer();
+			offsetLayer.SetIsBackground(false);
+			SKBitmap small = new SKBitmap(10, 10, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			small.Erase(original);
+			offsetLayer.SetBitmap(small);
+			offsetLayer.SetOffset(5, 5);
+			SKBitmap offsetAdjusted = new SKBitmap(small.Info);
+			offsetAdjusted.Erase(adjustedColor);
+			offsetDoc.Selection().SelectRect(new SKRectI(8, 8, 12, 12));
+			PixelRegion.BlendAdjustedIntoSelection(offsetLayer.Bitmap(), offsetAdjusted, offsetLayer.OffsetX(), offsetLayer.OffsetY(), offsetDoc.Selection());
+			SKColor offsetInside = offsetLayer.GetPixelCanvas(9, 9);
+			Check(offsetInside.Red == 200, "adjustment respects selection on an offset layer inside (r=" + offsetInside.Red + ")");
+			SKColor offsetOutside = offsetLayer.GetPixelCanvas(6, 6);
+			Check(offsetOutside.Red == 10, "adjustment respects selection on an offset layer outside (r=" + offsetOutside.Red + ")");
+			offsetAdjusted.Dispose();
+		}
+
 		private static void TestExtractApplyRegionRoundTrip()
 		{
 			SKBitmap source = BuildAdjustmentTestBitmap();
@@ -3412,6 +3530,76 @@ namespace Bitmute.Tests
 					Check(dragged.Bounds() == direct.Bounds(), "drag sequence bounds match (" + dragged.Bounds() + " vs " + direct.Bounds() + ")");
 				}
 			}
+		}
+
+		private static void TestMarqueeNoSelectionConstraints()
+		{
+			ToolState state = new ToolState();
+
+			Document squareDoc = new Document("t", 64, 64);
+			RectangleSelectTool squareTool = new RectangleSelectTool();
+			state.SetShiftHeld(true);
+			state.SetAltHeld(false);
+			squareTool.OnPressed(squareDoc, 5, 5, state);
+			squareTool.OnDragged(squareDoc, 25, 15, state);
+			squareTool.OnReleased(squareDoc, 25, 15, state);
+			SKRectI squareBounds = squareDoc.Selection().Bounds();
+			Check(squareBounds.Width == squareBounds.Height, "shift marquee with no selection is a square (" + squareBounds.Width + "x" + squareBounds.Height + ")");
+
+			Document centerDoc = new Document("t", 64, 64);
+			RectangleSelectTool centerTool = new RectangleSelectTool();
+			state.SetShiftHeld(false);
+			state.SetAltHeld(true);
+			centerTool.OnPressed(centerDoc, 20, 20, state);
+			centerTool.OnDragged(centerDoc, 30, 25, state);
+			centerTool.OnReleased(centerDoc, 30, 25, state);
+			SKRectI centerBounds = centerDoc.Selection().Bounds();
+			Check(centerDoc.Selection().IsActive(), "alt marquee with no selection makes a selection, not an empty subtract");
+			Check(centerBounds.Left == 10, "alt marquee with no selection expands from center on X (left=" + centerBounds.Left + ")");
+			Check(centerBounds.Top == 15, "alt marquee with no selection expands from center on Y (top=" + centerBounds.Top + ")");
+
+			Document bothDoc = new Document("t", 64, 64);
+			RectangleSelectTool bothTool = new RectangleSelectTool();
+			state.SetShiftHeld(true);
+			state.SetAltHeld(true);
+			bothTool.OnPressed(bothDoc, 20, 20, state);
+			bothTool.OnDragged(bothDoc, 40, 30, state);
+			bothTool.OnReleased(bothDoc, 40, 30, state);
+			SKRectI bothBounds = bothDoc.Selection().Bounds();
+			Check(bothBounds.Width == bothBounds.Height, "shift+alt marquee with no selection is a centered square (" + bothBounds.Width + "x" + bothBounds.Height + ")");
+			Check(bothBounds.Left == 10 && bothBounds.Top == 10, "shift+alt marquee centers the square on the press point (left=" + bothBounds.Left + ", top=" + bothBounds.Top + ")");
+
+			Document plainDoc = new Document("t", 64, 64);
+			RectangleSelectTool plainTool = new RectangleSelectTool();
+			state.SetShiftHeld(false);
+			state.SetAltHeld(false);
+			plainTool.OnPressed(plainDoc, 5, 5, state);
+			plainTool.OnDragged(plainDoc, 25, 15, state);
+			plainTool.OnReleased(plainDoc, 25, 15, state);
+			SKRectI plainBounds = plainDoc.Selection().Bounds();
+			Check(plainBounds.Width != plainBounds.Height, "unmodified marquee stays the raw drag rectangle (" + plainBounds.Width + "x" + plainBounds.Height + ")");
+
+			Document shiftGuardDoc = new Document("t", 64, 64);
+			RectangleSelectTool shiftGuardTool = new RectangleSelectTool();
+			shiftGuardDoc.Selection().SelectRect(new SKRectI(5, 5, 6, 6));
+			state.SetShiftHeld(true);
+			state.SetAltHeld(false);
+			shiftGuardTool.OnPressed(shiftGuardDoc, 5, 5, state);
+			shiftGuardTool.OnDragged(shiftGuardDoc, 25, 15, state);
+			shiftGuardTool.OnReleased(shiftGuardDoc, 25, 15, state);
+			SKRectI shiftGuardBounds = shiftGuardDoc.Selection().Bounds();
+			Check(shiftGuardBounds.Width != shiftGuardBounds.Height, "shift with an existing selection adds rather than squaring (" + shiftGuardBounds.Width + "x" + shiftGuardBounds.Height + ")");
+
+			Document altGuardDoc = new Document("t", 64, 64);
+			RectangleSelectTool altGuardTool = new RectangleSelectTool();
+			altGuardDoc.Selection().SelectRect(new SKRectI(2, 2, 40, 40));
+			state.SetShiftHeld(false);
+			state.SetAltHeld(true);
+			altGuardTool.OnPressed(altGuardDoc, 10, 10, state);
+			altGuardTool.OnDragged(altGuardDoc, 30, 20, state);
+			altGuardTool.OnReleased(altGuardDoc, 30, 20, state);
+			Check(!altGuardDoc.Selection().IsSelected(20, 15), "alt with an existing selection subtracts rather than centering");
+			Check(altGuardDoc.Selection().IsSelected(5, 5), "alt subtract leaves the rest of the existing selection");
 		}
 
 		private static void TestEllipseDragScratchReuse()

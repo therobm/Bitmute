@@ -46,6 +46,27 @@ namespace Bitmute.UI.Operations
 	{
 		private Dictionary<eOperation, Operation> m_operations = new Dictionary<eOperation, Operation>();
 		private MainView m_main;
+		private static Dictionary<VirtualKey, eTool> s_toolKeys = new Dictionary<VirtualKey, eTool>()
+		{
+			{ VirtualKey.M, eTool.Select },
+			{ VirtualKey.V, eTool.Move },
+			{ VirtualKey.L, eTool.Lasso },
+			{ VirtualKey.W, eTool.MagicWand },
+			{ VirtualKey.C, eTool.Crop },
+			{ VirtualKey.B, eTool.Brush },
+			{ VirtualKey.S, eTool.Clone },
+			{ VirtualKey.E, eTool.Eraser },
+			{ VirtualKey.G, eTool.Fill },
+			{ VirtualKey.O, eTool.Dodge },
+			{ VirtualKey.R, eTool.Blur },
+			{ VirtualKey.T, eTool.Text },
+			{ VirtualKey.U, eTool.Line },
+			{ VirtualKey.I, eTool.Eyedropper },
+			{ VirtualKey.H, eTool.Hand },
+			{ VirtualKey.Z, eTool.Zoom },
+			{ VirtualKey.P, eTool.Pen },
+			{ VirtualKey.A, eTool.DirectSelect },
+		};
 
 		public OperationRegistry(MainView mainView)
 		{
@@ -170,30 +191,25 @@ namespace Bitmute.UI.Operations
 			}
 			bool cycle = (chord.m_modifiers & VirtualKeyModifiers.Shift) == VirtualKeyModifiers.Shift;
 			eTool tool;
-			switch (chord.m_key)
+			bool found = s_toolKeys.TryGetValue(chord.m_key, out tool);
+			if (!found)
 			{
-				case VirtualKey.M: tool = eTool.Select; break;
-				case VirtualKey.V: tool = eTool.Move; break;
-				case VirtualKey.L: tool = eTool.Lasso; break;
-				case VirtualKey.W: tool = eTool.MagicWand; break;
-				case VirtualKey.C: tool = eTool.Crop; break;
-				case VirtualKey.B: tool = eTool.Brush; break;
-				case VirtualKey.S: tool = eTool.Clone; break;
-				case VirtualKey.E: tool = eTool.Eraser; break;
-				case VirtualKey.G: tool = eTool.Fill; break;
-				case VirtualKey.O: tool = eTool.DodgeBurn; break;
-				case VirtualKey.R: tool = eTool.Blur; break;
-				case VirtualKey.T: tool = eTool.Text; break;
-				case VirtualKey.U: tool = eTool.Line; break;
-				case VirtualKey.I: tool = eTool.Eyedropper; break;
-				case VirtualKey.H: tool = eTool.Hand; break;
-				case VirtualKey.Z: tool = eTool.Zoom; break;
-				case VirtualKey.P: tool = eTool.Pen; break;
-				case VirtualKey.A: tool = eTool.DirectSelect; break;
-				default: return false;
+				return false;
 			}
 			m_main.SelectToolKey(tool, cycle);
 			return true;
+		}
+
+		public static string ShortcutForTool(eTool tool)
+		{
+			foreach (KeyValuePair<VirtualKey, eTool> pair in s_toolKeys)
+			{
+				if (pair.Value == tool)
+				{
+					return Accelerator.KeyName(pair.Key);
+				}
+			}
+			return "";
 		}
 
 		private bool TriggerToggleRulers(Chord chord)

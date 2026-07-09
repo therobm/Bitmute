@@ -384,6 +384,60 @@ namespace Bitmute.Tools
 			return eSelectionMode.Replace;
 		}
 
+		protected static void ConstrainMarqueeCorners(int anchorX, int anchorY, int pointerX, int pointerY, bool square, bool fromCenter, out int cornerAX, out int cornerAY, out int cornerBX, out int cornerBY)
+		{
+			int currentX = pointerX;
+			int currentY = pointerY;
+			if (square)
+			{
+				int deltaX = currentX - anchorX;
+				int deltaY = currentY - anchorY;
+				int magnitudeX = deltaX;
+				if (magnitudeX < 0)
+				{
+					magnitudeX = -magnitudeX;
+				}
+				int magnitudeY = deltaY;
+				if (magnitudeY < 0)
+				{
+					magnitudeY = -magnitudeY;
+				}
+				int side = magnitudeX;
+				if (magnitudeY < side)
+				{
+					side = magnitudeY;
+				}
+				int signX = 1;
+				if (deltaX < 0)
+				{
+					signX = -1;
+				}
+				int signY = 1;
+				if (deltaY < 0)
+				{
+					signY = -1;
+				}
+				currentX = anchorX + (signX * side);
+				currentY = anchorY + (signY * side);
+			}
+			if (fromCenter)
+			{
+				int spanX = currentX - anchorX;
+				int spanY = currentY - anchorY;
+				cornerAX = anchorX - spanX;
+				cornerAY = anchorY - spanY;
+				cornerBX = currentX;
+				cornerBY = currentY;
+			}
+			else
+			{
+				cornerAX = anchorX;
+				cornerAY = anchorY;
+				cornerBX = currentX;
+				cornerBY = currentY;
+			}
+		}
+
 		public virtual bool IsDestructive()
 		{
 			return true;

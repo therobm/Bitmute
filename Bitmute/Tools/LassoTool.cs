@@ -19,6 +19,7 @@ namespace Bitmute.Tools
 		private int m_lastClickX;
 		private int m_lastClickY;
 		private bool m_hasLastClick;
+		private int m_closeRadius;
 
 		public LassoTool()
 		{
@@ -26,6 +27,16 @@ namespace Bitmute.Tools
 			m_verticesY = new List<int>();
 			m_active = false;
 			m_hasLastClick = false;
+			m_closeRadius = CloseThreshold;
+		}
+
+		public void SetCloseRadius(int radius)
+		{
+			if (radius < 3)
+			{
+				radius = 3;
+			}
+			m_closeRadius = radius;
 		}
 
 		public override bool IsDestructive()
@@ -248,7 +259,7 @@ namespace Bitmute.Tools
 				int deltaX = x - m_verticesX[0];
 				int deltaY = y - m_verticesY[0];
 				int distanceSquared = (deltaX * deltaX) + (deltaY * deltaY);
-				if (distanceSquared <= CloseThreshold * CloseThreshold)
+				if (distanceSquared <= m_closeRadius * m_closeRadius)
 				{
 					Finalize(document, state);
 					return false;

@@ -287,8 +287,45 @@ namespace Bitmute.Imaging
 		{
 			Document document = new Document(title, source.Width, source.Height);
 			document.ConvertColorDepth(source.ColorType.ToColorDepth());
-			document.ActiveLayer().SetPixelsFrom(source);
+			Layer layer = document.ActiveLayer();
+			layer.SetPixelsFrom(source);
+			if (HasTransparency(source))
+			{
+				layer.SetIsBackground(false);
+			}
 			return document;
+		}
+
+		private static unsafe bool HasTransparency(SKBitmap source)
+		{
+			if (source.AlphaType == SKAlphaType.Opaque)
+			{
+				return false;
+			}
+			if (source.ColorType != SKColorType.Rgba8888)
+			{
+				return true;
+			}
+			byte* basePointer = (byte*)source.GetPixels().ToPointer();
+			if (basePointer == null)
+			{
+				return false;
+			}
+			int rowBytes = source.RowBytes;
+			int width = source.Width;
+			int height = source.Height;
+			for (int y = 0; y < height; y++)
+			{
+				byte* row = basePointer + (y * rowBytes);
+				for (int x = 0; x < width; x++)
+				{
+					if (row[(x * 4) + 3] < 255)
+					{
+						return true;
+					}
+				}
+			}
+			return false;
 		}
 
 		public Document(string title, int width, int height)
@@ -790,7 +827,12 @@ namespace Bitmute.Imaging
 			m_selection = new Selection(m_width, m_height);
 		}
 
-		public unsafe void FillSelection(SKColor fill)
+		public void FillSelection(SKColor fill)
+		{
+			FillSelection(fill, false);
+		}
+
+		public unsafe void FillSelection(SKColor fill, bool preserveTransparent)
 		{
 			Layer layer = ActiveLayer();
 			if (layer == null)
@@ -851,6 +893,10 @@ namespace Bitmute.Imaging
 						continue;
 					}
 					byte* pixel = row + ((canvasX - offsetX) * 4);
+					if (preserveTransparent && pixel[3] == 0)
+					{
+						continue;
+					}
 					if (coverage == 255)
 					{
 						pixel[0] = fillRed;
@@ -1707,20 +1753,28 @@ namespace Bitmute.Imaging
 			SKPaint paint = new SKPaint();
 			paint.BlendMode = SKBlendMode.SrcOver;
 			paint.Color = SKColors.White.WithAlpha(lower.Opacity());
-			SKImage lowerImage = SKImage.FromBitmap(lowerBitmap);
-			canvas.DrawImage(lowerImage, lowerLeft - left, lowerTop - top, sampling, paint);
-			lowerImage.Dispose();
+			if (lower.IsVisible())
+			{
+				SKImage lowerImage = SKImage.FromBitmap(lowerBitmap);
+				canvas.DrawImage(lowerImage, lowerLeft - left, lowerTop - top, sampling, paint);
+				lowerImage.Dispose();
+			}
 			paint.BlendMode = Layer.ToSkBlendMode(upper.BlendMode());
 			paint.Color = SKColors.White.WithAlpha(upper.Opacity());
-			SKImage upperImage = SKImage.FromBitmap(upperBitmap);
-			canvas.DrawImage(upperImage, upperLeft - left, upperTop - top, sampling, paint);
-			upperImage.Dispose();
+			if (upper.IsVisible())
+			{
+				SKImage upperImage = SKImage.FromBitmap(upperBitmap);
+				canvas.DrawImage(upperImage, upperLeft - left, upperTop - top, sampling, paint);
+				upperImage.Dispose();
+			}
 			paint.Dispose();
 			canvas.Dispose();
+			bool mergedVisible = lower.IsVisible() || upper.IsVisible();
 			lower.SetBitmap(merged);
 			lower.SetOffset(left, top);
 			lower.SetOpacity(255);
 			lower.SetBlendMode(eBlendMode.Normal);
+			lower.SetVisible(mergedVisible);
 			m_layers.RemoveAt(index);
 			if (m_activeLayerIndex >= m_layers.Count)
 			{
@@ -1770,7 +1824,12 @@ namespace Bitmute.Imaging
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
 			for (int order = 0; order < sorted.Count; order++)
 			{
-				DrawStyledLayer(canvas, m_layers[sorted[order]], sampling, paint);
+				Layer sourceLayer = m_layers[sorted[order]];
+				if (!sourceLayer.IsVisible())
+				{
+					continue;
+				}
+				DrawStyledLayer(canvas, sourceLayer, sampling, paint);
 			}
 			paint.Dispose();
 			canvas.Dispose();

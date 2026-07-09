@@ -767,6 +767,7 @@ namespace Bitmute.Tools
 			}
 			if (m_compositeMode)
 			{
+				layer.ExpandToCover(m_document.Width(), m_document.Height());
 				BlitCanvasBitmap(m_document, layer, warped, outX, outY);
 				warped.Dispose();
 				m_document.PushCommand(new MoveLayerCommand(m_layerIndex, m_originalLayerBitmap, m_oldOffsetX, m_oldOffsetY, layer.Bitmap(), layer.OffsetX(), layer.OffsetY()));

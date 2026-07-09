@@ -278,5 +278,95 @@ namespace Bitmute.Imaging
 				Buffer.MemoryCopy(sourceRow, targetRow, rowLength, rowLength);
 			}
 		}
+
+		public static unsafe void BlendAdjustedIntoSelection(SKBitmap target, SKBitmap adjusted, int targetOffsetX, int targetOffsetY, Selection selection)
+		{
+			int targetWidth = target.Width;
+			int targetHeight = target.Height;
+			byte[] mask = selection.Mask();
+			int maskOriginX = selection.MaskOriginX();
+			int maskOriginY = selection.MaskOriginY();
+			int maskWidth = selection.MaskWidth();
+			int maskHeight = selection.MaskHeight();
+			SKRectI bounds = selection.Bounds();
+			int startCanvasX = bounds.Left;
+			if (startCanvasX < targetOffsetX)
+			{
+				startCanvasX = targetOffsetX;
+			}
+			int startCanvasY = bounds.Top;
+			if (startCanvasY < targetOffsetY)
+			{
+				startCanvasY = targetOffsetY;
+			}
+			int endCanvasX = bounds.Right;
+			if (endCanvasX > targetOffsetX + targetWidth)
+			{
+				endCanvasX = targetOffsetX + targetWidth;
+			}
+			int endCanvasY = bounds.Bottom;
+			if (endCanvasY > targetOffsetY + targetHeight)
+			{
+				endCanvasY = targetOffsetY + targetHeight;
+			}
+			if (endCanvasX <= startCanvasX || endCanvasY <= startCanvasY)
+			{
+				return;
+			}
+			PixelAccessor targetAccessor = new PixelAccessor(target.GetPixels(), target.RowBytes, target.ColorType);
+			PixelAccessor adjustedAccessor = new PixelAccessor(adjusted.GetPixels(), adjusted.RowBytes, adjusted.ColorType);
+			int bytesPerPixel = target.BytesPerPixel;
+			byte* targetBase = (byte*)target.GetPixels().ToPointer();
+			byte* adjustedBase = (byte*)adjusted.GetPixels().ToPointer();
+			int targetRowBytes = target.RowBytes;
+			int adjustedRowBytes = adjusted.RowBytes;
+			for (int canvasY = startCanvasY; canvasY < endCanvasY; canvasY++)
+			{
+				int maskY = canvasY - maskOriginY;
+				if (maskY < 0 || maskY >= maskHeight)
+				{
+					continue;
+				}
+				int maskRow = maskY * maskWidth;
+				int bitmapY = canvasY - targetOffsetY;
+				for (int canvasX = startCanvasX; canvasX < endCanvasX; canvasX++)
+				{
+					int maskX = canvasX - maskOriginX;
+					if (maskX < 0 || maskX >= maskWidth)
+					{
+						continue;
+					}
+					int coverage = mask[maskRow + maskX];
+					if (coverage == 0)
+					{
+						continue;
+					}
+					int bitmapX = canvasX - targetOffsetX;
+					if (coverage == 255)
+					{
+						byte* targetPixel = targetBase + ((long)bitmapY * targetRowBytes) + ((long)bitmapX * bytesPerPixel);
+						byte* adjustedPixel = adjustedBase + ((long)bitmapY * adjustedRowBytes) + ((long)bitmapX * bytesPerPixel);
+						for (int byteIndex = 0; byteIndex < bytesPerPixel; byteIndex++)
+						{
+							targetPixel[byteIndex] = adjustedPixel[byteIndex];
+						}
+						continue;
+					}
+					float originalRed;
+					float originalGreen;
+					float originalBlue;
+					float originalAlpha;
+					targetAccessor.ReadNormalized(bitmapX, bitmapY, out originalRed, out originalGreen, out originalBlue, out originalAlpha);
+					float adjustedRed;
+					float adjustedGreen;
+					float adjustedBlue;
+					float adjustedAlpha;
+					adjustedAccessor.ReadNormalized(bitmapX, bitmapY, out adjustedRed, out adjustedGreen, out adjustedBlue, out adjustedAlpha);
+					float weight = coverage / 255.0f;
+					float inverse = 1.0f - weight;
+					targetAccessor.WriteNormalized(bitmapX, bitmapY, (originalRed * inverse) + (adjustedRed * weight), (originalGreen * inverse) + (adjustedGreen * weight), (originalBlue * inverse) + (adjustedBlue * weight), (originalAlpha * inverse) + (adjustedAlpha * weight));
+				}
+			}
+		}
 	}
 }

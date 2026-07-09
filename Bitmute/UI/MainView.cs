@@ -506,13 +506,13 @@ namespace Bitmute.UI
 		public void FillSelectionWithForeground()
 		{
 			SKColor foreground = m_toolState.Foreground();
-			FillSelectionWith(new SKColor(foreground.Red, foreground.Green, foreground.Blue, 255), true);
+			FillSelectionWith(new SKColor(foreground.Red, foreground.Green, foreground.Blue, 255), true, false);
 		}
 
 		public void FillSelectionWithBackground()
 		{
 			SKColor background = m_toolState.Background();
-			FillSelectionWith(new SKColor(background.Red, background.Green, background.Blue, 255), true);
+			FillSelectionWith(new SKColor(background.Red, background.Green, background.Blue, 255), true, false);
 		}
 
 		public void DoExit()
@@ -2454,10 +2454,10 @@ namespace Bitmute.UI
 				SKColor background = m_toolState.Background();
 				fill = new SKColor(background.Red, background.Green, background.Blue, 255);
 			}
-			FillSelectionWith(fill, false);
+			FillSelectionWith(fill, false, layer.IsBackground());
 		}
 
-		public void FillSelectionWith(SKColor fill, bool fillLayerWhenEmpty)
+		public void FillSelectionWith(SKColor fill, bool fillLayerWhenEmpty, bool preserveTransparent)
 		{
 			Document document = ActiveDocument();
 			if (document == null)
@@ -2483,7 +2483,7 @@ namespace Bitmute.UI
 			document.BeginStroke();
 			if (hasSelection)
 			{
-				document.FillSelection(fill);
+				document.FillSelection(fill, preserveTransparent);
 			}
 			else
 			{
@@ -3963,6 +3963,11 @@ namespace Bitmute.UI
 				if (TryNudgeSelection(eventArgs.Key))
 				{
 					eventArgs.Handled = true;
+					return;
+				}
+				if (NudgeWithMoveTool(eventArgs.Key))
+				{
+					eventArgs.Handled = true;
 				}
 				return;
 			}
@@ -4071,6 +4076,92 @@ namespace Bitmute.UI
 				byte[] mask = selection.MaskCopy();
 				SkiaSharp.SKRectI maskRect = new SkiaSharp.SKRectI(selection.MaskOriginX(), selection.MaskOriginY(), selection.MaskOriginX() + selection.MaskWidth(), selection.MaskOriginY() + selection.MaskHeight());
 				selection.SetShifted(mask, maskRect, selection.Bounds(), deltaX, deltaY);
+			}
+			CanvasView canvas = window.Canvas();
+			canvas.MarkComposeDirty();
+			canvas.Redraw();
+		}
+
+		private bool NudgeWithMoveTool(Windows.System.VirtualKey key)
+		{
+			if (IsTextEditActive())
+			{
+				return false;
+			}
+			if (HasOpenModal())
+			{
+				return false;
+			}
+			if (m_toolState.Tool() != eTool.Move)
+			{
+				return false;
+			}
+			DocumentWindow window = ActiveWindow();
+			if (window == null)
+			{
+				return false;
+			}
+			Document document = window.DocumentModel();
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				return false;
+			}
+			int step = 1;
+			Windows.UI.Core.CoreVirtualKeyStates shiftState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Shift);
+			if ((shiftState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down)
+			{
+				step = 10;
+			}
+			int deltaX = 0;
+			int deltaY = 0;
+			if (key == Windows.System.VirtualKey.Left)
+			{
+				deltaX = -step;
+			}
+			else if (key == Windows.System.VirtualKey.Right)
+			{
+				deltaX = step;
+			}
+			else if (key == Windows.System.VirtualKey.Up)
+			{
+				deltaY = -step;
+			}
+			else
+			{
+				deltaY = step;
+			}
+			NudgeMoveTarget(window, document, layer, deltaX, deltaY);
+			return true;
+		}
+
+		private void NudgeMoveTarget(DocumentWindow window, Document document, Layer layer, int deltaX, int deltaY)
+		{
+			if (document.HasFloatingSelection())
+			{
+				document.SetFloatingSelectionDelta(document.FloatDeltaX() + deltaX, document.FloatDeltaY() + deltaY);
+			}
+			else if (document.Selection().IsActive())
+			{
+				document.LiftFloatingSelection();
+				document.SetFloatingSelectionDelta(document.FloatDeltaX() + deltaX, document.FloatDeltaY() + deltaY);
+			}
+			else if (layer.IsText())
+			{
+				layer.SetTextPosition(layer.TextX() + deltaX, layer.TextY() + deltaY);
+				layer.RenderText();
+			}
+			else
+			{
+				int oldOffsetX = layer.OffsetX();
+				int oldOffsetY = layer.OffsetY();
+				SKBitmap oldBitmap = layer.Bitmap();
+				SKBitmap oldMask = layer.MaskBitmap();
+				layer.SetOffset(oldOffsetX + deltaX, oldOffsetY + deltaY);
+				layer.ExpandToCover(document.Width(), document.Height());
+				SKBitmap newBitmap = layer.Bitmap();
+				SKBitmap newMask = layer.MaskBitmap();
+				document.PushCommand(new MoveLayerCommand(document.ActiveLayerIndex(), oldBitmap, oldMask, oldOffsetX, oldOffsetY, newBitmap, newMask, layer.OffsetX(), layer.OffsetY()));
 			}
 			CanvasView canvas = window.Canvas();
 			canvas.MarkComposeDirty();

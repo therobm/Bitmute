@@ -142,7 +142,7 @@ namespace Bitmute.Tests
 			FillHighDepthGradient(document.ActiveLayer());
 			byte[] before = SnapshotBytes(document.ActiveLayer().Bitmap());
 			ToolState state = BuildSecondaryState();
-			DodgeBurnTool dodge = new DodgeBurnTool();
+			DodgeTool dodge = new DodgeTool();
 			DriveStroke(dodge, document, state);
 			byte[] after = SnapshotBytes(document.ActiveLayer().Bitmap());
 			Check(BytesEqual(before, after), "16-bit dodge safely no-ops and leaves layer pixels unchanged");
@@ -170,7 +170,7 @@ namespace Bitmute.Tests
 			FillEightBitGradient(layer);
 			byte[] before = SnapshotBytes(layer.Bitmap());
 			ToolState state = BuildSecondaryState();
-			DodgeBurnTool dodge = new DodgeBurnTool();
+			DodgeTool dodge = new DodgeTool();
 			DriveStroke(dodge, document, state);
 			byte[] after = SnapshotBytes(layer.Bitmap());
 			Check(!BytesEqual(before, after), "8-bit dodge still modifies layer pixels");
