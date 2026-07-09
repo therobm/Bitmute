@@ -141,6 +141,28 @@ namespace Bitmute.UI.Panels
 			{ eTool.DirectSelect, "Direct Selection (edit path points)" },
 		};
 
+		private Dictionary<eTool, string> m_toolShortcuts = new Dictionary<eTool, string>()
+		{
+			{ eTool.Select, "M" },
+			{ eTool.Move, "V" },
+			{ eTool.Lasso, "L" },
+			{ eTool.MagicWand, "W" },
+			{ eTool.Crop, "C" },
+			{ eTool.Brush, "B" },
+			{ eTool.Clone, "S" },
+			{ eTool.Eraser, "E" },
+			{ eTool.Fill, "G" },
+			{ eTool.DodgeBurn, "O" },
+			{ eTool.Blur, "R" },
+			{ eTool.Text, "T" },
+			{ eTool.Line, "U" },
+			{ eTool.Eyedropper, "I" },
+			{ eTool.Hand, "H" },
+			{ eTool.Zoom, "Z" },
+			{ eTool.Pen, "P" },
+			{ eTool.DirectSelect, "A" },
+		};
+
 		private Border[] m_cellButtons;
 		private IconView[] m_cellIcons;
 		private eTool m_selectedTool;
@@ -246,6 +268,18 @@ namespace Bitmute.UI.Panels
 		private void OnResetCornerTapped(object sender, TappedEventArgs eventArgs)
 		{
 			OnResetTapped(sender, eventArgs);
+		}
+
+		private string ComposeTooltip(eTool tool)
+		{
+			string tip = m_toolTips[tool];
+			string shortcut = "";
+			bool hasShortcut = m_toolShortcuts.TryGetValue(tool, out shortcut);
+			if (hasShortcut)
+			{
+				return tip + " (" + shortcut + ")";
+			}
+			return tip;
 		}
 
 		private Border BuildCornerButton(View content, string tip, EventHandler<TappedEventArgs> handler)
@@ -378,7 +412,7 @@ namespace Bitmute.UI.Panels
 			button.StrokeThickness = 0.0;
 			button.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(3.0) };
 			button.Content = content;
-			ToolTipProperties.SetText(button, m_toolTips[activeTool]);
+			ToolTipProperties.SetText(button, ComposeTooltip(activeTool));
 
 			TapGestureRecognizer tap = new TapGestureRecognizer();
 			tap.Tapped += OnCellTapped;
@@ -536,7 +570,7 @@ namespace Bitmute.UI.Panels
 				memberButton.StrokeThickness = 0.0;
 				memberButton.StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(3.0) };
 				memberButton.Content = memberIcon;
-				ToolTipProperties.SetText(memberButton, m_toolTips[memberTool]);
+				ToolTipProperties.SetText(memberButton, ComposeTooltip(memberTool));
 				TapGestureRecognizer memberTap = new TapGestureRecognizer();
 				memberTap.Tapped += OnFlyoutMemberTapped;
 				memberButton.GestureRecognizers.Add(memberTap);
@@ -596,7 +630,7 @@ namespace Bitmute.UI.Panels
 			m_selectedTool = tool;
 			m_tools[entryIndex].m_activeToolIndex = memberIndex;
 			m_cellIcons[entryIndex].SetIcon(m_toolIcons[tool]);
-			ToolTipProperties.SetText(m_cellButtons[entryIndex], m_toolTips[tool]);
+			ToolTipProperties.SetText(m_cellButtons[entryIndex], ComposeTooltip(tool));
 
 			for (int index = 0; index < m_cellButtons.Length; index++)
 			{
