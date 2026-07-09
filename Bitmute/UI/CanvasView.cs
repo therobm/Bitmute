@@ -2893,6 +2893,7 @@ namespace Bitmute.UI
 			Windows.UI.Core.CoreVirtualKeyStates altState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Menu);
 			bool altHeld = (altState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
 			state.SetAltHeld(altHeld);
+			state.SetCtrlHeld(m_ctrlHeld);
 			int guideSnapTolerance = (int)System.Math.Ceiling(6.0 / m_zoom);
 			if (guideSnapTolerance < 3)
 			{
