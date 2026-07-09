@@ -637,7 +637,25 @@ namespace Bitmute.Imaging
 					m_mask[rowStart + x] = value;
 				}
 			}
-			RecomputeFromMask(CombinedResultBounds(rectBounds));
+			if (m_operationMode == eSelectionMode.Subtract)
+			{
+				RecomputeFromMask(CombinedResultBounds(rectBounds));
+				return;
+			}
+			SKRectI resultBounds = CombinedResultBounds(rectBounds);
+			bool resultEmpty = resultBounds.Width <= 0 || resultBounds.Height <= 0;
+			if (resultEmpty)
+			{
+				m_active = false;
+				m_bounds = SKRectI.Empty;
+			}
+			else
+			{
+				m_active = true;
+				m_bounds = resultBounds;
+			}
+			m_lastOpShift = false;
+			m_generation = m_generation + 1;
 		}
 
 		public void ApplyMask(byte[] regionMask, SKRectI regionBounds)
