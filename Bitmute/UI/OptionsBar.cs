@@ -49,6 +49,10 @@ namespace Bitmute.UI
 		private Picker m_brushModePicker;
 		private Label m_brushAirbrushLabel;
 		private CheckBox m_brushAirbrushCheck;
+		private Label m_pressureSizeLabel;
+		private CheckBox m_pressureSizeCheck;
+		private Label m_pressureOpacityLabel;
+		private CheckBox m_pressureOpacityCheck;
 		private Label m_cloneAlignedLabel;
 		private CheckBox m_cloneAlignedCheck;
 		private Label m_spongeModeLabel;
@@ -645,6 +649,26 @@ namespace Bitmute.UI
 				return;
 			}
 			m_toolState.SetAirbrush(m_brushAirbrushCheck.IsChecked);
+		}
+
+		private void OnPressureSizeChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetPressureSizeEnabled(m_pressureSizeCheck.IsChecked);
+			Microsoft.Maui.Storage.Preferences.Default.Set("pressure_size_enabled", m_pressureSizeCheck.IsChecked);
+		}
+
+		private void OnPressureOpacityChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetPressureOpacityEnabled(m_pressureOpacityCheck.IsChecked);
+			Microsoft.Maui.Storage.Preferences.Default.Set("pressure_opacity_enabled", m_pressureOpacityCheck.IsChecked);
 		}
 
 		private void OnCloneAlignedChanged(object sender, CheckedChangedEventArgs eventArgs)
@@ -1721,6 +1745,36 @@ namespace Bitmute.UI
 			m_brushAirbrushCheck.IsChecked = m_toolState.Airbrush();
 			m_brushAirbrushCheck.CheckedChanged += OnBrushAirbrushChanged;
 
+			bool pressureSizeEnabled = Microsoft.Maui.Storage.Preferences.Default.Get("pressure_size_enabled", true);
+			m_toolState.SetPressureSizeEnabled(pressureSizeEnabled);
+			m_pressureSizeLabel = new Label();
+			m_pressureSizeLabel.Text = "Pressure → Size";
+			m_pressureSizeLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_pressureSizeLabel.FontSize = UiConstants.ComponentFontSize;
+			m_pressureSizeLabel.VerticalOptions = LayoutOptions.Center;
+			m_pressureSizeLabel.IsVisible = false;
+
+			m_pressureSizeCheck = new CheckBox();
+			m_pressureSizeCheck.VerticalOptions = LayoutOptions.Center;
+			m_pressureSizeCheck.IsVisible = false;
+			m_pressureSizeCheck.IsChecked = pressureSizeEnabled;
+			m_pressureSizeCheck.CheckedChanged += OnPressureSizeChanged;
+
+			bool pressureOpacityEnabled = Microsoft.Maui.Storage.Preferences.Default.Get("pressure_opacity_enabled", true);
+			m_toolState.SetPressureOpacityEnabled(pressureOpacityEnabled);
+			m_pressureOpacityLabel = new Label();
+			m_pressureOpacityLabel.Text = "Pressure → Opacity";
+			m_pressureOpacityLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
+			m_pressureOpacityLabel.FontSize = UiConstants.ComponentFontSize;
+			m_pressureOpacityLabel.VerticalOptions = LayoutOptions.Center;
+			m_pressureOpacityLabel.IsVisible = false;
+
+			m_pressureOpacityCheck = new CheckBox();
+			m_pressureOpacityCheck.VerticalOptions = LayoutOptions.Center;
+			m_pressureOpacityCheck.IsVisible = false;
+			m_pressureOpacityCheck.IsChecked = pressureOpacityEnabled;
+			m_pressureOpacityCheck.CheckedChanged += OnPressureOpacityChanged;
+
 			m_cloneAlignedLabel = new Label();
 			m_cloneAlignedLabel.Text = "Aligned";
 			m_cloneAlignedLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
@@ -2183,6 +2237,10 @@ namespace Bitmute.UI
 			options.Add(m_brushModePicker);
 			options.Add(m_brushAirbrushLabel);
 			options.Add(m_brushAirbrushCheck);
+			options.Add(m_pressureSizeLabel);
+			options.Add(m_pressureSizeCheck);
+			options.Add(m_pressureOpacityLabel);
+			options.Add(m_pressureOpacityCheck);
 			options.Add(m_cloneAlignedLabel);
 			options.Add(m_cloneAlignedCheck);
 			options.Add(m_spongeModeLabel);
@@ -2370,6 +2428,10 @@ namespace Bitmute.UI
 				m_brushModePicker.IsVisible = showsBlendMode;
 				m_brushAirbrushLabel.IsVisible = isBrushFamily;
 				m_brushAirbrushCheck.IsVisible = isBrushFamily;
+				m_pressureSizeLabel.IsVisible = isBrushFamily;
+				m_pressureSizeCheck.IsVisible = isBrushFamily;
+				m_pressureOpacityLabel.IsVisible = isBrushFamily;
+				m_pressureOpacityCheck.IsVisible = isBrushFamily;
 				m_brushSettingsButton.IsVisible = isBrushFamily;
 				bool isCloneOrHeal = tool == eTool.Clone || tool == eTool.Heal;
 				m_cloneAlignedLabel.IsVisible = isCloneOrHeal;
