@@ -98,6 +98,7 @@ namespace Bitmute.Tests
 			TestLayerStylePreviewTickEquivalence();
 			TestFeatherActive();
 			TestBrightnessContrastMatchesReference();
+			TestBlendAdjustedIntoSelection();
 			TestHueSaturationLightnessMatchesReference();
 			TestDesaturateMatchesReference();
 			TestPosterizeMatchesReference();
@@ -2800,6 +2801,43 @@ namespace Bitmute.Tests
 			SKRectI expected = new SKRectI(minX, minY, maxX + 1, maxY + 1);
 			Check(actual == expected, "content bounds of random bitmap matches reference (" + actual + " vs " + expected + ")");
 			random.Dispose();
+		}
+
+		private static void TestBlendAdjustedIntoSelection()
+		{
+			SKColor original = new SKColor(10, 20, 30, 255);
+			SKColor adjustedColor = new SKColor(200, 100, 50, 255);
+
+			Document doc = new Document("t", 16, 16);
+			Layer layer = doc.ActiveLayer();
+			layer.SetIsBackground(false);
+			layer.Bitmap().Erase(original);
+			SKBitmap adjusted = new SKBitmap(layer.Bitmap().Info);
+			adjusted.Erase(adjustedColor);
+			doc.Selection().SelectRect(new SKRectI(4, 4, 10, 10));
+			PixelRegion.BlendAdjustedIntoSelection(layer.Bitmap(), adjusted, layer.OffsetX(), layer.OffsetY(), doc.Selection());
+			SKColor inside = layer.GetPixelCanvas(6, 6);
+			Check(inside.Red == 200 && inside.Green == 100 && inside.Blue == 50, "adjustment inside selection is applied (rgb " + inside.Red + "," + inside.Green + "," + inside.Blue + ")");
+			SKColor outside = layer.GetPixelCanvas(1, 1);
+			Check(outside.Red == 10 && outside.Green == 20 && outside.Blue == 30, "adjustment outside selection is untouched (rgb " + outside.Red + "," + outside.Green + "," + outside.Blue + ")");
+			adjusted.Dispose();
+
+			Document offsetDoc = new Document("t", 32, 32);
+			Layer offsetLayer = offsetDoc.ActiveLayer();
+			offsetLayer.SetIsBackground(false);
+			SKBitmap small = new SKBitmap(10, 10, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			small.Erase(original);
+			offsetLayer.SetBitmap(small);
+			offsetLayer.SetOffset(5, 5);
+			SKBitmap offsetAdjusted = new SKBitmap(small.Info);
+			offsetAdjusted.Erase(adjustedColor);
+			offsetDoc.Selection().SelectRect(new SKRectI(8, 8, 12, 12));
+			PixelRegion.BlendAdjustedIntoSelection(offsetLayer.Bitmap(), offsetAdjusted, offsetLayer.OffsetX(), offsetLayer.OffsetY(), offsetDoc.Selection());
+			SKColor offsetInside = offsetLayer.GetPixelCanvas(9, 9);
+			Check(offsetInside.Red == 200, "adjustment respects selection on an offset layer inside (r=" + offsetInside.Red + ")");
+			SKColor offsetOutside = offsetLayer.GetPixelCanvas(6, 6);
+			Check(offsetOutside.Red == 10, "adjustment respects selection on an offset layer outside (r=" + offsetOutside.Red + ")");
+			offsetAdjusted.Dispose();
 		}
 
 		private static void TestExtractApplyRegionRoundTrip()
