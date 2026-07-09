@@ -921,7 +921,7 @@ namespace Bitmute.UI
 			{
 				scale = CanvasSize.Width / Width;
 			}
-			float drawSize = (float)(32.0 * scale);
+			float drawSize = (float)(16.0 * scale);
 			float sourceSize = s_eyedropperCursor.Width;
 			float hotspotX = (EyedropperHotspotX / sourceSize) * drawSize;
 			float hotspotY = (EyedropperHotspotY / sourceSize) * drawSize;
