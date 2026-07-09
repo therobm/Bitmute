@@ -89,8 +89,8 @@ namespace Bitmute.UI
 		private bool m_cursorInside;
 		private static SKBitmap s_eyedropperCursor;
 		private static bool s_eyedropperCursorLoadStarted;
-		private const float EyedropperHotspotX = 5.0f;
-		private const float EyedropperHotspotY = 58.0f;
+		private const float EyedropperHotspotX = 1.0f;
+		private const float EyedropperHotspotY = 125.0f;
 		private const int CursorImageSize = 32;
 		private bool m_toolStrokeActive;
 		private bool m_altColorSampling;
@@ -114,7 +114,6 @@ namespace Bitmute.UI
 		private eCursorKind m_lastCursorKind;
 		private Microsoft.UI.Input.InputSystemCursorShape m_lastCursorShape;
 		private string m_lastCursorImageKey;
-		private bool m_cursorFailureShown;
 		private int m_transformHoverKind;
 		private static System.Reflection.PropertyInfo s_protectedCursorProp = typeof(Microsoft.UI.Xaml.UIElement).GetProperty("ProtectedCursor", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
@@ -813,15 +812,6 @@ namespace Bitmute.UI
 				if (image != null)
 				{
 					return image;
-				}
-				if (!m_cursorFailureShown)
-				{
-					m_cursorFailureShown = true;
-					MainView reporter = MainView.Self;
-					if (reporter != null)
-					{
-						reporter.SetStatusMessage("Eyedropper cursor fell back: " + Bitmute.Platforms.Windows.NativeCursors.LastFailure());
-					}
 				}
 				return Microsoft.UI.Input.InputSystemCursor.Create(spec.m_systemShape);
 			}
