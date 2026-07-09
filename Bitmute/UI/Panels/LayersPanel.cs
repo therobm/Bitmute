@@ -52,17 +52,53 @@ namespace Bitmute.UI.Panels
 		{
 			SKBitmap thumbnail = new SKBitmap(ThumbnailWidth, ThumbnailHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
 			SKCanvas canvas = new SKCanvas(thumbnail);
-			canvas.Clear(new SKColor(0xFF, 0xFF, 0xFF));
+			canvas.Clear(new SKColor(0, 0, 0, 0));
+			float documentWidth = ThumbnailWidth;
+			float documentHeight = ThumbnailHeight;
+			Document document = Doc();
+			if (document != null && document.Width() > 0 && document.Height() > 0)
+			{
+				documentWidth = document.Width();
+				documentHeight = document.Height();
+			}
+			float scaleX = ThumbnailWidth / documentWidth;
+			float scaleY = ThumbnailHeight / documentHeight;
+			float scale = scaleX;
+			if (scaleY < scale)
+			{
+				scale = scaleY;
+			}
+			float documentLeft = (ThumbnailWidth - (documentWidth * scale)) / 2.0f;
+			float documentTop = (ThumbnailHeight - (documentHeight * scale)) / 2.0f;
+			SKRect documentRect = new SKRect(documentLeft, documentTop, documentLeft + (documentWidth * scale), documentTop + (documentHeight * scale));
+			SKPaint lightPaint = new SKPaint();
+			lightPaint.Color = new SKColor(0xFF, 0xFF, 0xFF);
+			canvas.DrawRect(documentRect, lightPaint);
+			lightPaint.Dispose();
 			SKPaint darkPaint = new SKPaint();
 			darkPaint.Color = new SKColor(0xC8, 0xC8, 0xC8);
-			for (int cellY = 0; cellY < ThumbnailHeight; cellY = cellY + ThumbnailCheckerCell)
+			int checkerLeft = (int)System.Math.Floor(documentRect.Left);
+			int checkerTop = (int)System.Math.Floor(documentRect.Top);
+			int checkerRight = (int)System.Math.Ceiling(documentRect.Right);
+			int checkerBottom = (int)System.Math.Ceiling(documentRect.Bottom);
+			for (int cellY = checkerTop; cellY < checkerBottom; cellY = cellY + ThumbnailCheckerCell)
 			{
-				for (int cellX = 0; cellX < ThumbnailWidth; cellX = cellX + ThumbnailCheckerCell)
+				for (int cellX = checkerLeft; cellX < checkerRight; cellX = cellX + ThumbnailCheckerCell)
 				{
-					int parity = (cellX / ThumbnailCheckerCell) + (cellY / ThumbnailCheckerCell);
+					int parity = ((cellX - checkerLeft) / ThumbnailCheckerCell) + ((cellY - checkerTop) / ThumbnailCheckerCell);
 					if ((parity & 1) == 1)
 					{
-						canvas.DrawRect(new SKRect(cellX, cellY, cellX + ThumbnailCheckerCell, cellY + ThumbnailCheckerCell), darkPaint);
+						float cellRight = cellX + ThumbnailCheckerCell;
+						float cellBottom = cellY + ThumbnailCheckerCell;
+						if (cellRight > documentRect.Right)
+						{
+							cellRight = documentRect.Right;
+						}
+						if (cellBottom > documentRect.Bottom)
+						{
+							cellBottom = documentRect.Bottom;
+						}
+						canvas.DrawRect(new SKRect(cellX, cellY, cellRight, cellBottom), darkPaint);
 					}
 				}
 			}
@@ -82,26 +118,17 @@ namespace Bitmute.UI.Panels
 			}
 
 			SKBitmap source = layer.Bitmap();
-			float sourceAspect = (float)source.Width / (float)source.Height;
-			float thumbnailAspect = (float)ThumbnailWidth / (float)ThumbnailHeight;
-			float destinationWidth = ThumbnailWidth;
-			float destinationHeight = ThumbnailHeight;
-			if (sourceAspect > thumbnailAspect)
-			{
-				destinationHeight = ThumbnailWidth / sourceAspect;
-			}
-			else
-			{
-				destinationWidth = ThumbnailHeight * sourceAspect;
-			}
-			float destinationLeft = (ThumbnailWidth - destinationWidth) / 2.0f;
-			float destinationTop = (ThumbnailHeight - destinationHeight) / 2.0f;
-			SKRect destination = new SKRect(destinationLeft, destinationTop, destinationLeft + destinationWidth, destinationTop + destinationHeight);
+			float destinationLeft = documentLeft + (layer.OffsetX() * scale);
+			float destinationTop = documentTop + (layer.OffsetY() * scale);
+			SKRect destination = new SKRect(destinationLeft, destinationTop, destinationLeft + (source.Width * scale), destinationTop + (source.Height * scale));
 			SKPixmap pixmap = source.PeekPixels();
 			SKImage image = SKImage.FromPixels(pixmap);
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None);
 			SKPaint imagePaint = new SKPaint();
+			canvas.Save();
+			canvas.ClipRect(documentRect);
 			canvas.DrawImage(image, destination, sampling, imagePaint);
+			canvas.Restore();
 			imagePaint.Dispose();
 			image.Dispose();
 			pixmap.Dispose();

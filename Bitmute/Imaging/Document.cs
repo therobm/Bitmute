@@ -790,7 +790,12 @@ namespace Bitmute.Imaging
 			m_selection = new Selection(m_width, m_height);
 		}
 
-		public unsafe void FillSelection(SKColor fill)
+		public void FillSelection(SKColor fill)
+		{
+			FillSelection(fill, false);
+		}
+
+		public unsafe void FillSelection(SKColor fill, bool preserveTransparent)
 		{
 			Layer layer = ActiveLayer();
 			if (layer == null)
@@ -851,6 +856,10 @@ namespace Bitmute.Imaging
 						continue;
 					}
 					byte* pixel = row + ((canvasX - offsetX) * 4);
+					if (preserveTransparent && pixel[3] == 0)
+					{
+						continue;
+					}
 					if (coverage == 255)
 					{
 						pixel[0] = fillRed;

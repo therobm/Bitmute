@@ -28,7 +28,7 @@ namespace Bitmute.Tools
 				return false;
 			}
 			BeginStroke(document, layer, state);
-			m_engine.SetPressure(state.PenPressure(), state.PressureSizeEnabled(), state.PressureOpacityEnabled());
+			m_engine.SetPressure(state.PenPressure(), state.PressureSizeEnabled(), state.PressureOpacityEnabled(), state.PressureMinimumSize(), state.PressureMinimumOpacity());
 			m_engine.SetTipShape(state.BrushRoundness(), state.BrushAngle());
 			m_shiftAxisLocked = false;
 			if (state.ShiftHeld() && m_hasPrevEnd)
@@ -60,7 +60,7 @@ namespace Bitmute.Tools
 			{
 				return false;
 			}
-			m_engine.SetPressure(state.PenPressure(), state.PressureSizeEnabled(), state.PressureOpacityEnabled());
+			m_engine.SetPressure(state.PenPressure(), state.PressureSizeEnabled(), state.PressureOpacityEnabled(), state.PressureMinimumSize(), state.PressureMinimumOpacity());
 			int pointX = x;
 			int pointY = y;
 			if (state.ShiftHeld())

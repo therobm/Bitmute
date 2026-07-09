@@ -112,6 +112,11 @@ namespace Bitmute.UI
 					return;
 				}
 			}
+			else if (eventArgs.ActionType == SKTouchAction.Moved)
+			{
+				eventArgs.Handled = true;
+				return;
+			}
 			else
 			{
 				m_dragging = false;
