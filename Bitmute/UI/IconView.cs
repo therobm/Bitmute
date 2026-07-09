@@ -11,10 +11,16 @@ namespace Bitmute.UI
 	public class IconView : SKCanvasView
 	{
 		private static Dictionary<string, SKBitmap> s_cache = new Dictionary<string, SKBitmap>();
+		private static readonly SKColorFilter s_darkInvertFilter = SKColorFilter.CreateColorMatrix(new float[]
+		{
+			-1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+			0.0f, -1.0f, 0.0f, 0.0f, 1.0f,
+			0.0f, 0.0f, -1.0f, 0.0f, 1.0f,
+			0.0f, 0.0f, 0.0f, 1.0f, 0.0f
+		});
 
 		private string m_name;
 		private bool m_loadStarted;
-		private bool m_selected;
 
 		public IconView(string name)
 		{
@@ -31,16 +37,6 @@ namespace Bitmute.UI
 			}
 			m_name = name;
 			m_loadStarted = false;
-			InvalidateSurface();
-		}
-
-		public void SetSelected(bool selected)
-		{
-			if (m_selected == selected)
-			{
-				return;
-			}
-			m_selected = selected;
 			InvalidateSurface();
 		}
 
@@ -87,14 +83,12 @@ namespace Bitmute.UI
 				return;
 			}
 
-			SKColor tint = Theme.IconTint();
-			if (m_selected)
-			{
-				tint = Theme.IconTintSelected();
-			}
 			SKPaint paint = new SKPaint();
 			paint.IsAntialias = true;
-			paint.ColorFilter = SKColorFilter.CreateBlendMode(tint, SKBlendMode.SrcIn);
+			if (Theme.IsDark())
+			{
+				paint.ColorFilter = s_darkInvertFilter;
+			}
 			SKRect destination = new SKRect(0.0f, 0.0f, eventArgs.Info.Width, eventArgs.Info.Height);
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None);
 			SKPixmap pixmap = bitmap.PeekPixels();

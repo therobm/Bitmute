@@ -626,7 +626,6 @@ namespace Bitmute.UI.Panels
 				{
 					m_cellButtons[index].ThemeBg(UiConstants.ToolButtonChipLight, UiConstants.ToolButtonChipDark);
 				}
-				m_cellIcons[index].SetSelected(selected);
 			}
 
 			MainView main = MainView.Self;
