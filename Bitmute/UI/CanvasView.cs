@@ -2698,12 +2698,12 @@ namespace Bitmute.UI
 					pixelX = snapGuides.SnapX(pixelX, snapTolerance);
 					pixelY = snapGuides.SnapY(pixelY, snapTolerance);
 				}
-				if (main.SnapTargetGrid())
+				if (main.SnapTargetGrid() && !(tool is RectangleSelectTool || tool is EllipseSelectTool))
 				{
 					pixelX = SnapToGrid(pixelX, snapTolerance);
 					pixelY = SnapToGrid(pixelY, snapTolerance);
 				}
-				if (main.SnapTargetEdges())
+				if (main.SnapTargetEdges() && !(tool is RectangleSelectTool || tool is EllipseSelectTool))
 				{
 					pixelX = SnapToEdge(pixelX, m_document.Width(), snapTolerance);
 					pixelY = SnapToEdge(pixelY, m_document.Height(), snapTolerance);
