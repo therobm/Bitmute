@@ -495,6 +495,22 @@ namespace Bitmute.UI
 			adjustment.m_sliderMaximums = new int[] { width, height };
 		}
 
+		private void RunClipped(Document document, Adjustment adjustment, Layer activeLayer, int[] values)
+		{
+			Selection selection = document.Selection();
+			if (!selection.IsActive())
+			{
+				adjustment.m_run(activeLayer.Bitmap(), values);
+				return;
+			}
+			SKBitmap layerBitmap = activeLayer.Bitmap();
+			SKBitmap adjusted = new SKBitmap(layerBitmap.Info);
+			PixelRegion.CopyPixels(layerBitmap, adjusted);
+			adjustment.m_run(adjusted, values);
+			PixelRegion.BlendAdjustedIntoSelection(layerBitmap, adjusted, activeLayer.OffsetX(), activeLayer.OffsetY(), selection);
+			adjusted.Dispose();
+		}
+
 		public void Apply(Adjustment adjustment, int[] values)
 		{
 			DocumentWindow window = m_main.ActiveWindow();
@@ -526,7 +542,7 @@ namespace Bitmute.UI
 			document.BeginStroke();
 			if (adjustment.m_run != null)
 			{
-				adjustment.m_run(activeLayer.Bitmap(), values);
+				RunClipped(document, adjustment, activeLayer, values);
 			}
 			document.EndStroke();
 			canvas.MarkComposeDirty();
@@ -569,7 +585,7 @@ namespace Bitmute.UI
 			document.RestoreStrokeSnapshot();
 			if (adjustment.m_run != null)
 			{
-				adjustment.m_run(activeLayer.Bitmap(), values);
+				RunClipped(document, adjustment, activeLayer, values);
 			}
 			canvas.MarkComposeDirty();
 		}
@@ -617,7 +633,7 @@ namespace Bitmute.UI
 			document.RestoreStrokeSnapshot();
 			if (adjustment.m_run != null)
 			{
-				adjustment.m_run(activeLayer.Bitmap(), values);
+				RunClipped(document, adjustment, activeLayer, values);
 			}
 			document.EndStroke();
 			canvas.MarkComposeDirty();
