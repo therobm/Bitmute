@@ -16,24 +16,6 @@ namespace Bitmute.Platforms.Windows
 		private static bool s_transparentBuilt;
 		private static IInputCursorStaticsInterop s_interop;
 		private static bool s_interopResolved;
-		private static string s_lastFailure = "not attempted";
-
-		public static string LastFailure()
-		{
-			return s_lastFailure;
-		}
-
-		private static void SetFailure(string reason)
-		{
-			s_lastFailure = reason;
-			try
-			{
-				System.IO.File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "bitmute-cursor.txt"), reason);
-			}
-			catch (Exception)
-			{
-			}
-		}
 
 		[StructLayout(LayoutKind.Sequential)]
 		private struct ICONINFO
@@ -83,7 +65,7 @@ namespace Bitmute.Platforms.Windows
 		}
 
 		[ComImport]
-		[Guid("25FDD5FD-9909-5DDF-BAE9-9A88DE87B2C7")]
+		[Guid("ac6f5065-90c4-46ce-beb7-05e138e54117")]
 		[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 		private interface IInputCursorStaticsInterop
 		{
@@ -91,7 +73,6 @@ namespace Bitmute.Platforms.Windows
 			void GetRuntimeClassName(out IntPtr className);
 			void GetTrustLevel(out int trustLevel);
 			IntPtr CreateFromHCursor(IntPtr hcursor);
-			IntPtr CreateFromCoreCursor(IntPtr coreCursor);
 		}
 
 		[DllImport("user32.dll", SetLastError = true)]
@@ -178,17 +159,14 @@ namespace Bitmute.Platforms.Windows
 				IntPtr abi = interop.CreateFromHCursor(hcursor);
 				if (abi == IntPtr.Zero)
 				{
-					SetFailure("CreateFromHCursor returned null");
 					return null;
 				}
 				InputCursor cursor = WinRT.MarshalInspectable<InputCursor>.FromAbi(abi);
 				Marshal.Release(abi);
-				SetFailure("ok");
 				return cursor;
 			}
 			catch (Exception error)
 			{
-				SetFailure("CreateFromHCursor threw: " + error.GetType().Name + ": " + error.Message);
 				Log.Exception(error);
 				return null;
 			}
@@ -225,7 +203,6 @@ namespace Bitmute.Platforms.Windows
 					{
 						DeleteObject(hbmColor);
 					}
-					SetFailure("CreateDIBSection failed");
 					return IntPtr.Zero;
 				}
 				SKImageInfo targetInfo = new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Unpremul);
@@ -233,7 +210,6 @@ namespace Bitmute.Platforms.Windows
 				if (pixmap == null)
 				{
 					DeleteObject(hbmColor);
-					SetFailure("PeekPixels null");
 					return IntPtr.Zero;
 				}
 				pixmap.ReadPixels(targetInfo, bits, width * 4);
@@ -252,15 +228,10 @@ namespace Bitmute.Platforms.Windows
 				IntPtr hcursor = CreateIconIndirect(ref iconInfo);
 				DeleteObject(hbmColor);
 				DeleteObject(hbmMask);
-				if (hcursor == IntPtr.Zero)
-				{
-					SetFailure("CreateIconIndirect failed");
-				}
 				return hcursor;
 			}
 			catch (Exception error)
 			{
-				SetFailure("CreateHCursor threw: " + error.GetType().Name + ": " + error.Message);
 				Log.Exception(error);
 				return IntPtr.Zero;
 			}
@@ -280,7 +251,6 @@ namespace Bitmute.Platforms.Windows
 			}
 			catch (Exception error)
 			{
-				SetFailure("Interop acquire threw: " + error.GetType().Name + ": " + error.Message);
 				Log.Exception(error);
 				s_interop = null;
 			}
