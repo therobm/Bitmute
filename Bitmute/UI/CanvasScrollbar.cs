@@ -12,6 +12,7 @@ namespace Bitmute.UI
 		private CanvasView m_canvas;
 		private bool m_horizontal;
 		private bool m_dragging;
+		private float m_grabOffset;
 
 		public CanvasScrollbar(CanvasView canvas, bool horizontal)
 		{
@@ -161,7 +162,33 @@ namespace Bitmute.UI
 				eventArgs.Handled = true;
 				return;
 			}
-			float thumbPos = touchPos - (thumbSize / 2.0f);
+			if (eventArgs.ActionType == SKTouchAction.Pressed)
+			{
+				float currentOffset = m_canvas.PanOffsetX();
+				if (!m_horizontal)
+				{
+					currentOffset = m_canvas.PanOffsetY();
+				}
+				float currentScroll = -currentOffset;
+				if (currentScroll < 0.0f)
+				{
+					currentScroll = 0.0f;
+				}
+				if (currentScroll > maxScroll)
+				{
+					currentScroll = maxScroll;
+				}
+				float currentThumbPos = (currentScroll / maxScroll) * travel;
+				if (touchPos >= currentThumbPos && touchPos <= currentThumbPos + thumbSize)
+				{
+					m_grabOffset = touchPos - currentThumbPos;
+				}
+				else
+				{
+					m_grabOffset = thumbSize / 2.0f;
+				}
+			}
+			float thumbPos = touchPos - m_grabOffset;
 			if (thumbPos < 0.0f)
 			{
 				thumbPos = 0.0f;
