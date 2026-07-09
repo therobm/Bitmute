@@ -88,10 +88,10 @@ namespace Bitmute.UI
 		private float m_selectPressDeviceY;
 		private bool m_cursorInside;
 		private static SKBitmap s_eyedropperCursor;
-		private static SKImage s_eyedropperCursorImage;
 		private static bool s_eyedropperCursorLoadStarted;
 		private const float EyedropperHotspotX = 5.0f;
 		private const float EyedropperHotspotY = 58.0f;
+		private const int CursorImageSize = 32;
 		private bool m_toolStrokeActive;
 		private bool m_altColorSampling;
 		private bool m_ctrlHeld;
@@ -109,8 +109,10 @@ namespace Bitmute.UI
 		private int m_guideStickyState;
 		private SKRectI m_guideStickyBox;
 		private bool m_guideStickyIsBackground;
-		private bool m_hasCursorShape;
-		private Microsoft.UI.Input.InputSystemCursorShape m_currentCursorShape;
+		private bool m_hasCursorSpec;
+		private eCursorKind m_lastCursorKind;
+		private Microsoft.UI.Input.InputSystemCursorShape m_lastCursorShape;
+		private string m_lastCursorImageKey;
 		private int m_transformHoverKind;
 		private static System.Reflection.PropertyInfo s_protectedCursorProp = typeof(Microsoft.UI.Xaml.UIElement).GetProperty("ProtectedCursor", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
@@ -746,14 +748,12 @@ namespace Bitmute.UI
 			}
 		}
 
-		private void ApplyCursorShape(Microsoft.UI.Input.InputSystemCursorShape shape)
+		private void ApplyCursor(CursorSpec spec)
 		{
-			if (m_hasCursorShape && m_currentCursorShape == shape)
+			if (m_hasCursorSpec && m_lastCursorKind == spec.m_kind && m_lastCursorShape == spec.m_systemShape && m_lastCursorImageKey == spec.m_imageKey)
 			{
 				return;
 			}
-			m_currentCursorShape = shape;
-			m_hasCursorShape = true;
 			if (s_protectedCursorProp == null)
 			{
 				return;
@@ -767,13 +767,54 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			Microsoft.UI.Input.InputCursor cursor = ResolveCursor(spec);
+			if (cursor == null)
+			{
+				return;
+			}
 			try
 			{
-				s_protectedCursorProp.SetValue(element, Microsoft.UI.Input.InputSystemCursor.Create(shape));
+				s_protectedCursorProp.SetValue(element, cursor);
+				m_hasCursorSpec = true;
+				m_lastCursorKind = spec.m_kind;
+				m_lastCursorShape = spec.m_systemShape;
+				m_lastCursorImageKey = spec.m_imageKey;
 			}
 			catch (System.Exception)
 			{
 			}
+		}
+
+		private Microsoft.UI.Input.InputCursor ResolveCursor(CursorSpec spec)
+		{
+			if (spec.m_kind == eCursorKind.HiddenWithOverlay)
+			{
+				Microsoft.UI.Input.InputCursor transparent = Bitmute.Platforms.Windows.NativeCursors.Transparent();
+				if (transparent != null)
+				{
+					return transparent;
+				}
+				return Microsoft.UI.Input.InputSystemCursor.Create(Microsoft.UI.Input.InputSystemCursorShape.Arrow);
+			}
+			if (spec.m_kind == eCursorKind.Image)
+			{
+				if (s_eyedropperCursor == null)
+				{
+					if (!s_eyedropperCursorLoadStarted)
+					{
+						s_eyedropperCursorLoadStarted = true;
+						LoadEyedropperCursor();
+					}
+					return null;
+				}
+				Microsoft.UI.Input.InputCursor image = Bitmute.Platforms.Windows.NativeCursors.FromBitmap(s_eyedropperCursor, spec.m_imageKey, spec.m_hotspotX, spec.m_hotspotY, CursorImageSize);
+				if (image != null)
+				{
+					return image;
+				}
+				return Microsoft.UI.Input.InputSystemCursor.Create(spec.m_systemShape);
+			}
+			return Microsoft.UI.Input.InputSystemCursor.Create(spec.m_systemShape);
 		}
 
 		private static Microsoft.UI.Input.InputSystemCursorShape TransformCursorShape(int kind)
@@ -840,7 +881,7 @@ namespace Bitmute.UI
 		private void UpdateHoverCursor(Tool tool, int pixelX, int pixelY)
 		{
 			m_transformHoverKind = 0;
-			Microsoft.UI.Input.InputSystemCursorShape desired = Microsoft.UI.Input.InputSystemCursorShape.Arrow;
+			CursorSpec spec = new CursorSpec(eCursorKind.System, Microsoft.UI.Input.InputSystemCursorShape.Arrow, "", 0, 0);
 			Bitmute.Imaging.Guides guides = m_document.Guides();
 			if (!guides.IsLocked())
 			{
@@ -851,28 +892,44 @@ namespace Bitmute.UI
 				}
 				if (guides.HitVertical(pixelX, tolerance) >= 0)
 				{
-					desired = Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast;
+					spec = new CursorSpec(eCursorKind.System, Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast, "", 0, 0);
 				}
 				else if (guides.HitHorizontal(pixelY, tolerance) >= 0)
 				{
-					desired = Microsoft.UI.Input.InputSystemCursorShape.SizeNorthSouth;
+					spec = new CursorSpec(eCursorKind.System, Microsoft.UI.Input.InputSystemCursorShape.SizeNorthSouth, "", 0, 0);
 				}
 			}
-			if (desired == Microsoft.UI.Input.InputSystemCursorShape.Arrow && tool is FreeTransformTool)
+			if (IsArrowSystem(spec) && tool is FreeTransformTool)
 			{
 				int kind = ((FreeTransformTool)tool).HitTestKind(pixelX, pixelY);
 				m_transformHoverKind = kind;
-				desired = TransformCursorShape(kind);
+				if (kind == 5)
+				{
+					spec = new CursorSpec(eCursorKind.HiddenWithOverlay, Microsoft.UI.Input.InputSystemCursorShape.Arrow, "", 0, 0);
+				}
+				else if (kind != 0)
+				{
+					spec = new CursorSpec(eCursorKind.System, TransformCursorShape(kind), "", 0, 0);
+				}
 			}
-			if (desired == Microsoft.UI.Input.InputSystemCursorShape.Arrow && tool is PenTool)
+			if (IsArrowSystem(spec) && ShowsBrushCursor(tool))
 			{
-				desired = Microsoft.UI.Input.InputSystemCursorShape.Cross;
+				spec = new CursorSpec(eCursorKind.HiddenWithOverlay, Microsoft.UI.Input.InputSystemCursorShape.Arrow, "", 0, 0);
 			}
-			if (desired == Microsoft.UI.Input.InputSystemCursorShape.Arrow && tool is EyedropperTool)
+			if (IsArrowSystem(spec) && tool is PenTool)
 			{
-				desired = Microsoft.UI.Input.InputSystemCursorShape.Cross;
+				spec = new CursorSpec(eCursorKind.System, Microsoft.UI.Input.InputSystemCursorShape.Cross, "", 0, 0);
 			}
-			ApplyCursorShape(desired);
+			if (IsArrowSystem(spec) && tool is EyedropperTool)
+			{
+				spec = new CursorSpec(eCursorKind.Image, Microsoft.UI.Input.InputSystemCursorShape.Cross, "eyedropper", (int)EyedropperHotspotX, (int)EyedropperHotspotY);
+			}
+			ApplyCursor(spec);
+		}
+
+		private static bool IsArrowSystem(CursorSpec spec)
+		{
+			return spec.m_kind == eCursorKind.System && spec.m_systemShape == Microsoft.UI.Input.InputSystemCursorShape.Arrow;
 		}
 
 		public void SyncDocumentSize()
@@ -899,39 +956,6 @@ namespace Bitmute.UI
 			catch (System.Exception)
 			{
 			}
-		}
-
-		private void DrawEyedropperCursor(SKCanvas canvas)
-		{
-			if (s_eyedropperCursor == null)
-			{
-				if (!s_eyedropperCursorLoadStarted)
-				{
-					s_eyedropperCursorLoadStarted = true;
-					LoadEyedropperCursor();
-				}
-				return;
-			}
-			if (s_eyedropperCursorImage == null)
-			{
-				s_eyedropperCursorImage = SKImage.FromBitmap(s_eyedropperCursor);
-			}
-			double scale = 1.0;
-			if (Width > 0.0)
-			{
-				scale = CanvasSize.Width / Width;
-			}
-			float drawSize = (float)(16.0 * scale);
-			float sourceSize = s_eyedropperCursor.Width;
-			float hotspotX = (EyedropperHotspotX / sourceSize) * drawSize;
-			float hotspotY = (EyedropperHotspotY / sourceSize) * drawSize;
-			float left = m_cursorDeviceX - hotspotX;
-			float top = m_cursorDeviceY - hotspotY;
-			SKRect destination = new SKRect(left, top, left + drawSize, top + drawSize);
-			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None);
-			SKPaint paint = new SKPaint();
-			canvas.DrawImage(s_eyedropperCursorImage, destination, sampling, paint);
-			paint.Dispose();
 		}
 
 		private void DrawToolOverlay(SKCanvas canvas)
@@ -1040,10 +1064,6 @@ namespace Bitmute.UI
 					DrawMarqueeSizeLabel(canvas, ellipseTool.PreviewWidth(), ellipseTool.PreviewHeight());
 				}
 				return;
-			}
-			if (m_cursorInside && tool is EyedropperTool)
-			{
-				DrawEyedropperCursor(canvas);
 			}
 			if (m_cursorInside && ShowsBrushCursor(tool))
 			{
@@ -2590,7 +2610,7 @@ namespace Bitmute.UI
 			if (eventArgs.ActionType == SKTouchAction.Exited || eventArgs.ActionType == SKTouchAction.Cancelled)
 			{
 				m_cursorInside = false;
-				ApplyCursorShape(Microsoft.UI.Input.InputSystemCursorShape.Arrow);
+				ApplyCursor(new CursorSpec(eCursorKind.System, Microsoft.UI.Input.InputSystemCursorShape.Arrow, "", 0, 0));
 				InvalidateSurface();
 			}
 			else
