@@ -1753,20 +1753,28 @@ namespace Bitmute.Imaging
 			SKPaint paint = new SKPaint();
 			paint.BlendMode = SKBlendMode.SrcOver;
 			paint.Color = SKColors.White.WithAlpha(lower.Opacity());
-			SKImage lowerImage = SKImage.FromBitmap(lowerBitmap);
-			canvas.DrawImage(lowerImage, lowerLeft - left, lowerTop - top, sampling, paint);
-			lowerImage.Dispose();
+			if (lower.IsVisible())
+			{
+				SKImage lowerImage = SKImage.FromBitmap(lowerBitmap);
+				canvas.DrawImage(lowerImage, lowerLeft - left, lowerTop - top, sampling, paint);
+				lowerImage.Dispose();
+			}
 			paint.BlendMode = Layer.ToSkBlendMode(upper.BlendMode());
 			paint.Color = SKColors.White.WithAlpha(upper.Opacity());
-			SKImage upperImage = SKImage.FromBitmap(upperBitmap);
-			canvas.DrawImage(upperImage, upperLeft - left, upperTop - top, sampling, paint);
-			upperImage.Dispose();
+			if (upper.IsVisible())
+			{
+				SKImage upperImage = SKImage.FromBitmap(upperBitmap);
+				canvas.DrawImage(upperImage, upperLeft - left, upperTop - top, sampling, paint);
+				upperImage.Dispose();
+			}
 			paint.Dispose();
 			canvas.Dispose();
+			bool mergedVisible = lower.IsVisible() || upper.IsVisible();
 			lower.SetBitmap(merged);
 			lower.SetOffset(left, top);
 			lower.SetOpacity(255);
 			lower.SetBlendMode(eBlendMode.Normal);
+			lower.SetVisible(mergedVisible);
 			m_layers.RemoveAt(index);
 			if (m_activeLayerIndex >= m_layers.Count)
 			{
@@ -1816,7 +1824,12 @@ namespace Bitmute.Imaging
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
 			for (int order = 0; order < sorted.Count; order++)
 			{
-				DrawStyledLayer(canvas, m_layers[sorted[order]], sampling, paint);
+				Layer sourceLayer = m_layers[sorted[order]];
+				if (!sourceLayer.IsVisible())
+				{
+					continue;
+				}
+				DrawStyledLayer(canvas, sourceLayer, sampling, paint);
 			}
 			paint.Dispose();
 			canvas.Dispose();
