@@ -96,6 +96,7 @@ namespace Bitmute.UI
 		private bool m_altColorSampling;
 		private bool m_ctrlHeld;
 		private bool m_penDirectOverride;
+		private bool m_ctrlMoveOverride;
 		private bool m_zoomDragging;
 		private float m_zoomDragStartX;
 		private float m_zoomDragStartY;
@@ -807,20 +808,47 @@ namespace Bitmute.UI
 
 		private Tool EffectiveTool(Tool current)
 		{
-			if (!(current is PenTool))
+			if (current is PenTool)
 			{
-				return current;
+				bool useDirect;
+				if (m_toolStrokeActive)
+				{
+					useDirect = m_penDirectOverride;
+				}
+				else
+				{
+					useDirect = m_ctrlHeld;
+				}
+				if (!useDirect)
+				{
+					return current;
+				}
+				MainView penMain = MainView.Self;
+				if (penMain == null)
+				{
+					return current;
+				}
+				Tool directTool = penMain.ToolInstance(eTool.DirectSelect);
+				if (directTool == null)
+				{
+					return current;
+				}
+				return directTool;
 			}
-			bool useDirect;
+			bool useMove;
 			if (m_toolStrokeActive)
 			{
-				useDirect = m_penDirectOverride;
+				useMove = m_ctrlMoveOverride;
 			}
 			else
 			{
-				useDirect = m_ctrlHeld;
+				useMove = m_ctrlHeld;
 			}
-			if (!useDirect)
+			if (!useMove)
+			{
+				return current;
+			}
+			if (current is MoveTool || current is HandTool || current is DirectSelectionTool || current is FreeTransformTool || current is ZoomTool)
 			{
 				return current;
 			}
@@ -829,12 +857,12 @@ namespace Bitmute.UI
 			{
 				return current;
 			}
-			Tool directTool = main.ToolInstance(eTool.DirectSelect);
-			if (directTool == null)
+			Tool moveTool = main.ToolInstance(eTool.Move);
+			if (moveTool == null)
 			{
 				return current;
 			}
-			return directTool;
+			return moveTool;
 		}
 
 		private void UpdateHoverCursor(Tool tool, int pixelX, int pixelY)
@@ -2702,9 +2730,16 @@ namespace Bitmute.UI
 			}
 			Windows.UI.Core.CoreVirtualKeyStates ctrlState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Control);
 			m_ctrlHeld = (ctrlState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
-			if (tool is PenTool && eventArgs.ActionType == SKTouchAction.Pressed)
+			if (eventArgs.ActionType == SKTouchAction.Pressed)
 			{
-				m_penDirectOverride = m_ctrlHeld;
+				if (tool is PenTool)
+				{
+					m_penDirectOverride = m_ctrlHeld;
+				}
+				else
+				{
+					m_ctrlMoveOverride = m_ctrlHeld;
+				}
 			}
 			tool = EffectiveTool(tool);
 
@@ -2893,7 +2928,6 @@ namespace Bitmute.UI
 			Windows.UI.Core.CoreVirtualKeyStates altState = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Menu);
 			bool altHeld = (altState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
 			state.SetAltHeld(altHeld);
-			state.SetCtrlHeld(m_ctrlHeld);
 			int guideSnapTolerance;
 			if (m_zoom > 1.0)
 			{

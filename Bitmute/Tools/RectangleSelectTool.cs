@@ -54,7 +54,15 @@ namespace Bitmute.Tools
 			m_startY = y;
 			m_constrainAllowed = !document.Selection().IsActive();
 			m_previewActive = true;
-			eSelectionMode mode = SelectionModeFromState(state);
+			eSelectionMode mode;
+			if (m_constrainAllowed)
+			{
+				mode = eSelectionMode.Replace;
+			}
+			else
+			{
+				mode = SelectionModeFromState(state);
+			}
 			if (mode == eSelectionMode.Replace)
 			{
 				document.Selection().Clear();
@@ -66,7 +74,7 @@ namespace Bitmute.Tools
 		public override bool OnDragged(Document document, int x, int y, ToolState state)
 		{
 			bool square = m_constrainAllowed && state.ShiftHeld();
-			bool fromCenter = m_constrainAllowed && state.CtrlHeld();
+			bool fromCenter = m_constrainAllowed && state.AltHeld();
 			int cornerAX;
 			int cornerAY;
 			int cornerBX;
