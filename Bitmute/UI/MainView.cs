@@ -506,13 +506,13 @@ namespace Bitmute.UI
 		public void FillSelectionWithForeground()
 		{
 			SKColor foreground = m_toolState.Foreground();
-			FillSelectionWith(new SKColor(foreground.Red, foreground.Green, foreground.Blue, 255), true);
+			FillSelectionWith(new SKColor(foreground.Red, foreground.Green, foreground.Blue, 255), true, false);
 		}
 
 		public void FillSelectionWithBackground()
 		{
 			SKColor background = m_toolState.Background();
-			FillSelectionWith(new SKColor(background.Red, background.Green, background.Blue, 255), true);
+			FillSelectionWith(new SKColor(background.Red, background.Green, background.Blue, 255), true, false);
 		}
 
 		public void DoExit()
@@ -2454,10 +2454,10 @@ namespace Bitmute.UI
 				SKColor background = m_toolState.Background();
 				fill = new SKColor(background.Red, background.Green, background.Blue, 255);
 			}
-			FillSelectionWith(fill, false);
+			FillSelectionWith(fill, false, layer.IsBackground());
 		}
 
-		public void FillSelectionWith(SKColor fill, bool fillLayerWhenEmpty)
+		public void FillSelectionWith(SKColor fill, bool fillLayerWhenEmpty, bool preserveTransparent)
 		{
 			Document document = ActiveDocument();
 			if (document == null)
@@ -2483,7 +2483,7 @@ namespace Bitmute.UI
 			document.BeginStroke();
 			if (hasSelection)
 			{
-				document.FillSelection(fill);
+				document.FillSelection(fill, preserveTransparent);
 			}
 			else
 			{
