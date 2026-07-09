@@ -64,6 +64,7 @@ namespace Bitmute.Tests
 			TestGaussianBlur();
 			TestGaussianBlurAlpha();
 			TestLayerMerging();
+			TestMergeSkipsHiddenLayers();
 			TestChannelVisibilityMask();
 			TestDodgeBurnRange();
 			TestChannelRender();
@@ -1159,6 +1160,48 @@ namespace Bitmute.Tests
 			Check(selectedMerged.GetPixelCanvas(1, 1).Green > 180, "merge selected holds green from layer a");
 			Check(selectedMerged.GetPixelCanvas(2, 2).Blue > 180, "merge selected holds blue from layer b");
 			Check(selectedMerged.GetPixelCanvas(0, 0).Alpha == 0, "merge selected stays transparent where neither layer had pixels");
+		}
+
+		private static void TestMergeSkipsHiddenLayers()
+		{
+			Document downDoc = new Document("t", 8, 8);
+			downDoc.ActiveLayer().Bitmap().Erase(new SKColor(200, 0, 0, 255));
+			Layer hiddenTop = downDoc.AddLayer("top");
+			hiddenTop.Bitmap().Erase(new SKColor(0, 200, 0, 255));
+			hiddenTop.SetVisible(false);
+			downDoc.MergeDown(1);
+			Check(downDoc.Layers().Count == 1, "merge down of a hidden top collapses to one layer");
+			Layer downResult = downDoc.ActiveLayer();
+			Check(downResult.GetPixelCanvas(4, 4).Red > 180 && downResult.GetPixelCanvas(4, 4).Green < 80, "merge down discards the hidden top layer's pixels");
+			Check(downResult.IsVisible(), "merge down result stays visible");
+
+			Document baseHiddenDoc = new Document("t", 8, 8);
+			baseHiddenDoc.ActiveLayer().Bitmap().Erase(new SKColor(200, 0, 0, 255));
+			baseHiddenDoc.ActiveLayer().SetVisible(false);
+			Layer visibleTop = baseHiddenDoc.AddLayer("top");
+			visibleTop.Bitmap().Erase(new SKColor(0, 0, 200, 255));
+			baseHiddenDoc.MergeDown(1);
+			Layer baseHiddenResult = baseHiddenDoc.ActiveLayer();
+			Check(baseHiddenResult.GetPixelCanvas(4, 4).Blue > 180, "merge down keeps the visible top when the base was hidden");
+			Check(baseHiddenResult.IsVisible(), "merge down turns the result visible when only the top was visible");
+
+			Document selDoc = new Document("t", 8, 8);
+			selDoc.ActiveLayer().Bitmap().Erase(new SKColor(200, 0, 0, 255));
+			Layer selVisible = selDoc.AddLayer("a");
+			selVisible.Bitmap().Erase(SKColors.Transparent);
+			selVisible.Bitmap().SetPixel(1, 1, new SKColor(0, 200, 0, 255));
+			Layer selHidden = selDoc.AddLayer("b");
+			selHidden.Bitmap().Erase(SKColors.Transparent);
+			selHidden.Bitmap().SetPixel(2, 2, new SKColor(0, 0, 200, 255));
+			selHidden.SetVisible(false);
+			List<int> mergeSet = new List<int>();
+			mergeSet.Add(1);
+			mergeSet.Add(2);
+			selDoc.MergeLayers(mergeSet);
+			Check(selDoc.Layers().Count == 2, "merge selected with a hidden member still collapses the selection");
+			Layer selResult = selDoc.Layers()[1];
+			Check(selResult.GetPixelCanvas(1, 1).Green > 180, "merge selected keeps the visible member's pixels");
+			Check(selResult.GetPixelCanvas(2, 2).Alpha == 0, "merge selected discards the hidden member's pixels");
 		}
 
 		private static void TestChannelVisibilityMask()
