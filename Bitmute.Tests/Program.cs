@@ -82,6 +82,7 @@ namespace Bitmute.Tests
 			TestTransformScaleCommit();
 			TestTransformSelectionLiftCancel();
 			TestTransformBackgroundStaysCanvas();
+			TestTransformSelectionMoveKeepsContent();
 			TestCanvasOpUndo();
 			TestStructuralLayerUndo();
 			TestGuidesModel();
@@ -660,6 +661,37 @@ namespace Bitmute.Tests
 			Check(doc.ActiveLayer().IsBackground(), "background stays a background layer");
 			SKColor exposed = doc.ActiveLayer().GetPixelCanvas(7, 7);
 			Check(exposed.Alpha == 255, "background exposed area stays opaque");
+		}
+
+		private static void TestTransformSelectionMoveKeepsContent()
+		{
+			Document doc = new Document("t", 64, 64);
+			Layer pasted = doc.AddLayer("p");
+			SKBitmap small = new SKBitmap(12, 12, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			SKColor green = new SKColor(0, 200, 0, 255);
+			small.Erase(green);
+			pasted.SetBitmap(small);
+			pasted.SetOffset(10, 10);
+			doc.Selection().SelectRect(new SKRectI(10, 10, 22, 22));
+			FreeTransformTool transform = new FreeTransformTool();
+			transform.SetPickRadius(2);
+			bool armed = transform.Begin(doc, 1, new SKColor(255, 255, 255, 255));
+			Check(armed, "transform selection-move arms");
+			ToolState state = new ToolState();
+			transform.OnPressed(doc, 16, 16, state);
+			transform.OnDragged(doc, 46, 41, state);
+			transform.OnReleased(doc, 46, 41, state);
+			transform.Commit(doc);
+			SKColor moved = pasted.GetPixelCanvas(46, 41);
+			Check(moved.Green > 150 && moved.Alpha > 200, "transform selection-move keeps content at new position 46,41 (rgba " + moved.Red + "," + moved.Green + "," + moved.Blue + "," + moved.Alpha + ")");
+			SKColor movedTopLeft = pasted.GetPixelCanvas(41, 36);
+			Check(movedTopLeft.Green > 150 && movedTopLeft.Alpha > 200, "transform selection-move keeps content near new top-left 41,36");
+			bool undone = doc.Undo();
+			Check(undone, "transform selection-move is undoable");
+			Check(pasted.Bitmap().Width == 12 && pasted.Bitmap().Height == 12, "transform selection-move undo restores original 12x12 bitmap");
+			Check(pasted.OffsetX() == 10 && pasted.OffsetY() == 10, "transform selection-move undo restores original offset");
+			SKColor undoHome = pasted.GetPixelCanvas(15, 15);
+			Check(undoHome.Green == 200 && undoHome.Alpha == 255, "transform selection-move undo restores pixels home 15,15");
 		}
 
 		private static void TestCanvasOpUndo()
