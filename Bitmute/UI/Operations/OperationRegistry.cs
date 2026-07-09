@@ -57,7 +57,7 @@ namespace Bitmute.UI.Operations
 			{ VirtualKey.S, eTool.Clone },
 			{ VirtualKey.E, eTool.Eraser },
 			{ VirtualKey.G, eTool.Fill },
-			{ VirtualKey.O, eTool.DodgeBurn },
+			{ VirtualKey.O, eTool.Dodge },
 			{ VirtualKey.R, eTool.Blur },
 			{ VirtualKey.T, eTool.Text },
 			{ VirtualKey.U, eTool.Line },

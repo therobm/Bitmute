@@ -1291,7 +1291,7 @@ namespace Bitmute.Tests
 			state.SetAltHeld(true);
 			state.SetDodgeBurnRange(range);
 			state.SetDodgeBurnExposure(exposure);
-			DodgeBurnTool tool = new DodgeBurnTool();
+			DodgeTool tool = new DodgeTool();
 			doc.BeginStroke();
 			tool.OnPressed(doc, 16, 16, state);
 			tool.OnReleased(doc, 16, 16, state);
