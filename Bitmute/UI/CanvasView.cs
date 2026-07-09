@@ -2894,9 +2894,9 @@ namespace Bitmute.UI
 			bool altHeld = (altState & Windows.UI.Core.CoreVirtualKeyStates.Down) == Windows.UI.Core.CoreVirtualKeyStates.Down;
 			state.SetAltHeld(altHeld);
 			int guideSnapTolerance = (int)System.Math.Ceiling(6.0 / m_zoom);
-			if (guideSnapTolerance < 3)
+			if (guideSnapTolerance < 1)
 			{
-				guideSnapTolerance = 3;
+				guideSnapTolerance = 1;
 			}
 			bool snapMaster = main.SnapEnabled();
 			state.SetSnapToGuides(snapMaster && main.SnapTargetGuides());
