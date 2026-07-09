@@ -87,6 +87,11 @@ namespace Bitmute.UI
 		private float m_selectPressDeviceX;
 		private float m_selectPressDeviceY;
 		private bool m_cursorInside;
+		private static SKBitmap s_eyedropperCursor;
+		private static SKImage s_eyedropperCursorImage;
+		private static bool s_eyedropperCursorLoadStarted;
+		private const float EyedropperHotspotX = 5.0f;
+		private const float EyedropperHotspotY = 58.0f;
 		private bool m_toolStrokeActive;
 		private bool m_ctrlHeld;
 		private bool m_penDirectOverride;
@@ -862,6 +867,10 @@ namespace Bitmute.UI
 			{
 				desired = Microsoft.UI.Input.InputSystemCursorShape.Cross;
 			}
+			if (desired == Microsoft.UI.Input.InputSystemCursorShape.Arrow && tool is EyedropperTool)
+			{
+				desired = Microsoft.UI.Input.InputSystemCursorShape.Cross;
+			}
 			ApplyCursorShape(desired);
 		}
 
@@ -875,6 +884,53 @@ namespace Bitmute.UI
 			{
 				ResetView();
 			}
+		}
+
+		private static async void LoadEyedropperCursor()
+		{
+			try
+			{
+				System.IO.Stream stream = await Microsoft.Maui.Storage.FileSystem.OpenAppPackageFileAsync("eyedropper.png");
+				SKBitmap bitmap = SKBitmap.Decode(stream);
+				stream.Dispose();
+				s_eyedropperCursor = bitmap;
+			}
+			catch (System.Exception)
+			{
+			}
+		}
+
+		private void DrawEyedropperCursor(SKCanvas canvas)
+		{
+			if (s_eyedropperCursor == null)
+			{
+				if (!s_eyedropperCursorLoadStarted)
+				{
+					s_eyedropperCursorLoadStarted = true;
+					LoadEyedropperCursor();
+				}
+				return;
+			}
+			if (s_eyedropperCursorImage == null)
+			{
+				s_eyedropperCursorImage = SKImage.FromBitmap(s_eyedropperCursor);
+			}
+			double scale = 1.0;
+			if (Width > 0.0)
+			{
+				scale = CanvasSize.Width / Width;
+			}
+			float drawSize = (float)(32.0 * scale);
+			float sourceSize = s_eyedropperCursor.Width;
+			float hotspotX = (EyedropperHotspotX / sourceSize) * drawSize;
+			float hotspotY = (EyedropperHotspotY / sourceSize) * drawSize;
+			float left = m_cursorDeviceX - hotspotX;
+			float top = m_cursorDeviceY - hotspotY;
+			SKRect destination = new SKRect(left, top, left + drawSize, top + drawSize);
+			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.None);
+			SKPaint paint = new SKPaint();
+			canvas.DrawImage(s_eyedropperCursorImage, destination, sampling, paint);
+			paint.Dispose();
 		}
 
 		private void DrawToolOverlay(SKCanvas canvas)
@@ -983,6 +1039,10 @@ namespace Bitmute.UI
 					DrawMarqueeSizeLabel(canvas, ellipseTool.PreviewWidth(), ellipseTool.PreviewHeight());
 				}
 				return;
+			}
+			if (m_cursorInside && tool is EyedropperTool)
+			{
+				DrawEyedropperCursor(canvas);
 			}
 			if (m_cursorInside && ShowsBrushCursor(tool))
 			{
@@ -2537,7 +2597,7 @@ namespace Bitmute.UI
 				m_cursorInside = true;
 			}
 			Tool hoverTool = main.CurrentTool();
-			bool wantsHoverRepaint = ShowsBrushCursor(hoverTool);
+			bool wantsHoverRepaint = ShowsBrushCursor(hoverTool) || hoverTool is EyedropperTool;
 			if (hoverTool is FreeTransformTool && ((FreeTransformTool)hoverTool).HasPreview())
 			{
 				wantsHoverRepaint = true;
