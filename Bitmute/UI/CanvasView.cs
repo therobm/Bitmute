@@ -2738,6 +2738,16 @@ namespace Bitmute.UI
 				((DirectSelectionTool)tool).SetPickRadius(selectPick);
 			}
 
+			if (tool is LassoTool)
+			{
+				int lassoClose = (int)System.Math.Ceiling(6.0 / m_zoom);
+				if (lassoClose < 3)
+				{
+					lassoClose = 3;
+				}
+				((LassoTool)tool).SetCloseRadius(lassoClose);
+			}
+
 			UpdateHoverCursor(tool, pixelX, pixelY);
 
 			if (HandleGuideDrag(eventArgs, pixelX, pixelY))
