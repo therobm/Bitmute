@@ -124,6 +124,7 @@ namespace Bitmute.Tests
 			TestStrokeSnapshotPoolReuse();
 			TestCoveragePoolClearedBetweenStrokes();
 			TestMarqueeDragSequence();
+			TestMarqueeNoSelectionConstraints();
 			TestEllipseDragScratchReuse();
 			TestSetShiftedPartialClip();
 			TestShiftTranslatableFlags();
@@ -3491,6 +3492,64 @@ namespace Bitmute.Tests
 					Check(dragged.Bounds() == direct.Bounds(), "drag sequence bounds match (" + dragged.Bounds() + " vs " + direct.Bounds() + ")");
 				}
 			}
+		}
+
+		private static void TestMarqueeNoSelectionConstraints()
+		{
+			ToolState state = new ToolState();
+
+			Document squareDoc = new Document("t", 64, 64);
+			RectangleSelectTool squareTool = new RectangleSelectTool();
+			state.SetShiftHeld(true);
+			state.SetCtrlHeld(false);
+			squareTool.OnPressed(squareDoc, 5, 5, state);
+			squareTool.OnDragged(squareDoc, 25, 15, state);
+			squareTool.OnReleased(squareDoc, 25, 15, state);
+			SKRectI squareBounds = squareDoc.Selection().Bounds();
+			Check(squareBounds.Width == squareBounds.Height, "shift marquee with no selection is a square (" + squareBounds.Width + "x" + squareBounds.Height + ")");
+
+			Document centerDoc = new Document("t", 64, 64);
+			RectangleSelectTool centerTool = new RectangleSelectTool();
+			state.SetShiftHeld(false);
+			state.SetCtrlHeld(true);
+			centerTool.OnPressed(centerDoc, 20, 20, state);
+			centerTool.OnDragged(centerDoc, 30, 25, state);
+			centerTool.OnReleased(centerDoc, 30, 25, state);
+			SKRectI centerBounds = centerDoc.Selection().Bounds();
+			Check(centerBounds.Left == 10, "ctrl marquee with no selection expands from center on X (left=" + centerBounds.Left + ")");
+			Check(centerBounds.Top == 15, "ctrl marquee with no selection expands from center on Y (top=" + centerBounds.Top + ")");
+
+			Document bothDoc = new Document("t", 64, 64);
+			RectangleSelectTool bothTool = new RectangleSelectTool();
+			state.SetShiftHeld(true);
+			state.SetCtrlHeld(true);
+			bothTool.OnPressed(bothDoc, 20, 20, state);
+			bothTool.OnDragged(bothDoc, 40, 30, state);
+			bothTool.OnReleased(bothDoc, 40, 30, state);
+			SKRectI bothBounds = bothDoc.Selection().Bounds();
+			Check(bothBounds.Width == bothBounds.Height, "shift+ctrl marquee with no selection is a centered square (" + bothBounds.Width + "x" + bothBounds.Height + ")");
+			Check(bothBounds.Left == 10 && bothBounds.Top == 10, "shift+ctrl marquee centers the square on the press point (left=" + bothBounds.Left + ", top=" + bothBounds.Top + ")");
+
+			Document plainDoc = new Document("t", 64, 64);
+			RectangleSelectTool plainTool = new RectangleSelectTool();
+			state.SetShiftHeld(false);
+			state.SetCtrlHeld(false);
+			plainTool.OnPressed(plainDoc, 5, 5, state);
+			plainTool.OnDragged(plainDoc, 25, 15, state);
+			plainTool.OnReleased(plainDoc, 25, 15, state);
+			SKRectI plainBounds = plainDoc.Selection().Bounds();
+			Check(plainBounds.Width != plainBounds.Height, "unmodified marquee stays the raw drag rectangle (" + plainBounds.Width + "x" + plainBounds.Height + ")");
+
+			Document guardDoc = new Document("t", 64, 64);
+			RectangleSelectTool guardTool = new RectangleSelectTool();
+			guardDoc.Selection().SelectRect(new SKRectI(5, 5, 6, 6));
+			state.SetShiftHeld(true);
+			state.SetCtrlHeld(false);
+			guardTool.OnPressed(guardDoc, 5, 5, state);
+			guardTool.OnDragged(guardDoc, 25, 15, state);
+			guardTool.OnReleased(guardDoc, 25, 15, state);
+			SKRectI guardBounds = guardDoc.Selection().Bounds();
+			Check(guardBounds.Width != guardBounds.Height, "shift with an existing selection adds rather than squaring (" + guardBounds.Width + "x" + guardBounds.Height + ")");
 		}
 
 		private static void TestEllipseDragScratchReuse()

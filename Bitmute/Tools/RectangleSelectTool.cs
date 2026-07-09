@@ -12,6 +12,7 @@ namespace Bitmute.Tools
 		private int m_guideSnapTolerance = -1;
 		private double m_pointerTravel;
 		private bool m_pointerTravelMeasured;
+		private bool m_constrainAllowed;
 		private bool m_previewActive;
 		private int m_previewWidth;
 		private int m_previewHeight;
@@ -51,6 +52,7 @@ namespace Bitmute.Tools
 		{
 			m_startX = x;
 			m_startY = y;
+			m_constrainAllowed = !document.Selection().IsActive();
 			m_previewActive = true;
 			eSelectionMode mode = SelectionModeFromState(state);
 			if (mode == eSelectionMode.Replace)
@@ -63,16 +65,23 @@ namespace Bitmute.Tools
 
 		public override bool OnDragged(Document document, int x, int y, ToolState state)
 		{
-			int left = m_startX;
-			int right = x;
+			bool square = m_constrainAllowed && state.ShiftHeld();
+			bool fromCenter = m_constrainAllowed && state.CtrlHeld();
+			int cornerAX;
+			int cornerAY;
+			int cornerBX;
+			int cornerBY;
+			ConstrainMarqueeCorners(m_startX, m_startY, x, y, square, fromCenter, out cornerAX, out cornerAY, out cornerBX, out cornerBY);
+			int left = cornerAX;
+			int right = cornerBX;
 			if (right < left)
 			{
 				int swap = left;
 				left = right;
 				right = swap;
 			}
-			int top = m_startY;
-			int bottom = y;
+			int top = cornerAY;
+			int bottom = cornerBY;
 			if (bottom < top)
 			{
 				int swap = top;
