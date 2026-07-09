@@ -114,6 +114,7 @@ namespace Bitmute.UI
 		private eCursorKind m_lastCursorKind;
 		private Microsoft.UI.Input.InputSystemCursorShape m_lastCursorShape;
 		private string m_lastCursorImageKey;
+		private bool m_cursorFailureShown;
 		private int m_transformHoverKind;
 		private static System.Reflection.PropertyInfo s_protectedCursorProp = typeof(Microsoft.UI.Xaml.UIElement).GetProperty("ProtectedCursor", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
@@ -812,6 +813,15 @@ namespace Bitmute.UI
 				if (image != null)
 				{
 					return image;
+				}
+				if (!m_cursorFailureShown)
+				{
+					m_cursorFailureShown = true;
+					MainView reporter = MainView.Self;
+					if (reporter != null)
+					{
+						reporter.SetStatusMessage("Eyedropper cursor fell back: " + Bitmute.Platforms.Windows.NativeCursors.LastFailure());
+					}
 				}
 				return Microsoft.UI.Input.InputSystemCursor.Create(spec.m_systemShape);
 			}
