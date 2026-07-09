@@ -287,8 +287,45 @@ namespace Bitmute.Imaging
 		{
 			Document document = new Document(title, source.Width, source.Height);
 			document.ConvertColorDepth(source.ColorType.ToColorDepth());
-			document.ActiveLayer().SetPixelsFrom(source);
+			Layer layer = document.ActiveLayer();
+			layer.SetPixelsFrom(source);
+			if (HasTransparency(source))
+			{
+				layer.SetIsBackground(false);
+			}
 			return document;
+		}
+
+		private static unsafe bool HasTransparency(SKBitmap source)
+		{
+			if (source.AlphaType == SKAlphaType.Opaque)
+			{
+				return false;
+			}
+			if (source.ColorType != SKColorType.Rgba8888)
+			{
+				return true;
+			}
+			byte* basePointer = (byte*)source.GetPixels().ToPointer();
+			if (basePointer == null)
+			{
+				return false;
+			}
+			int rowBytes = source.RowBytes;
+			int width = source.Width;
+			int height = source.Height;
+			for (int y = 0; y < height; y++)
+			{
+				byte* row = basePointer + (y * rowBytes);
+				for (int x = 0; x < width; x++)
+				{
+					if (row[(x * 4) + 3] < 255)
+					{
+						return true;
+					}
+				}
+			}
+			return false;
 		}
 
 		public Document(string title, int width, int height)
