@@ -70,7 +70,7 @@ namespace Bitmute.UI
 			return " (" + GetText() + ")";
 		}
 
-		private static string KeyName(VirtualKey key)
+		public static string KeyName(VirtualKey key)
 		{
 			if (key >= VirtualKey.A && key <= VirtualKey.Z)
 			{
