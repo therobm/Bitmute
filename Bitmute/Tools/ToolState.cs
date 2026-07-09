@@ -66,7 +66,6 @@ namespace Bitmute.Tools
 		private bool m_textKerningAuto;
 		private bool m_shiftHeld;
 		private bool m_altHeld;
-		private bool m_ctrlHeld;
 		private float m_penPressure = 1.0f;
 		private bool m_pressureSizeEnabled = true;
 		private bool m_pressureOpacityEnabled = true;
@@ -131,7 +130,6 @@ namespace Bitmute.Tools
 			m_textKerningAuto = true;
 			m_shiftHeld = false;
 			m_altHeld = false;
-			m_ctrlHeld = false;
 		}
 
 		public int MagneticWidth()
@@ -428,16 +426,6 @@ namespace Bitmute.Tools
 		public void SetAltHeld(bool altHeld)
 		{
 			m_altHeld = altHeld;
-		}
-
-		public bool CtrlHeld()
-		{
-			return m_ctrlHeld;
-		}
-
-		public void SetCtrlHeld(bool ctrlHeld)
-		{
-			m_ctrlHeld = ctrlHeld;
 		}
 
 		public eTool Tool()
