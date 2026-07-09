@@ -141,28 +141,6 @@ namespace Bitmute.UI.Panels
 			{ eTool.DirectSelect, "Direct Selection (edit path points)" },
 		};
 
-		private Dictionary<eTool, string> m_toolShortcuts = new Dictionary<eTool, string>()
-		{
-			{ eTool.Select, "M" },
-			{ eTool.Move, "V" },
-			{ eTool.Lasso, "L" },
-			{ eTool.MagicWand, "W" },
-			{ eTool.Crop, "C" },
-			{ eTool.Brush, "B" },
-			{ eTool.Clone, "S" },
-			{ eTool.Eraser, "E" },
-			{ eTool.Fill, "G" },
-			{ eTool.DodgeBurn, "O" },
-			{ eTool.Blur, "R" },
-			{ eTool.Text, "T" },
-			{ eTool.Line, "U" },
-			{ eTool.Eyedropper, "I" },
-			{ eTool.Hand, "H" },
-			{ eTool.Zoom, "Z" },
-			{ eTool.Pen, "P" },
-			{ eTool.DirectSelect, "A" },
-		};
-
 		private Border[] m_cellButtons;
 		private IconView[] m_cellIcons;
 		private eTool m_selectedTool;
@@ -273,9 +251,8 @@ namespace Bitmute.UI.Panels
 		private string ComposeTooltip(eTool tool)
 		{
 			string tip = m_toolTips[tool];
-			string shortcut = "";
-			bool hasShortcut = m_toolShortcuts.TryGetValue(tool, out shortcut);
-			if (hasShortcut)
+			string shortcut = Bitmute.UI.Operations.OperationRegistry.ShortcutForTool(tool);
+			if (shortcut != "")
 			{
 				return tip + " (" + shortcut + ")";
 			}
