@@ -44,6 +44,8 @@
 
 		<MauiAsset Include="Resources\Toolbar\*.png" LogicalName="%(Filename)%(Extension)" />
 
+		<MauiAsset Include="Resources\Cursors\*.png" LogicalName="%(Filename)%(Extension)" />
+
 		<MauiFont Include="Resources\Fonts\*" />
 
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
