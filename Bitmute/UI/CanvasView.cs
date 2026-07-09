@@ -88,6 +88,7 @@ namespace Bitmute.UI
 		private float m_selectPressDeviceY;
 		private bool m_cursorInside;
 		private bool m_toolStrokeActive;
+		private bool m_altColorSampling;
 		private bool m_ctrlHeld;
 		private bool m_penDirectOverride;
 		private bool m_zoomDragging;
@@ -2863,6 +2864,34 @@ namespace Bitmute.UI
 			}
 
 			state.SetPenPressure(m_currentPenPressure);
+
+			bool altSampleTool = tool is BrushTool || tool is PencilTool || tool is FillTool || tool is GradientTool;
+			if (altSampleTool)
+			{
+				if (eventArgs.ActionType == SKTouchAction.Pressed)
+				{
+					m_altColorSampling = altHeld;
+				}
+				if (m_altColorSampling)
+				{
+					if (eventArgs.ActionType == SKTouchAction.Pressed || (eventArgs.ActionType == SKTouchAction.Moved && eventArgs.InContact))
+					{
+						Bitmute.Imaging.Layer sampleLayer = m_document.ActiveLayer();
+						if (sampleLayer != null)
+						{
+							SKColor sampledColor = sampleLayer.GetPixelCanvas(pixelX, pixelY);
+							state.SetForeground(sampledColor);
+							main.OnCanvasInteracted();
+						}
+					}
+					if (eventArgs.ActionType == SKTouchAction.Released)
+					{
+						m_altColorSampling = false;
+					}
+					eventArgs.Handled = true;
+					return;
+				}
+			}
 
 			bool changed = false;
 			int preEventWidth = m_document.Width();
