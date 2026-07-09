@@ -27,7 +27,8 @@ namespace Bitmute.UI
 			m_tools.Add(eTool.Pencil, new PencilTool());
 			m_tools.Add(eTool.Brush, new BrushTool());
 			m_tools.Add(eTool.Eraser, new EraserTool());
-			m_tools.Add(eTool.DodgeBurn, new DodgeBurnTool());
+			m_tools.Add(eTool.Dodge, new DodgeTool());
+			m_tools.Add(eTool.Burn, new BurnTool());
 			m_tools.Add(eTool.Blur, new BlurTool());
 			m_tools.Add(eTool.Sponge, new SpongeTool());
 			m_tools.Add(eTool.ColorReplacement, new ColorReplacementTool());
