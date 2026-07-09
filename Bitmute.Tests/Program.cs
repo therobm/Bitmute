@@ -170,6 +170,7 @@ namespace Bitmute.Tests
 			s_failures = s_failures + PenToolTests.RunAll();
 			s_failures = s_failures + LassoCloseTests.RunAll();
 			s_failures = s_failures + DeleteBackgroundTests.RunAll();
+			s_failures = s_failures + OpenImageBackgroundTests.RunAll();
 
 			if (s_failures == 0)
 			{
