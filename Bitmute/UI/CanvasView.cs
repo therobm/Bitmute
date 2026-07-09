@@ -3525,16 +3525,56 @@ namespace Bitmute.UI
 
 		public void SetPanOffsetX(float offsetX)
 		{
-			m_offsetX = offsetX;
+			m_offsetX = ClampOffsetX(offsetX);
 			InvalidateSurface();
 			NotifyChrome();
 		}
 
 		public void SetPanOffsetY(float offsetY)
 		{
-			m_offsetY = offsetY;
+			m_offsetY = ClampOffsetY(offsetY);
 			InvalidateSurface();
 			NotifyChrome();
+		}
+
+		private float ClampOffsetX(float offsetX)
+		{
+			float content = m_document.Width() * m_zoom;
+			float viewport = CanvasSize.Width;
+			if (content <= viewport)
+			{
+				return (viewport - content) / 2.0f;
+			}
+			if (offsetX > 0.0f)
+			{
+				return 0.0f;
+			}
+			float minimum = viewport - content;
+			if (offsetX < minimum)
+			{
+				return minimum;
+			}
+			return offsetX;
+		}
+
+		private float ClampOffsetY(float offsetY)
+		{
+			float content = m_document.Height() * m_zoom;
+			float viewport = CanvasSize.Height;
+			if (content <= viewport)
+			{
+				return (viewport - content) / 2.0f;
+			}
+			if (offsetY > 0.0f)
+			{
+				return 0.0f;
+			}
+			float minimum = viewport - content;
+			if (offsetY < minimum)
+			{
+				return minimum;
+			}
+			return offsetY;
 		}
 
 		private void NotifyChrome()
