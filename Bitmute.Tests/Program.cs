@@ -99,6 +99,7 @@ namespace Bitmute.Tests
 			TestLayerStyleEmptyContent();
 			TestLayerStylePreviewTickEquivalence();
 			TestFeatherActive();
+			TestContractActive();
 			TestBrightnessContrastMatchesReference();
 			TestBlendAdjustedIntoSelection();
 			TestHueSaturationLightnessMatchesReference();
@@ -1954,6 +1955,33 @@ namespace Bitmute.Tests
 			}
 			Check(hasPartial, "feather active produces a partial coverage band");
 			Check(sel.Coverage(16, 16) == 255, "feather active keeps the selection center solid");
+		}
+
+		private static void TestContractActive()
+		{
+			Document doc = new Document("t", 32, 32);
+			Selection sel = doc.Selection();
+			sel.SelectRect(new SKRectI(4, 4, 28, 28));
+			int generationBefore = sel.Generation();
+			sel.ContractActive(2);
+			Check(sel.IsActive(), "contract active keeps a large selection active");
+			Check(sel.Generation() > generationBefore, "contract active bumps the generation");
+			SKRectI contracted = sel.Bounds();
+			Check(contracted.Left == 6, "contract insets the left edge by the amount (left " + contracted.Left + ")");
+			Check(contracted.Top == 6, "contract insets the top edge by the amount (top " + contracted.Top + ")");
+			Check(contracted.Right == 26, "contract insets the right edge by the amount (right " + contracted.Right + ")");
+			Check(contracted.Bottom == 26, "contract insets the bottom edge by the amount (bottom " + contracted.Bottom + ")");
+			Check(sel.Coverage(6, 6) == 255, "contract keeps the inset corner selected");
+			Check(sel.Coverage(5, 5) == 0, "contract clears the pixel outside the inset");
+			Check(sel.Coverage(16, 16) == 255, "contract keeps the selection center solid");
+
+			Document smallDoc = new Document("t", 32, 32);
+			Selection smallSelection = smallDoc.Selection();
+			smallSelection.SelectRect(new SKRectI(10, 10, 13, 13));
+			smallSelection.ContractActive(2);
+			Check(!smallSelection.IsActive(), "contracting a small selection empties and deactivates it");
+			Check(smallSelection.Bounds().Width == 0 && smallSelection.Bounds().Height == 0, "emptied contract clears the bounds");
+			Check(!smallSelection.IsSelected(11, 11), "emptied contract leaves no selected pixels");
 		}
 
 		private static void TestInnerGlowInsideOnly()
