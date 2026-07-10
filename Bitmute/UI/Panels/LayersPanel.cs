@@ -190,6 +190,20 @@ namespace Bitmute.UI.Panels
 				}
 				m_thumbnailImages[index].Source = BuildThumbnail(layers[layerIndex]);
 			}
+			for (int index = 0; index < m_maskThumbnailImages.Count; index++)
+			{
+				int layerIndex = m_maskThumbnailLayers[index];
+				if (layerIndex < 0 || layerIndex >= layers.Count)
+				{
+					continue;
+				}
+				Layer layer = layers[layerIndex];
+				if (!layer.HasMask())
+				{
+					continue;
+				}
+				m_maskThumbnailImages[index].Source = BuildMaskThumbnail(layer);
+			}
 		}
 
 		public void RefreshActiveThumbnail()
@@ -209,6 +223,20 @@ namespace Bitmute.UI.Panels
 					continue;
 				}
 				m_thumbnailImages[index].Source = BuildThumbnail(layers[layerIndex]);
+			}
+			for (int index = 0; index < m_maskThumbnailImages.Count; index++)
+			{
+				int layerIndex = m_maskThumbnailLayers[index];
+				if (layerIndex != activeIndex || layerIndex < 0 || layerIndex >= layers.Count)
+				{
+					continue;
+				}
+				Layer layer = layers[layerIndex];
+				if (!layer.HasMask())
+				{
+					continue;
+				}
+				m_maskThumbnailImages[index].Source = BuildMaskThumbnail(layer);
 			}
 		}
 

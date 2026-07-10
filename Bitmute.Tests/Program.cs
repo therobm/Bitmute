@@ -43,6 +43,8 @@ namespace Bitmute.Tests
 			TestFloatingSelection();
 			TestFloatingSelectionMultiGrab();
 			TestFloatCommitBeyondSmallLayerBitmap();
+			TestTransformOverOrphanedFloatLosesContent();
+			TestTransformCommitsFloatKeepsContent();
 			TestMoveTextLayerUndo();
 			TestCustomBlends();
 			TestCustomBlendOpacity();
@@ -65,6 +67,7 @@ namespace Bitmute.Tests
 			TestGaussianBlurAlpha();
 			TestLayerMerging();
 			TestMergeSkipsHiddenLayers();
+			TestMergeCustomBlendMatchesComposite();
 			TestChannelVisibilityMask();
 			TestDodgeBurnRange();
 			TestChannelRender();
@@ -99,6 +102,7 @@ namespace Bitmute.Tests
 			TestLayerStyleEmptyContent();
 			TestLayerStylePreviewTickEquivalence();
 			TestFeatherActive();
+			TestContractActive();
 			TestBrightnessContrastMatchesReference();
 			TestBlendAdjustedIntoSelection();
 			TestHueSaturationLightnessMatchesReference();
@@ -1238,6 +1242,63 @@ namespace Bitmute.Tests
 			Check(selResult.GetPixelCanvas(2, 2).Alpha == 0, "merge selected discards the hidden member's pixels");
 		}
 
+		private static int CountMatchingPixels(SKBitmap before, SKBitmap after, int width, int height)
+		{
+			int matches = 0;
+			for (int y = 0; y < height; y++)
+			{
+				for (int x = 0; x < width; x++)
+				{
+					SKColor beforePixel = before.GetPixel(x, y);
+					SKColor afterPixel = after.GetPixel(x, y);
+					if (beforePixel.Red == afterPixel.Red && beforePixel.Green == afterPixel.Green && beforePixel.Blue == afterPixel.Blue && beforePixel.Alpha == afterPixel.Alpha)
+					{
+						matches = matches + 1;
+					}
+				}
+			}
+			return matches;
+		}
+
+		private static void CheckMergeDownMatchesComposite(eBlendMode mode, string label)
+		{
+			int width = 8;
+			int height = 8;
+			Document document = new Document("t", width, height);
+			document.ActiveLayer().Bitmap().Erase(new SKColor(200, 120, 60, 255));
+			Layer top = document.AddLayer("top");
+			top.Bitmap().Erase(new SKColor(80, 40, 180, 255));
+			top.SetBlendMode(mode);
+
+			SKBitmap viewportComposite = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+			document.CompositeInto(viewportComposite);
+
+			document.MergeDown(1);
+			Check(document.Layers().Count == 1, label + " merge down collapses to one layer");
+
+			SKBitmap mergedComposite = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+			document.CompositeInto(mergedComposite);
+
+			int matches = CountMatchingPixels(viewportComposite, mergedComposite, width, height);
+			Check(matches == width * height, label + " merge down matches the viewport composite bit-for-bit");
+		}
+
+		private static void TestMergeCustomBlendMatchesComposite()
+		{
+			CheckMergeDownMatchesComposite(eBlendMode.Subtract, "subtract");
+			CheckMergeDownMatchesComposite(eBlendMode.Dissolve, "dissolve");
+			CheckMergeDownMatchesComposite(eBlendMode.Multiply, "multiply");
+
+			Document subtractDoc = new Document("t", 8, 8);
+			subtractDoc.ActiveLayer().Bitmap().Erase(new SKColor(200, 120, 60, 255));
+			Layer subtractTop = subtractDoc.AddLayer("top");
+			subtractTop.Bitmap().Erase(new SKColor(80, 40, 180, 255));
+			subtractTop.SetBlendMode(eBlendMode.Subtract);
+			subtractDoc.MergeDown(1);
+			SKColor subtractResult = subtractDoc.ActiveLayer().GetPixelCanvas(4, 4);
+			Check(subtractResult.Red == 120 && subtractResult.Green == 80 && subtractResult.Blue == 0, "subtract merge bakes the custom blend, not Normal");
+		}
+
 		private static void TestChannelVisibilityMask()
 		{
 			SKBitmap source = new SKBitmap(2, 1, SKColorType.Rgba8888, SKAlphaType.Premul);
@@ -1482,6 +1543,113 @@ namespace Bitmute.Tests
 			Check(undoHome.Red == 255 && undoHome.Alpha == 255, "undo-cancel restores pixels home (36,16)");
 			SKColor undoMovedGone = undoContent.GetPixelCanvas(52, 22);
 			Check(undoMovedGone.Alpha == 0, "undo-cancel drops the moved position (52,22)");
+		}
+
+		private static Document BuildOrphanedFloatDocument()
+		{
+			Document doc = new Document("t", 64, 64);
+			Layer content = doc.AddLayer("c");
+			content.Bitmap().Erase(new SKColor(0, 0, 0, 0));
+			SKColor green = new SKColor(0, 200, 0, 255);
+			for (int y = 20; y < 44; y++)
+			{
+				for (int x = 20; x < 44; x++)
+				{
+					content.SetPixelCanvas(x, y, green);
+				}
+			}
+			doc.Selection().SelectRect(new SKRectI(24, 24, 40, 40));
+			doc.LiftFloatingSelection();
+			doc.SetFloatingSelectionDelta(20, 20);
+			return doc;
+		}
+
+		private static int CountGreenPixels(Layer layer, SKRectI region)
+		{
+			int count = 0;
+			for (int y = region.Top; y < region.Bottom; y++)
+			{
+				for (int x = region.Left; x < region.Right; x++)
+				{
+					SKColor pixel = layer.GetPixelCanvas(x, y);
+					if (pixel.Green > 120 && pixel.Alpha > 120)
+					{
+						count = count + 1;
+					}
+				}
+			}
+			return count;
+		}
+
+		private static void TestTransformOverOrphanedFloatLosesContent()
+		{
+			Document doc = BuildOrphanedFloatDocument();
+			Layer content = doc.Layers()[1];
+			FreeTransformTool transform = new FreeTransformTool();
+			transform.SetPickRadius(2);
+			bool armed = transform.Begin(doc, 2, new SKColor(255, 255, 255, 255));
+			Check(armed, "bit12 control: transform arms over the orphaned float");
+			ToolState state = new ToolState();
+			transform.OnPressed(doc, 44, 44, state);
+			transform.OnDragged(doc, 52, 46, state);
+			transform.OnReleased(doc, 52, 46, state);
+			transform.Commit(doc);
+			int survivors = CountGreenPixels(content, new SKRectI(44, 44, 60, 60));
+			Check(survivors == 0, "bit12 control: transforming an uncommitted float bakes empty pixels at the moved region (" + survivors + " green survive)");
+		}
+
+		private static void TestTransformCommitsFloatKeepsContent()
+		{
+			Document doc = BuildOrphanedFloatDocument();
+			Layer content = doc.Layers()[1];
+			if (doc.HasFloatingSelection())
+			{
+				doc.CommitFloatingSelection();
+			}
+			int committedFloat = CountGreenPixels(content, new SKRectI(44, 44, 60, 60));
+			Check(committedFloat == 256, "bit12: commit bakes the moved float into the layer (" + committedFloat + " green at 44..60)");
+			Check(doc.Selection().IsActive(), "bit12: commit re-establishes an active selection over the moved content");
+			Check(doc.Selection().IsSelected(52, 52), "bit12: re-established selection covers the moved content (52,52)");
+			SKBitmap preTransform = content.Bitmap().Copy();
+			FreeTransformTool transform = new FreeTransformTool();
+			transform.SetPickRadius(2);
+			bool armed = transform.Begin(doc, 2, new SKColor(255, 255, 255, 255));
+			Check(armed, "bit12: transform arms after the float commit");
+			ToolState state = new ToolState();
+			transform.OnPressed(doc, 44, 44, state);
+			transform.OnDragged(doc, 52, 46, state);
+			transform.OnReleased(doc, 52, 46, state);
+			transform.Commit(doc);
+			int survivors = CountGreenPixels(content, new SKRectI(0, 0, 64, 64));
+			Check(survivors > 150, "bit12: transformed layer still contains the moved content (" + survivors + " green survive)");
+			SKColor center = content.GetPixelCanvas(52, 52);
+			Check(center.Green > 120 && center.Alpha > 120, "bit12: rotated block keeps green at its center (52,52)");
+			bool undone = doc.Undo();
+			Check(undone, "bit12: transform is undoable");
+			bool restoredMatch = BitmapsEqual(preTransform, content.Bitmap());
+			Check(restoredMatch, "bit12: undo restores the pre-transform layer content exactly");
+			SKColor restoredCenter = content.GetPixelCanvas(52, 52);
+			Check(restoredCenter.Green > 120 && restoredCenter.Alpha > 120, "bit12: undo restores green at the moved block center (52,52)");
+			preTransform.Dispose();
+		}
+
+		private static bool BitmapsEqual(SKBitmap first, SKBitmap second)
+		{
+			if (first.Width != second.Width || first.Height != second.Height)
+			{
+				return false;
+			}
+			for (int y = 0; y < first.Height; y++)
+			{
+				for (int x = 0; x < first.Width; x++)
+				{
+					if (first.GetPixel(x, y) != second.GetPixel(x, y))
+					{
+						return false;
+					}
+				}
+			}
+			return true;
 		}
 
 		private static void MoveGrab(MoveTool move, Document doc, int fromX, int fromY, int toX, int toY, ToolState state)
@@ -1954,6 +2122,33 @@ namespace Bitmute.Tests
 			}
 			Check(hasPartial, "feather active produces a partial coverage band");
 			Check(sel.Coverage(16, 16) == 255, "feather active keeps the selection center solid");
+		}
+
+		private static void TestContractActive()
+		{
+			Document doc = new Document("t", 32, 32);
+			Selection sel = doc.Selection();
+			sel.SelectRect(new SKRectI(4, 4, 28, 28));
+			int generationBefore = sel.Generation();
+			sel.ContractActive(2);
+			Check(sel.IsActive(), "contract active keeps a large selection active");
+			Check(sel.Generation() > generationBefore, "contract active bumps the generation");
+			SKRectI contracted = sel.Bounds();
+			Check(contracted.Left == 6, "contract insets the left edge by the amount (left " + contracted.Left + ")");
+			Check(contracted.Top == 6, "contract insets the top edge by the amount (top " + contracted.Top + ")");
+			Check(contracted.Right == 26, "contract insets the right edge by the amount (right " + contracted.Right + ")");
+			Check(contracted.Bottom == 26, "contract insets the bottom edge by the amount (bottom " + contracted.Bottom + ")");
+			Check(sel.Coverage(6, 6) == 255, "contract keeps the inset corner selected");
+			Check(sel.Coverage(5, 5) == 0, "contract clears the pixel outside the inset");
+			Check(sel.Coverage(16, 16) == 255, "contract keeps the selection center solid");
+
+			Document smallDoc = new Document("t", 32, 32);
+			Selection smallSelection = smallDoc.Selection();
+			smallSelection.SelectRect(new SKRectI(10, 10, 13, 13));
+			smallSelection.ContractActive(2);
+			Check(!smallSelection.IsActive(), "contracting a small selection empties and deactivates it");
+			Check(smallSelection.Bounds().Width == 0 && smallSelection.Bounds().Height == 0, "emptied contract clears the bounds");
+			Check(!smallSelection.IsSelected(11, 11), "emptied contract leaves no selected pixels");
 		}
 
 		private static void TestInnerGlowInsideOnly()

@@ -29,6 +29,8 @@ namespace Bitmute.Tests
 			TestUndoRestoresMask();
 			TestPaintLayerEditsPixelsNotMask();
 			TestEraserOnMaskHides();
+			TestFillSelectionTargetsMask();
+			TestFillLayerTargetsMask();
 			return s_failures;
 		}
 
@@ -133,6 +135,47 @@ namespace Bitmute.Tests
 			Check(paintedAlpha < 16, "eraser on the mask hides the painted point");
 			SKColor colorAfter = layer.Bitmap().GetPixel(32, 32);
 			Check(colorAfter.Red == colorBefore.Red && colorAfter.Green == colorBefore.Green && colorAfter.Blue == colorBefore.Blue && colorAfter.Alpha == colorBefore.Alpha, "eraser mask stroke leaves the layer color bitmap unchanged");
+		}
+
+		private static void TestFillSelectionTargetsMask()
+		{
+			Document document = new Document("fillselmask", 64, 64);
+			Layer layer = document.ActiveLayer();
+			layer.Bitmap().Erase(new SKColor(200, 40, 40, 255));
+			document.AddMaskToActiveLayer(true);
+			SKColor colorBefore = layer.Bitmap().GetPixel(32, 32);
+			SKColor maskBefore = layer.MaskBitmap().GetPixel(32, 32);
+			document.Selection().SelectRect(new SKRectI(10, 10, 40, 40));
+			document.SetPaintTarget(ePaintTarget.Mask);
+			document.BeginStroke();
+			document.FillSelection(new SKColor(0, 0, 0, 255));
+			document.EndStroke();
+			SKColor maskAfter = layer.MaskBitmap().GetPixel(32, 32);
+			SKColor colorAfter = layer.Bitmap().GetPixel(32, 32);
+			Check(maskAfter.Red == 0 && maskAfter.Red != maskBefore.Red, "fill selection writes the mask bitmap when the mask is the paint target");
+			Check(colorAfter.Red == colorBefore.Red && colorAfter.Green == colorBefore.Green && colorAfter.Blue == colorBefore.Blue && colorAfter.Alpha == colorBefore.Alpha, "fill selection leaves the layer color bitmap unchanged when targeting the mask");
+			int hiddenAlpha = CompositeAlphaAt(document, 32, 32);
+			Check(hiddenAlpha < 16, "fill selection into the mask hides the composited point");
+		}
+
+		private static void TestFillLayerTargetsMask()
+		{
+			Document document = new Document("filllayermask", 64, 64);
+			Layer layer = document.ActiveLayer();
+			layer.Bitmap().Erase(new SKColor(200, 40, 40, 255));
+			document.AddMaskToActiveLayer(true);
+			SKColor colorBefore = layer.Bitmap().GetPixel(32, 32);
+			SKColor maskBefore = layer.MaskBitmap().GetPixel(32, 32);
+			document.SetPaintTarget(ePaintTarget.Mask);
+			document.BeginStroke();
+			document.FillLayer(new SKColor(0, 0, 0, 255));
+			document.EndStroke();
+			SKColor maskAfter = layer.MaskBitmap().GetPixel(32, 32);
+			SKColor colorAfter = layer.Bitmap().GetPixel(32, 32);
+			Check(maskAfter.Red == 0 && maskAfter.Red != maskBefore.Red, "fill layer writes the mask bitmap when the mask is the paint target");
+			Check(colorAfter.Red == colorBefore.Red && colorAfter.Green == colorBefore.Green && colorAfter.Blue == colorBefore.Blue && colorAfter.Alpha == colorBefore.Alpha, "fill layer leaves the layer color bitmap unchanged when targeting the mask");
+			int hiddenAlpha = CompositeAlphaAt(document, 32, 32);
+			Check(hiddenAlpha < 16, "fill layer into the mask hides the composited point");
 		}
 	}
 }

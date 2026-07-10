@@ -93,7 +93,14 @@ namespace Bitmute.Tools
 			}
 			else
 			{
-				bitmap = layer.Bitmap();
+				if (document.PaintTarget() == ePaintTarget.Mask && layer.HasMask())
+				{
+					bitmap = layer.MaskBitmap();
+				}
+				else
+				{
+					bitmap = layer.Bitmap();
+				}
 				offsetX = layer.OffsetX();
 				offsetY = layer.OffsetY();
 				premultiplied = false;
