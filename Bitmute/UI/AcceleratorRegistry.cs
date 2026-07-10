@@ -160,8 +160,8 @@ namespace Bitmute.UI
 			RegisterAccelerator(eOperation.ExportAs, new Chord(VirtualKey.S, VirtualKeyModifiers.Control | VirtualKeyModifiers.Menu | VirtualKeyModifiers.Shift));
 			RegisterAccelerator(eOperation.Undo, new Chord(VirtualKey.Z, VirtualKeyModifiers.Control));
 			RegisterAccelerator(eOperation.Redo, new Chord(VirtualKey.Y, VirtualKeyModifiers.Control));
-			RegisterAccelerator(eOperation.UndoStep, new Chord(VirtualKey.Z, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift));
-			RegisterAccelerator(eOperation.RedoStep, new Chord(VirtualKey.Z, VirtualKeyModifiers.Control | VirtualKeyModifiers.Menu));
+			RegisterAccelerator(eOperation.UndoStep, new Chord(VirtualKey.Z, VirtualKeyModifiers.Control | VirtualKeyModifiers.Menu));
+			RegisterAccelerator(eOperation.RedoStep, new Chord(VirtualKey.Z, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift));
 			RegisterAccelerator(eOperation.SelectAll, new Chord(VirtualKey.A, VirtualKeyModifiers.Control));
 			RegisterAccelerator(eOperation.Deselect, new Chord(VirtualKey.D, VirtualKeyModifiers.Control));
 			RegisterAccelerator(eOperation.Cut, new Chord(VirtualKey.X, VirtualKeyModifiers.Control));
