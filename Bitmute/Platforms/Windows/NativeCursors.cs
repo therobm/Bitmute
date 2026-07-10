@@ -135,8 +135,8 @@ namespace Bitmute.Platforms.Windows
 				return s_transparent;
 			}
 			s_transparentBuilt = true;
-			SKBitmap blank = new SKBitmap(new SKImageInfo(32, 32, SKColorType.Bgra8888, SKAlphaType.Unpremul));
-			blank.Erase(SKColors.Transparent);
+			SKBitmap blank = new SKBitmap(new SKImageInfo(2, 2, SKColorType.Bgra8888, SKAlphaType.Unpremul));
+			blank.Erase(new SKColor(0,0,0,0));//SKColors.Transparent);
 			s_transparent = BuildFromBitmap(blank, 0, 0);
 			blank.Dispose();
 			return s_transparent;
