@@ -807,6 +807,86 @@ namespace Bitmute.Imaging
 			RecomputeFromMask();
 		}
 
+		public void ContractActive(int pixels)
+		{
+			if (!m_active || pixels <= 0)
+			{
+				return;
+			}
+			if (m_regionScratch == null || m_regionScratch.Length < m_mask.Length)
+			{
+				m_regionScratch = new byte[m_mask.Length];
+			}
+			SKRectI work = ClampToMask(m_bounds);
+			for (int y = work.Top; y < work.Bottom; y++)
+			{
+				int rowStart = MaskRow(y) - m_originX;
+				for (int x = work.Left; x < work.Right; x++)
+				{
+					int index = rowStart + x;
+					if (m_mask[index] < 128)
+					{
+						m_regionScratch[index] = 0;
+						continue;
+					}
+					bool eroded = false;
+					int neighborTop = y - pixels;
+					int neighborBottom = y + pixels;
+					int neighborLeft = x - pixels;
+					int neighborRight = x + pixels;
+					for (int neighborY = neighborTop; neighborY <= neighborBottom; neighborY++)
+					{
+						if (neighborY < m_originY || neighborY >= m_originY + m_maskHeight)
+						{
+							eroded = true;
+							break;
+						}
+						int neighborRowStart = MaskRow(neighborY) - m_originX;
+						for (int neighborX = neighborLeft; neighborX <= neighborRight; neighborX++)
+						{
+							if (neighborX < m_originX || neighborX >= m_originX + m_maskWidth)
+							{
+								eroded = true;
+								break;
+							}
+							if (m_mask[neighborRowStart + neighborX] < 128)
+							{
+								eroded = true;
+								break;
+							}
+						}
+						if (eroded)
+						{
+							break;
+						}
+					}
+					if (eroded)
+					{
+						m_regionScratch[index] = 0;
+					}
+					else
+					{
+						m_regionScratch[index] = 255;
+					}
+				}
+			}
+			for (int y = work.Top; y < work.Bottom; y++)
+			{
+				int rowStart = MaskRow(y) - m_originX;
+				for (int x = work.Left; x < work.Right; x++)
+				{
+					int index = rowStart + x;
+					m_mask[index] = m_regionScratch[index];
+				}
+			}
+			m_lastCombinedBounds = MaskRect();
+			RecomputeFromMask();
+			if (!m_active)
+			{
+				Clear();
+			}
+		}
+
 		public void SelectRect(SKRectI rect)
 		{
 			if (rect.Right <= rect.Left || rect.Bottom <= rect.Top)
