@@ -43,6 +43,8 @@ namespace Bitmute.Tests
 			TestFloatingSelection();
 			TestFloatingSelectionMultiGrab();
 			TestFloatCommitBeyondSmallLayerBitmap();
+			TestTransformOverOrphanedFloatLosesContent();
+			TestTransformCommitsFloatKeepsContent();
 			TestMoveTextLayerUndo();
 			TestCustomBlends();
 			TestCustomBlendOpacity();
@@ -1483,6 +1485,113 @@ namespace Bitmute.Tests
 			Check(undoHome.Red == 255 && undoHome.Alpha == 255, "undo-cancel restores pixels home (36,16)");
 			SKColor undoMovedGone = undoContent.GetPixelCanvas(52, 22);
 			Check(undoMovedGone.Alpha == 0, "undo-cancel drops the moved position (52,22)");
+		}
+
+		private static Document BuildOrphanedFloatDocument()
+		{
+			Document doc = new Document("t", 64, 64);
+			Layer content = doc.AddLayer("c");
+			content.Bitmap().Erase(new SKColor(0, 0, 0, 0));
+			SKColor green = new SKColor(0, 200, 0, 255);
+			for (int y = 20; y < 44; y++)
+			{
+				for (int x = 20; x < 44; x++)
+				{
+					content.SetPixelCanvas(x, y, green);
+				}
+			}
+			doc.Selection().SelectRect(new SKRectI(24, 24, 40, 40));
+			doc.LiftFloatingSelection();
+			doc.SetFloatingSelectionDelta(20, 20);
+			return doc;
+		}
+
+		private static int CountGreenPixels(Layer layer, SKRectI region)
+		{
+			int count = 0;
+			for (int y = region.Top; y < region.Bottom; y++)
+			{
+				for (int x = region.Left; x < region.Right; x++)
+				{
+					SKColor pixel = layer.GetPixelCanvas(x, y);
+					if (pixel.Green > 120 && pixel.Alpha > 120)
+					{
+						count = count + 1;
+					}
+				}
+			}
+			return count;
+		}
+
+		private static void TestTransformOverOrphanedFloatLosesContent()
+		{
+			Document doc = BuildOrphanedFloatDocument();
+			Layer content = doc.Layers()[1];
+			FreeTransformTool transform = new FreeTransformTool();
+			transform.SetPickRadius(2);
+			bool armed = transform.Begin(doc, 2, new SKColor(255, 255, 255, 255));
+			Check(armed, "bit12 control: transform arms over the orphaned float");
+			ToolState state = new ToolState();
+			transform.OnPressed(doc, 44, 44, state);
+			transform.OnDragged(doc, 52, 46, state);
+			transform.OnReleased(doc, 52, 46, state);
+			transform.Commit(doc);
+			int survivors = CountGreenPixels(content, new SKRectI(44, 44, 60, 60));
+			Check(survivors == 0, "bit12 control: transforming an uncommitted float bakes empty pixels at the moved region (" + survivors + " green survive)");
+		}
+
+		private static void TestTransformCommitsFloatKeepsContent()
+		{
+			Document doc = BuildOrphanedFloatDocument();
+			Layer content = doc.Layers()[1];
+			if (doc.HasFloatingSelection())
+			{
+				doc.CommitFloatingSelection();
+			}
+			int committedFloat = CountGreenPixels(content, new SKRectI(44, 44, 60, 60));
+			Check(committedFloat == 256, "bit12: commit bakes the moved float into the layer (" + committedFloat + " green at 44..60)");
+			Check(doc.Selection().IsActive(), "bit12: commit re-establishes an active selection over the moved content");
+			Check(doc.Selection().IsSelected(52, 52), "bit12: re-established selection covers the moved content (52,52)");
+			SKBitmap preTransform = content.Bitmap().Copy();
+			FreeTransformTool transform = new FreeTransformTool();
+			transform.SetPickRadius(2);
+			bool armed = transform.Begin(doc, 2, new SKColor(255, 255, 255, 255));
+			Check(armed, "bit12: transform arms after the float commit");
+			ToolState state = new ToolState();
+			transform.OnPressed(doc, 44, 44, state);
+			transform.OnDragged(doc, 52, 46, state);
+			transform.OnReleased(doc, 52, 46, state);
+			transform.Commit(doc);
+			int survivors = CountGreenPixels(content, new SKRectI(0, 0, 64, 64));
+			Check(survivors > 150, "bit12: transformed layer still contains the moved content (" + survivors + " green survive)");
+			SKColor center = content.GetPixelCanvas(52, 52);
+			Check(center.Green > 120 && center.Alpha > 120, "bit12: rotated block keeps green at its center (52,52)");
+			bool undone = doc.Undo();
+			Check(undone, "bit12: transform is undoable");
+			bool restoredMatch = BitmapsEqual(preTransform, content.Bitmap());
+			Check(restoredMatch, "bit12: undo restores the pre-transform layer content exactly");
+			SKColor restoredCenter = content.GetPixelCanvas(52, 52);
+			Check(restoredCenter.Green > 120 && restoredCenter.Alpha > 120, "bit12: undo restores green at the moved block center (52,52)");
+			preTransform.Dispose();
+		}
+
+		private static bool BitmapsEqual(SKBitmap first, SKBitmap second)
+		{
+			if (first.Width != second.Width || first.Height != second.Height)
+			{
+				return false;
+			}
+			for (int y = 0; y < first.Height; y++)
+			{
+				for (int x = 0; x < first.Width; x++)
+				{
+					if (first.GetPixel(x, y) != second.GetPixel(x, y))
+					{
+						return false;
+					}
+				}
+			}
+			return true;
 		}
 
 		private static void MoveGrab(MoveTool move, Document doc, int fromX, int fromY, int toX, int toY, ToolState state)

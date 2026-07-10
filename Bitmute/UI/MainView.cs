@@ -4964,6 +4964,10 @@ namespace Bitmute.UI
 				SetStatusMessage("Select a raster layer to transform");
 				return;
 			}
+			if (document.HasFloatingSelection())
+			{
+				document.CommitFloatingSelection();
+			}
 			if (m_toolState.Tool() != eTool.FreeTransform)
 			{
 				m_toolBox.SetPreviousTool(m_toolState.Tool());
