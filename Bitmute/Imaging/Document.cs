@@ -1756,29 +1756,24 @@ namespace Bitmute.Imaging
 			}
 			int mergedWidth = right - left;
 			int mergedHeight = bottom - top;
-			SKBitmap merged = new SKBitmap(mergedWidth, mergedHeight, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-			merged.Erase(SKColors.Transparent);
-			SKCanvas canvas = new SKCanvas(merged);
+			SKBitmap composited = new SKBitmap(mergedWidth, mergedHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
+			composited.Erase(SKColors.Transparent);
+			SKRect mergedClip = new SKRect(0, 0, mergedWidth, mergedHeight);
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
-			SKPaint paint = new SKPaint();
-			paint.BlendMode = SKBlendMode.SrcOver;
-			paint.Color = SKColors.White.WithAlpha(lower.Opacity());
+			lower.SetOffset(lowerLeft - left, lowerTop - top);
+			upper.SetOffset(upperLeft - left, upperTop - top);
 			if (lower.IsVisible())
 			{
-				SKImage lowerImage = SKImage.FromBitmap(lowerBitmap);
-				canvas.DrawImage(lowerImage, lowerLeft - left, lowerTop - top, sampling, paint);
-				lowerImage.Dispose();
+				CompositeSingleLayerInto(composited, 0, 0, mergedWidth, mergedHeight, mergedClip, sampling, lower);
 			}
-			paint.BlendMode = Layer.ToSkBlendMode(upper.BlendMode());
-			paint.Color = SKColors.White.WithAlpha(upper.Opacity());
 			if (upper.IsVisible())
 			{
-				SKImage upperImage = SKImage.FromBitmap(upperBitmap);
-				canvas.DrawImage(upperImage, upperLeft - left, upperTop - top, sampling, paint);
-				upperImage.Dispose();
+				CompositeSingleLayerInto(composited, 0, 0, mergedWidth, mergedHeight, mergedClip, sampling, upper);
 			}
-			paint.Dispose();
-			canvas.Dispose();
+			lower.SetOffset(lowerLeft, lowerTop);
+			upper.SetOffset(upperLeft, upperTop);
+			SKBitmap merged = ConvertPremulToUnpremul(composited);
+			composited.Dispose();
 			bool mergedVisible = lower.IsVisible() || upper.IsVisible();
 			lower.SetBitmap(merged);
 			lower.SetOffset(left, top);
@@ -1827,10 +1822,9 @@ namespace Bitmute.Imaging
 				return;
 			}
 			int lowest = sorted[0];
-			SKBitmap merged = new SKBitmap(m_width, m_height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-			merged.Erase(SKColors.Transparent);
-			SKCanvas canvas = new SKCanvas(merged);
-			SKPaint paint = new SKPaint();
+			SKBitmap composited = new SKBitmap(m_width, m_height, SKColorType.Rgba8888, SKAlphaType.Premul);
+			composited.Erase(SKColors.Transparent);
+			SKRect mergedClip = new SKRect(0, 0, m_width, m_height);
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
 			for (int order = 0; order < sorted.Count; order++)
 			{
@@ -1839,10 +1833,10 @@ namespace Bitmute.Imaging
 				{
 					continue;
 				}
-				DrawStyledLayer(canvas, sourceLayer, sampling, paint);
+				CompositeSingleLayerInto(composited, 0, 0, m_width, m_height, mergedClip, sampling, sourceLayer);
 			}
-			paint.Dispose();
-			canvas.Dispose();
+			SKBitmap merged = ConvertPremulToUnpremul(composited);
+			composited.Dispose();
 			Layer result = new Layer(m_layers[lowest].Name(), m_width, m_height, m_colorDepth);
 			result.SetBitmap(merged);
 			result.SetOffset(0, 0);
@@ -1890,10 +1884,9 @@ namespace Bitmute.Imaging
 			{
 				return;
 			}
-			SKBitmap merged = new SKBitmap(m_width, m_height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-			merged.Erase(SKColors.Transparent);
-			SKCanvas canvas = new SKCanvas(merged);
-			SKPaint paint = new SKPaint();
+			SKBitmap composited = new SKBitmap(m_width, m_height, SKColorType.Rgba8888, SKAlphaType.Premul);
+			composited.Erase(SKColors.Transparent);
+			SKRect mergedClip = new SKRect(0, 0, m_width, m_height);
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
 			for (int index = 0; index < m_layers.Count; index++)
 			{
@@ -1902,10 +1895,10 @@ namespace Bitmute.Imaging
 				{
 					continue;
 				}
-				DrawStyledLayer(canvas, layer, sampling, paint);
+				CompositeSingleLayerInto(composited, 0, 0, m_width, m_height, mergedClip, sampling, layer);
 			}
-			paint.Dispose();
-			canvas.Dispose();
+			SKBitmap merged = ConvertPremulToUnpremul(composited);
+			composited.Dispose();
 			Layer result = new Layer("Merged", m_width, m_height, m_colorDepth);
 			result.SetBitmap(merged);
 			result.SetOffset(0, 0);
@@ -1935,10 +1928,9 @@ namespace Bitmute.Imaging
 
 		public void FlattenImage()
 		{
-			SKBitmap merged = new SKBitmap(m_width, m_height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-			merged.Erase(SKColors.Transparent);
-			SKCanvas canvas = new SKCanvas(merged);
-			SKPaint paint = new SKPaint();
+			SKBitmap composited = new SKBitmap(m_width, m_height, SKColorType.Rgba8888, SKAlphaType.Premul);
+			composited.Erase(SKColors.Transparent);
+			SKRect mergedClip = new SKRect(0, 0, m_width, m_height);
 			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
 			for (int index = 0; index < m_layers.Count; index++)
 			{
@@ -1947,10 +1939,10 @@ namespace Bitmute.Imaging
 				{
 					continue;
 				}
-				DrawStyledLayer(canvas, layer, sampling, paint);
+				CompositeSingleLayerInto(composited, 0, 0, m_width, m_height, mergedClip, sampling, layer);
 			}
-			paint.Dispose();
-			canvas.Dispose();
+			SKBitmap merged = ConvertPremulToUnpremul(composited);
+			composited.Dispose();
 			Layer result = new Layer("Background", m_width, m_height, m_colorDepth);
 			result.SetBitmap(merged);
 			result.SetOffset(0, 0);
@@ -2500,36 +2492,56 @@ namespace Bitmute.Imaging
 				{
 					continue;
 				}
-				if (Layer.IsCustomBlend(layer.BlendMode()))
+				CompositeSingleLayerInto(target, left, top, right, bottom, clipRect, sampling, layer);
+			}
+		}
+
+		private void CompositeSingleLayerInto(SKBitmap target, int left, int top, int right, int bottom, SKRect clipRect, SKSamplingOptions sampling, Layer layer)
+		{
+			if (Layer.IsCustomBlend(layer.BlendMode()))
+			{
+				DrawClippedStyleUnder(target, clipRect, sampling, layer);
+				BlendCustomLayer(target, left, top, right, bottom, layer);
+				DrawClippedStyleOver(target, clipRect, sampling, layer);
+			}
+			else
+			{
+				bool masked = layer.HasMask() && layer.MaskEnabled();
+				if (masked && layer.BlendMode() == eBlendMode.Normal && !layer.LayerStyle().HasAnyEffect())
 				{
-					DrawClippedStyleUnder(target, clipRect, sampling, layer);
-					BlendCustomLayer(target, left, top, right, bottom, layer);
-					DrawClippedStyleOver(target, clipRect, sampling, layer);
+					BlendMaskedNormalLayer(target, left, top, right, bottom, layer);
+				}
+				else if (masked)
+				{
+					DrawMaskedLayer(target, clipRect, sampling, layer);
 				}
 				else
 				{
-					bool masked = layer.HasMask() && layer.MaskEnabled();
-					if (masked && layer.BlendMode() == eBlendMode.Normal && !layer.LayerStyle().HasAnyEffect())
-					{
-						BlendMaskedNormalLayer(target, left, top, right, bottom, layer);
-					}
-					else if (masked)
-					{
-						DrawMaskedLayer(target, clipRect, sampling, layer);
-					}
-					else
-					{
-						SKCanvas canvas = new SKCanvas(target);
-						canvas.Save();
-						canvas.ClipRect(clipRect);
-						SKPaint paint = new SKPaint();
-						DrawStyledLayer(canvas, layer, sampling, paint);
-						paint.Dispose();
-						canvas.Restore();
-						canvas.Dispose();
-					}
+					SKCanvas canvas = new SKCanvas(target);
+					canvas.Save();
+					canvas.ClipRect(clipRect);
+					SKPaint paint = new SKPaint();
+					DrawStyledLayer(canvas, layer, sampling, paint);
+					paint.Dispose();
+					canvas.Restore();
+					canvas.Dispose();
 				}
 			}
+		}
+
+		private SKBitmap ConvertPremulToUnpremul(SKBitmap premultiplied)
+		{
+			SKBitmap unpremultiplied = new SKBitmap(premultiplied.Width, premultiplied.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+			SKCanvas canvas = new SKCanvas(unpremultiplied);
+			SKPaint paint = new SKPaint();
+			paint.BlendMode = SKBlendMode.Src;
+			SKImage image = SKImage.FromBitmap(premultiplied);
+			SKSamplingOptions sampling = new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None);
+			canvas.DrawImage(image, 0, 0, sampling, paint);
+			image.Dispose();
+			paint.Dispose();
+			canvas.Dispose();
+			return unpremultiplied;
 		}
 
 		private void BlendCustomLayer(SKBitmap target, int left, int top, int right, int bottom, Layer layer)

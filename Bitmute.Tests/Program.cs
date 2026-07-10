@@ -67,6 +67,7 @@ namespace Bitmute.Tests
 			TestGaussianBlurAlpha();
 			TestLayerMerging();
 			TestMergeSkipsHiddenLayers();
+			TestMergeCustomBlendMatchesComposite();
 			TestChannelVisibilityMask();
 			TestDodgeBurnRange();
 			TestChannelRender();
@@ -1239,6 +1240,63 @@ namespace Bitmute.Tests
 			Layer selResult = selDoc.Layers()[1];
 			Check(selResult.GetPixelCanvas(1, 1).Green > 180, "merge selected keeps the visible member's pixels");
 			Check(selResult.GetPixelCanvas(2, 2).Alpha == 0, "merge selected discards the hidden member's pixels");
+		}
+
+		private static int CountMatchingPixels(SKBitmap before, SKBitmap after, int width, int height)
+		{
+			int matches = 0;
+			for (int y = 0; y < height; y++)
+			{
+				for (int x = 0; x < width; x++)
+				{
+					SKColor beforePixel = before.GetPixel(x, y);
+					SKColor afterPixel = after.GetPixel(x, y);
+					if (beforePixel.Red == afterPixel.Red && beforePixel.Green == afterPixel.Green && beforePixel.Blue == afterPixel.Blue && beforePixel.Alpha == afterPixel.Alpha)
+					{
+						matches = matches + 1;
+					}
+				}
+			}
+			return matches;
+		}
+
+		private static void CheckMergeDownMatchesComposite(eBlendMode mode, string label)
+		{
+			int width = 8;
+			int height = 8;
+			Document document = new Document("t", width, height);
+			document.ActiveLayer().Bitmap().Erase(new SKColor(200, 120, 60, 255));
+			Layer top = document.AddLayer("top");
+			top.Bitmap().Erase(new SKColor(80, 40, 180, 255));
+			top.SetBlendMode(mode);
+
+			SKBitmap viewportComposite = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+			document.CompositeInto(viewportComposite);
+
+			document.MergeDown(1);
+			Check(document.Layers().Count == 1, label + " merge down collapses to one layer");
+
+			SKBitmap mergedComposite = new SKBitmap(width, height, SKColorType.Rgba8888, SKAlphaType.Premul);
+			document.CompositeInto(mergedComposite);
+
+			int matches = CountMatchingPixels(viewportComposite, mergedComposite, width, height);
+			Check(matches == width * height, label + " merge down matches the viewport composite bit-for-bit");
+		}
+
+		private static void TestMergeCustomBlendMatchesComposite()
+		{
+			CheckMergeDownMatchesComposite(eBlendMode.Subtract, "subtract");
+			CheckMergeDownMatchesComposite(eBlendMode.Dissolve, "dissolve");
+			CheckMergeDownMatchesComposite(eBlendMode.Multiply, "multiply");
+
+			Document subtractDoc = new Document("t", 8, 8);
+			subtractDoc.ActiveLayer().Bitmap().Erase(new SKColor(200, 120, 60, 255));
+			Layer subtractTop = subtractDoc.AddLayer("top");
+			subtractTop.Bitmap().Erase(new SKColor(80, 40, 180, 255));
+			subtractTop.SetBlendMode(eBlendMode.Subtract);
+			subtractDoc.MergeDown(1);
+			SKColor subtractResult = subtractDoc.ActiveLayer().GetPixelCanvas(4, 4);
+			Check(subtractResult.Red == 120 && subtractResult.Green == 80 && subtractResult.Blue == 0, "subtract merge bakes the custom blend, not Normal");
 		}
 
 		private static void TestChannelVisibilityMask()
