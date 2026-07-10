@@ -108,6 +108,10 @@ namespace Bitmute.UI
 			{
 				ScheduleLiveApply(color);
 			}
+			if (m_ready && m_onApply != null)
+			{
+				ScheduleLiveApply(color);
+			}
 		}
 
 		private void ScheduleLiveApply(SKColor color)
@@ -126,6 +130,12 @@ namespace Bitmute.UI
 			m_livePendingScheduled = false;
 			if (m_liveRevoked)
 			{
+				return;
+			}
+			if (m_onApply != null)
+			{
+				m_onApply(m_livePendingColor);
+				m_liveFired = true;
 				return;
 			}
 			MainView main = MainView.Self;
@@ -336,6 +346,11 @@ namespace Bitmute.UI
 			m_liveRevoked = true;
 			if (!m_liveFired || m_applied)
 			{
+				return;
+			}
+			if (m_onApply != null)
+			{
+				m_onApply(m_originalColor);
 				return;
 			}
 			MainView main = MainView.Self;
