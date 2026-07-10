@@ -843,7 +843,12 @@ namespace Bitmute.Imaging
 			{
 				return;
 			}
-			SKBitmap bitmap = layer.Bitmap();
+			SKBitmap bitmap = ActivePaintBitmap();
+			if (m_paintTarget == ePaintTarget.Mask && layer.HasMask())
+			{
+				int gray = ((fill.Red * 77) + (fill.Green * 150) + (fill.Blue * 29)) / 256;
+				fill = new SKColor((byte)gray, (byte)gray, (byte)gray, 255);
+			}
 			int offsetX = layer.OffsetX();
 			int offsetY = layer.OffsetY();
 			SKRectI bounds = m_selection.Bounds();
@@ -922,7 +927,12 @@ namespace Bitmute.Imaging
 			{
 				return;
 			}
-			layer.Bitmap().Erase(color);
+			if (m_paintTarget == ePaintTarget.Mask && layer.HasMask())
+			{
+				int gray = ((color.Red * 77) + (color.Green * 150) + (color.Blue * 29)) / 256;
+				color = new SKColor((byte)gray, (byte)gray, (byte)gray, 255);
+			}
+			ActivePaintBitmap().Erase(color);
 			MarkComposeDirtyAll();
 		}
 
