@@ -2705,8 +2705,8 @@ namespace Bitmute.UI
 
 			if (m_panning && eventArgs.ActionType == SKTouchAction.Moved)
 			{
-				m_offsetX = m_offsetX + (eventArgs.Location.X - m_panLastX);
-				m_offsetY = m_offsetY + (eventArgs.Location.Y - m_panLastY);
+				m_offsetX = ClampOffsetX(m_offsetX + (eventArgs.Location.X - m_panLastX));
+				m_offsetY = ClampOffsetY(m_offsetY + (eventArgs.Location.Y - m_panLastY));
 				m_panLastX = eventArgs.Location.X;
 				m_panLastY = eventArgs.Location.Y;
 				InvalidateSurface();
@@ -3396,8 +3396,8 @@ namespace Bitmute.UI
 			float documentAnchorX = (anchorX - m_offsetX) / m_zoom;
 			float documentAnchorY = (anchorY - m_offsetY) / m_zoom;
 			m_zoom = newZoom;
-			m_offsetX = anchorX - (documentAnchorX * m_zoom);
-			m_offsetY = anchorY - (documentAnchorY * m_zoom);
+			m_offsetX = ClampOffsetX(anchorX - (documentAnchorX * m_zoom));
+			m_offsetY = ClampOffsetY(anchorY - (documentAnchorY * m_zoom));
 			ReportZoomInfo();
 			InvalidateSurface();
 		}
