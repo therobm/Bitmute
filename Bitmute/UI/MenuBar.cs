@@ -162,7 +162,7 @@ namespace Bitmute.UI
 				{
 					hasActiveLayer = layerDocument.ActiveLayer() != null;
 				}
-				MenuBarItem newLayer = new MenuBarItem("New Layer", eMenuAction.NewLayer, () => m_main.AddNewLayer());
+				MenuBarItem newLayer = new MenuBarItem("New Layer", eMenuAction.NewLayer, m_main.Operations().GetAcceleratorText(eOperation.NewLayer), () => m_main.AddNewLayer());
 				newLayer.m_enabled = hasDocument;
 				items.Add(newLayer);
 				MenuBarItem deleteLayer = new MenuBarItem("Delete Layer", eMenuAction.DeleteLayer, () => m_main.RequestDeleteActiveLayer());

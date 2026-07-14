@@ -96,6 +96,7 @@ namespace Bitmute.UI.Operations
 			RegisterOperation(eOperation.Paste, TriggerPaste);
 			RegisterOperation(eOperation.PasteInto, TriggerPasteInto);
 			RegisterOperation(eOperation.FitOnScreen, TriggerFitOnScreen);
+			RegisterOperation(eOperation.NewLayer, TriggerNewLayer);
 			RegisterOperation(eOperation.DuplicateLayer, TriggerDuplicateLayer);
 			RegisterOperation(eOperation.MergeDown, TriggerMergeDown);
 			RegisterOperation(eOperation.ImageSize, TriggerImageSize);
@@ -371,6 +372,16 @@ namespace Bitmute.UI.Operations
 		private bool TriggerFitOnScreen(Chord chord)
 		{
 			m_main.DoFit();
+			return true;
+		}
+
+		private bool TriggerNewLayer(Chord chord)
+		{
+			if (m_main.IsTextEditActive())
+			{
+				return false;
+			}
+			m_main.AddNewLayer();
 			return true;
 		}
 
