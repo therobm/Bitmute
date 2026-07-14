@@ -71,7 +71,15 @@ namespace Bitmute.Tools
 			{
 				return false;
 			}
-			SKBitmap bitmap = layer.Bitmap();
+			SKBitmap bitmap;
+			if (document.PaintTarget() == ePaintTarget.Mask && layer.HasMask())
+			{
+				bitmap = layer.MaskBitmap();
+			}
+			else
+			{
+				bitmap = layer.Bitmap();
+			}
 			int width = bitmap.Width;
 			int height = bitmap.Height;
 			int offsetX = layer.OffsetX();

@@ -162,7 +162,7 @@ namespace Bitmute.UI
 				{
 					hasActiveLayer = layerDocument.ActiveLayer() != null;
 				}
-				MenuBarItem newLayer = new MenuBarItem("New Layer", eMenuAction.NewLayer, () => m_main.AddNewLayer());
+				MenuBarItem newLayer = new MenuBarItem("New Layer", eMenuAction.NewLayer, m_main.Operations().GetAcceleratorText(eOperation.NewLayer), () => m_main.AddNewLayer());
 				newLayer.m_enabled = hasDocument;
 				items.Add(newLayer);
 				MenuBarItem deleteLayer = new MenuBarItem("Delete Layer", eMenuAction.DeleteLayer, () => m_main.RequestDeleteActiveLayer());
@@ -202,6 +202,9 @@ namespace Bitmute.UI
 				MenuBarItem contract = new MenuBarItem("Contract…", eMenuAction.ContractSelection, () => m_main.OpenAdjustment(eMenuAction.ContractSelection));
 				contract.m_enabled = selectDocument != null && selectDocument.Selection().IsActive();
 				items.Add(contract);
+				MenuBarItem round = new MenuBarItem("Round…", eMenuAction.SmoothSelection, () => m_main.OpenAdjustment(eMenuAction.SmoothSelection));
+				round.m_enabled = selectDocument != null && selectDocument.Selection().IsActive();
+				items.Add(round);
 				return items;
 			}
 			if (title == "Filter")
