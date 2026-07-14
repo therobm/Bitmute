@@ -170,6 +170,7 @@ namespace Bitmute.UI
 			RegisterAccelerator(eOperation.Paste, new Chord(VirtualKey.V, VirtualKeyModifiers.Control));
 			RegisterAccelerator(eOperation.PasteInto, new Chord(VirtualKey.V, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift));
 			RegisterAccelerator(eOperation.FitOnScreen, new Chord(VirtualKey.Number0, VirtualKeyModifiers.Control));
+			RegisterAccelerator(eOperation.NewLayer, new Chord(VirtualKey.N, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift));
 			RegisterAccelerator(eOperation.DuplicateLayer, new Chord(VirtualKey.J, VirtualKeyModifiers.Control));
 			RegisterAccelerator(eOperation.MergeDown, new Chord(VirtualKey.E, VirtualKeyModifiers.Control));
 			RegisterAccelerator(eOperation.ImageSize, new Chord(VirtualKey.I, VirtualKeyModifiers.Control | VirtualKeyModifiers.Menu));

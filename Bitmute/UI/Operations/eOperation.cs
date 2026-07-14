@@ -32,6 +32,7 @@ namespace Bitmute.UI.Operations
 
 		FitOnScreen,
 
+		NewLayer,
 		DuplicateLayer,
 		MergeDown,
 
