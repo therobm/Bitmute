@@ -103,6 +103,7 @@ namespace Bitmute.Tests
 			TestLayerStylePreviewTickEquivalence();
 			TestFeatherActive();
 			TestContractActive();
+			TestSmoothActive();
 			TestBrightnessContrastMatchesReference();
 			TestBlendAdjustedIntoSelection();
 			TestHueSaturationLightnessMatchesReference();
@@ -2149,6 +2150,27 @@ namespace Bitmute.Tests
 			Check(!smallSelection.IsActive(), "contracting a small selection empties and deactivates it");
 			Check(smallSelection.Bounds().Width == 0 && smallSelection.Bounds().Height == 0, "emptied contract clears the bounds");
 			Check(!smallSelection.IsSelected(11, 11), "emptied contract leaves no selected pixels");
+		}
+
+		private static void TestSmoothActive()
+		{
+			Document doc = new Document("t", 32, 32);
+			Selection sel = doc.Selection();
+			sel.SelectRect(new SKRectI(4, 4, 28, 28));
+			int generationBefore = sel.Generation();
+			sel.SmoothActive(2);
+			Check(sel.IsActive(), "smooth active keeps a large selection active");
+			Check(sel.Generation() > generationBefore, "smooth active bumps the generation");
+			Check(sel.Coverage(16, 16) == 255, "smooth keeps the selection center solid");
+			Check(sel.Coverage(16, 4) == 255, "smooth keeps a straight edge midpoint selected");
+			Check(sel.Coverage(4, 4) == 0, "smooth rounds off the square corner");
+
+			Document smallDoc = new Document("t", 32, 32);
+			Selection smallSelection = smallDoc.Selection();
+			smallSelection.SelectRect(new SKRectI(10, 10, 13, 13));
+			smallSelection.SmoothActive(2);
+			Check(!smallSelection.IsActive(), "smoothing a speck smaller than the radius removes it");
+			Check(!smallSelection.IsSelected(11, 11), "removed speck leaves no selected pixels");
 		}
 
 		private static void TestInnerGlowInsideOnly()

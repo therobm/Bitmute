@@ -202,6 +202,9 @@ namespace Bitmute.UI
 				MenuBarItem contract = new MenuBarItem("Contract…", eMenuAction.ContractSelection, () => m_main.OpenAdjustment(eMenuAction.ContractSelection));
 				contract.m_enabled = selectDocument != null && selectDocument.Selection().IsActive();
 				items.Add(contract);
+				MenuBarItem round = new MenuBarItem("Round…", eMenuAction.SmoothSelection, () => m_main.OpenAdjustment(eMenuAction.SmoothSelection));
+				round.m_enabled = selectDocument != null && selectDocument.Selection().IsActive();
+				items.Add(round);
 				return items;
 			}
 			if (title == "Filter")

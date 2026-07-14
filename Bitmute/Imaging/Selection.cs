@@ -887,6 +887,78 @@ namespace Bitmute.Imaging
 			}
 		}
 
+		public void SmoothActive(int radius)
+		{
+			if (!m_active || radius <= 0)
+			{
+				return;
+			}
+			SKRectI inflated = new SKRectI(m_bounds.Left - radius, m_bounds.Top - radius, m_bounds.Right + radius, m_bounds.Bottom + radius);
+			GrowToInclude(inflated);
+			if (m_regionScratch == null || m_regionScratch.Length < m_mask.Length)
+			{
+				m_regionScratch = new byte[m_mask.Length];
+			}
+			SKRectI work = ClampToMask(inflated);
+			int window = (radius * 2) + 1;
+			int threshold = (window * window) / 2;
+			for (int y = work.Top; y < work.Bottom; y++)
+			{
+				int rowStart = MaskRow(y) - m_originX;
+				for (int x = work.Left; x < work.Right; x++)
+				{
+					int index = rowStart + x;
+					int selectedCount = 0;
+					int neighborTop = y - radius;
+					int neighborBottom = y + radius;
+					int neighborLeft = x - radius;
+					int neighborRight = x + radius;
+					for (int neighborY = neighborTop; neighborY <= neighborBottom; neighborY++)
+					{
+						if (neighborY < m_originY || neighborY >= m_originY + m_maskHeight)
+						{
+							continue;
+						}
+						int neighborRowStart = MaskRow(neighborY) - m_originX;
+						for (int neighborX = neighborLeft; neighborX <= neighborRight; neighborX++)
+						{
+							if (neighborX < m_originX || neighborX >= m_originX + m_maskWidth)
+							{
+								continue;
+							}
+							if (m_mask[neighborRowStart + neighborX] >= 128)
+							{
+								selectedCount = selectedCount + 1;
+							}
+						}
+					}
+					if (selectedCount > threshold)
+					{
+						m_regionScratch[index] = 255;
+					}
+					else
+					{
+						m_regionScratch[index] = 0;
+					}
+				}
+			}
+			for (int y = work.Top; y < work.Bottom; y++)
+			{
+				int rowStart = MaskRow(y) - m_originX;
+				for (int x = work.Left; x < work.Right; x++)
+				{
+					int index = rowStart + x;
+					m_mask[index] = m_regionScratch[index];
+				}
+			}
+			m_lastCombinedBounds = MaskRect();
+			RecomputeFromMask();
+			if (!m_active)
+			{
+				Clear();
+			}
+		}
+
 		public void SelectRect(SKRectI rect)
 		{
 			if (rect.Right <= rect.Left || rect.Bottom <= rect.Top)
