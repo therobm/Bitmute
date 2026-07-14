@@ -1218,7 +1218,10 @@ namespace Bitmute.Imaging
 				return;
 			}
 			m_pendingDocEdit.CaptureAfter(this);
-			PushCommand(m_pendingDocEdit);
+			if (m_pendingDocEdit.HasChange())
+			{
+				PushCommand(m_pendingDocEdit);
+			}
 			m_pendingDocEdit = null;
 		}
 

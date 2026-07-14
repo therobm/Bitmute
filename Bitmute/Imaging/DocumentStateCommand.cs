@@ -82,6 +82,69 @@ namespace Bitmute.Imaging
 			}
 		}
 
+		private static bool ByteArraysEqual(byte[] first, byte[] second)
+		{
+			if (first == null || second == null)
+			{
+				return first == second;
+			}
+			if (first.Length != second.Length)
+			{
+				return false;
+			}
+			for (int index = 0; index < first.Length; index++)
+			{
+				if (first[index] != second[index])
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+
+		public bool HasChange()
+		{
+			if (m_beforeWidth != m_afterWidth || m_beforeHeight != m_afterHeight)
+			{
+				return true;
+			}
+			if (m_beforeActive != m_afterActive || m_beforeColorDepth != m_afterColorDepth)
+			{
+				return true;
+			}
+			if (m_beforeSelActive != m_afterSelActive)
+			{
+				return true;
+			}
+			if (m_beforeSelActive)
+			{
+				if (!m_beforeBounds.Equals(m_afterBounds))
+				{
+					return true;
+				}
+				if (!m_beforeMaskRect.Equals(m_afterMaskRect))
+				{
+					return true;
+				}
+				if (!ByteArraysEqual(m_beforeMask, m_afterMask))
+				{
+					return true;
+				}
+			}
+			if (m_beforeLayers.Count != m_afterLayers.Count)
+			{
+				return true;
+			}
+			for (int index = 0; index < m_beforeLayers.Count; index++)
+			{
+				if (!m_beforeLayers[index].ContentEquals(m_afterLayers[index]))
+				{
+					return true;
+				}
+			}
+			return false;
+		}
+
 		public override void ApplyBefore(Document document)
 		{
 			document.SetColorDepth(m_beforeColorDepth);
