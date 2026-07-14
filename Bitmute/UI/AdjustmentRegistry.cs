@@ -534,6 +534,10 @@ namespace Bitmute.UI
 				{
 					document.Selection().ContractActive(values[0]);
 				}
+				else if (adjustment.m_menuAction == eMenuAction.SmoothSelection)
+				{
+					document.Selection().SmoothActive(values[0]);
+				}
 				else
 				{
 					document.Selection().FeatherActive(values[0]);
@@ -699,6 +703,8 @@ namespace Bitmute.UI
 			feather.m_kind = eAdjustmentKind.Selection;
 			Adjustment contract = AddDialog(eMenuAction.ContractSelection, eMenuAction.None, "Contract Selection", false, new string[] { "Contract" }, new int[] { 1 }, new int[] { 100 }, new int[] { 1 }, 360.0, 170.0, null);
 			contract.m_kind = eAdjustmentKind.Selection;
+			Adjustment round = AddDialog(eMenuAction.SmoothSelection, eMenuAction.None, "Round Selection", false, new string[] { "Radius" }, new int[] { 1 }, new int[] { 100 }, new int[] { 2 }, 360.0, 170.0, null);
+			round.m_kind = eAdjustmentKind.Selection;
 
 			Adjustment averageBlur = AddInstant(eMenuAction.AverageBlur, eMenuAction.FilterBlurMenu, "Average", RunAverage);
 			averageBlur.m_depthAware = true;
