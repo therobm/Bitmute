@@ -31,6 +31,7 @@ namespace Bitmute.Tests
 			TestEraserOnMaskHides();
 			TestFillSelectionTargetsMask();
 			TestFillLayerTargetsMask();
+			TestFillToolTargetsMask();
 			return s_failures;
 		}
 
@@ -176,6 +177,30 @@ namespace Bitmute.Tests
 			Check(colorAfter.Red == colorBefore.Red && colorAfter.Green == colorBefore.Green && colorAfter.Blue == colorBefore.Blue && colorAfter.Alpha == colorBefore.Alpha, "fill layer leaves the layer color bitmap unchanged when targeting the mask");
 			int hiddenAlpha = CompositeAlphaAt(document, 32, 32);
 			Check(hiddenAlpha < 16, "fill layer into the mask hides the composited point");
+		}
+
+		private static void TestFillToolTargetsMask()
+		{
+			Document document = new Document("filltoolmask", 64, 64);
+			Layer layer = document.ActiveLayer();
+			layer.Bitmap().Erase(new SKColor(200, 40, 40, 255));
+			document.AddMaskToActiveLayer(true);
+			SKColor colorBefore = layer.Bitmap().GetPixel(32, 32);
+			SKColor maskBefore = layer.MaskBitmap().GetPixel(32, 32);
+			ToolState state = new ToolState();
+			state.SetFillTolerance(0);
+			state.SetFillContent(eFillContent.Foreground);
+			state.SetForeground(new SKColor(0, 0, 0, 255));
+			document.SetPaintTarget(ePaintTarget.Mask);
+			FillTool tool = new FillTool();
+			bool changed = tool.OnPressed(document, 32, 32, state);
+			Check(changed, "fill tool reports change when filling the mask");
+			SKColor maskAfter = layer.MaskBitmap().GetPixel(32, 32);
+			SKColor colorAfter = layer.Bitmap().GetPixel(32, 32);
+			Check(maskAfter.Red == 0 && maskAfter.Red != maskBefore.Red, "fill tool writes the mask bitmap when the mask is the paint target");
+			Check(colorAfter.Red == colorBefore.Red && colorAfter.Green == colorBefore.Green && colorAfter.Blue == colorBefore.Blue && colorAfter.Alpha == colorBefore.Alpha, "fill tool leaves the layer color bitmap unchanged when targeting the mask");
+			int hiddenAlpha = CompositeAlphaAt(document, 32, 32);
+			Check(hiddenAlpha < 16, "fill tool into the mask hides the composited point");
 		}
 	}
 }
