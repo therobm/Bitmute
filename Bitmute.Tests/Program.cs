@@ -104,6 +104,7 @@ namespace Bitmute.Tests
 			TestFeatherActive();
 			TestContractActive();
 			TestSmoothActive();
+			TestCanvasEditNoOpSkipsUndo();
 			TestBrightnessContrastMatchesReference();
 			TestBlendAdjustedIntoSelection();
 			TestHueSaturationLightnessMatchesReference();
@@ -2171,6 +2172,29 @@ namespace Bitmute.Tests
 			smallSelection.SmoothActive(2);
 			Check(!smallSelection.IsActive(), "smoothing a speck smaller than the radius removes it");
 			Check(!smallSelection.IsSelected(11, 11), "removed speck leaves no selected pixels");
+		}
+
+		private static void TestCanvasEditNoOpSkipsUndo()
+		{
+			Document doc = new Document("t", 32, 32);
+			doc.ActiveLayer().Bitmap().Erase(new SKColor(10, 20, 30, 255));
+			int depthBefore = doc.HistoryIndex();
+
+			doc.BeginCanvasEdit("noop");
+			doc.EndCanvasEdit();
+			Check(doc.HistoryIndex() == depthBefore, "a canvas edit that changes nothing does not push an undo step");
+
+			doc.BeginCanvasEdit("real");
+			doc.ActiveLayer().Bitmap().Erase(new SKColor(200, 40, 40, 255));
+			doc.EndCanvasEdit();
+			Check(doc.HistoryIndex() == depthBefore + 1, "a canvas edit that changes a pixel pushes exactly one undo step");
+
+			doc.BeginCanvasEdit("noop2");
+			doc.EndCanvasEdit();
+			Check(doc.HistoryIndex() == depthBefore + 1, "a second no-op canvas edit still does not push");
+
+			bool undone = doc.Undo();
+			Check(undone && doc.ActiveLayer().Bitmap().GetPixel(16, 16).Red == 10, "undo of the real edit restores the prior pixels");
 		}
 
 		private static void TestInnerGlowInsideOnly()

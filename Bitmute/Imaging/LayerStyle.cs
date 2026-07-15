@@ -109,6 +109,11 @@ namespace Bitmute.Imaging
 			return m_hasBevel == other.m_hasBevel && m_bevelDepth == other.m_bevelDepth && m_bevelSize == other.m_bevelSize && m_bevelAngle == other.m_bevelAngle && m_bevelHighlightColor == other.m_bevelHighlightColor && m_bevelHighlightOpacity == other.m_bevelHighlightOpacity && m_bevelShadowColor == other.m_bevelShadowColor && m_bevelShadowOpacity == other.m_bevelShadowOpacity;
 		}
 
+		public bool ContentEquals(LayerStyle other)
+		{
+			return SameStroke(other) && m_strokeBlendMode == other.m_strokeBlendMode && SameShadow(other) && m_shadowBlendMode == other.m_shadowBlendMode && SameOuterGlow(other) && m_glowBlendMode == other.m_glowBlendMode && SameInnerGlow(other) && m_innerGlowBlendMode == other.m_innerGlowBlendMode && SameBevel(other) && m_bevelBlendMode == other.m_bevelBlendMode;
+		}
+
 		public LayerStyle Clone()
 		{
 			LayerStyle copy = new LayerStyle();

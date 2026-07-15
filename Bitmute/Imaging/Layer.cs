@@ -840,6 +840,82 @@ namespace Bitmute.Imaging
 			return copy;
 		}
 
+		private static bool BitmapsEqual(SKBitmap first, SKBitmap second)
+		{
+			if (first.Width != second.Width || first.Height != second.Height || first.ColorType != second.ColorType)
+			{
+				return false;
+			}
+			SKRectI dirty = PixelRegion.ComputeDirtyRect(first, second);
+			return dirty.Width <= 0 || dirty.Height <= 0;
+		}
+
+		public bool ContentEquals(Layer other)
+		{
+			if (!BitmapsEqual(m_bitmap, other.m_bitmap))
+			{
+				return false;
+			}
+			bool hasMask = m_maskBitmap != null;
+			bool otherHasMask = other.m_maskBitmap != null;
+			if (hasMask != otherHasMask)
+			{
+				return false;
+			}
+			if (hasMask)
+			{
+				if (m_maskEnabled != other.m_maskEnabled)
+				{
+					return false;
+				}
+				if (!BitmapsEqual(m_maskBitmap, other.m_maskBitmap))
+				{
+					return false;
+				}
+			}
+			if (m_offsetX != other.m_offsetX || m_offsetY != other.m_offsetY)
+			{
+				return false;
+			}
+			if (m_visible != other.m_visible || m_opacity != other.m_opacity || m_blendMode != other.m_blendMode)
+			{
+				return false;
+			}
+			if (m_isBackground != other.m_isBackground || m_isText != other.m_isText)
+			{
+				return false;
+			}
+			if (m_lockAll != other.m_lockAll || m_lockPixels != other.m_lockPixels || m_lockPosition != other.m_lockPosition || m_lockAlpha != other.m_lockAlpha)
+			{
+				return false;
+			}
+			if (m_text != other.m_text || m_textX != other.m_textX || m_textY != other.m_textY || m_textSize != other.m_textSize)
+			{
+				return false;
+			}
+			if (m_textBold != other.m_textBold || m_textItalic != other.m_textItalic || m_textFontFamily != other.m_textFontFamily || m_textColor != other.m_textColor)
+			{
+				return false;
+			}
+			if (m_textAlign != other.m_textAlign || m_textAntiAlias != other.m_textAntiAlias || m_textLeadingAuto != other.m_textLeadingAuto || m_textLeading != other.m_textLeading)
+			{
+				return false;
+			}
+			if (m_textTracking != other.m_textTracking || m_textHorizontalScale != other.m_textHorizontalScale || m_textVerticalScale != other.m_textVerticalScale || m_textBaselineShift != other.m_textBaselineShift)
+			{
+				return false;
+			}
+			if (m_textFauxBold != other.m_textFauxBold || m_textFauxItalic != other.m_textFauxItalic || m_textKerningAuto != other.m_textKerningAuto)
+			{
+				return false;
+			}
+			if (!m_layerStyle.ContentEquals(other.m_layerStyle))
+			{
+				return false;
+			}
+			return true;
+		}
+
 		public int OffsetX()
 		{
 			return m_offsetX;
