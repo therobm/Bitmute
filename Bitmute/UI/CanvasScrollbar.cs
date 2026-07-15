@@ -13,6 +13,7 @@ namespace Bitmute.UI
 		private bool m_horizontal;
 		private bool m_dragging;
 		private float m_grabOffset;
+		private bool m_pointerHooked;
 
 		public CanvasScrollbar(CanvasView canvas, bool horizontal)
 		{
@@ -22,11 +23,52 @@ namespace Bitmute.UI
 			PaintSurface += OnPaintSurface;
 			Touch += OnTouch;
 			Theme.Changed += OnThemeChanged;
+			HandlerChanged += OnHandlerChanged;
 		}
 
 		private void OnThemeChanged(object sender, EventArgs eventArgs)
 		{
 			InvalidateSurface();
+		}
+
+		private void OnHandlerChanged(object sender, EventArgs eventArgs)
+		{
+			if (m_pointerHooked)
+			{
+				return;
+			}
+			if (Handler == null)
+			{
+				return;
+			}
+			Microsoft.UI.Xaml.UIElement element = Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			m_pointerHooked = true;
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerPressedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnPlatformPointerPressed), true);
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerReleasedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnPlatformPointerReleased), true);
+		}
+
+		private void OnPlatformPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs eventArgs)
+		{
+			Microsoft.UI.Xaml.UIElement element = sender as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			element.CapturePointer(eventArgs.Pointer);
+		}
+
+		private void OnPlatformPointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs eventArgs)
+		{
+			Microsoft.UI.Xaml.UIElement element = sender as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			element.ReleasePointerCapture(eventArgs.Pointer);
 		}
 
 		private void OnPaintSurface(object sender, SKPaintSurfaceEventArgs eventArgs)
@@ -118,9 +160,14 @@ namespace Bitmute.UI
 				eventArgs.Handled = true;
 				return;
 			}
-			else
+			else if (eventArgs.ActionType == SKTouchAction.Released || eventArgs.ActionType == SKTouchAction.Cancelled)
 			{
 				m_dragging = false;
+				eventArgs.Handled = true;
+				return;
+			}
+			else
+			{
 				eventArgs.Handled = true;
 				return;
 			}
