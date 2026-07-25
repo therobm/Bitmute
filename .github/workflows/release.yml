@@ -64,6 +64,7 @@ jobs:
       - name: Stage release artifact
         shell: pwsh
         run: |
+          Get-ChildItem -Path publish -Recurse -Filter *.pdb | Remove-Item -Force
           New-Item -ItemType Directory artifacts | Out-Null
           Compress-Archive -Path publish\* -DestinationPath "artifacts/Bitmute-${{ steps.version.outputs.version }}-win-x64.zip"
 
