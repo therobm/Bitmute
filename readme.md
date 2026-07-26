@@ -10,9 +10,11 @@ Bitmute is one thing: an image editor that doesn't require an installer, a 6 wee
 
 This tool was designed with 3D game development needs in mind, and it does what it does while staying out of your way.
 
-### Alpha State
+### Beta State
 
-This is early days for the editor and there are plenty of bugs and quirks to hammer out.  Feel free to log any bugs you find on the github issues tab and I'll try to get to them in a reasonable time.  While I'm not entirely against feature requests, understand the foundation of this tool is intended to capture the core needs of a developer rather than replace more advanced artist workflows that demand the bells and whistles other editors have to offer.
+This is early days for the editor and while I use it daily, it's more than likely you'll use it in ways I don't and discover quirks and issues.  Feel free to log any bugs you find on the github issues tab or submit them directly to me through the help menu - I'll try to get to them in a reasonable time.  
+
+While I'm not entirely against feature requests, understand the foundation of this tool is intended to capture the core needs of programmer-art level work rather than replace more advanced artist workflows.  It has snap guides, a decent set of tools and filters, layers, etc... but I'm sure there are plenty of techniques I'm less familliar with that aren't covered and are already served well  by existing solutions.
 
 ## Documentation
 
