@@ -242,7 +242,14 @@ namespace Bitmute.Tools
 				tipInner = 0.0;
 			}
 			m_tipInner = tipInner;
-			m_opacity = opacity;
+			if (op == eBrushOp.Paint)
+			{
+				m_opacity = opacity * (color.Alpha / 255.0);
+			}
+			else
+			{
+				m_opacity = opacity;
+			}
 			m_flow = flow;
 			m_strength = 1.0;
 			m_square = square;

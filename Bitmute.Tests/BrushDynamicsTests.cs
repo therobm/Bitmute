@@ -28,6 +28,7 @@ namespace Bitmute.Tests
 			TestFadeRampsToZero();
 			TestFadeOffPaintsFarEnd();
 			TestCustomTipSampled();
+			TestColorAlphaModulatesPaint();
 			return s_failures;
 		}
 
@@ -86,6 +87,32 @@ namespace Bitmute.Tests
 			Layer layer = PaintFadeStroke(0);
 			int farAlpha = FadeAlphaAt(layer, 200);
 			Check(farAlpha > 200, "fade off: far end of stroke is still fully painted");
+		}
+
+		private static int PaintDabCenterAlpha(byte colorAlpha)
+		{
+			Document document = new Document("t", 32, 32);
+			Layer layer = document.ActiveLayer();
+			layer.Bitmap().Erase(new SKColor(0, 0, 0, 0));
+			ToolState state = new ToolState();
+			state.SetBrushSize(16);
+			state.SetBrushOpacity(100);
+			state.SetBrushHardness(100);
+			state.SetForeground(new SKColor(200, 40, 40, colorAlpha));
+			BrushTool brush = new BrushTool();
+			document.BeginStroke();
+			brush.OnPressed(document, 16, 16, state);
+			brush.OnReleased(document, 16, 16, state);
+			document.EndStroke();
+			return layer.GetPixelCanvas(16, 16).Alpha;
+		}
+
+		private static void TestColorAlphaModulatesPaint()
+		{
+			int fullAlpha = PaintDabCenterAlpha(255);
+			int halfAlpha = PaintDabCenterAlpha(128);
+			Check(fullAlpha > 240, "opaque color paints near-full alpha at the dab center");
+			Check(halfAlpha > 40 && halfAlpha < fullAlpha - 40, "semi-transparent color paints noticeably less alpha at the dab center");
 		}
 
 		private static SKBitmap BuildHalfBlackHalfWhiteTip()
