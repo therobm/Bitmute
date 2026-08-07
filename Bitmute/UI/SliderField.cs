@@ -34,6 +34,7 @@ namespace Bitmute.UI
 
 
 			m_valueEntry = new Entry();
+			Bitmute.UI.EntryFocusSelect.Attach(m_valueEntry);
 			m_valueEntry.FontSize = fontSize;
 			m_valueEntry.WidthRequest = 52.0;
 			m_valueEntry.HeightRequest = height;
