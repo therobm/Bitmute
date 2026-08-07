@@ -913,11 +913,7 @@ namespace Bitmute.UI
 			Bitmute.Imaging.Guides guides = m_document.Guides();
 			if (!guides.IsLocked())
 			{
-				int tolerance = (int)System.Math.Ceiling(4.0 / m_zoom);
-				if (tolerance < 3)
-				{
-					tolerance = 3;
-				}
+				int tolerance = (int)System.Math.Ceiling(3.0 / m_zoom);
 				if (guides.HitVertical(pixelX, tolerance) >= 0)
 				{
 					spec = new CursorSpec(eCursorKind.System, Microsoft.UI.Input.InputSystemCursorShape.SizeWestEast, "", 0, 0);
@@ -3298,11 +3294,7 @@ namespace Bitmute.UI
 			{
 				return false;
 			}
-			int tolerance = (int)System.Math.Ceiling(4.0 / m_zoom);
-			if (tolerance < 3)
-			{
-				tolerance = 3;
-			}
+			int tolerance = (int)System.Math.Ceiling(3.0 / m_zoom);
 			if (eventArgs.ActionType == SKTouchAction.Pressed)
 			{
 				int verticalIndex = guides.HitVertical(pixelX, tolerance);
