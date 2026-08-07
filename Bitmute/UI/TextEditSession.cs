@@ -214,11 +214,25 @@ namespace Bitmute.UI
 				m_canvas.InvalidateSurface();
 				return;
 			}
-			Layer active = document.ActiveLayer();
-			bool editExisting = active != null && active.IsText();
-			if (editExisting)
+			Layer hitText = null;
+			System.Collections.Generic.List<Layer> layers = document.Layers();
+			for (int index = layers.Count - 1; index >= 0; index--)
 			{
-				Begin(active, false);
+				Layer candidate = layers[index];
+				if (candidate.IsText() && TextRasterizer.GlyphBounds(candidate).Contains(x, y))
+				{
+					hitText = candidate;
+					break;
+				}
+			}
+			if (hitText != null)
+			{
+				if (!ReferenceEquals(document.ActiveLayer(), hitText))
+				{
+					document.SetActiveLayerIndex(layers.IndexOf(hitText));
+					m_main.RefreshLayersPanel();
+				}
+				Begin(hitText, false);
 				return;
 			}
 			Layer layer = document.AddLayer("Text");

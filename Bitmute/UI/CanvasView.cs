@@ -913,10 +913,10 @@ namespace Bitmute.UI
 			Bitmute.Imaging.Guides guides = m_document.Guides();
 			if (!guides.IsLocked())
 			{
-				int tolerance = (int)System.Math.Ceiling(6.0 / m_zoom);
-				if (tolerance < 4)
+				int tolerance = (int)System.Math.Ceiling(4.0 / m_zoom);
+				if (tolerance < 3)
 				{
-					tolerance = 4;
+					tolerance = 3;
 				}
 				if (guides.HitVertical(pixelX, tolerance) >= 0)
 				{
@@ -3298,10 +3298,10 @@ namespace Bitmute.UI
 			{
 				return false;
 			}
-			int tolerance = (int)System.Math.Ceiling(8.0 / m_zoom);
-			if (tolerance < 4)
+			int tolerance = (int)System.Math.Ceiling(4.0 / m_zoom);
+			if (tolerance < 3)
 			{
-				tolerance = 4;
+				tolerance = 3;
 			}
 			if (eventArgs.ActionType == SKTouchAction.Pressed)
 			{

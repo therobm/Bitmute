@@ -793,6 +793,7 @@ namespace Bitmute.UI
 			m_brushFadeSlider.ValueChanged += OnBrushFadePulldownChanged;
 
 			m_brushFadeValue = new Entry();
+			Bitmute.UI.EntryFocusSelect.Attach(m_brushFadeValue);
 			m_brushFadeValue.Text = FadeValueText(m_toolState.FadeLength());
 			m_brushFadeValue.Keyboard = Keyboard.Numeric;
 			m_brushFadeValue.HorizontalTextAlignment = TextAlignment.End;
