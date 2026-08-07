@@ -10,25 +10,8 @@ namespace Bitmute.UI.Dialogs
 
 		private bool m_canvasMode;
 		private DualIntField m_sizeField;
-		private ListPicker m_horizontalAnchor;
-		private ListPicker m_verticalAnchor;
+		private AnchorGrid m_anchorGrid;
 		private ListPicker m_interpolation;
-
-		private static int AnchorValue(ListPicker picker)
-		{
-			int index = picker.SelectedIndex();
-			if (index == 0)
-			{
-				return -1;
-			}
-			if (index == 2)
-			{
-				return 1;
-			}
-			return 0;
-		}
-
-
 
 		protected override void OnPrimaryClicked(object sender, EventArgs eventArgs)
 		{
@@ -41,7 +24,7 @@ namespace Bitmute.UI.Dialogs
 			int height = m_sizeField.SecondValue();
 			if (m_canvasMode)
 			{
-				main.ApplyCanvasSize(width, height, AnchorValue(m_horizontalAnchor), AnchorValue(m_verticalAnchor));
+				main.ApplyCanvasSize(width, height, m_anchorGrid.HorizontalAnchor(), m_anchorGrid.VerticalAnchor());
 			}
 			else
 			{
@@ -58,10 +41,8 @@ namespace Bitmute.UI.Dialogs
 
 			if (canvasMode)
 			{
-				m_horizontalAnchor = new ListPicker("Anchor X", new string[] { "Left", "Center", "Right" }, 1, null);
-				m_verticalAnchor = new ListPicker("Anchor Y", new string[] { "Top", "Middle", "Bottom" }, 1, null);
-				AddField(m_horizontalAnchor);
-				AddField(m_verticalAnchor);
+				m_anchorGrid = new AnchorGrid("Anchor", 1, 1);
+				AddField(m_anchorGrid);
 			}
 			else
 			{

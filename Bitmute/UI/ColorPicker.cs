@@ -35,6 +35,7 @@ namespace Bitmute.UI
 		private bool m_docked;
 		private bool m_ready;
 		private bool m_gradientPressed;
+		private bool m_gradientPointerHooked;
 		private Action<SKColor> m_onApply;
 		private bool m_livePendingScheduled;
 		private SKColor m_livePendingColor;
@@ -218,7 +219,7 @@ namespace Bitmute.UI
 			{
 				m_gradientPressed = true;
 			}
-			else if (eventArgs.ActionType == SKTouchAction.Released || eventArgs.ActionType == SKTouchAction.Cancelled || eventArgs.ActionType == SKTouchAction.Exited)
+			else if (eventArgs.ActionType == SKTouchAction.Released || eventArgs.ActionType == SKTouchAction.Cancelled)
 			{
 				m_gradientPressed = false;
 			}
@@ -277,6 +278,46 @@ namespace Bitmute.UI
 			}
 			SyncFromHsv();
 			eventArgs.Handled = true;
+		}
+
+		private void OnGradientHandlerChanged(object sender, EventArgs eventArgs)
+		{
+			if (m_gradientPointerHooked)
+			{
+				return;
+			}
+			if (m_gradient.Handler == null)
+			{
+				return;
+			}
+			Microsoft.UI.Xaml.UIElement element = m_gradient.Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			m_gradientPointerHooked = true;
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerPressedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGradientPlatformPointerPressed), true);
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerReleasedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGradientPlatformPointerReleased), true);
+		}
+
+		private void OnGradientPlatformPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs eventArgs)
+		{
+			Microsoft.UI.Xaml.UIElement element = sender as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			element.CapturePointer(eventArgs.Pointer);
+		}
+
+		private void OnGradientPlatformPointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs eventArgs)
+		{
+			Microsoft.UI.Xaml.UIElement element = sender as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			element.ReleasePointerCapture(eventArgs.Pointer);
 		}
 
 		private void AdoptColor(SKColor color)
@@ -468,6 +509,7 @@ namespace Bitmute.UI
 			m_gradient.EnableTouchEvents = true;
 			m_gradient.PaintSurface += OnGradientPaint;
 			m_gradient.Touch += OnGradientTouch;
+			m_gradient.HandlerChanged += OnGradientHandlerChanged;
 
 			m_preview = new BoxView();
 			m_preview.WidthRequest = 60.0;
