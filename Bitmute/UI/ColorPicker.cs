@@ -23,6 +23,7 @@ namespace Bitmute.UI
 		private Entry m_redEntry;
 		private Entry m_greenEntry;
 		private Entry m_blueEntry;
+		private Entry m_alphaEntry;
 		private Entry m_hexEntry;
 		private BoxView m_preview;
 		private float m_hue;
@@ -96,6 +97,7 @@ namespace Bitmute.UI
 			m_redEntry.Text = color.Red.ToString();
 			m_greenEntry.Text = color.Green.ToString();
 			m_blueEntry.Text = color.Blue.ToString();
+			m_alphaEntry.Text = color.Alpha.ToString();
 			m_hexEntry.Text = ToHex(color);
 			m_suppress = false;
 			m_preview.Color = ToMaui(color);
@@ -298,14 +300,17 @@ namespace Bitmute.UI
 			byte red = 0;
 			byte green = 0;
 			byte blue = 0;
+			byte alpha = 0;
 			bool redOk = byte.TryParse(m_redEntry.Text, out red);
 			bool greenOk = byte.TryParse(m_greenEntry.Text, out green);
 			bool blueOk = byte.TryParse(m_blueEntry.Text, out blue);
-			if (!redOk || !greenOk || !blueOk)
+			bool alphaOk = byte.TryParse(m_alphaEntry.Text, out alpha);
+			if (!redOk || !greenOk || !blueOk || !alphaOk)
 			{
 				return;
 			}
-			AdoptColor(new SKColor(red, green, blue, m_alpha));
+			m_alpha = alpha;
+			AdoptColor(new SKColor(red, green, blue, alpha));
 		}
 
 		private void OnHexCompleted(object sender, EventArgs eventArgs)
@@ -471,6 +476,7 @@ namespace Bitmute.UI
 			m_redEntry = BuildChannelEntry();
 			m_greenEntry = BuildChannelEntry();
 			m_blueEntry = BuildChannelEntry();
+			m_alphaEntry = BuildChannelEntry();
 
 			m_hexEntry = new Entry();
 			m_hexEntry.FontSize = UiConstants.PanelFontSize;
@@ -485,6 +491,7 @@ namespace Bitmute.UI
 				channelRow.Add(BuildLabeledEntry("R", m_redEntry));
 				channelRow.Add(BuildLabeledEntry("G", m_greenEntry));
 				channelRow.Add(BuildLabeledEntry("B", m_blueEntry));
+				channelRow.Add(BuildLabeledEntry("A", m_alphaEntry));
 
 				HorizontalStackLayout hexRow = new HorizontalStackLayout();
 				hexRow.Spacing = 6.0;
@@ -510,6 +517,7 @@ namespace Bitmute.UI
 			fields.Add(BuildLabeledEntry("R", m_redEntry));
 			fields.Add(BuildLabeledEntry("G", m_greenEntry));
 			fields.Add(BuildLabeledEntry("B", m_blueEntry));
+			fields.Add(BuildLabeledEntry("A", m_alphaEntry));
 			fields.Add(BuildLabeledEntry("#", m_hexEntry));
 
 			HorizontalStackLayout body = new HorizontalStackLayout();
