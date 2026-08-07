@@ -911,7 +911,7 @@ namespace Bitmute.UI
 			m_transformHoverKind = 0;
 			CursorSpec spec = new CursorSpec(eCursorKind.System, Microsoft.UI.Input.InputSystemCursorShape.Arrow, "", 0, 0);
 			Bitmute.Imaging.Guides guides = m_document.Guides();
-			if (!guides.IsLocked())
+			if (!guides.IsLocked() && !IsSelectionTool(tool))
 			{
 				int tolerance = (int)System.Math.Ceiling(3.0 / m_zoom);
 				if (guides.HitVertical(pixelX, tolerance) >= 0)
@@ -2801,7 +2801,7 @@ namespace Bitmute.UI
 
 			UpdateHoverCursor(tool, pixelX, pixelY);
 
-			if (HandleGuideDrag(eventArgs, pixelX, pixelY))
+			if (HandleGuideDrag(eventArgs, pixelX, pixelY, tool))
 			{
 				eventArgs.Handled = true;
 				return;
@@ -3287,7 +3287,12 @@ namespace Bitmute.UI
 			return bestPos;
 		}
 
-		private bool HandleGuideDrag(SKTouchEventArgs eventArgs, int pixelX, int pixelY)
+		private static bool IsSelectionTool(Tool tool)
+		{
+			return tool is RectangleSelectTool || tool is EllipseSelectTool || tool is LassoTool || tool is FreehandLassoTool || tool is MagneticLassoTool || tool is MagicWandTool;
+		}
+
+		private bool HandleGuideDrag(SKTouchEventArgs eventArgs, int pixelX, int pixelY, Tool tool)
 		{
 			Bitmute.Imaging.Guides guides = m_document.Guides();
 			if (guides.IsLocked())
@@ -3297,6 +3302,10 @@ namespace Bitmute.UI
 			int tolerance = (int)System.Math.Ceiling(3.0 / m_zoom);
 			if (eventArgs.ActionType == SKTouchAction.Pressed)
 			{
+				if (IsSelectionTool(tool))
+				{
+					return false;
+				}
 				int verticalIndex = guides.HitVertical(pixelX, tolerance);
 				if (verticalIndex >= 0)
 				{
