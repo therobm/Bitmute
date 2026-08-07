@@ -28,6 +28,8 @@ namespace Bitmute.UI
 		private Label m_brushStrengthLabel;
 		private SliderField m_brushStrengthField;
 		private Button m_brushSettingsButton;
+		private Button m_wandSettingsButton;
+		private Button m_gradientSettingsButton;
 		private HorizontalStackLayout m_optionsRow;
 		private Picker m_brushTipPicker;
 		private Slider m_brushSpacingSlider;
@@ -711,6 +713,134 @@ namespace Bitmute.UI
 			m_brushSettingsAnchorX = anchorX;
 			m_brushSettingsAnchorY = anchorY;
 			m_main.ShowPulldown(BuildBrushSettingsContent(), anchorX, anchorY, 288.0, 320.0);
+		}
+
+		private void OnWandSettingsClicked(object sender, System.EventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			if (m_main.PulldownOpen() || m_main.PulldownJustDismissed())
+			{
+				m_main.ClosePulldown();
+				return;
+			}
+			double anchorX = 0.0;
+			if (m_optionsRow != null && m_wandSettingsButton != null)
+			{
+				anchorX = m_optionsRow.X + m_wandSettingsButton.X;
+			}
+			double anchorY = UiConstants.MenuBarHeight + 1.0 + UiConstants.OptionsBarHeight + 1.0;
+			m_main.ShowPulldown(BuildWandSettingsContent(), anchorX, anchorY, 220.0, 150.0);
+		}
+
+		private View BuildWandSettingsContent()
+		{
+			VerticalStackLayout stack = new VerticalStackLayout();
+			stack.Spacing = 6.0;
+			stack.Padding = new Thickness(8.0);
+			stack.Add(BuildSettingsCheckRow("Anti-alias", m_toolState.WandAntiAlias(), OnWandAntiAliasSettingChanged));
+			stack.Add(BuildSettingsCheckRow("Contiguous", m_toolState.WandContiguous(), OnWandContiguousSettingChanged));
+			stack.Add(BuildSettingsCheckRow("Sample All Layers", m_toolState.WandSampleAll(), OnWandSampleAllSettingChanged));
+			return stack;
+		}
+
+		private View BuildSettingsCheckRow(string caption, bool initial, System.EventHandler<CheckedChangedEventArgs> handler)
+		{
+			Label label = new Label();
+			label.Text = caption;
+			label.FontSize = UiConstants.ComponentFontSize;
+			label.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			label.VerticalOptions = LayoutOptions.Center;
+			CheckBox check = new CheckBox();
+			check.VerticalOptions = LayoutOptions.Center;
+			check.IsChecked = initial;
+			check.CheckedChanged += handler;
+			Grid row = new Grid();
+			row.ColumnSpacing = 8.0;
+			row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+			row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+			Grid.SetColumn(label, 0);
+			Grid.SetColumn(check, 1);
+			row.Add(label);
+			row.Add(check);
+			return row;
+		}
+
+		private void OnWandAntiAliasSettingChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetWandAntiAlias(eventArgs.Value);
+		}
+
+		private void OnWandContiguousSettingChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetWandContiguous(eventArgs.Value);
+		}
+
+		private void OnWandSampleAllSettingChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetWandSampleAll(eventArgs.Value);
+		}
+
+		private void OnGradientSettingsClicked(object sender, System.EventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			if (m_main.PulldownOpen() || m_main.PulldownJustDismissed())
+			{
+				m_main.ClosePulldown();
+				return;
+			}
+			double anchorX = 0.0;
+			if (m_optionsRow != null && m_gradientSettingsButton != null)
+			{
+				anchorX = m_optionsRow.X + m_gradientSettingsButton.X;
+			}
+			double anchorY = UiConstants.MenuBarHeight + 1.0 + UiConstants.OptionsBarHeight + 1.0;
+			m_main.ShowPulldown(BuildGradientSettingsContent(), anchorX, anchorY, 220.0, 110.0);
+		}
+
+		private View BuildGradientSettingsContent()
+		{
+			VerticalStackLayout stack = new VerticalStackLayout();
+			stack.Spacing = 6.0;
+			stack.Padding = new Thickness(8.0);
+			stack.Add(BuildSettingsCheckRow("Reverse", m_toolState.GradientReverse(), OnGradientReverseSettingChanged));
+			stack.Add(BuildSettingsCheckRow("To Transparent", m_toolState.GradientToTransparent(), OnGradientTransparentSettingChanged));
+			return stack;
+		}
+
+		private void OnGradientReverseSettingChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetGradientReverse(eventArgs.Value);
+		}
+
+		private void OnGradientTransparentSettingChanged(object sender, CheckedChangedEventArgs eventArgs)
+		{
+			if (m_toolState == null)
+			{
+				return;
+			}
+			m_toolState.SetGradientToTransparent(eventArgs.Value);
 		}
 
 		private View BuildBrushSettingsContent()
@@ -1733,6 +1863,26 @@ namespace Bitmute.UI
 			m_brushSettingsButton.IsVisible = false;
 			m_brushSettingsButton.Clicked += OnBrushSettingsClicked;
 
+			m_wandSettingsButton = new Button();
+			m_wandSettingsButton.Text = "Settings";
+			m_wandSettingsButton.FontSize = UiConstants.ComponentFontSize;
+			m_wandSettingsButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
+			m_wandSettingsButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			m_wandSettingsButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_wandSettingsButton.VerticalOptions = LayoutOptions.Center;
+			m_wandSettingsButton.IsVisible = false;
+			m_wandSettingsButton.Clicked += OnWandSettingsClicked;
+
+			m_gradientSettingsButton = new Button();
+			m_gradientSettingsButton.Text = "Settings";
+			m_gradientSettingsButton.FontSize = UiConstants.ComponentFontSize;
+			m_gradientSettingsButton.Padding = new Thickness(8.0, 0.0, 8.0, 0.0);
+			m_gradientSettingsButton.ThemeBg(UiConstants.ChromeRaisedLight, UiConstants.ChromeRaisedDark);
+			m_gradientSettingsButton.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark);
+			m_gradientSettingsButton.VerticalOptions = LayoutOptions.Center;
+			m_gradientSettingsButton.IsVisible = false;
+			m_gradientSettingsButton.Clicked += OnGradientSettingsClicked;
+
 			m_brushAirbrushLabel = new Label();
 			m_brushAirbrushLabel.Text = "Airbrush";
 			m_brushAirbrushLabel.ThemeText(UiConstants.TextDimLight, UiConstants.TextDimDark);
@@ -2260,6 +2410,7 @@ namespace Bitmute.UI
 			options.Add(m_gradientReverseCheck);
 			options.Add(m_gradientTransparentLabel);
 			options.Add(m_gradientTransparentCheck);
+			options.Add(m_gradientSettingsButton);
 			options.Add(m_fillContentLabel);
 			options.Add(m_fillContentPicker);
 			options.Add(m_fillPatternLabel);
@@ -2282,6 +2433,7 @@ namespace Bitmute.UI
 			options.Add(m_wandContiguousCheck);
 			options.Add(m_wandSampleAllLabel);
 			options.Add(m_wandSampleAllCheck);
+			options.Add(m_wandSettingsButton);
 			options.Add(m_magneticWidthLabel);
 			options.Add(m_magneticWidthField);
 			options.Add(m_magneticContrastLabel);
@@ -2351,12 +2503,13 @@ namespace Bitmute.UI
 			{
 				m_toleranceLabel.IsVisible = usesTolerance;
 				m_toleranceField.IsVisible = usesTolerance;
-				m_wandAntiAliasLabel.IsVisible = isWand;
-				m_wandAntiAliasCheck.IsVisible = isWand;
-				m_wandContiguousLabel.IsVisible = isWand;
-				m_wandContiguousCheck.IsVisible = isWand;
-				m_wandSampleAllLabel.IsVisible = isWand;
-				m_wandSampleAllCheck.IsVisible = isWand;
+				m_wandAntiAliasLabel.IsVisible = false;
+				m_wandAntiAliasCheck.IsVisible = false;
+				m_wandContiguousLabel.IsVisible = false;
+				m_wandContiguousCheck.IsVisible = false;
+				m_wandSampleAllLabel.IsVisible = false;
+				m_wandSampleAllCheck.IsVisible = false;
+				m_wandSettingsButton.IsVisible = isWand;
 			}
 			if (m_fillContentLabel != null)
 			{
@@ -2461,10 +2614,11 @@ namespace Bitmute.UI
 				{
 					UpdateGradientTypeButtonText();
 				}
-				m_gradientReverseLabel.IsVisible = isGradient;
-				m_gradientReverseCheck.IsVisible = isGradient;
-				m_gradientTransparentLabel.IsVisible = isGradient;
-				m_gradientTransparentCheck.IsVisible = isGradient;
+				m_gradientReverseLabel.IsVisible = false;
+				m_gradientReverseCheck.IsVisible = false;
+				m_gradientTransparentLabel.IsVisible = false;
+				m_gradientTransparentCheck.IsVisible = false;
+				m_gradientSettingsButton.IsVisible = isGradient;
 			}
 		}
 

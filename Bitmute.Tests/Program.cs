@@ -104,6 +104,7 @@ namespace Bitmute.Tests
 			TestFeatherActive();
 			TestContractActive();
 			TestSmoothActive();
+			TestResizeCanvasAnchor();
 			TestCanvasEditNoOpSkipsUndo();
 			TestBrightnessContrastMatchesReference();
 			TestBlendAdjustedIntoSelection();
@@ -2172,6 +2173,25 @@ namespace Bitmute.Tests
 			smallSelection.SmoothActive(2);
 			Check(!smallSelection.IsActive(), "smoothing a speck smaller than the radius removes it");
 			Check(!smallSelection.IsSelected(11, 11), "removed speck leaves no selected pixels");
+		}
+
+		private static void TestResizeCanvasAnchor()
+		{
+			Document topLeftDoc = new Document("t", 10, 10);
+			topLeftDoc.ActiveLayer().Bitmap().Erase(new SKColor(200, 40, 40, 255));
+			topLeftDoc.ResizeCanvas(20, 20, -1, -1);
+			SKColor topLeftCorner = topLeftDoc.ActiveLayer().GetPixelCanvas(0, 0);
+			SKColor topLeftFar = topLeftDoc.ActiveLayer().GetPixelCanvas(19, 19);
+			Check(topLeftCorner.Alpha == 255 && topLeftCorner.Red == 200, "top-left anchor keeps content at the top-left");
+			Check(topLeftFar.Alpha == 0, "top-left anchor leaves the bottom-right transparent");
+
+			Document bottomRightDoc = new Document("t", 10, 10);
+			bottomRightDoc.ActiveLayer().Bitmap().Erase(new SKColor(200, 40, 40, 255));
+			bottomRightDoc.ResizeCanvas(20, 20, 1, 1);
+			SKColor bottomRightNear = bottomRightDoc.ActiveLayer().GetPixelCanvas(0, 0);
+			SKColor bottomRightCorner = bottomRightDoc.ActiveLayer().GetPixelCanvas(19, 19);
+			Check(bottomRightNear.Alpha == 0, "bottom-right anchor leaves the top-left transparent");
+			Check(bottomRightCorner.Alpha == 255 && bottomRightCorner.Red == 200, "bottom-right anchor keeps content at the bottom-right");
 		}
 
 		private static void TestCanvasEditNoOpSkipsUndo()
