@@ -23,6 +23,7 @@ namespace Bitmute.UI
 		private Entry m_redEntry;
 		private Entry m_greenEntry;
 		private Entry m_blueEntry;
+		private Entry m_alphaEntry;
 		private Entry m_hexEntry;
 		private BoxView m_preview;
 		private float m_hue;
@@ -34,6 +35,7 @@ namespace Bitmute.UI
 		private bool m_docked;
 		private bool m_ready;
 		private bool m_gradientPressed;
+		private bool m_gradientPointerHooked;
 		private Action<SKColor> m_onApply;
 		private bool m_livePendingScheduled;
 		private SKColor m_livePendingColor;
@@ -96,6 +98,7 @@ namespace Bitmute.UI
 			m_redEntry.Text = color.Red.ToString();
 			m_greenEntry.Text = color.Green.ToString();
 			m_blueEntry.Text = color.Blue.ToString();
+			m_alphaEntry.Text = color.Alpha.ToString();
 			m_hexEntry.Text = ToHex(color);
 			m_suppress = false;
 			m_preview.Color = ToMaui(color);
@@ -216,7 +219,7 @@ namespace Bitmute.UI
 			{
 				m_gradientPressed = true;
 			}
-			else if (eventArgs.ActionType == SKTouchAction.Released || eventArgs.ActionType == SKTouchAction.Cancelled || eventArgs.ActionType == SKTouchAction.Exited)
+			else if (eventArgs.ActionType == SKTouchAction.Released || eventArgs.ActionType == SKTouchAction.Cancelled)
 			{
 				m_gradientPressed = false;
 			}
@@ -277,6 +280,46 @@ namespace Bitmute.UI
 			eventArgs.Handled = true;
 		}
 
+		private void OnGradientHandlerChanged(object sender, EventArgs eventArgs)
+		{
+			if (m_gradientPointerHooked)
+			{
+				return;
+			}
+			if (m_gradient.Handler == null)
+			{
+				return;
+			}
+			Microsoft.UI.Xaml.UIElement element = m_gradient.Handler.PlatformView as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			m_gradientPointerHooked = true;
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerPressedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGradientPlatformPointerPressed), true);
+			element.AddHandler(Microsoft.UI.Xaml.UIElement.PointerReleasedEvent, new Microsoft.UI.Xaml.Input.PointerEventHandler(OnGradientPlatformPointerReleased), true);
+		}
+
+		private void OnGradientPlatformPointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs eventArgs)
+		{
+			Microsoft.UI.Xaml.UIElement element = sender as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			element.CapturePointer(eventArgs.Pointer);
+		}
+
+		private void OnGradientPlatformPointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs eventArgs)
+		{
+			Microsoft.UI.Xaml.UIElement element = sender as Microsoft.UI.Xaml.UIElement;
+			if (element == null)
+			{
+				return;
+			}
+			element.ReleasePointerCapture(eventArgs.Pointer);
+		}
+
 		private void AdoptColor(SKColor color)
 		{
 			float hue = 0.0f;
@@ -298,14 +341,17 @@ namespace Bitmute.UI
 			byte red = 0;
 			byte green = 0;
 			byte blue = 0;
+			byte alpha = 0;
 			bool redOk = byte.TryParse(m_redEntry.Text, out red);
 			bool greenOk = byte.TryParse(m_greenEntry.Text, out green);
 			bool blueOk = byte.TryParse(m_blueEntry.Text, out blue);
-			if (!redOk || !greenOk || !blueOk)
+			bool alphaOk = byte.TryParse(m_alphaEntry.Text, out alpha);
+			if (!redOk || !greenOk || !blueOk || !alphaOk)
 			{
 				return;
 			}
-			AdoptColor(new SKColor(red, green, blue, m_alpha));
+			m_alpha = alpha;
+			AdoptColor(new SKColor(red, green, blue, alpha));
 		}
 
 		private void OnHexCompleted(object sender, EventArgs eventArgs)
@@ -463,6 +509,7 @@ namespace Bitmute.UI
 			m_gradient.EnableTouchEvents = true;
 			m_gradient.PaintSurface += OnGradientPaint;
 			m_gradient.Touch += OnGradientTouch;
+			m_gradient.HandlerChanged += OnGradientHandlerChanged;
 
 			m_preview = new BoxView();
 			m_preview.WidthRequest = 60.0;
@@ -471,6 +518,7 @@ namespace Bitmute.UI
 			m_redEntry = BuildChannelEntry();
 			m_greenEntry = BuildChannelEntry();
 			m_blueEntry = BuildChannelEntry();
+			m_alphaEntry = BuildChannelEntry();
 
 			m_hexEntry = new Entry();
 			m_hexEntry.FontSize = UiConstants.PanelFontSize;
@@ -485,6 +533,7 @@ namespace Bitmute.UI
 				channelRow.Add(BuildLabeledEntry("R", m_redEntry));
 				channelRow.Add(BuildLabeledEntry("G", m_greenEntry));
 				channelRow.Add(BuildLabeledEntry("B", m_blueEntry));
+				channelRow.Add(BuildLabeledEntry("A", m_alphaEntry));
 
 				HorizontalStackLayout hexRow = new HorizontalStackLayout();
 				hexRow.Spacing = 6.0;
@@ -510,6 +559,7 @@ namespace Bitmute.UI
 			fields.Add(BuildLabeledEntry("R", m_redEntry));
 			fields.Add(BuildLabeledEntry("G", m_greenEntry));
 			fields.Add(BuildLabeledEntry("B", m_blueEntry));
+			fields.Add(BuildLabeledEntry("A", m_alphaEntry));
 			fields.Add(BuildLabeledEntry("#", m_hexEntry));
 
 			HorizontalStackLayout body = new HorizontalStackLayout();

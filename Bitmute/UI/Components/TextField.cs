@@ -53,6 +53,7 @@ namespace Bitmute.UI.Components
 			captionLabel.VerticalOptions = LayoutOptions.Center;
 
 			m_entry = new Entry();
+			Bitmute.UI.EntryFocusSelect.Attach(m_entry);
 			m_entry.FontSize = UiConstants.PanelFontSize;
 			m_entry.ThemeText(UiConstants.OnSurfaceLight, UiConstants.OnSurfaceDark, UiConstants.TextBackgroundLight, UiConstants.TextBackgroundDark);
 			m_entry.VerticalOptions = LayoutOptions.Center;

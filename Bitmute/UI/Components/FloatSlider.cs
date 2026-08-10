@@ -168,6 +168,7 @@ namespace Bitmute.UI.Components
 			m_slider.VerticalOptions = LayoutOptions.Center;
 
 			m_entry = new Entry();
+			Bitmute.UI.EntryFocusSelect.Attach(m_entry);
 			m_entry.FontSize = UiConstants.ComponentFontSize;
 			m_entry.WidthRequest = UiConstants.FieldValueWidth;
 			m_entry.HeightRequest = UiConstants.ComponentHeight;
