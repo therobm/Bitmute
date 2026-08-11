@@ -1176,6 +1176,16 @@ namespace Bitmute.UI
 
 		private async System.Threading.Tasks.Task<SkiaSharp.SKBitmap> GetSystemClipboardBitmap()
 		{
+			SkiaSharp.SKBitmap fromWinRt = await GetWinRtClipboardBitmap();
+			if (fromWinRt != null)
+			{
+				return fromWinRt;
+			}
+			return GetWin32ClipboardBitmap();
+		}
+
+		private async System.Threading.Tasks.Task<SkiaSharp.SKBitmap> GetWinRtClipboardBitmap()
+		{
 			try
 			{
 				Windows.ApplicationModel.DataTransfer.DataPackageView view = Windows.ApplicationModel.DataTransfer.Clipboard.GetContent();
@@ -1193,28 +1203,147 @@ namespace Bitmute.UI
 				SkiaSharp.SKBitmap decoded = SkiaSharp.SKBitmap.Decode(netStream);
 				netStream.Dispose();
 				stream.Dispose();
-				if (decoded == null)
-				{
-					return null;
-				}
-				SkiaSharp.SKBitmap normalized = new SkiaSharp.SKBitmap(decoded.Width, decoded.Height, SkiaSharp.SKColorType.Rgba8888, SkiaSharp.SKAlphaType.Unpremul);
-				SkiaSharp.SKCanvas canvas = new SkiaSharp.SKCanvas(normalized);
-				canvas.Clear(SkiaSharp.SKColors.Transparent);
-				SkiaSharp.SKImage decodedImage = SkiaSharp.SKImage.FromBitmap(decoded);
-				SkiaSharp.SKSamplingOptions sampling = new SkiaSharp.SKSamplingOptions(SkiaSharp.SKFilterMode.Nearest, SkiaSharp.SKMipmapMode.None);
-				SkiaSharp.SKPaint imagePaint = new SkiaSharp.SKPaint();
-				canvas.DrawImage(decodedImage, 0.0f, 0.0f, sampling, imagePaint);
-				imagePaint.Dispose();
-				decodedImage.Dispose();
-				canvas.Dispose();
-				decoded.Dispose();
-				return normalized;
+				return NormalizeDecodedBitmap(decoded);
 			}
 			catch (Exception error)
 			{
 				Log.Exception(error);
 				return null;
 			}
+		}
+
+		private static SkiaSharp.SKBitmap NormalizeDecodedBitmap(SkiaSharp.SKBitmap decoded)
+		{
+			if (decoded == null)
+			{
+				return null;
+			}
+			SkiaSharp.SKBitmap normalized = new SkiaSharp.SKBitmap(decoded.Width, decoded.Height, SkiaSharp.SKColorType.Rgba8888, SkiaSharp.SKAlphaType.Unpremul);
+			SkiaSharp.SKCanvas canvas = new SkiaSharp.SKCanvas(normalized);
+			canvas.Clear(SkiaSharp.SKColors.Transparent);
+			SkiaSharp.SKImage decodedImage = SkiaSharp.SKImage.FromBitmap(decoded);
+			SkiaSharp.SKSamplingOptions sampling = new SkiaSharp.SKSamplingOptions(SkiaSharp.SKFilterMode.Nearest, SkiaSharp.SKMipmapMode.None);
+			SkiaSharp.SKPaint imagePaint = new SkiaSharp.SKPaint();
+			canvas.DrawImage(decodedImage, 0.0f, 0.0f, sampling, imagePaint);
+			imagePaint.Dispose();
+			decodedImage.Dispose();
+			canvas.Dispose();
+			decoded.Dispose();
+			return normalized;
+		}
+
+		private const uint ClipboardFormatDib = 8;
+		private const uint ClipboardFormatDibV5 = 17;
+
+		[System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+		private static extern bool OpenClipboard(System.IntPtr hWndNewOwner);
+
+		[System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+		private static extern bool CloseClipboard();
+
+		[System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+		private static extern System.IntPtr GetClipboardData(uint format);
+
+		[System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+		private static extern bool IsClipboardFormatAvailable(uint format);
+
+		[System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+		private static extern System.IntPtr GlobalLock(System.IntPtr handle);
+
+		[System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+		private static extern bool GlobalUnlock(System.IntPtr handle);
+
+		[System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+		private static extern System.UIntPtr GlobalSize(System.IntPtr handle);
+
+		private SkiaSharp.SKBitmap GetWin32ClipboardBitmap()
+		{
+			if (!OpenClipboard(System.IntPtr.Zero))
+			{
+				return null;
+			}
+			try
+			{
+				uint format = ClipboardFormatDib;
+				if (IsClipboardFormatAvailable(ClipboardFormatDibV5))
+				{
+					format = ClipboardFormatDibV5;
+				}
+				else if (!IsClipboardFormatAvailable(ClipboardFormatDib))
+				{
+					return null;
+				}
+				System.IntPtr handle = GetClipboardData(format);
+				if (handle == System.IntPtr.Zero)
+				{
+					return null;
+				}
+				System.IntPtr pointer = GlobalLock(handle);
+				if (pointer == System.IntPtr.Zero)
+				{
+					return null;
+				}
+				try
+				{
+					int dibSize = (int)GlobalSize(handle);
+					if (dibSize <= 0)
+					{
+						return null;
+					}
+					byte[] dib = new byte[dibSize];
+					System.Runtime.InteropServices.Marshal.Copy(pointer, dib, 0, dibSize);
+					byte[] bmp = DibToBmpBytes(dib);
+					if (bmp == null)
+					{
+						return null;
+					}
+					SkiaSharp.SKBitmap decoded = SkiaSharp.SKBitmap.Decode(bmp);
+					return NormalizeDecodedBitmap(decoded);
+				}
+				finally
+				{
+					GlobalUnlock(handle);
+				}
+			}
+			catch (Exception error)
+			{
+				Log.Exception(error);
+				return null;
+			}
+			finally
+			{
+				CloseClipboard();
+			}
+		}
+
+		private static byte[] DibToBmpBytes(byte[] dib)
+		{
+			if (dib.Length < 40)
+			{
+				return null;
+			}
+			uint headerSize = System.BitConverter.ToUInt32(dib, 0);
+			ushort bitCount = System.BitConverter.ToUInt16(dib, 14);
+			uint compression = System.BitConverter.ToUInt32(dib, 16);
+			uint colorsUsed = System.BitConverter.ToUInt32(dib, 32);
+			int paletteSize = 0;
+			if (bitCount <= 8)
+			{
+				int colors = colorsUsed != 0 ? (int)colorsUsed : (1 << bitCount);
+				paletteSize = colors * 4;
+			}
+			else if (compression == 3 && headerSize == 40)
+			{
+				paletteSize = 12;
+			}
+			int pixelOffset = 14 + (int)headerSize + paletteSize;
+			byte[] bmp = new byte[14 + dib.Length];
+			bmp[0] = (byte)'B';
+			bmp[1] = (byte)'M';
+			System.BitConverter.GetBytes(bmp.Length).CopyTo(bmp, 2);
+			System.BitConverter.GetBytes(pixelOffset).CopyTo(bmp, 10);
+			System.Array.Copy(dib, 0, bmp, 14, dib.Length);
+			return bmp;
 		}
 
 		public async void DoCut()
