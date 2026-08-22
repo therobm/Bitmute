@@ -165,6 +165,7 @@ namespace Bitmute.Tests
 			s_failures = s_failures + PressureTests.RunAll();
 			s_failures = s_failures + LayerMaskTests.RunAll();
 			s_failures = s_failures + LayerMaskPaintTests.RunAll();
+			s_failures = s_failures + ChannelPlaneTests.RunAll();
 			s_failures = s_failures + LayerMaskApplyTests.RunAll();
 			s_failures = s_failures + LayerMaskPersistTests.RunAll();
 			s_failures = s_failures + PatternFillTests.RunAll();
