@@ -522,6 +522,11 @@ namespace Bitmute.UI.Panels
 					{
 						document.SetActiveLayerIndex(layerIndex);
 						document.SetPaintTarget(ePaintTarget.Layer);
+						MainView main = MainView.Self;
+						if (main != null)
+						{
+							main.SelectChannelView(-1);
+						}
 					}
 					Refresh();
 					return;
@@ -541,6 +546,11 @@ namespace Bitmute.UI.Panels
 				if (ReferenceEquals(m_maskThumbnailImages[index], sender))
 				{
 					int layerIndex = m_maskThumbnailLayers[index];
+					MainView main = MainView.Self;
+					if (main != null)
+					{
+						main.SelectChannelView(-1);
+					}
 					document.SetActiveLayerIndex(layerIndex);
 					document.SetPaintTarget(ePaintTarget.Mask);
 					Refresh();

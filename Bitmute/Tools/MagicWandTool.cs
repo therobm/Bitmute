@@ -93,7 +93,11 @@ namespace Bitmute.Tools
 			}
 			else
 			{
-				if (document.PaintTarget() == ePaintTarget.Mask && layer.HasMask())
+				if (document.PaintTarget() == ePaintTarget.Channel)
+				{
+					bitmap = document.ActivePaintBitmap();
+				}
+				else if (document.PaintTarget() == ePaintTarget.Mask && layer.HasMask())
 				{
 					bitmap = layer.MaskBitmap();
 				}

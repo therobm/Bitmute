@@ -112,7 +112,7 @@ namespace Bitmute.Tools
 
 		protected unsafe void DrawDab(Layer layer, int centerX, int centerY, int radius, SKColor color, Selection selection)
 		{
-			SKBitmap bitmap = layer.Bitmap();
+			SKBitmap bitmap = layer.PaintTarget();
 			int width = bitmap.Width;
 			int height = bitmap.Height;
 			int rowBytes = bitmap.RowBytes;

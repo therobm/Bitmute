@@ -3075,6 +3075,8 @@ namespace Bitmute.UI
 				StopAirbrush();
 			}
 
+			m_document.FlushChannelPlane();
+
 			bool overlayOnlyTool = tool is PenTool || tool is DirectSelectionTool;
 			bool needsRepaint = changed || m_document.ComposeDirtyAny();
 			if (needsRepaint)
@@ -3707,6 +3709,7 @@ namespace Bitmute.UI
 			}
 			ToolState state = main.CurrentToolState();
 			((BrushFamilyTool)tool).AirbrushStamp(m_document, m_airbrushX, m_airbrushY, state);
+			m_document.FlushChannelPlane();
 			if (m_document.ComposeDirtyAny())
 			{
 				InvalidateSurface();

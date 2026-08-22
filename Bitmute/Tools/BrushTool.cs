@@ -9,7 +9,8 @@ namespace Bitmute.Tools
 		{
 			int radius = state.BrushSize() / 2;
 			SKColor color = state.Foreground();
-			if (document.PaintTarget() == ePaintTarget.Mask && layer.HasMask())
+			bool grayTarget = document.PaintTarget() == ePaintTarget.Channel || (document.PaintTarget() == ePaintTarget.Mask && layer.HasMask());
+			if (grayTarget)
 			{
 				int gray = ((state.Foreground().Red * 77) + (state.Foreground().Green * 150) + (state.Foreground().Blue * 29)) / 256;
 				color = new SKColor((byte)gray, (byte)gray, (byte)gray, 255);

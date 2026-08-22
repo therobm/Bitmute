@@ -72,13 +72,21 @@ namespace Bitmute.Tools
 				return false;
 			}
 			SKBitmap bitmap;
-			if (document.PaintTarget() == ePaintTarget.Mask && layer.HasMask())
+			if (document.PaintTarget() == ePaintTarget.Channel)
+			{
+				bitmap = document.ActivePaintBitmap();
+			}
+			else if (document.PaintTarget() == ePaintTarget.Mask && layer.HasMask())
 			{
 				bitmap = layer.MaskBitmap();
 			}
 			else
 			{
 				bitmap = layer.Bitmap();
+			}
+			if (bitmap == null)
+			{
+				return false;
 			}
 			int width = bitmap.Width;
 			int height = bitmap.Height;

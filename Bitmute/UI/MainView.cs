@@ -578,6 +578,19 @@ namespace Bitmute.UI
 			return layer.Bitmap().Copy();
 		}
 
+		private SkiaSharp.SKBitmap ExtractChannelRegion(Document document, Layer layer, int channel)
+		{
+			SkiaSharp.SKBitmap bitmap = layer.Bitmap();
+			SkiaSharp.SKRectI region = new SkiaSharp.SKRectI(0, 0, bitmap.Width, bitmap.Height);
+			Selection selection = document.Selection();
+			if (selection != null && selection.IsActive())
+			{
+				SkiaSharp.SKRectI bounds = selection.Bounds();
+				region = new SkiaSharp.SKRectI(bounds.Left - layer.OffsetX(), bounds.Top - layer.OffsetY(), bounds.Right - layer.OffsetX(), bounds.Bottom - layer.OffsetY());
+			}
+			return ChannelPlane.Extract(bitmap, region, channel);
+		}
+
 		private string PaletteRoot()
 		{
 			string rootOverride = Microsoft.Maui.Storage.Preferences.Default.Get("palette_root", "");
@@ -983,12 +996,21 @@ namespace Bitmute.UI
 			{
 				return;
 			}
-			SkiaSharp.SKBitmap copied = ExtractSelection(document, layer);
-			if (copied == null)
+			SkiaSharp.SKBitmap copied = null;
+			int channel = ChannelViewMode();
+			if (channel >= 0)
 			{
-				return;
+				copied = ExtractChannelRegion(document, layer, channel);
 			}
-			copied = CropToContent(copied);
+			else
+			{
+				copied = ExtractSelection(document, layer);
+				if (copied == null)
+				{
+					return;
+				}
+				copied = CropToContent(copied);
+			}
 			if (copied == null)
 			{
 				SetStatusMessage("Nothing to copy");
@@ -1403,6 +1425,12 @@ namespace Bitmute.UI
 			{
 				return;
 			}
+			int channel = ChannelViewMode();
+			if (channel >= 0)
+			{
+				PasteChannel(document, pasted, channel);
+				return;
+			}
 			document.BeginCanvasEdit("Paste");
 			int pastedNumber = document.Layers().Count + 1;
 			Layer layer = document.AddLayer("Layer " + pastedNumber);
@@ -1435,6 +1463,30 @@ namespace Bitmute.UI
 				m_layersPanel.Refresh();
 			}
 			SetStatusMessage("Pasted");
+		}
+
+		private void PasteChannel(Document document, SkiaSharp.SKBitmap pasted, int channel)
+		{
+			Layer layer = document.ActiveLayer();
+			if (layer == null)
+			{
+				pasted.Dispose();
+				return;
+			}
+			SkiaSharp.SKBitmap bitmap = layer.Bitmap();
+			int offsetX = (bitmap.Width - pasted.Width) / 2;
+			int offsetY = (bitmap.Height - pasted.Height) / 2;
+			document.BeginCanvasEdit("Paste");
+			ChannelPlane.Write(bitmap, pasted, channel, offsetX, offsetY);
+			document.EndCanvasEdit();
+			pasted.Dispose();
+			CanvasView canvas = ActiveCanvas();
+			if (canvas != null)
+			{
+				canvas.MarkComposeDirty();
+			}
+			RefreshLayerThumbnails();
+			SetStatusMessage("Pasted into channel");
 		}
 
 		public async void DoPasteInto()
@@ -4656,6 +4708,20 @@ namespace Bitmute.UI
 		public void SelectChannelView(int mode)
 		{
 			SetChannelView(mode);
+			Document document = ActiveDocument();
+			if (document == null)
+			{
+				return;
+			}
+			if (mode >= 0)
+			{
+				document.SetPaintChannel(mode);
+				return;
+			}
+			if (document.PaintTarget() == ePaintTarget.Channel)
+			{
+				document.SetPaintTarget(ePaintTarget.Layer);
+			}
 		}
 
 		private void SetChannelView(int mode)

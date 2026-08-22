@@ -49,6 +49,11 @@ namespace Bitmute.Imaging
 		private int m_strokeLayerIndex;
 		private ePaintTarget m_paintTarget;
 		private ePaintTarget m_strokePaintTarget;
+		private int m_paintChannel;
+		private SKBitmap m_channelPlane;
+		private int m_channelPlaneLayerIndex;
+		private int m_channelPlaneChannel;
+		private bool m_channelPlaneDirty;
 		private Selection m_selection;
 		private SKBitmap m_composite;
 		private int m_compositeVersion;
@@ -347,6 +352,11 @@ namespace Bitmute.Imaging
 			m_strokeSnapshot = null;
 			m_strokeSnapshotValid = false;
 			m_strokeLayerIndex = 0;
+			m_paintChannel = -1;
+			m_channelPlane = null;
+			m_channelPlaneLayerIndex = -1;
+			m_channelPlaneChannel = -1;
+			m_channelPlaneDirty = false;
 			m_selection = new Selection(width, height);
 			m_composeDirtyRect = SKRectI.Empty;
 			m_composeDirtyAny = false;
@@ -815,6 +825,10 @@ namespace Bitmute.Imaging
 			{
 				return null;
 			}
+			if (m_strokePaintTarget == ePaintTarget.Channel)
+			{
+				return null;
+			}
 			return m_strokeSnapshot;
 		}
 
@@ -844,7 +858,12 @@ namespace Bitmute.Imaging
 				return;
 			}
 			SKBitmap bitmap = ActivePaintBitmap();
-			if (m_paintTarget == ePaintTarget.Mask && layer.HasMask())
+			if (bitmap == null)
+			{
+				return;
+			}
+			bool grayFill = m_paintTarget == ePaintTarget.Channel || (m_paintTarget == ePaintTarget.Mask && layer.HasMask());
+			if (grayFill)
 			{
 				int gray = ((fill.Red * 77) + (fill.Green * 150) + (fill.Blue * 29)) / 256;
 				fill = new SKColor((byte)gray, (byte)gray, (byte)gray, 255);
@@ -917,6 +936,11 @@ namespace Bitmute.Imaging
 					pixel[3] = (byte)(((pixel[3] * inverse) + (fillAlpha * coverage) + 127) / 255);
 				}
 			}
+			if (m_paintTarget == ePaintTarget.Channel)
+			{
+				m_channelPlaneDirty = true;
+				FlushChannelPlane();
+			}
 			MarkComposeDirtyRegion(new SKRectI(left, top, right, bottom));
 		}
 
@@ -927,12 +951,23 @@ namespace Bitmute.Imaging
 			{
 				return;
 			}
-			if (m_paintTarget == ePaintTarget.Mask && layer.HasMask())
+			bool grayFill = m_paintTarget == ePaintTarget.Channel || (m_paintTarget == ePaintTarget.Mask && layer.HasMask());
+			if (grayFill)
 			{
 				int gray = ((color.Red * 77) + (color.Green * 150) + (color.Blue * 29)) / 256;
 				color = new SKColor((byte)gray, (byte)gray, (byte)gray, 255);
 			}
-			ActivePaintBitmap().Erase(color);
+			SKBitmap target = ActivePaintBitmap();
+			if (target == null)
+			{
+				return;
+			}
+			target.Erase(color);
+			if (m_paintTarget == ePaintTarget.Channel)
+			{
+				m_channelPlaneDirty = true;
+				FlushChannelPlane();
+			}
 			MarkComposeDirtyAll();
 		}
 
@@ -944,6 +979,31 @@ namespace Bitmute.Imaging
 		public void SetPaintTarget(ePaintTarget target)
 		{
 			m_paintTarget = target;
+			if (target != ePaintTarget.Channel)
+			{
+				m_paintChannel = -1;
+				DropChannelPlane();
+			}
+		}
+
+		public int PaintChannel()
+		{
+			return m_paintChannel;
+		}
+
+		public void SetPaintChannel(int channel)
+		{
+			if (channel < 0 || channel > 3)
+			{
+				SetPaintTarget(ePaintTarget.Layer);
+				return;
+			}
+			if (m_paintChannel != channel)
+			{
+				DropChannelPlane();
+			}
+			m_paintChannel = channel;
+			m_paintTarget = ePaintTarget.Channel;
 		}
 
 		public SKBitmap ActivePaintBitmap()
@@ -953,11 +1013,80 @@ namespace Bitmute.Imaging
 			{
 				return null;
 			}
+			if (m_paintTarget == ePaintTarget.Channel)
+			{
+				return EnsureChannelPlane();
+			}
 			if (m_paintTarget == ePaintTarget.Mask && active.HasMask())
 			{
 				return active.MaskBitmap();
 			}
 			return active.Bitmap();
+		}
+
+		private SKBitmap EnsureChannelPlane()
+		{
+			Layer active = ActiveLayer();
+			if (active == null)
+			{
+				return null;
+			}
+			if (m_paintChannel < 0 || m_paintChannel > 3)
+			{
+				return null;
+			}
+			SKBitmap bitmap = active.Bitmap();
+			bool reusable = m_channelPlane != null && m_channelPlaneDirty && m_channelPlane.Width == bitmap.Width && m_channelPlane.Height == bitmap.Height && m_channelPlane.ColorType == bitmap.ColorType && m_channelPlaneLayerIndex == m_activeLayerIndex && m_channelPlaneChannel == m_paintChannel;
+			if (reusable)
+			{
+				return m_channelPlane;
+			}
+			DropChannelPlane();
+			m_channelPlane = new SKBitmap(bitmap.Width, bitmap.Height, bitmap.ColorType, SKAlphaType.Unpremul);
+			m_channelPlaneLayerIndex = m_activeLayerIndex;
+			m_channelPlaneChannel = m_paintChannel;
+			ChannelPlane.ExtractInto(bitmap, m_channelPlane, m_paintChannel);
+			return m_channelPlane;
+		}
+
+		private void DropChannelPlane()
+		{
+			if (m_channelPlane != null)
+			{
+				if (m_channelPlaneLayerIndex >= 0 && m_channelPlaneLayerIndex < m_layers.Count)
+				{
+					Layer planeLayer = m_layers[m_channelPlaneLayerIndex];
+					if (ReferenceEquals(planeLayer.PaintTarget(), m_channelPlane))
+					{
+						planeLayer.SetPaintRedirect(null);
+					}
+				}
+				m_channelPlane.Dispose();
+				m_channelPlane = null;
+			}
+			m_channelPlaneLayerIndex = -1;
+			m_channelPlaneChannel = -1;
+			m_channelPlaneDirty = false;
+		}
+
+		public void FlushChannelPlane()
+		{
+			if (m_channelPlane == null || !m_channelPlaneDirty)
+			{
+				return;
+			}
+			if (m_channelPlaneLayerIndex < 0 || m_channelPlaneLayerIndex >= m_layers.Count)
+			{
+				return;
+			}
+			Layer layer = m_layers[m_channelPlaneLayerIndex];
+			SKBitmap bitmap = layer.Bitmap();
+			SKRectI region = new SKRectI(0, 0, bitmap.Width, bitmap.Height);
+			if (m_strokeSnapshotValid && m_strokeDirtyValid)
+			{
+				region = new SKRectI(m_strokeDirtyRect.Left - layer.OffsetX(), m_strokeDirtyRect.Top - layer.OffsetY(), m_strokeDirtyRect.Right - layer.OffsetX(), m_strokeDirtyRect.Bottom - layer.OffsetY());
+			}
+			ChannelPlane.WriteRegion(bitmap, m_channelPlane, m_channelPlaneChannel, region);
 		}
 
 		private SKBitmap StrokeTargetBitmap()
@@ -982,7 +1111,13 @@ namespace Bitmute.Imaging
 			{
 				return;
 			}
-			SKBitmap bitmap = ActivePaintBitmap();
+			m_strokeLayerIndex = m_activeLayerIndex;
+			m_strokePaintTarget = m_paintTarget;
+			SKBitmap bitmap = StrokeTargetBitmap();
+			if (bitmap == null)
+			{
+				return;
+			}
 			if (m_strokeSnapshot == null || m_strokeSnapshot.Width != bitmap.Width || m_strokeSnapshot.Height != bitmap.Height || m_strokeSnapshot.ColorType != bitmap.ColorType)
 			{
 				if (m_strokeSnapshot != null)
@@ -992,11 +1127,15 @@ namespace Bitmute.Imaging
 				m_strokeSnapshot = new SKBitmap(bitmap.Width, bitmap.Height, bitmap.ColorType, SKAlphaType.Unpremul);
 			}
 			PixelRegion.CopyPixels(bitmap, m_strokeSnapshot);
-			m_strokeLayerIndex = m_activeLayerIndex;
-			m_strokePaintTarget = m_paintTarget;
 			if (m_paintTarget == ePaintTarget.Mask && active.HasMask())
 			{
 				active.SetPaintRedirect(active.MaskBitmap());
+			}
+			else if (m_paintTarget == ePaintTarget.Channel)
+			{
+				DropChannelPlane();
+				active.SetPaintRedirect(EnsureChannelPlane());
+				m_channelPlaneDirty = true;
 			}
 			else
 			{
@@ -1038,6 +1177,10 @@ namespace Bitmute.Imaging
 				byte* targetRow = targetBase + ((long)y * targetRowBytes);
 				Buffer.MemoryCopy(sourceRow, targetRow, rowLength, rowLength);
 			}
+			if (m_strokePaintTarget == ePaintTarget.Channel)
+			{
+				DropChannelPlane();
+			}
 		}
 
 		public void EndStroke()
@@ -1048,6 +1191,11 @@ namespace Bitmute.Imaging
 			}
 			m_strokeSnapshotValid = false;
 			bool strokeMask = m_strokePaintTarget == ePaintTarget.Mask;
+			if (m_strokePaintTarget == ePaintTarget.Channel)
+			{
+				FlushChannelPlane();
+				DropChannelPlane();
+			}
 			if (m_strokeLayerIndex >= 0 && m_strokeLayerIndex < m_layers.Count)
 			{
 				m_layers[m_strokeLayerIndex].SetPaintRedirect(null);
